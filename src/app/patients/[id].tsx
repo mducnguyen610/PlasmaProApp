@@ -60,7 +60,7 @@ export default function PatientDetail() {
         <InfoRow label="Giới tính, năm sinh" value={`${p.sex}, ${p.birthYear}`} />
         <InfoRow label="Bác sĩ phụ trách" value={account(p.doctorId)?.name ?? '—'} />
         <InfoRow label="Ngày tạo hồ sơ" value={fmtDate(p.createdAt)} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F6F8FC', borderRadius: 12, padding: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surfaceMuted, borderRadius: 12, padding: 10 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontWeight: '600', color: C.text }}>Đồng ý dùng ảnh cho nghiên cứu</Text>
             <Muted>{p.researchConsent ? `Ghi nhận ngày ${fmtDate(p.consentDate)}` : 'Chưa đồng ý: ảnh không được đưa vào bộ dữ liệu xuất'}</Muted>

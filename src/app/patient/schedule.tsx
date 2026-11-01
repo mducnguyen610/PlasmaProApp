@@ -26,9 +26,9 @@ export default function Schedule() {
   return <Screen header={<Header title="Lịch trình của tôi" subtitle="Theo liệu trình bác sĩ đã xác nhận" />}>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9, paddingVertical: 8 }}>
       {days.map(d => { const iso=localDay(d); const on=iso===selected;
-        return <Pressable key={iso} accessibilityLabel={'Ngày ' + fmtDate(iso)} onPress={() => setSelected(iso)} style={{ width: 58, paddingVertical: 15, borderRadius: 20, alignItems: 'center', gap: 8, backgroundColor: on ? C.primary : '#fff' }}>
-          <Text style={{ color: on ? '#fff' : C.textSoft, fontSize: 12 }}>{['CN','T2','T3','T4','T5','T6','T7'][d.getDay()]}</Text>
-          <Text style={{ color: on ? '#fff' : C.text, fontWeight: '700', fontSize: 21 }}>{d.getDate()}</Text>
+        return <Pressable key={iso} accessibilityLabel={'Ngày ' + fmtDate(iso)} onPress={() => setSelected(iso)} style={{ width: 58, paddingVertical: 15, borderRadius: 20, alignItems: 'center', gap: 8, backgroundColor: on ? C.primary : C.card }}>
+          <Text style={{ color: on ? C.onPrimary : C.textSoft, fontSize: 12 }}>{['CN','T2','T3','T4','T5','T6','T7'][d.getDay()]}</Text>
+          <Text style={{ color: on ? C.onPrimary : C.text, fontWeight: '700', fontSize: 21 }}>{d.getDate()}</Text>
         </Pressable>;
       })}
     </ScrollView>

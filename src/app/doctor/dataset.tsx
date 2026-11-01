@@ -101,7 +101,7 @@ export default function Dataset() {
         </Muted>
         {noConsent > 0 && <Text style={{ color: C.amber, fontSize: 13 }}>{noConsent} ảnh có nhãn không được xuất vì bệnh nhân chưa đồng ý.</Text>}
         <Text style={{ color: C.textSoft, fontSize: 12 }}>Xem trước labels.csv</Text>
-        <Text selectable style={{ fontFamily: 'Menlo', fontSize: 10, color: C.text, backgroundColor: '#F6F8FC', padding: 10, borderRadius: 10 }}>{csv}</Text>
+        <Text selectable style={{ fontFamily: 'Menlo', fontSize: 10, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{csv}</Text>
         <Button label={`Tải ZIP (${eligible.length} ảnh)`} icon="download-outline" loading={busy} disabled={!me?.researchAccess || eligible.length === 0} onPress={run} />
       </Card>
     </Screen>

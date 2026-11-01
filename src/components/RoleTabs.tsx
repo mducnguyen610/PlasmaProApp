@@ -35,7 +35,7 @@ function BottomBar({ state, navigation, tabs, fab }: BottomTabBarProps & { tabs:
           <Ionicons name={on ? x.def.iconOn : x.def.icon} size={25} color={on ? C.primary : C.textFaint} />
           {x.def.badge ? (
             <View style={{ position: 'absolute', top: -4, right: -10, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: C.red, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{x.def.badge}</Text>
+              <Text style={{ color: C.onPrimary, fontSize: 10, fontWeight: '700' }}>{x.def.badge}</Text>
             </View>
           ) : null}
         </View>
@@ -48,7 +48,7 @@ function BottomBar({ state, navigation, tabs, fab }: BottomTabBarProps & { tabs:
     <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
       <View
         style={{
-          flexDirection: 'row', backgroundColor: '#fff', paddingBottom: insets.bottom, minHeight: 62 + insets.bottom,
+          flexDirection: 'row', backgroundColor: C.card, paddingBottom: insets.bottom, minHeight: 62 + insets.bottom,
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           shadowColor: C.grey, shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: -2 }, elevation: 12,
         }}>
@@ -67,7 +67,7 @@ function BottomBar({ state, navigation, tabs, fab }: BottomTabBarProps & { tabs:
                 shadowColor: C.primary, shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 8, height: 16 }, elevation: 8,
               })}>
               <LinearGradient colors={G.fab} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={fab.icon} size={28} color="#fff" />
+                <Ionicons name={fab.icon} size={28} color={C.onPrimary} />
               </LinearGradient>
             </Pressable>
           </View>

@@ -24,7 +24,7 @@ export default function PatientList() {
 
   return (
     <Screen header={<Header title="Danh sách bệnh nhân" right={<HeaderButton icon="add" label="Thêm mới" onPress={() => router.push('/patients/new')} />} />}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, ...shadow }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 14, ...shadow }}>
         <Ionicons name="search" size={18} color={C.textFaint} />
         <TextInput
           value={q}

@@ -12,7 +12,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { Text, TextInput } from '@/components/Text';
 import { DEMO_ASSETS } from '@/lib/seed';
 import type { WoundImage } from '@/lib/types';
-import { C, cardShape, G, shadow, type GradientName } from '@/theme';
+import { bar, C, cardShape, G, shadow, type GradientName } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -82,22 +82,22 @@ export function GradientCard({
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[cardShape(54), { padding: 14, paddingTop: 48, height: 196, gap: 6, shadowColor: G[colors][1], shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 1, height: 4 }, elevation: 4 }]}>
-        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16, letterSpacing: 0.2 }} numberOfLines={2}>{title}</Text>
+        <Text style={{ color: C.onPrimary, fontWeight: '700', fontSize: 16, letterSpacing: 0.2 }} numberOfLines={2}>{title}</Text>
         <View style={{ flex: 1 }}>
           {lines.map((l, i) => (
-            <Text key={i} style={{ color: '#fff', fontSize: 11, lineHeight: 16 }} numberOfLines={2}>{l}</Text>
+            <Text key={i} style={{ color: C.onPrimary, fontSize: 11, lineHeight: 16 }} numberOfLines={2}>{l}</Text>
           ))}
         </View>
         {value !== undefined && (
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
-            <Text style={{ color: '#fff', fontWeight: '500', fontSize: 24, letterSpacing: 0.2 }}>{value}</Text>
-            {unit ? <Text style={{ color: '#fff', fontSize: 10, marginBottom: 4 }}>{unit}</Text> : null}
+            <Text style={{ color: C.onPrimary, fontWeight: '500', fontSize: 24, letterSpacing: 0.2 }}>{value}</Text>
+            {unit ? <Text style={{ color: C.onPrimary, fontSize: 10, marginBottom: 4 }}>{unit}</Text> : null}
           </View>
         )}
       </LinearGradient>
       <View style={{ position: 'absolute', top: 0, left: 8, width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(250,250,250,0.25)' }} />
       <View style={{ position: 'absolute', top: 6, left: 16, width: 54, height: 54, alignItems: 'center', justifyContent: 'center' }}>
-        <Ionicons name={icon} size={30} color="#fff" />
+        <Ionicons name={icon} size={30} color={C.onPrimary} />
       </View>
     </Pressable>
   );
@@ -112,7 +112,7 @@ export function Ring({ value, max, label, sub, size = 108, color = C.primary }: 
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <View style={[StyleSheet.absoluteFill, { transform: [{ rotate: '-90deg' }] }]}>
         <Svg width={size} height={size}>
-          <Circle cx={size / 2} cy={size / 2} r={r} stroke={C.primarySoft} strokeWidth={4} fill="#fff" />
+          <Circle cx={size / 2} cy={size / 2} r={r} stroke={C.primarySoft} strokeWidth={4} fill={C.card} />
           <Circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={8} strokeLinecap="round" fill="none" strokeDasharray={`${circ * pct} ${circ}`} />
         </Svg>
       </View>
@@ -147,9 +147,9 @@ const TONES: Record<Tone, [string, string]> = {
   red: [C.redSoft, C.red],
   violet: [C.violetSoft, C.violet],
   teal: [C.tealSoft, C.teal],
-  gray: ['#EDEFF4', C.textSoft],
+  gray: [C.neutralSoft, C.textSoft],
 };
-export const TONE_BAR: Record<Tone, string> = { blue: '#87A0E5', green: '#5CC99A', amber: '#F1B440', red: '#F56E98', violet: '#8A98E8', teal: '#4FC3E0', gray: '#B8C2CC' };
+export const TONE_BAR: Record<Tone, string> = bar;
 
 export function Chip({ label, tone = 'blue', icon }: { label: string; tone?: Tone; icon?: IconName }) {
   const [bg, fg] = TONES[tone];
@@ -180,7 +180,7 @@ export function Button({
   label: string; onPress: () => void; icon?: IconName; variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   disabled?: boolean; loading?: boolean; style?: StyleProp<ViewStyle>;
 }) {
-  const fg = { primary: '#fff', secondary: C.primary, danger: C.red, ghost: C.primary }[variant];
+  const fg = { primary: C.onPrimary, secondary: C.primary, danger: C.red, ghost: C.primary }[variant];
   const inner = (
     <>
       {loading ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={18} color={fg} /> : null}
@@ -199,7 +199,7 @@ export function Button({
           {inner}
         </LinearGradient>
       ) : (
-        <View style={[s.btn, { backgroundColor: variant === 'secondary' ? '#fff' : variant === 'danger' ? C.redSoft : 'transparent' }, variant === 'secondary' && { borderWidth: 1.5, borderColor: C.primarySoft }]}>
+        <View style={[s.btn, { backgroundColor: variant === 'secondary' ? C.onPrimary : variant === 'danger' ? C.redSoft : 'transparent' }, variant === 'secondary' && { borderWidth: 1.5, borderColor: C.primarySoft }]}>
           {inner}
         </View>
       )}
@@ -224,7 +224,7 @@ export function Choices<T extends string>({ value, options, onChange }: { value:
         const on = o.value === value;
         return (
           <Pressable key={o.value} onPress={() => onChange(o.value)} style={[s.choice, on && { backgroundColor: C.primary, borderColor: C.primary }]}>
-            <Text style={{ color: on ? '#fff' : C.grey, fontWeight: '500', fontSize: 13 }}>{o.label}</Text>
+            <Text style={{ color: on ? C.onPrimary : C.grey, fontWeight: '500', fontSize: 13 }}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -237,7 +237,7 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
     <View style={s.seg}>
       {options.map((o) => (
         <Pressable key={o.value} onPress={() => onChange(o.value)} style={[s.segItem, value === o.value && s.segItemOn]}>
-          <Text style={[s.segText, value === o.value && { color: '#fff', fontWeight: '700' }]} numberOfLines={1}>{o.label}</Text>
+          <Text style={[s.segText, value === o.value && { color: C.onPrimary, fontWeight: '700' }]} numberOfLines={1}>{o.label}</Text>
         </Pressable>
       ))}
     </View>
@@ -285,7 +285,7 @@ export function Empty({ icon = 'file-tray-outline', text }: { icon?: IconName; t
 export function WoundPhoto({ image, style }: { image: WoundImage; style?: StyleProp<ViewStyle> }) {
   const source = image.uri ? { uri: image.uri } : DEMO_ASSETS[image.demoAsset ?? 1];
   return (
-    <View style={[{ overflow: 'hidden', backgroundColor: '#E9DCD3' }, style]}>
+    <View style={[{ overflow: 'hidden', backgroundColor: C.photoPlaceholder }, style]}>
       <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
     </View>
   );
@@ -301,7 +301,7 @@ export function H({ children, size = 16 }: { children: ReactNode; size?: number 
 
 export const s = StyleSheet.create({
   header: {
-    backgroundColor: '#fff', paddingHorizontal: 16, paddingBottom: 14, borderBottomLeftRadius: 32,
+    backgroundColor: C.card, paddingHorizontal: 16, paddingBottom: 14, borderBottomLeftRadius: 32,
     shadowColor: C.grey, shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 1.1, height: 1.1 }, elevation: 4, zIndex: 2,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 },
@@ -319,11 +319,11 @@ export const s = StyleSheet.create({
   btnShadow: { shadowColor: C.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 4, height: 8 }, elevation: 5, borderRadius: 24 },
   btnText: { fontSize: 15, fontWeight: '500', letterSpacing: 0.3 },
   label: { color: C.grey, fontSize: 13, fontWeight: '500' },
-  input: { backgroundColor: '#F8F9FC', borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.text },
+  input: { backgroundColor: C.surfaceMuted, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.text },
   hint: { color: C.textFaint, fontSize: 12 },
   error: { color: C.red, fontSize: 12, fontWeight: '500' },
-  choice: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: C.border, backgroundColor: '#fff' },
-  seg: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 24, padding: 4, gap: 4, ...shadow },
+  choice: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: C.border, backgroundColor: C.card },
+  seg: { flexDirection: 'row', backgroundColor: C.card, borderRadius: 24, padding: 4, gap: 4, ...shadow },
   segItem: { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: 20 },
   segItemOn: { backgroundColor: C.primary },
   segText: { color: C.grey, fontSize: 13, fontWeight: '500' },

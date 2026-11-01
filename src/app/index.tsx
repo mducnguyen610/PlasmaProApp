@@ -30,9 +30,9 @@ export default function Login() {
   return <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 24, paddingTop: insets.top + 24, paddingBottom: 48, gap: 20, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
     <LinearGradient colors={G.night} style={[cardShape(68), { padding: 28, gap: 12, overflow: 'hidden' }]}>
       <View style={{ position: 'absolute', right: -25, top: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: '#ffffff15' }} />
-      <Ionicons name="pulse" size={40} color="#fff" />
-      <Text style={{ color: '#fff', fontSize: 32, fontWeight: '700' }}>Plasma Pro</Text>
-      <Text style={{ color: '#e4e8ff', fontSize: 16, lineHeight: 24 }}>Kết nối chăm sóc. Theo dõi mỗi ngày.</Text>
+      <Ionicons name="pulse" size={40} color={C.onPrimary} />
+      <Text style={{ color: C.onPrimary, fontSize: 32, fontWeight: '700' }}>Plasma Pro</Text>
+      <Text style={{ color: C.onPrimarySoft, fontSize: 16, lineHeight: 24 }}>Kết nối chăm sóc. Theo dõi mỗi ngày.</Text>
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}><Chip label="Bệnh nhân" tone="teal" /><Chip label="Bác sĩ" /><Chip label="Kỹ thuật" tone="violet" /></View>
     </LinearGradient>
     <View style={{ gap: 5 }}><Text style={{ fontSize: 25, fontWeight: '700' }}>Chào mừng trở lại</Text><Muted>Đăng nhập để tiếp tục theo dõi và chăm sóc.</Muted></View>

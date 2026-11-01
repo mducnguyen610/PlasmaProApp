@@ -6,7 +6,7 @@ import { ImageTile, PatientCard } from '@/components/items';
 import { Text } from '@/components/Text';
 import { Card, GradientCard, Header, Ring, Screen, SectionTitle, SimBadge, Stat, TONE_BAR } from '@/components/ui';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { bar, C } from '@/theme';
 
 function MiniBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
   return (
@@ -52,8 +52,8 @@ export default function DoctorHome() {
         <View style={{ height: 2, backgroundColor: C.bg, marginHorizontal: 20, borderRadius: 4 }} />
         <View style={{ flexDirection: 'row', padding: 20, paddingTop: 12, gap: 8 }}>
           <MiniBar label="Chờ nhãn" value={unlabeled.length} max={usable} color={TONE_BAR.blue} />
-          <MiniBar label="Báo cáo" value={reports.length} max={Math.max(3, reports.length)} color="#F56E98" />
-          <MiniBar label="Chụp lại" value={retakes.length} max={Math.max(3, retakes.length)} color="#F1B440" />
+          <MiniBar label="Báo cáo" value={reports.length} max={Math.max(3, reports.length)} color={bar.red} />
+          <MiniBar label="Chụp lại" value={retakes.length} max={Math.max(3, retakes.length)} color={bar.amber} />
         </View>
       </Card>
 

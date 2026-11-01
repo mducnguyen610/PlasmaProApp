@@ -13,7 +13,7 @@ import { fmtDate, TREND } from '@/lib/format';
 import { formatAreaForName } from '@/lib/naming';
 import { computeReminders, scheduleReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { bar, C } from '@/theme';
 
 const dayDiff = (a: string, b: string) => Math.round((new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / 86400000);
 
@@ -105,7 +105,7 @@ export default function PatientHome() {
         {reminders.length === 0 && <Muted>Chưa có lịch nhắc. Lịch được lấy từ liệu trình và đánh giá của bác sĩ.</Muted>}
         {reminders.map((r) => (
           <View key={r.id} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-            <View style={{ width: 2, alignSelf: 'stretch', borderRadius: 4, backgroundColor: r.date === today ? '#F56E98' : '#87A0E5' }} />
+            <View style={{ width: 2, alignSelf: 'stretch', borderRadius: 4, backgroundColor: r.date === today ? bar.red : bar.blue }} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: C.text, fontWeight: '500' }}>{r.title}</Text>
               <Text style={{ color: C.textSoft, fontSize: 12 }}>{r.body}</Text>

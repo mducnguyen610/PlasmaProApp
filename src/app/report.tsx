@@ -36,8 +36,8 @@ export default function Report() {
             <Text style={{ color: C.text, fontSize: 13, fontWeight: '600' }}>Mức đau (0 = không đau, 10 = đau nhất)</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {Array.from({ length: 11 }, (_, i) => (
-                <Pressable key={i} onPress={() => setPain(i)} style={{ width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: pain === i ? C.primary : '#EEF2F9' }}>
-                  <Text style={{ color: pain === i ? '#fff' : C.text, fontWeight: '700' }}>{i}</Text>
+                <Pressable key={i} onPress={() => setPain(i)} style={{ width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: pain === i ? C.primary : C.surfaceMuted }}>
+                  <Text style={{ color: pain === i ? C.onPrimary : C.text, fontWeight: '700' }}>{i}</Text>
                 </Pressable>
               ))}
             </View>

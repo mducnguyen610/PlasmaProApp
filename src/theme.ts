@@ -24,6 +24,31 @@ export const C = {
   violetSoft: '#ECECFC',
   teal: '#0B768D',
   tealSoft: '#E0F4FA',
+  /** Chữ và biểu tượng đặt trên nền màu đậm (primary, gradient, red). */
+  onPrimary: '#FFFFFF',
+  /** Chữ phụ trên nền primary hoặc gradient đậm. */
+  onPrimarySoft: '#E4E8FF',
+  /** Chữ phụ trên nền tối (khung camera). */
+  onDarkSoft: '#D9E5EC',
+  /** Nền nhạt cho ô nhập, khối mã, thanh tiến độ (gộp #F6F8FC, #F8F9FC, #EEF2F9, #F1F4FA). */
+  surfaceMuted: '#F6F8FC',
+  /** Nền của Chip tông xám. */
+  neutralSoft: '#EDEFF4',
+  /** Lớp phủ tối trên ảnh và camera. */
+  scrim: 'rgba(0,0,0,0.7)',
+  /** Nền tạm khi ảnh vết thương chưa tải xong. */
+  photoPlaceholder: '#E9DCD3',
+} as const;
+
+/** Màu vạch, thanh biểu đồ, viền đồ họa (không dùng cho chữ; WCAG SC 1.4.11 yêu cầu 3:1 cho thành phần đồ họa). */
+export const bar = {
+  blue: '#87A0E5',
+  green: '#5CC99A',
+  amber: '#F1B440',
+  red: '#F56E98',
+  violet: '#8A98E8',
+  teal: '#4FC3E0',
+  gray: '#B8C2CC',
 } as const;
 
 /**

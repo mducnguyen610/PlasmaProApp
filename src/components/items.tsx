@@ -30,7 +30,7 @@ export function PatientCard({ patient }: { patient: Patient }) {
         <Chip label={active ? 'Đang theo dõi' : 'Tạm dừng'} tone={active ? 'green' : 'amber'} />
       </View>
       {severity && <Chip label={'Mức độ cao nhất: ' + SEVERITY[severity].label} tone={SEVERITY[severity].tone} />}
-      <View style={{ flexDirection: 'row', backgroundColor: '#F6F8FC', borderRadius: 12, padding: 10, justifyContent: 'space-between' }}>
+      <View style={{ flexDirection: 'row', backgroundColor: C.surfaceMuted, borderRadius: 12, padding: 10, justifyContent: 'space-between' }}>
         <Text style={{ color: C.textSoft, fontSize: 12 }}>
           Thiết bị: <Text style={{ color: C.text, fontWeight: '700' }}>{dev?.code ?? 'Chưa gán'}</Text>
         </Text>
