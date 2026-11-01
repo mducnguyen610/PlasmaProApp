@@ -46,7 +46,8 @@ function BottomBar({ state, navigation, tabs, fab }: BottomTabBarProps & { tabs:
     );
   };
   return (
-    <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+    <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center' }} pointerEvents="box-none">
+      <View style={{ width: '100%', maxWidth: 1080 }}>
       <View
         style={{
           flexDirection: 'row', backgroundColor: C.card, paddingBottom: insets.bottom, minHeight: 62 + insets.bottom,
@@ -75,6 +76,7 @@ function BottomBar({ state, navigation, tabs, fab }: BottomTabBarProps & { tabs:
           </View>
         </View>
       )}
+      </View>
     </View>
   );
 }

@@ -3,13 +3,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useSegments } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
-import { Text, TextInput } from '@/components/Text';
+import { MONO, Text, TextInput } from '@/components/Text';
 import { DEMO_ASSETS } from '@/lib/seed';
 import type { WoundImage } from '@/lib/types';
 import { bar, C, cardShape, G, shadow, type GradientName } from '@/theme';
@@ -48,11 +48,18 @@ export function HeaderButton({ icon, label, onPress }: { icon: IconName; label?:
   );
 }
 
+/** Vai trò có thanh tab nổi ở đáy (RoleTabs); màn hình trong các nhóm này cần chừa chỗ cho thanh tab. */
+const TAB_GROUPS = ['patient', 'doctor', 'admin'];
+
 export function Screen({ children, header, padded = true }: { children: ReactNode; header?: ReactNode; padded?: boolean }) {
+  const insets = useSafeAreaInsets();
+  const segments = useSegments() as string[];
+  const hasTabBar = TAB_GROUPS.includes(segments[0] ?? '');
+  const bottom = hasTabBar ? 110 : insets.bottom + 24;
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, width: '100%', maxWidth: 1080, alignSelf: 'center' }}>
       {header}
-      <ScrollView contentContainerStyle={[padded && { paddingHorizontal: 20, paddingTop: 18, gap: 16 }, { paddingBottom: 110 }]} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[padded && { paddingHorizontal: 20, paddingTop: 18, gap: 16 }, { paddingBottom: bottom }]} keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>
     </View>
@@ -255,7 +262,7 @@ export function InfoRow({ label, value, mono }: { label: string; value: ReactNod
     <View style={s.infoRow}>
       <Text style={s.infoLabel}>{label}</Text>
       {typeof value === 'string' || typeof value === 'number' ? (
-        <Text style={[s.infoValue, mono && { fontFamily: 'Menlo', fontSize: 12 }]} selectable>{value}</Text>
+        <Text style={[s.infoValue, mono && { fontFamily: MONO, fontSize: 12 }]} selectable>{value}</Text>
       ) : (
         value
       )}

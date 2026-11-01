@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
-import { Text } from '@/components/Text';
+import { MONO, Text } from '@/components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NoAccess, useCanView } from '@/components/Guard';
@@ -116,7 +116,7 @@ export default function ImageDetail() {
           {im.retakeRequested && <Chip label="Đã yêu cầu chụp lại" tone="red" icon="refresh" />}
         </View>
         <Text style={{ color: C.textSoft, fontSize: 12 }}>Tên hiện tại</Text>
-        <Text selectable style={{ fontFamily: 'Menlo', fontSize: 13, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{im.filename}</Text>
+        <Text selectable style={{ fontFamily: MONO, fontSize: 13, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{im.filename}</Text>
         <InfoRow label="Diện tích bác sĩ đã đo" value={formatAreaDisplay(im.areaCm2)} />
         {im.measureMethod ? <InfoRow label="Phương pháp đo" value={im.measureMethod} /> : null}
         <InfoRow label="Mã bệnh nhân" value={p.code} />
@@ -188,7 +188,7 @@ export default function ImageDetail() {
           <Field label={im.capture ? "Phương pháp đo (bắt buộc)" : "Phương pháp đo (khuyến nghị)"} value={method} onChangeText={setMethod} placeholder="Ví dụ: thước giấy kẻ ô, phần mềm đo trên máy tính…" />
           <View style={{ gap: 4 }}>
             <Text style={{ color: C.textSoft, fontSize: 12 }}>Xem trước tên sẽ lưu</Text>
-            <Text style={{ fontFamily: 'Menlo', fontSize: 13, color: preview ? C.green : C.textFaint, backgroundColor: preview ? C.greenSoft : C.surfaceMuted, padding: 10, borderRadius: 10 }}>
+            <Text style={{ fontFamily: MONO, fontSize: 13, color: preview ? C.green : C.textFaint, backgroundColor: preview ? C.greenSoft : C.surfaceMuted, padding: 10, borderRadius: 10 }}>
               {preview ?? '—'}
             </Text>
             {preview && newArea !== null && <Muted>Diện tích lưu trong hồ sơ: {formatAreaDisplay(newArea)}</Muted>}
@@ -268,7 +268,7 @@ export default function ImageDetail() {
                 {fmtDateTime(h.at)} · {account(h.by)?.name ?? 'Dữ liệu mô phỏng'}
               </Text>
               <Muted>{formatAreaDisplay(h.fromArea)} → {formatAreaDisplay(h.toArea)}</Muted>
-              <Text style={{ fontFamily: 'Menlo', fontSize: 12, color: C.textFaint }}>{h.toName}</Text>
+              <Text style={{ fontFamily: MONO, fontSize: 12, color: C.textFaint }}>{h.toName}</Text>
               {h.note ? <Muted>{h.note}</Muted> : null}
             </View>
           ))}
