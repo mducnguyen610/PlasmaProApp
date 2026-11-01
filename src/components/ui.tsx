@@ -93,7 +93,7 @@ export function GradientCard({
         colors={G[colors]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[cardShape(54), { padding: 14, paddingTop: 48, minHeight: 196, gap: 6, shadowColor: G[colors][1], shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 1, height: 4 }, elevation: 4 }]}>
+        style={[cardShape(54), { flexGrow: 1, padding: 14, paddingTop: 48, minHeight: 196, gap: 6, shadowColor: G[colors][1], shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 1, height: 4 }, elevation: 4 }]}>
         <Text style={{ color: C.onPrimary, fontWeight: '700', fontSize: 16, letterSpacing: 0.2 }} numberOfLines={2}>{title}</Text>
         <View style={{ flex: 1 }}>
           {lines.map((l, i) => (
