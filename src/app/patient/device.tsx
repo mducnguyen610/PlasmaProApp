@@ -11,7 +11,7 @@ export default function PatientDevice() {
   const d = device(p?.deviceId);
   return (
     <Screen header={<Header title="Thiết bị của tôi" subtitle={d?.code} />}>
-      {d ? <DeviceView device={d} canControl={false} /> : <Card><Empty icon="hardware-chip-outline" text="Chưa được gán thiết bị." /></Card>}
+      {d ? <DeviceView device={d} level="patient" /> : <Card><Empty icon="hardware-chip-outline" text="Chưa được gán thiết bị." /></Card>}
       <Button label="Báo sự cố thiết bị" variant="secondary" icon="warning-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'device' } })} />
     </Screen>
   );
