@@ -85,12 +85,12 @@ export default function PatientHome() {
         {lastLabeled ? (
           <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: C.grey, opacity: 0.6, fontWeight: '500' }}>Bác sĩ đã đo</Text>
+              <Text style={{ color: C.textSoft, fontWeight: '500' }}>Bác sĩ đã đo</Text>
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4 }}>
                 <Text style={{ fontSize: 32, fontWeight: '500', color: C.primary }}>{formatAreaForName(lastLabeled.areaCm2!).replace('.', ',')}</Text>
                 <Text style={{ fontSize: 18, fontWeight: '500', color: C.primary, marginBottom: 5 }}>cm²</Text>
               </View>
-              <Text style={{ color: C.grey, opacity: 0.6, fontSize: 13 }}>{lastLabeled.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : 'Ngày chụp ' + fmtDate(lastLabeled.captureDate)}</Text>
+              <Text style={{ color: C.textSoft, fontSize: 13 }}>{lastLabeled.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : 'Ngày chụp ' + fmtDate(lastLabeled.captureDate)}</Text>
               {latest && <View style={{ marginTop: 8 }}><Chip label={TREND[latest.trend].label} tone={TREND[latest.trend].tone} /></View>}
             </View>
             <WoundPhoto image={lastLabeled} style={{ width: 110, height: 82, borderRadius: 8, borderTopRightRadius: 40 }} />

@@ -11,28 +11,32 @@ export const C = {
   text: '#17262A', // darkerText
   textBody: '#253840', // darkText
   textSoft: '#4A6572', // lightText
-  textFaint: '#8A9AA6',
+  textFaint: '#5F707D', // tối hơn #8A9AA6 để đạt 4,5:1 trên nền trắng và nền xám
   grey: '#3A5160',
   border: '#E6E8F0',
-  green: '#1F9D63',
+  green: '#187B4E',
   greenSoft: '#E3F5EC',
-  amber: '#C46A12',
+  amber: '#A5590F',
   amberSoft: '#FDEFE0',
-  red: '#E2445C',
+  red: '#CD203A',
   redSoft: '#FDE7EB',
-  violet: '#5C5EDD',
+  violet: '#5052D6',
   violetSoft: '#ECECFC',
-  teal: '#0E9AB8',
+  teal: '#0B768D',
   tealSoft: '#E0F4FA',
 } as const;
 
-/** Bộ gradient của thẻ "Meals today" và nút giữa thanh tab. */
+/**
+ * Bộ gradient của thẻ "Meals today" và nút giữa thanh tab.
+ * Mọi điểm dừng đều đạt tối thiểu 4,5:1 với chữ trắng (WCAG 2.2 SC 1.4.3),
+ * vì thẻ có chữ cỡ 11 đến 16, chưa đủ điều kiện "chữ lớn".
+ */
 export const G = {
-  coral: ['#FA7D82', '#FFB295'],
-  indigo: ['#738AE6', '#5C5EDD'],
-  pink: ['#FE95B6', '#FF5287'],
-  night: ['#6F72CA', '#1E1466'],
-  fab: ['#2633C5', '#6A88E5'],
+  coral: ['#C8443F', '#C94A2C'],
+  indigo: ['#5468D4', '#5C5EDD'],
+  pink: ['#D6336C', '#C2185B'],
+  night: ['#5F62C2', '#1E1466'],
+  fab: ['#2633C5', '#4A62D8'],
 } as const;
 export type GradientName = keyof typeof G;
 

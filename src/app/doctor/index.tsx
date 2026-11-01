@@ -15,7 +15,7 @@ function MiniBar({ label, value, max, color }: { label: string; value: number; m
       <View style={{ height: 4, width: 70, borderRadius: 4, backgroundColor: `${color}33` }}>
         <View style={{ height: 4, width: max ? (70 * Math.min(value, max)) / max : 0, borderRadius: 4, backgroundColor: color }} />
       </View>
-      <Text style={{ fontSize: 12, color: C.grey, opacity: 0.5 }}>{value} mục</Text>
+      <Text style={{ fontSize: 12, color: C.textSoft }}>{value} mục</Text>
     </View>
   );
 }

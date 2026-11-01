@@ -117,7 +117,7 @@ export function Ring({ value, max, label, sub, size = 108, color = C.primary }: 
         </Svg>
       </View>
       <Text style={{ fontWeight: '500', fontSize: 24, color: C.primary, letterSpacing: 0 }}>{label}</Text>
-      <Text style={{ fontSize: 12, color: C.grey, opacity: 0.6, fontWeight: '700' }}>{sub}</Text>
+      <Text style={{ fontSize: 12, color: C.textSoft, fontWeight: '700' }}>{sub}</Text>
     </View>
   );
 }
@@ -263,10 +263,10 @@ export function Stat({ value, label, tone = 'blue', unit }: { value: string | nu
     <View style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
       <View style={{ width: 2, borderRadius: 4, backgroundColor: TONE_BAR[tone], opacity: 0.8 }} />
       <View style={{ paddingVertical: 2 }}>
-        <Text style={{ color: C.grey, opacity: 0.55, fontWeight: '500', fontSize: 13 }}>{label}</Text>
+        <Text style={{ color: C.textSoft, fontWeight: '500', fontSize: 13 }}>{label}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
           <Text style={{ color: C.text, fontWeight: '700', fontSize: 18 }}>{value}</Text>
-          {unit ? <Text style={{ color: C.grey, opacity: 0.55, fontSize: 11, marginBottom: 3 }}>{unit}</Text> : null}
+          {unit ? <Text style={{ color: C.textSoft, fontSize: 11, marginBottom: 3 }}>{unit}</Text> : null}
         </View>
       </View>
     </View>
