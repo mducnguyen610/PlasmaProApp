@@ -18,7 +18,7 @@ export default function DeviceScreen() {
   if (!d || !allowed) return <NoAccess />;
   return (
     <Screen header={<Header back title="Thiết bị và nhật ký" subtitle={d.code} />}>
-      <DeviceView device={d} canControl={me!.role === 'doctor'} />
+      <DeviceView device={d} level={me!.role === 'admin' ? 'tech' : me!.role === 'doctor' ? 'doctor' : 'patient'} />
     </Screen>
   );
 }

@@ -1,7 +1,7 @@
 import { Switch, View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Chip, Choices, Header, IconBadge, Muted, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Chip, Choices, Header, IconBadge, Muted, Ring, Screen, SectionTitle, Stat } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import { C } from '@/theme';
 
@@ -11,8 +11,32 @@ const ROLE = { doctor: 'Bác sĩ', patient: 'Bệnh nhân', admin: 'Quản trị
 export default function AdminAccounts() {
   const { data, me, updateAccount, updatePatient } = useStore();
   const doctors = data.accounts.filter((a) => a.role === 'doctor' && !a.locked && !a.pendingApproval);
+  // Tổng quan hệ thống: số liệu tổng hợp chuyển từ trang chủ bác sĩ sang đây (chỉ đếm, không hiển thị dữ liệu lâm sàng).
+  const usable = data.images.filter((i) => i.status !== 'excluded').length;
+  const labeled = data.images.filter((i) => i.status === 'labeled').length;
+  const pct = usable ? Math.round((labeled / usable) * 100) : 0;
+  const online = data.devices.filter((d) => d.online).length;
+  const pending = data.accounts.filter((a) => a.pendingApproval).length;
+  const openErrors = data.syncErrors.filter((e) => !e.resolved).length;
   return (
     <Screen header={<Header title="Quản lý tài khoản" subtitle="Quản trị kỹ thuật" />}>
+      <SectionTitle icon="analytics-outline">Tổng quan hệ thống</SectionTitle>
+      <Card hero style={{ padding: 20 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ flex: 1, gap: 14 }}>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Stat label="Tài khoản" value={data.accounts.length} tone="blue" />
+              <Stat label="Chờ duyệt" value={pending} tone="amber" />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Stat label="Thiết bị online" value={`${online}/${data.devices.length}`} tone="green" />
+              <Stat label="Lỗi đồng bộ mở" value={openErrors} tone="red" />
+            </View>
+          </View>
+          <Ring value={labeled} max={usable} label={`${pct}%`} sub="ảnh có nhãn" />
+        </View>
+        <Muted>{labeled}/{usable} ảnh dùng được đã có diện tích do bác sĩ nhập.</Muted>
+      </Card>
       <Muted>Quản trị không mặc định có quyền xem dữ liệu lâm sàng; màn hình chỉ hiển thị mã hồ sơ.</Muted>
       {data.accounts.map((a) => (
         <Card key={a.id}>

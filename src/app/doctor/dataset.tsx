@@ -1,20 +1,16 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { MONO, Text } from '@/components/Text';
 
 import { ImageTile } from '@/components/items';
-import { Button, Card, Chip, Choices, Empty, Header, Muted, Screen, SectionTitle, Segmented } from '@/components/ui';
-import { notify } from '@/lib/dialog';
-import { buildCsv, exportableImages, exportDataset } from '@/lib/export';
+import { Card, Choices, Empty, Header, Muted, Screen, Segmented } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import type { LabelStatus } from '@/lib/types';
-import { C } from '@/theme';
 
-// BS08 – Dữ liệu huấn luyện: lọc ảnh đã/chưa có diện tích, kiểm tra nhãn, tải bộ ảnh đã đổi tên.
+// BS08 – Ảnh vết thương: lọc ảnh đã/chưa có diện tích để bác sĩ ghi nhãn.
+// Xuất ZIP và xem trước labels.csv chuyển sang màn hình Dữ liệu của quản trị kỹ thuật.
 export default function Dataset() {
   const { data, me } = useStore();
   const [filter, setFilter] = useState<LabelStatus>('unlabeled');
-  const [busy, setBusy] = useState(false);
   const [pf, setPf] = useState('all');
   const [wf, setWf] = useState('all');
   const [range, setRange] = useState<'7' | '30' | 'all'>('all');
@@ -31,24 +27,8 @@ export default function Dataset() {
     .sort((a, b) => b.captureDate.localeCompare(a.captureDate));
   const myPatients = data.patients.filter((p) => mine.has(p.id));
   const woundOpts = data.wounds.filter((w) => w.patientId === pf);
-  const eligible = (me ? exportableImages(data, me.id) : []).filter(i => (pf === 'all' || i.patientId === pf) && (wf === 'all' || i.woundId === wf) && (!since || i.captureDate >= since));
-  const noConsent = images.filter((i) => i.status === 'labeled' && !data.patients.find((p) => p.id === i.patientId)?.researchConsent).length;
-  const csv = buildCsv(data, eligible).split('\n').slice(0, 4).join('\n');
-
-  const run = async () => {
-    setBusy(true);
-    try {
-      const r = await exportDataset(data, eligible, me!.id);
-      notify('Đã tạo bộ dữ liệu', `${r.count} ảnh + labels.csv\n${r.zipName}\nLưu tại: ${r.location}`);
-    } catch (e) {
-      notify('Xuất dữ liệu thất bại', String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
-    <Screen header={<Header title="Dữ liệu huấn luyện" subtitle="Ảnh có nhãn diện tích do bác sĩ nhập" />}>
+    <Screen header={<Header title="Ảnh vết thương" subtitle="Ghi diện tích cho ảnh đã chụp" />}>
       <Segmented<LabelStatus>
         value={filter}
         onChange={setFilter}
@@ -88,22 +68,7 @@ export default function Dataset() {
         </View>
       )}
 
-      <Card>
-        <SectionTitle icon="cloud-download-outline">Xuất bộ dữ liệu (ZIP)</SectionTitle>
-        {me?.researchAccess ? (
-          <Chip label="Tài khoản được cấp quyền nghiên cứu" tone="green" icon="shield-checkmark-outline" />
-        ) : (
-          <Chip label="Chưa được cấp quyền xuất dữ liệu nghiên cứu" tone="red" icon="lock-closed-outline" />
-        )}
-        <Muted>
-          Gồm {eligible.length} ảnh theo bộ lọc, đã có diện tích, được bác sĩ xác nhận chia sẻ và bệnh nhân đồng ý nghiên cứu.
-          ZIP dùng bản sao PNG bỏ metadata và mã nghiên cứu; kèm labels.csv. Mở chi tiết ảnh để xác nhận chia sẻ cho kỹ thuật.
-        </Muted>
-        {noConsent > 0 && <Text style={{ color: C.amber, fontSize: 13 }}>{noConsent} ảnh có nhãn không được xuất vì bệnh nhân chưa đồng ý.</Text>}
-        <Text style={{ color: C.textSoft, fontSize: 12 }}>Xem trước labels.csv</Text>
-        <Text selectable style={{ fontFamily: MONO, fontSize: 12, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{csv}</Text>
-        <Button label={`Tải ZIP (${eligible.length} ảnh)`} icon="download-outline" loading={busy} disabled={!me?.researchAccess || eligible.length === 0} onPress={run} />
-      </Card>
+      <Muted>Ảnh đã có diện tích và được xác nhận chia sẻ sẽ do quản trị kỹ thuật xuất thành bộ dữ liệu nghiên cứu.</Muted>
     </Screen>
   );
 }

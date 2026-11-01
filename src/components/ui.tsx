@@ -275,7 +275,7 @@ export function Stat({ value, label, tone = 'blue', unit }: { value: string | nu
   return (
     <View accessible accessibilityLabel={`${label}: ${value}${unit ? ' ' + unit : ''}`} style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
       <View style={{ width: 2, borderRadius: 4, backgroundColor: TONE_BAR[tone], opacity: 0.8 }} />
-      <View style={{ paddingVertical: 2 }}>
+      <View style={{ paddingVertical: 2, flex: 1, minWidth: 0 }}>
         <Text style={{ color: C.textSoft, fontWeight: '500', fontSize: 13 }}>{label}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
           <Text style={{ color: C.text, fontWeight: '700', fontSize: 18 }}>{value}</Text>
