@@ -24,8 +24,9 @@ function BottomBar({ state, navigation, tabs, fab }: BottomTabBarProps & { tabs:
     return (
       <Pressable
         key={x.route.key}
-        accessibilityRole="button"
-        accessibilityLabel={x.def.title}
+        accessibilityRole="tab"
+        accessibilityLabel={x.def.badge ? `${x.def.title}, ${x.def.badge} mục mới` : x.def.title}
+        accessibilityState={{ selected: on }}
         onPress={() => {
           const ev = navigation.emit({ type: 'tabPress', target: x.route.key, canPreventDefault: true });
           if (!on && !ev.defaultPrevented) navigation.navigate(x.route.name);
@@ -34,12 +35,12 @@ function BottomBar({ state, navigation, tabs, fab }: BottomTabBarProps & { tabs:
         <View>
           <Ionicons name={on ? x.def.iconOn : x.def.icon} size={25} color={on ? C.primary : C.textFaint} />
           {x.def.badge ? (
-            <View style={{ position: 'absolute', top: -4, right: -10, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: C.red, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
-              <Text style={{ color: C.onPrimary, fontSize: 10, fontWeight: '700' }}>{x.def.badge}</Text>
+            <View style={{ position: 'absolute', top: -4, right: -10, minWidth: 20, height: 20, borderRadius: 10, backgroundColor: C.red, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+              <Text style={{ color: C.onPrimary, fontSize: 12, fontWeight: '700' }}>{x.def.badge}</Text>
             </View>
           ) : null}
         </View>
-        <Text style={{ fontSize: 10.5, color: on ? C.primary : C.textFaint, fontWeight: on ? '700' : '500' }}>{x.def.title}</Text>
+        <Text style={{ fontSize: 12, color: on ? C.primary : C.textFaint, fontWeight: on ? '700' : '500' }}>{x.def.title}</Text>
         <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: on ? C.primary : 'transparent' }} />
       </Pressable>
     );
@@ -61,6 +62,7 @@ function BottomBar({ state, navigation, tabs, fab }: BottomTabBarProps & { tabs:
           <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
             <Pressable
               onPress={fab.onPress}
+              accessibilityRole="button"
               accessibilityLabel={fab.label}
               style={({ pressed }) => ({
                 borderRadius: 30, transform: [{ scale: pressed ? 0.94 : 1 }],

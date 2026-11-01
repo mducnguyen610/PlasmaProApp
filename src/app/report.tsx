@@ -34,9 +34,9 @@ export default function Report() {
         {kind === 'symptom' && (
           <>
             <Text style={{ color: C.text, fontSize: 13, fontWeight: '600' }}>Mức đau (0 = không đau, 10 = đau nhất)</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            <View accessibilityRole="radiogroup" accessibilityLabel="Mức đau" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {Array.from({ length: 11 }, (_, i) => (
-                <Pressable key={i} onPress={() => setPain(i)} style={{ width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: pain === i ? C.primary : C.surfaceMuted }}>
+                <Pressable key={i} onPress={() => setPain(i)} accessibilityRole="radio" accessibilityLabel={`Mức đau ${i}`} accessibilityState={{ checked: pain === i, selected: pain === i }} style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: pain === i ? C.primary : C.surfaceMuted }}>
                   <Text style={{ color: pain === i ? C.onPrimary : C.text, fontWeight: '700' }}>{i}</Text>
                 </Pressable>
               ))}

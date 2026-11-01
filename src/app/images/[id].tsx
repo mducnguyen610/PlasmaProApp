@@ -97,7 +97,7 @@ export default function ImageDetail() {
 
   return (
     <Screen header={<Header back title={`Ảnh ${im.id}`} subtitle={`${p.code} · ${w.code} · ${w.location}`} />}>
-      <Pressable onPress={() => setZoom(true)}>
+      <Pressable onPress={() => setZoom(true)} accessibilityRole="imagebutton" accessibilityLabel="Phóng to ảnh vết thương">
         <WoundPhoto image={im} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 20 }} />
         <View style={{ position: 'absolute', right: 10, bottom: 10, backgroundColor: C.scrim, borderRadius: 10, padding: 6, flexDirection: 'row', gap: 4, alignItems: 'center' }}>
           <Ionicons name="expand" size={14} color={C.onPrimary} />
@@ -268,7 +268,7 @@ export default function ImageDetail() {
                 {fmtDateTime(h.at)} · {account(h.by)?.name ?? 'Dữ liệu mô phỏng'}
               </Text>
               <Muted>{formatAreaDisplay(h.fromArea)} → {formatAreaDisplay(h.toArea)}</Muted>
-              <Text style={{ fontFamily: 'Menlo', fontSize: 11, color: C.textFaint }}>{h.toName}</Text>
+              <Text style={{ fontFamily: 'Menlo', fontSize: 12, color: C.textFaint }}>{h.toName}</Text>
               {h.note ? <Muted>{h.note}</Muted> : null}
             </View>
           ))}

@@ -53,7 +53,7 @@ function CheckList({ checks }: { checks: LiveCheck[] }) {
       const color = c.ok === true ? TONE_COLOR.green : c.ok === false ? TONE_COLOR.amber : TONE_COLOR.gray;
       return <View key={c.key} style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
         <Ionicons name={c.ok === true ? 'checkmark-circle' : c.ok === false ? 'alert-circle' : 'ellipsis-horizontal-circle'} size={22} color={color} />
-        <Text style={{ width: 92, color: C.text, fontWeight: '700' }}>{c.label}</Text>
+        <Text style={{ minWidth: 92, maxWidth: '40%', color: C.text, fontWeight: '700' }}>{c.label}</Text>
         <Text style={{ flex: 1, color }}>{c.detail}</Text>
       </View>;
     })}
