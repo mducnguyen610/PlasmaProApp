@@ -49,7 +49,8 @@ export function AccountScreen() {
         </View>
       </Card>
 
-      <Card>
+      {/* Khôi phục xóa dữ liệu của mọi vai trò trên máy, nên chỉ quản trị kỹ thuật được thấy. */}
+      {me?.role === 'admin' && <Card>
         <Text style={{ fontWeight: '700', color: C.text }}>Bản demo</Text>
         <Muted>Dữ liệu lưu cục bộ trên máy, chưa đồng bộ máy chủ. Có thể khôi phục bộ dữ liệu mô phỏng ban đầu.</Muted>
         <Button
@@ -58,7 +59,7 @@ export function AccountScreen() {
           icon="refresh"
           onPress={() => confirm('Khôi phục dữ liệu', 'Mọi thay đổi trong bản demo sẽ mất.', resetDemo)}
         />
-      </Card>
+      </Card>}
 
       <Button
         label="Đăng xuất"
