@@ -23,10 +23,10 @@ import { coverMap, DETECTOR_ID, type WoundDetection } from '@/lib/capture/woundD
 import { parseArea } from '@/lib/naming';
 import { pickPhoto, type PickedPhoto } from '@/lib/photos';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { bar, C } from '@/theme';
 
 type Photo = PickedPhoto & { imageSource: 'live_camera' | 'gallery'; takenAt: string | null; ar?: ARCaptureData; manualOverride?: boolean };
-const TONE_COLOR: Record<ARTone, string> = { green: '#16a34a', amber: '#d97706', red: '#dc2626', gray: '#64748b' };
+const TONE_COLOR: Record<ARTone, string> = { green: C.green, amber: C.amber, red: C.red, gray: C.textSoft };
 const METHOD_AR = 'Ước lượng AR, bác sĩ đã xem lại';
 const METHODS = ['Thước đo trên vết thương', 'Phần mềm đo trên ảnh'];
 
@@ -53,7 +53,7 @@ function CheckList({ checks }: { checks: LiveCheck[] }) {
       const color = c.ok === true ? TONE_COLOR.green : c.ok === false ? TONE_COLOR.amber : TONE_COLOR.gray;
       return <View key={c.key} style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
         <Ionicons name={c.ok === true ? 'checkmark-circle' : c.ok === false ? 'alert-circle' : 'ellipsis-horizontal-circle'} size={22} color={color} />
-        <Text style={{ width: 92, color: C.text, fontWeight: '700' }}>{c.label}</Text>
+        <Text style={{ minWidth: 92, maxWidth: '40%', color: C.text, fontWeight: '700' }}>{c.label}</Text>
         <Text style={{ flex: 1, color }}>{c.detail}</Text>
       </View>;
     })}
@@ -245,9 +245,9 @@ export default function GuidedCapture() {
       <Chip label={photo?.imageSource === 'gallery' ? 'Ảnh từ thư viện' : 'Tự khoanh vết thương'} />
     </View>
     {photo ? <>
-      <View style={{ width: '100%', aspectRatio: photo.width / photo.height, backgroundColor: '#111827', borderRadius: 18, overflow: 'hidden' }}>
+      <View style={{ width: '100%', aspectRatio: photo.width / photo.height, backgroundColor: C.text, borderRadius: 18, overflow: 'hidden' }}>
         <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
-        {photoWound?.found ? <WoundOutline hull={photoWound.hull} color="#22c55e" /> : null}
+        {photoWound?.found ? <WoundOutline hull={photoWound.hull} color={bar.green} /> : null}
       </View>
       <Muted>{analyzing ? 'Đang khoanh vết thương trên ảnh…' : photoWound?.found ? 'Viền xanh là vùng vết thương app tự khoanh theo màu (thử nghiệm). Bác sĩ kiểm tra lại trước khi xác nhận diện tích.' : 'Chưa khoanh được vết thương trên ảnh này. Bác sĩ vẫn có thể nhập diện tích đã đo.'}</Muted>
 
@@ -267,21 +267,21 @@ export default function GuidedCapture() {
       <Button label={areaText.trim() ? 'Lưu ảnh và dán nhãn diện tích' : 'Lưu ảnh (chưa dán nhãn)'} icon="save-outline" loading={busy} disabled={analyzing || !capabilities} onPress={save} />
       <Button label="Chụp / chọn lại" variant="secondary" disabled={busy} onPress={() => { generation.current++; setPhoto(null); setQuality(unknownQuality()); setPhotoWound(null); setError(''); }} />
     </> : <>
-      <View onLayout={e => setView({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} style={{ height: 440, backgroundColor: '#17262a', borderRadius: 24, overflow: 'hidden' }}>
+      <View onLayout={e => setView({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} style={{ height: 440, backgroundColor: C.text, borderRadius: 24, overflow: 'hidden' }}>
         {liveVisible ? useAr
           ? <ARCameraView ref={arCamera} style={{ flex: 1 }} focusPoint={focusPoint} onTracking={onTracking} onError={onARError} />
           : <CameraView ref={camera} style={{ flex: 1 }} facing="back" flash="off" enableTorch={false} animateShutter={false} onCameraReady={onCameraReady} onMountError={onCameraError} />
           : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 35 }}>
-            <Text style={{ color: '#fff', fontSize: 23, fontWeight: '700', textAlign: 'center' }}>Hướng camera vào vết thương</Text>
-            <Text style={{ color: '#d9e5ec', textAlign: 'center', marginTop: 12, lineHeight: 22 }}>App tự khoanh vết thương, kiểm tra độ sáng{useAr ? ' và khoảng cách bằng AR' : ''} rồi mới cho chụp. Tránh để lộ khuôn mặt hoặc thông tin cá nhân.</Text>
+            <Text style={{ color: C.onPrimary, fontSize: 23, fontWeight: '700', textAlign: 'center' }}>Hướng camera vào vết thương</Text>
+            <Text style={{ color: C.onDarkSoft, textAlign: 'center', marginTop: 12, lineHeight: 22 }}>App tự khoanh vết thương, kiểm tra độ sáng{useAr ? ' và khoảng cách bằng AR' : ''} rồi mới cho chụp. Tránh để lộ khuôn mặt hoặc thông tin cá nhân.</Text>
           </View>}
         {liveVisible && <WoundOverlay detection={liveWound} viewWidth={view.width} viewHeight={view.height} color={overlayColor} label={readiness.ready ? 'Vết thương · đạt' : 'Vết thương'} />}
-        {liveVisible && <View accessibilityLiveRegion="polite" style={{ position: 'absolute', left: 14, top: 14, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: '#000000b3' }}>
+        {liveVisible && <View accessibilityLiveRegion="polite" style={{ position: 'absolute', left: 14, top: 14, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: C.scrim }}>
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: TONE_COLOR[readiness.tone] }} />
-          <Text style={{ color: '#fff', fontWeight: '700' }}>{readiness.ready ? 'Sẵn sàng chụp' : 'Chưa đạt'}</Text>
+          <Text style={{ color: C.onPrimary, fontWeight: '700' }}>{readiness.ready ? 'Sẵn sàng chụp' : 'Chưa đạt'}</Text>
         </View>}
-        <View style={{ position: 'absolute', bottom: 18, left: 16, right: 16, padding: 12, borderRadius: 12, backgroundColor: '#000000aa' }}>
-          <Text style={{ color: '#fff', textAlign: 'center' }}>{liveVisible ? (ready ? readiness.headline : 'Đang mở camera…') : useAr ? 'Mở camera AR rồi quét chậm quanh vết thương.' : 'Mở camera để app khoanh vết thương.'}</Text>
+        <View style={{ position: 'absolute', bottom: 18, left: 16, right: 16, padding: 12, borderRadius: 12, backgroundColor: C.scrim }}>
+          <Text style={{ color: C.onPrimary, textAlign: 'center' }}>{liveVisible ? (ready ? readiness.headline : 'Đang mở camera…') : useAr ? 'Mở camera AR rồi quét chậm quanh vết thương.' : 'Mở camera để app khoanh vết thương.'}</Text>
         </View>
       </View>
       {liveVisible && ready && <Card>

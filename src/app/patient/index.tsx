@@ -13,7 +13,7 @@ import { fmtDate, TREND } from '@/lib/format';
 import { formatAreaForName } from '@/lib/naming';
 import { computeReminders, scheduleReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { bar, C } from '@/theme';
 
 const dayDiff = (a: string, b: string) => Math.round((new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / 86400000);
 
@@ -85,12 +85,12 @@ export default function PatientHome() {
         {lastLabeled ? (
           <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: C.grey, opacity: 0.6, fontWeight: '500' }}>Bác sĩ đã đo</Text>
+              <Text style={{ color: C.textSoft, fontWeight: '500' }}>Bác sĩ đã đo</Text>
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4 }}>
                 <Text style={{ fontSize: 32, fontWeight: '500', color: C.primary }}>{formatAreaForName(lastLabeled.areaCm2!).replace('.', ',')}</Text>
                 <Text style={{ fontSize: 18, fontWeight: '500', color: C.primary, marginBottom: 5 }}>cm²</Text>
               </View>
-              <Text style={{ color: C.grey, opacity: 0.6, fontSize: 13 }}>{lastLabeled.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : 'Ngày chụp ' + fmtDate(lastLabeled.captureDate)}</Text>
+              <Text style={{ color: C.textSoft, fontSize: 13 }}>{lastLabeled.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : 'Ngày chụp ' + fmtDate(lastLabeled.captureDate)}</Text>
               {latest && <View style={{ marginTop: 8 }}><Chip label={TREND[latest.trend].label} tone={TREND[latest.trend].tone} /></View>}
             </View>
             <WoundPhoto image={lastLabeled} style={{ width: 110, height: 82, borderRadius: 8, borderTopRightRadius: 40 }} />
@@ -105,7 +105,7 @@ export default function PatientHome() {
         {reminders.length === 0 && <Muted>Chưa có lịch nhắc. Lịch được lấy từ liệu trình và đánh giá của bác sĩ.</Muted>}
         {reminders.map((r) => (
           <View key={r.id} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-            <View style={{ width: 2, alignSelf: 'stretch', borderRadius: 4, backgroundColor: r.date === today ? '#F56E98' : '#87A0E5' }} />
+            <View style={{ width: 2, alignSelf: 'stretch', borderRadius: 4, backgroundColor: r.date === today ? bar.red : bar.blue }} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: C.text, fontWeight: '500' }}>{r.title}</Text>
               <Text style={{ color: C.textSoft, fontSize: 12 }}>{r.body}</Text>

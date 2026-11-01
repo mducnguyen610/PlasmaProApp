@@ -30,7 +30,7 @@ export function PatientCard({ patient }: { patient: Patient }) {
         <Chip label={active ? 'Đang theo dõi' : 'Tạm dừng'} tone={active ? 'green' : 'amber'} />
       </View>
       {severity && <Chip label={'Mức độ cao nhất: ' + SEVERITY[severity].label} tone={SEVERITY[severity].tone} />}
-      <View style={{ flexDirection: 'row', backgroundColor: '#F6F8FC', borderRadius: 12, padding: 10, justifyContent: 'space-between' }}>
+      <View style={{ flexDirection: 'row', backgroundColor: C.surfaceMuted, borderRadius: 12, padding: 10, justifyContent: 'space-between' }}>
         <Text style={{ color: C.textSoft, fontSize: 12 }}>
           Thiết bị: <Text style={{ color: C.text, fontWeight: '700' }}>{dev?.code ?? 'Chưa gán'}</Text>
         </Text>
@@ -46,7 +46,11 @@ export function PatientCard({ patient }: { patient: Patient }) {
 export function ImageTile({ image, width = 150 }: { image: WoundImage; width?: number }) {
   const st = LABEL_STATUS[image.status];
   return (
-    <Pressable onPress={() => router.push({ pathname: '/images/[id]', params: { id: image.id } })} style={{ width }}>
+    <Pressable
+      onPress={() => router.push({ pathname: '/images/[id]', params: { id: image.id } })}
+      accessibilityRole="button"
+      accessibilityLabel={`Ảnh ${image.id}, ${image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'chờ nhãn'}${image.retakeRequested ? ', cần chụp lại' : ''}`}
+      style={{ width }}>
       <WoundPhoto image={image} style={{ width, height: width * 0.75, borderRadius: 8, borderTopRightRadius: 32 }} />
       <View style={{ position: 'absolute', top: 6, left: 6 }}>
         <Chip label={image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'Chờ nhãn'} tone={st.tone} />
@@ -57,14 +61,14 @@ export function ImageTile({ image, width = 150 }: { image: WoundImage; width?: n
         </View>
       )}
       <Text style={{ fontSize: 12, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>
-      <Text style={{ fontSize: 11, color: C.textFaint }} numberOfLines={1}>{image.filename}</Text>
+      <Text style={{ fontSize: 12, color: C.textFaint }} numberOfLines={1}>{image.filename}</Text>
     </Pressable>
   );
 }
 
 export function TaskRow({ icon, tone, title, detail, onPress }: { icon: IconName; tone: 'amber' | 'red' | 'blue' | 'violet'; title: string; detail: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}. ${detail}`} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, minHeight: 48, opacity: pressed ? 0.7 : 1 })}>
       <IconBadge icon={icon} tone={tone} size={36} />
       <View style={{ flex: 1 }}>
         <Text style={{ fontWeight: '600', color: C.text }}>{title}</Text>

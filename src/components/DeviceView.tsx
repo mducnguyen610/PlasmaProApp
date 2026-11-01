@@ -121,9 +121,9 @@ export function DeviceView({ device, canControl }: { device: Device; canControl:
           return (
             <View key={d} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Text style={{ width: 46, color: C.textSoft, fontSize: 12 }}>{fmtDate(d).slice(0, 5)}</Text>
-              <View style={{ flex: 1, height: 22, backgroundColor: '#F1F4FA', borderRadius: 8, overflow: 'hidden', justifyContent: 'center' }}>
+              <View style={{ flex: 1, height: 22, backgroundColor: C.surfaceMuted, borderRadius: 8, overflow: 'hidden', justifyContent: 'center' }}>
                 {n > 0 && <View style={{ width: `${(n / maxN) * 100}%`, height: '100%', backgroundColor: C.primary, borderRadius: 8 }} />}
-                {n === 0 && <Text style={{ fontSize: 11, color: unsynced ? C.amber : C.textFaint, marginLeft: 8 }}>{unsynced ? 'Chưa có dữ liệu / chưa đồng bộ' : 'Không sử dụng'}</Text>}
+                {n === 0 && <Text style={{ fontSize: 12, color: unsynced ? C.amber : C.textFaint, marginLeft: 8 }}>{unsynced ? 'Chưa có dữ liệu / chưa đồng bộ' : 'Không sử dụng'}</Text>}
               </View>
               <Text style={{ width: 28, textAlign: 'right', fontWeight: '700', color: C.text }}>{n > 0 ? `${n}×` : ''}</Text>
             </View>
