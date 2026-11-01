@@ -12,6 +12,7 @@ import { Button, Card, Chip, Field, Header, InfoRow, Muted, Screen, SectionTitle
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { buildFilename, checkFullFilename, formatAreaDisplay, formatAreaForName, parseArea, type AreaUnit } from '@/lib/naming';
+import { areaWarning, previousArea } from '@/lib/plausibility';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
@@ -69,6 +70,9 @@ export default function ImageDetail() {
     }
   }
 
+  // Cảnh báo khi diện tích mới bất thường so với ngưỡng hoặc lần đo trước của cùng vết thương.
+  const warning = editing && newArea !== null ? areaWarning(newArea, previousArea(data.images, im)) : null;
+
   const startEdit = () => {
     setEditing(true);
     setMode('area');
@@ -88,6 +92,10 @@ export default function ImageDetail() {
     if (im.capture && !method.trim()) { notify('Thiếu phương pháp đo', 'Ghi cách bác sĩ lấy số đo tham chiếu trước khi lưu.'); return; }
     if (needsZero) {
       confirm('Diện tích bằng 0', 'Giá trị 0 là số đo có chủ ý, không dùng thay cho dữ liệu thiếu. Bác sĩ đã kiểm tra lại?', doSave, 'Lưu giá trị 0');
+      return;
+    }
+    if (warning) {
+      confirm('Kiểm tra lại diện tích', warning, doSave, 'Vẫn lưu');
       return;
     }
     doSave();
@@ -192,6 +200,7 @@ export default function ImageDetail() {
               {preview ?? '—'}
             </Text>
             {preview && newArea !== null && <Muted>Diện tích lưu trong hồ sơ: {formatAreaDisplay(newArea)}</Muted>}
+            {warning && <Text accessibilityLiveRegion="polite" style={{ color: C.amber, fontSize: 13, fontWeight: '600' }}>{warning}</Text>}
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Button style={{ flex: 1 }} label="Hủy" variant="secondary" onPress={() => setEditing(false)} />

@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform } from 'react-native';
 
+import { reassignDevice } from './devices';
 import { buildFilename } from './naming';
 import { createSeed, DEMO_ASSETS } from './seed';
 import type {
@@ -132,7 +133,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setMeId(null);
     AsyncStorage.removeItem(SESSION_KEY).catch(() => {});
   }, []);
-  const resetDemo = () => { update(() => createSeed()); logout(); };
+  const resetDemo = () => {
+    if (meRef.current?.role !== 'admin') throw new Error('Cần quyền quản trị.');
+    update(() => createSeed()); logout();
+  };
   const authenticate: Store['authenticate'] = async (username, password, agreed) => {
     if (!agreed) throw new Error('Bạn cần đồng ý điều khoản trước khi đăng nhập.');
     const account = dataRef.current.accounts.find(a => a.username.toLowerCase() === normalizeUsername(username));
@@ -403,6 +407,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setDevicePower: Store['setDevicePower'] = (deviceId, on) => {
     const dev = dataRef.current.devices.find((x) => x.id === deviceId);
     if (!dev) return;
+    // Chỉ bác sĩ phụ trách bệnh nhân đang dùng thiết bị được gửi lệnh nguồn.
+    requireDoctor(dev.patientId ?? '');
     update((d) => ({ ...d, devices: d.devices.map((x) => (x.id === deviceId ? { ...x, power: 'pending' } : x)) }));
     // Mô phỏng: chỉ cập nhật trạng thái khi "thiết bị" xác nhận; thiết bị offline thì không xác nhận.
     setTimeout(() => {
@@ -474,20 +480,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return { ok: status === 'completed', message: resend ? `${message} Thiết bị gửi lại bản ghi 2 lần; hệ thống chỉ đếm 1.` : message };
   };
 
-  const registerDevice: Store['registerDevice'] = (code) =>
+  const requireAdmin = () => {
+    if (meRef.current?.role !== 'admin' || meRef.current.locked) throw new Error('Cần quyền quản trị.');
+  };
+
+  const registerDevice: Store['registerDevice'] = (code) => {
+    requireAdmin();
     update((d) => ({
       ...d,
       devices: [...d.devices, { id: `d-${Date.now()}`, code, model: 'Plasma Pro + mô-đun IoMT ESP32', online: false, lastSync: null, firmware: '—', power: 'off', simulated: true } satisfies Device],
     }));
+  };
 
-  const assignDevice: Store['assignDevice'] = (deviceId, patientId) =>
-    update((d) => ({
-      ...d,
-      devices: d.devices.map((x) => (x.id === deviceId ? { ...x, patientId: patientId ?? undefined } : x)),
-      patients: d.patients.map((p) =>
-        p.id === patientId ? { ...p, deviceId } : p.deviceId === deviceId ? { ...p, deviceId: undefined } : p,
-      ),
-    }));
+  // Mỗi bệnh nhân giữ tối đa một thiết bị: gán thiết bị mới thì thiết bị cũ của bệnh nhân đó được gỡ,
+  // tránh hai thiết bị cùng trỏ vào một hồ sơ (nhật ký điều trị bị tách đôi).
+  const assignDevice: Store['assignDevice'] = (deviceId, patientId) => {
+    requireAdmin();
+    update((d) => ({ ...d, ...reassignDevice(d.devices, d.patients, deviceId, patientId) }));
+  };
 
   const addReport: Store['addReport'] = (r) =>
     update((d) => ({ ...d, reports: [{ ...r, id: `r-${Date.now()}`, date: nowIso(), handled: false }, ...d.reports] }));

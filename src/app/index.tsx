@@ -40,6 +40,7 @@ export default function Login() {
       <Field label="Tên đăng nhập" accessibilityLabel="Tên đăng nhập" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} placeholder="Nhập tên đăng nhập" />
       <Field label="Mật khẩu" accessibilityLabel="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry placeholder="Nhập mật khẩu" />
       <Consent agreed={agreed} onChange={setAgreed} />
+      {!agreed && username.trim() && password ? <Text style={{ color: C.amber, fontWeight: '600' }}>Hãy tích ô đồng ý điều khoản để bật nút Đăng nhập.</Text> : null}
       {error ? <Text accessibilityRole="alert" style={{ color: C.red }}>{error}</Text> : null}
       <Button label="Đăng nhập" icon="log-in-outline" loading={busy} disabled={!username.trim() || !password || !agreed} onPress={submit} />
       <Button label="Có mã kích hoạt từ bác sĩ? Kích hoạt tài khoản" variant="ghost" onPress={() => router.push('/activate')} />
