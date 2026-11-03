@@ -43,47 +43,11 @@ export function computeAdherence(sessions: DeviceSession[], plan: TreatmentPlan 
   return { daysWithData: synced.length, daysMet, daysOver, intervalViolations, intervalPairs, blocked };
 }
 
-/** Trạng thái điều trị trong ngày, diễn đạt cho bệnh nhân (mẫu myAir: một câu chính ở đầu trang). */
-export interface TodayStatus {
-  kind: 'no_target' | 'remaining' | 'met' | 'over';
-  /** Câu chính, ví dụ "Hôm nay: còn 2 lần" hoặc "Đã đủ 2/2 lần". */
-  title: string;
-  /** Dòng phụ, ví dụ "Đã làm 0/2 lần". */
-  detail: string;
-}
-
-export function todayStatus(done: number, target: number | null | undefined): TodayStatus {
-  if (target == null || target <= 0) return { kind: 'no_target', title: `Hôm nay: đã điều trị ${done} lần`, detail: 'Bác sĩ chưa đặt số lần mỗi ngày.' };
-  if (done < target) return { kind: 'remaining', title: `Hôm nay: còn ${target - done} lần`, detail: `Đã làm ${done}/${target} lần` };
-  if (done === target) return { kind: 'met', title: `Đã đủ ${target}/${target} lần`, detail: 'Hôm nay đã làm đủ theo liệu trình.' };
-  return { kind: 'over', title: `Đã làm ${done} lần, nhiều hơn ${target} lần`, detail: 'Hãy báo bác sĩ phụ trách.' };
-}
-
-const prevDay = (d: string) => new Date(new Date(`${d}T00:00:00Z`).getTime() - 86400000).toISOString().slice(0, 10);
-
-/**
- * Chuỗi ngày liên tiếp làm đủ đúng số lần của liệu trình, tính lùi từ hôm nay.
- * - Hôm nay chỉ được cộng khi đã đủ; chưa đủ thì bỏ qua vì ngày chưa kết thúc.
- * - Một ngày đã qua mà thiết bị chưa đồng bộ thì dừng chuỗi: không biết có làm hay không (đặc tả 7.2).
- * - Không tính các ngày trước khi liệu trình bắt đầu.
- */
-export function metStreak(sessions: DeviceSession[], target: number | null | undefined, today: string, lastSyncDay: string | null, planStart: string): number {
-  if (target == null || target <= 0) return 0;
-  const count = (d: string) => sessions.filter((s) => s.status === 'completed' && s.start.slice(0, 10) === d).length;
-  let streak = 0;
-  let d = today;
-  if (count(today) === target) streak++;
-  d = prevDay(d);
-  for (let guard = 0; guard < 3650 && d >= planStart; guard++, d = prevDay(d)) {
-    if (lastSyncDay === null || d > lastSyncDay) break;
-    if (count(d) !== target) break;
-    streak++;
-  }
-  return streak;
-}
+// Đã bỏ todayStatus và metStreak (chuỗi ngày liên tiếp, mẫu myAir): điều trị plasma theo đợt có ngày nghỉ
+// theo lịch, nên chuỗi bị gãy dù bệnh nhân làm đúng y lệnh. Thay bằng courseProgress/courseStatus trong course.ts.
 
 /** Trạng thái một ngày trên lịch tháng (mẫu Nerivio, nhưng tách "chưa đồng bộ" khỏi "không dùng"). */
-export type DayKind = 'met' | 'partial' | 'none' | 'over' | 'unsynced' | 'today' | 'outside';
+export type DayKind = 'met' | 'partial' | 'none' | 'over' | 'unsynced' | 'today' | 'rest' | 'planned' | 'outside';
 export interface DayCell { date: string; count: number; kind: DayKind }
 
 /**
@@ -91,8 +55,10 @@ export interface DayCell { date: string; count: number; kind: DayKind }
  * - outside: ngoài thời gian liệu trình hoặc trong tương lai.
  * - today: hôm nay chưa đủ (ngày chưa kết thúc, không tính là thiếu).
  * - unsynced: ngày đã qua nhưng thiết bị chưa gửi dữ liệu (đặc tả 7.2).
+ * - planned: ngày có buổi theo lịch trong tương lai.
+ * - rest: ngày nghỉ theo lịch của đợt (khi có `scheduled`); có phiên vào ngày nghỉ thì là over.
  */
-export function monthCells(month: string, sessions: DeviceSession[], target: number | null | undefined, lastSyncDay: string | null, planStart: string | null, planEnd: string | null, today: string): DayCell[] {
+export function monthCells(month: string, sessions: DeviceSession[], target: number | null | undefined, lastSyncDay: string | null, planStart: string | null, planEnd: string | null, today: string, scheduled?: (date: string) => boolean): DayCell[] {
   const [y, m] = month.split('-').map(Number);
   const first = new Date(Date.UTC(y, m - 1, 1));
   const daysIn = new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -103,7 +69,9 @@ export function monthCells(month: string, sessions: DeviceSession[], target: num
     const date = `${month}-${String(d).padStart(2, '0')}`;
     const count = done.filter((s) => s.start.slice(0, 10) === date).length;
     let kind: DayKind;
-    if (date > today || (planStart && date < planStart) || (planEnd && date > planEnd)) kind = count > 0 ? 'partial' : 'outside';
+    if (date > today && scheduled && (!planStart || date >= planStart) && (!planEnd || date <= planEnd)) kind = scheduled(date) ? 'planned' : 'rest';
+    else if (date > today || (planStart && date < planStart) || (planEnd && date > planEnd)) kind = count > 0 ? 'partial' : 'outside';
+    else if (scheduled && !scheduled(date)) kind = count > 0 ? 'over' : 'rest';
     else if (target != null && target > 0 && count > target) kind = 'over';
     else if (target != null && target > 0 && count === target) kind = 'met';
     else if (date === today) kind = 'today';

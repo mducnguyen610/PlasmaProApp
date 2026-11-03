@@ -6,19 +6,21 @@ import { SeverityCard } from '@/components/SeverityCard';
 import { AreaChart } from '@/components/AreaChart';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { ImageTile } from '@/components/items';
-import { Button, Card, Chip, Empty, Header, InfoRow, Muted, Screen, SectionTitle, Segmented } from '@/components/ui';
-import { fmtDate, TREND, WOUND_STATUS } from '@/lib/format';
+import { Button, Card, Chip, Empty, Header, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
+import { ClosureActions } from '@/components/ClosureActions';
+import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
+import { areaReview, courseProgress, followUpDates } from '@/lib/course';
+import { fmtDate, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
 import { assessmentSummary } from '@/lib/assessment';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
-import type { WoundStatus } from '@/lib/types';
 import { C } from '@/theme';
 
 // BS04 – Chi tiết vết thương: vị trí, ngày bắt đầu, album ảnh theo ngày, diện tích đã nhập, lịch sử đánh giá.
 export default function WoundDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, me, updateWound } = useStore();
-  const { wound, patient, imagesOf, account } = useLookups();
+  const { data, me } = useStore();
+  const { wound, patient, imagesOf, account, coursePlan, sessionsOf } = useLookups();
   const w = wound(id);
   const p = patient(w?.patientId);
   const canView = useCanView(p);
@@ -26,6 +28,10 @@ export default function WoundDetail() {
 
   const isDoctor = me?.role === 'doctor';
   const images = imagesOf(w.id);
+  const today = new Date().toISOString().slice(0, 10);
+  const plan = coursePlan(w.id, { patientView: !isDoctor });
+  const dev = data.devices.find((x) => x.id === p.deviceId);
+  const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id).filter((s) => !s.woundId || s.woundId === w.id), today, dev.lastSync?.slice(0, 10) ?? null) : null;
   const byDate = new Map<string, typeof images>();
   for (const im of [...images].reverse()) byDate.set(im.captureDate, [...(byDate.get(im.captureDate) ?? []), im]);
   const evals = data.evaluations
@@ -38,17 +44,27 @@ export default function WoundDetail() {
       <Card>
         <InfoRow label="Vị trí" value={w.location} />
         {w.group ? <InfoRow label="Nhóm tổn thương" value={w.group} /> : null}
-        <InfoRow label="Bắt đầu theo dõi" value={fmtDate(w.startDate)} />
+        <InfoRow label="Bắt đầu" value={fmtDate(w.startDate)} />
         <InfoRow label="Số ảnh" value={String(images.length)} />
-        {isDoctor ? (
-          <Segmented<WoundStatus>
-            value={w.status}
-            onChange={(v) => updateWound(w.id, { status: v })}
-            options={(['active', 'paused', 'closed'] as const).map((v) => ({ value: v, label: WOUND_STATUS[v].label }))}
-          />
-        ) : (
-          <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
-        )}
+        <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
+      </Card>
+
+      {/* Đợt điều trị của vết thương: tiến độ, mốc xem lại tuần 4, kết thúc khi liền rồi theo dõi. */}
+      <Card>
+        <SectionTitle icon="flash-outline" right={isDoctor ? <Text onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} style={{ color: C.primary, fontWeight: '600' }}>{plan ? 'Sửa đợt' : '+ Lập đợt'}</Text> : null}>
+          Đợt điều trị
+        </SectionTitle>
+        {plan ? (
+          <>
+            <Chip label={`Phiên bản ${plan.version} · ${PLAN_STATUS[plan.status].label}`} tone={PLAN_STATUS[plan.status].tone} />
+            <PhaseList plan={plan} current={pr?.phaseIndex} />
+            <DoseRows plan={plan} />
+            {pr && isDoctor && <ProgressRows pr={pr} />}
+            <ReviewNote review={areaReview(images, plan, today)} forPatient={!isDoctor} />
+          </>
+        ) : <Muted>Chưa có đợt điều trị cho vết thương này.</Muted>}
+        {isDoctor && <ClosureActions woundId={w.id} status={w.status} check1={w.closureCheck1} followUpFrom={w.followUpFrom} today={today} hasPlan={!!plan} onNewCourse={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />}
+        {!isDoctor && w.status === 'follow_up' && w.followUpFrom && <Muted>Đã liền ngày {fmtDate(w.followUpFrom)}. Các lần kiểm tra: {followUpDates(w.followUpFrom).map((x) => fmtDate(x.date)).join(', ')}.</Muted>}
       </Card>
 
       <SeverityCard title="Mức độ vết thương" evaluation={evals[0]} doctor={account(evals[0]?.doctorId)?.name} />

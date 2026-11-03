@@ -5,6 +5,7 @@ import { Linking, Platform, View } from 'react-native';
 
 import { Text } from '@/components/Text';
 import { Button, Card, Header, HeaderButton, Muted, Screen } from '@/components/ui';
+import { phaseLabel, phasesOf } from '@/lib/course';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
 import type { IconName } from '@/components/ui';
@@ -23,8 +24,8 @@ export default function Onboarding() {
   const p = patient(me.patientId);
   const plan = p ? activePlan(p.id) : undefined;
   const doctor = account(p?.doctorId)?.name;
-  const perDay = plan?.status === 'active' ? plan.sessionsPerDay : null;
-  const gapH = plan?.status === 'active' && plan.minIntervalMin != null ? Math.round((plan.minIntervalMin / 60) * 10) / 10 : null;
+  const active = plan?.status === 'active' && plan.confirmed ? plan : undefined;
+  const phases = active ? phasesOf(active) : [];
 
   const steps: Step[] = [
     {
@@ -38,13 +39,14 @@ export default function Onboarding() {
     },
     {
       icon: 'calendar', tone: C.green, soft: C.greenSoft,
-      title: 'Mỗi ngày cần làm gì',
+      title: 'Đợt điều trị gồm những gì',
       points: [
-        perDay != null
-          ? `Điều trị đủ ${perDay} lần mỗi ngày${gapH != null ? `, hai lần cách nhau ít nhất ${String(gapH).replace('.', ',')} giờ` : ''}, theo liệu trình hiện tại.`
-          : 'Điều trị đúng số lần bác sĩ dặn. Liệu trình của bạn chưa được bác sĩ xác nhận trong ứng dụng.',
-        'Xem dòng "Hôm nay: còn ... lần" ở đầu Trang chủ để biết còn phải làm mấy lần.',
-        'Để thiết bị ở nơi có Wi-Fi để số lần được cập nhật. Thiết bị tự ngắt nếu dùng quá số lần cho phép.',
+        active
+          ? `Đợt điều trị theo lịch bác sĩ đặt: ${phases.map((ph) => phaseLabel(ph).toLowerCase()).join(', sau đó ')}. Có những ngày nghỉ theo lịch, không phải ngày nào cũng chiếu.`
+          : 'Điều trị theo lịch bác sĩ dặn. Đợt điều trị của bạn chưa được bác sĩ xác nhận trong ứng dụng.',
+        'Đầu Trang chủ cho biết hôm nay có buổi chiếu hay nghỉ, và buổi tiếp theo vào ngày nào.',
+        'Thiết bị đã khóa mức năng lượng và thời gian theo y lệnh. Thiết bị không phát vào ngày nghỉ hoặc khi đã đủ số lần.',
+        'Đợt kết thúc khi bác sĩ xác nhận vết thương đã liền, sau đó bạn chỉ cần tái khám theo lịch kiểm tra.',
       ],
     },
     {

@@ -1,11 +1,11 @@
 import type { DeviceSession } from './types';
 
 /**
- * Chăm sóc thiết bị theo mẫu myAir "Equipment care", nhưng đếm theo số phiên thiết bị đã ghi
- * thay vì theo số ngày, vì Plasma Pro gửi nhật ký từng phiên.
+ * Chăm sóc thiết bị theo đặc thù điều trị plasma (thay mẫu myAir đếm 12/60/300 phiên):
+ * - Đầu phát dùng riêng cho từng bệnh nhân (slide 25), cấp khi giao thiết bị, thay khi hết đợt hoặc khi hỏng.
+ * - Vệ sinh đầu phát sau MỖI phiên, vì vết thương có thể nhiễm khuẩn đa kháng (slide 10, 34).
  *
- * GIÁ TRỊ GIẢ ĐỊNH CHO DEMO: danh mục và chu kỳ dưới đây chưa được nhóm phần cứng xác nhận.
- * Khi có thông số thật, chỉ cần sửa bảng này.
+ * GIÁ TRỊ GIẢ ĐỊNH CHO DEMO: cách vệ sinh phải theo hướng dẫn của nhà sản xuất, chờ nhóm phần cứng xác nhận.
  */
 export interface CareItem {
   id: string;
@@ -17,13 +17,19 @@ export interface CareItem {
 }
 
 export const CARE_ITEMS: CareItem[] = [
-  { id: 'clean', label: 'Vệ sinh đầu phát', doneBy: 'patient', everySessions: 12, howTo: 'Tắt thiết bị rồi vệ sinh đầu phát theo hướng dẫn đi kèm thiết bị.' },
-  { id: 'cap', label: 'Thay nắp bảo vệ đầu phát', doneBy: 'tech', everySessions: 60, howTo: 'Kỹ thuật viên thay nắp khi bệnh nhân tái khám.' },
-  { id: 'electrode', label: 'Kiểm tra điện cực', doneBy: 'tech', everySessions: 300, howTo: 'Kỹ thuật viên kiểm tra và thay điện cực nếu mòn.' },
+  { id: 'clean', label: 'Vệ sinh đầu phát', doneBy: 'patient', everySessions: 1, howTo: 'Tắt thiết bị, lau đầu phát theo hướng dẫn đi kèm, để khô rồi đậy nắp. Không dùng chung đầu phát với người khác.' },
 ];
 
-/** Còn ≤ mức này thì nhắc bệnh nhân trên màn Thiết bị. */
-export const CARE_DUE_SOON = 2;
+/** Còn ≤ mức này thì nhắc bệnh nhân trên màn Thiết bị (0: nhắc ngay sau mỗi phiên). */
+export const CARE_DUE_SOON = 0;
+
+/** Các bước của vòng đời thiết bị cho thuê (slide 24). */
+export const LIFECYCLE: Record<string, { label: string; next?: string; action?: string }> = {
+  in_use: { label: 'Đang giao cho bệnh nhân', next: 'returned', action: 'Thu hồi khi kết thúc đợt' },
+  returned: { label: 'Đã thu hồi, chờ khử khuẩn', next: 'disinfected', action: 'Đã khử khuẩn' },
+  disinfected: { label: 'Đã khử khuẩn, chờ kiểm tra', next: 'ready', action: 'Kiểm tra xong' },
+  ready: { label: 'Sẵn sàng cấp cho bệnh nhân' },
+};
 
 export interface CareStatus { item: CareItem; used: number; remaining: number; due: boolean; lastDone: string | null }
 

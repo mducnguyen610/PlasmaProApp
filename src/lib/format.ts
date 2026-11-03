@@ -14,9 +14,11 @@ export function fmtDateTime(iso?: string | null): string {
   return `${hh}:${mm} ${fmtDate(dt.toISOString())}`;
 }
 
-export const WOUND_STATUS: Record<WoundStatus, { label: string; tone: 'green' | 'amber' | 'gray' }> = {
-  active: { label: 'Đang theo dõi', tone: 'green' },
+export const WOUND_STATUS: Record<WoundStatus, { label: string; tone: 'green' | 'amber' | 'gray' | 'blue' | 'violet' }> = {
+  active: { label: 'Đang điều trị', tone: 'green' },
   paused: { label: 'Tạm dừng', tone: 'amber' },
+  awaiting_closure: { label: 'Chờ xác nhận liền', tone: 'blue' },
+  follow_up: { label: 'Đã liền, đang theo dõi', tone: 'violet' },
   closed: { label: 'Kết thúc', tone: 'gray' },
 };
 
