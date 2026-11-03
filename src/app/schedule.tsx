@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView } from 'react-native';
+import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Empty, Header, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
 import { fmtDate } from '@/lib/format';
@@ -15,7 +16,8 @@ export default function Schedule() {
   const today = localDay(new Date());
   const [selected, setSelected] = useState(today);
   const p = patient(me?.patientId);
-  if (!p) return null;
+  // Màn nằm ngoài nhóm tab bệnh nhân nên tự chặn vai trò khác.
+  if (me?.role !== 'patient' || !p) return <NoAccess />;
   const plans = data.plans.filter(x => x.patientId === p.id && x.confirmed && x.status === 'active').sort((a,b) => b.version-a.version);
   const plan = plans[0];
   const inRange = plan && selected >= plan.startDate && selected <= plan.endDate;
@@ -23,7 +25,7 @@ export default function Schedule() {
   const daySessions = p.deviceId ? sessionsOf(p.deviceId).filter(s => localDay(new Date(s.start)) === selected) : [];
   const days = Array.from({ length: 14 }, (_,i) => { const d = new Date(); d.setDate(d.getDate()+i-3); return d; });
   const dev = data.devices.find(d => d.id === p.deviceId);
-  return <Screen header={<Header title="Lịch trình của tôi" subtitle="Theo liệu trình bác sĩ đã xác nhận" />}>
+  return <Screen header={<Header back title="Lịch trình của tôi" subtitle="Theo liệu trình bác sĩ đã xác nhận" />}>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9, paddingVertical: 8 }}>
       {days.map(d => { const iso=localDay(d); const on=iso===selected;
         return <Pressable key={iso} accessibilityLabel={'Ngày ' + fmtDate(iso)} onPress={() => setSelected(iso)} style={{ width: 58, paddingVertical: 15, borderRadius: 20, alignItems: 'center', gap: 8, backgroundColor: on ? C.primary : C.card }}>
