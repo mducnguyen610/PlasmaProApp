@@ -32,7 +32,8 @@ export function AccountScreen() {
 
       <Card onPress={() => router.push('/terms')}>
         <Text style={{ fontWeight: '700' }}>Điều khoản sử dụng & quyền riêng tư</Text>
-        <Muted>Đã đồng ý: {me.termsAcceptedAt ? new Date(me.termsAcceptedAt).toLocaleString('vi-VN') : 'Chưa ghi nhận theo phiên bản mới'}</Muted>
+        <Muted>Đã đồng ý: {me.termsAcceptedAt ? `${new Date(me.termsAcceptedAt).toLocaleString('vi-VN')}${me.termsVersion ? ` (phiên bản ${me.termsVersion})` : ''}` : 'Chưa ghi nhận theo phiên bản mới'}</Muted>
+        <Muted>Chỉ hỏi đồng ý lại khi điều khoản đổi phiên bản.</Muted>
       </Card>
       {me.role === 'patient' && <Card>
         <Text style={{ fontWeight: '700' }}>Đồng ý sử dụng ảnh cho nghiên cứu</Text>

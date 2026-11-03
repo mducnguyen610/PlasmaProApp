@@ -77,6 +77,17 @@ interface Store {
   resolveSyncError: (id: string) => void;
 }
 
+/**
+ * Đăng nhập đúng mật khẩu nhưng tài khoản chưa đồng ý phiên bản điều khoản hiện hành (R8).
+ * Màn đăng nhập bắt lỗi này để hiện ô đồng ý; người đã đồng ý đúng phiên bản không bị hỏi lại.
+ */
+export class TermsRequiredError extends Error {
+  constructor(public reason: 'first' | 'updated') {
+    super(reason === 'first' ? 'Hãy đọc và đồng ý điều khoản trước lần đăng nhập đầu tiên.' : `Điều khoản đã cập nhật (phiên bản ${TERMS_VERSION}). Hãy đọc và đồng ý để tiếp tục.`);
+    this.name = 'TermsRequiredError';
+  }
+}
+
 /** Mã kích hoạt chỉ trả về một lần cho bác sĩ; trong dữ liệu chỉ lưu bản băm. */
 export interface Activation { username: string; code: string; expiresAt: string }
 
@@ -143,15 +154,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (meRef.current?.role !== 'admin') throw new Error('Cần quyền quản trị.');
     update(() => createSeed()); logout();
   };
+  // Chỉ hỏi đồng ý điều khoản khi tài khoản chưa đồng ý phiên bản hiện hành (đề xuất 4, rủi ro R8).
   const authenticate: Store['authenticate'] = async (username, password, agreed) => {
-    if (!agreed) throw new Error('Bạn cần đồng ý điều khoản trước khi đăng nhập.');
     const account = dataRef.current.accounts.find(a => a.username.toLowerCase() === normalizeUsername(username));
     if (account && isPendingActivation(account)) throw new Error('Tài khoản chưa kích hoạt. Hãy chọn "Kích hoạt tài khoản" và nhập mã bác sĩ đưa.');
     if (!account || !await verifyPassword(account, password)) throw new Error('Tên đăng nhập hoặc mật khẩu chưa đúng.');
     const current = dataRef.current.accounts.find(a => a.id === account.id)!;
     if (current.pendingApproval) throw new Error('Tài khoản đang chờ quản trị duyệt.');
     if (current.locked) throw new Error('Tài khoản đã bị khóa.');
-    update(d => ({ ...d, accounts: d.accounts.map(a => a.id === account.id ? { ...a, termsVersion: TERMS_VERSION, termsAcceptedAt: nowIso() } : a) }));
+    if (current.termsVersion !== TERMS_VERSION) {
+      if (!agreed) throw new TermsRequiredError(current.termsVersion ? 'updated' : 'first');
+      update(d => ({ ...d, accounts: d.accounts.map(a => a.id === account.id ? { ...a, termsVersion: TERMS_VERSION, termsAcceptedAt: nowIso() } : a) }));
+    }
     login(account.id);
   };
   const register: Store['register'] = async (input) => {
