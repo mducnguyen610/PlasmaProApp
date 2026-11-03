@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/Text';
-import { Button, Card, HeaderButton, Muted, SectionTitle } from '@/components/ui';
+import { Button, Card, HeaderButton, Muted } from '@/components/ui';
 import { monthCells, type DayCell, type DayKind } from '@/lib/adherence';
 import { notify } from '@/lib/dialog';
 import { fmtDate } from '@/lib/format';
 import { useStore } from '@/lib/store';
+import type { Reminder } from '@/lib/reminders';
 import type { DeviceSession, TreatmentPlan } from '@/lib/types';
 import { C } from '@/theme';
 
@@ -42,11 +43,11 @@ function cellText(c: DayCell, target: number | null | undefined) {
  * Lịch tuân thủ theo tháng (mẫu "Migraine diary" của Nerivio): mỗi ngày một ô có trạng thái,
  * chạm vào ngày để xem các phiên và ghi mức đau trước/sau phiên.
  */
-export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit }: { sessions: DeviceSession[]; plan?: TreatmentPlan; lastSyncDay: string | null; canEdit: boolean }) {
+export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, reminders = [] }: { sessions: DeviceSession[]; plan?: TreatmentPlan; lastSyncDay: string | null; canEdit: boolean; reminders?: Reminder[] }) {
   const { data, setSessionPain } = useStore();
   const today = new Date().toISOString().slice(0, 10);
   const [month, setMonth] = useState(today.slice(0, 7));
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(today);
   const [editing, setEditing] = useState<string | null>(null);
   const [before, setBefore] = useState<number | undefined>();
   const [after, setAfter] = useState<number | undefined>();
@@ -75,7 +76,6 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit }: { se
 
   return (
     <>
-      <SectionTitle>Nhật ký điều trị</SectionTitle>
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <NavBtn icon="chevron-back" label="Tháng trước" onPress={() => { setMonth(shiftMonth(month, -1)); setSelected(null); }} />
@@ -91,15 +91,17 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit }: { se
             const k = c.kind === 'outside' ? null : KIND[c.kind];
             const on = selected === c.date;
             const day = Number(c.date.slice(8));
+            const hasReminder = reminders.some((r) => r.date === c.date);
             return (
               <Pressable
                 key={c.date}
                 onPress={() => { setSelected(c.date); setEditing(null); }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={`Ngày ${day} tháng ${Number(m)}${k ? `: ${k.label}${c.kind !== 'unsynced' ? `, ${c.count} lần` : ''}` : ''}`}
+                accessibilityLabel={`Ngày ${day} tháng ${Number(m)}${k ? `: ${k.label}${c.kind !== 'unsynced' ? `, ${c.count} lần` : ''}` : ''}${hasReminder ? ', có lịch hẹn' : ''}`}
                 style={{ width: `${100 / 7}%`, height: 52, padding: 2 }}>
                 <View style={{ flex: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: k ? k.bg : 'transparent', borderWidth: on ? 2 : 0, borderColor: C.primary }}>
+                  {hasReminder && <Ionicons name="calendar" size={10} color={C.violet} style={{ position: 'absolute', top: 3, right: 4 }} />}
                   <Text style={{ fontSize: 14, fontWeight: '700', color: k ? C.text : C.textFaint }}>{day}</Text>
                   {k && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
@@ -113,6 +115,12 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit }: { se
           })}
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {reminders.length > 0 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name="calendar" size={12} color={C.violet} />
+              <Text style={{ fontSize: 12, color: C.textSoft }}>Lịch hẹn</Text>
+            </View>
+          )}
           {(['met', 'partial', 'none', 'unsynced'] as const).map((kind) => (
             <View key={kind} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: KIND[kind].bg, borderWidth: 1, borderColor: KIND[kind].color }} />
@@ -126,8 +134,18 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit }: { se
       {selected && (
         <Card>
           <Text style={{ fontWeight: '700', fontSize: 16, color: C.text }}>{fmtDate(selected)}</Text>
+          {reminders.filter((r) => r.date === selected).map((r) => (
+            <View key={r.id} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: C.violetSoft, borderRadius: 8, padding: 10 }}>
+              <Ionicons name="calendar" size={18} color={C.violet} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '700', color: C.text }}>{r.title}</Text>
+                <Text style={{ color: C.textSoft, fontSize: 13 }}>{r.body}</Text>
+              </View>
+            </View>
+          ))}
+          {selected > today && !reminders.some((r) => r.date === selected) && <Muted>Chưa có lịch hẹn ngày này.</Muted>}
           {selectedCell?.kind === 'unsynced' && <Muted>Thiết bị chưa gửi dữ liệu ngày này. Số phiên sẽ hiện khi thiết bị kết nối Wi-Fi.</Muted>}
-          {daySessions.length === 0 && selectedCell?.kind !== 'unsynced' && <Muted>Không có phiên điều trị.</Muted>}
+          {daySessions.length === 0 && selectedCell?.kind !== 'unsynced' && selected <= today && <Muted>Không có phiên điều trị.</Muted>}
           {daySessions.map((s) => {
             const n = note(s.sessionId);
             const done = s.status === 'completed';
