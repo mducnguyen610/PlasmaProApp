@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
@@ -48,6 +49,21 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
   const maxN = Math.max(1, ...perDay.map((x) => x.n));
   const totalMin = sessions.reduce((s, x) => s + x.durationMin, 0);
   const todayN = perDay[0]?.n ?? 0;
+  const unsyncedDays = perDay.filter((x) => !lastSyncDay || x.d > lastSyncDay);
+  const syncedDays = perDay.filter((x) => lastSyncDay && x.d <= lastSyncDay);
+  const oldest = unsyncedDays[unsyncedDays.length - 1]?.d;
+  const unsyncedText =
+    unsyncedDays.length === perDay.length
+      ? patientView
+        ? `Thiết bị chưa gửi dữ liệu ${perDay.length} ngày qua. Hãy bật thiết bị ở nơi có Wi-Fi để thiết bị gửi số lần điều trị.`
+        : `Chưa có dữ liệu ${perDay.length} ngày qua (${device.lastSync ? `đồng bộ lần cuối ${fmtDateTime(device.lastSync)}` : 'chưa từng đồng bộ'}). Không tính là không sử dụng.`
+      : unsyncedDays.length === 1
+        ? patientView
+          ? 'Hôm nay thiết bị chưa gửi dữ liệu.'
+          : 'Hôm nay chưa có dữ liệu đồng bộ.'
+        : patientView
+          ? `Thiết bị chưa gửi dữ liệu từ ngày ${fmtDate(oldest).slice(0, 5)} đến nay. Hãy bật thiết bị ở nơi có Wi-Fi.`
+          : `Chưa có dữ liệu từ ${fmtDate(oldest).slice(0, 5)} đến nay (chưa đồng bộ). Không tính là không sử dụng.`;
 
   const powerLabel = device.power === 'pending' ? 'Đang chờ thiết bị xác nhận…' : device.power === 'on' ? 'Đang bật' : 'Đang tắt';
 
@@ -134,20 +150,24 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
 
       <Card>
         <SectionTitle icon="calendar-outline">{patientView ? 'Số lần điều trị 7 ngày qua' : '7 ngày gần nhất'}</SectionTitle>
-        {perDay.map(({ d, n }) => {
-          // Phân biệt "không sử dụng" với "chưa có dữ liệu/chưa đồng bộ" (đặc tả 7.2).
-          const unsynced = n === 0 && (!lastSyncDay || d > lastSyncDay);
-          return (
-            <View key={d} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Text style={{ width: 46, color: C.textSoft, fontSize: 12 }}>{fmtDate(d).slice(0, 5)}</Text>
-              <View style={{ flex: 1, height: 22, backgroundColor: C.surfaceMuted, borderRadius: 8, overflow: 'hidden', justifyContent: 'center' }}>
-                {n > 0 && <View style={{ width: `${(n / maxN) * 100}%`, height: '100%', backgroundColor: C.primary, borderRadius: 8 }} />}
-                {n === 0 && <Text style={{ fontSize: 12, color: unsynced ? C.amber : C.textFaint, marginLeft: 8 }}>{unsynced ? (patientView ? 'Chưa có dữ liệu' : 'Chưa có dữ liệu / chưa đồng bộ') : 'Không sử dụng'}</Text>}
-              </View>
-              <Text style={{ width: 28, textAlign: 'right', fontWeight: '700', color: C.text }}>{n > 0 ? `${n}×` : ''}</Text>
+        {/* Ngày sau lần đồng bộ cuối là "chưa có dữ liệu", không phải "không sử dụng" (đặc tả 7.2).
+            Các ngày này luôn liền nhau ở cuối khoảng, nên gộp thành một câu thay vì lặp từng dòng. */}
+        {unsyncedDays.length > 0 && (
+          <View accessible style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: C.amberSoft, borderRadius: 8, padding: 12 }}>
+            <Ionicons name="cloud-offline-outline" size={20} color={C.amber} />
+            <Text style={{ flex: 1, color: C.amber, lineHeight: 20 }}>{unsyncedText}</Text>
+          </View>
+        )}
+        {syncedDays.map(({ d, n }) => (
+          <View key={d} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={{ width: 46, color: C.textSoft, fontSize: 12 }}>{fmtDate(d).slice(0, 5)}</Text>
+            <View style={{ flex: 1, height: 22, backgroundColor: C.surfaceMuted, borderRadius: 8, overflow: 'hidden', justifyContent: 'center' }}>
+              {n > 0 && <View style={{ width: `${(n / maxN) * 100}%`, height: '100%', backgroundColor: C.primary, borderRadius: 8 }} />}
+              {n === 0 && <Text style={{ fontSize: 12, color: C.textFaint, marginLeft: 8 }}>Không sử dụng</Text>}
             </View>
-          );
-        })}
+            <Text style={{ width: 28, textAlign: 'right', fontWeight: '700', color: C.text }}>{n > 0 ? `${n}×` : ''}</Text>
+          </View>
+        ))}
       </Card>
 
       {!patientView && <Card>
