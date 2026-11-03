@@ -8,10 +8,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Platform } from 'react-native';
 
 import { reassignDevice } from './devices';
+import { CARE_ITEMS } from './maintenance';
 import { buildFilename } from './naming';
 import { createSeed, DEMO_ASSETS } from './seed';
 import type {
-  Account, AppData, Device, DeviceSession, Evaluation, Patient, SymptomReport, TreatmentPlan, Wound, WoundImage,
+  Account, AppData, Device, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
 } from './types';
 
 const STORAGE_KEY = 'plasmapro.demo.v1';
@@ -75,6 +76,8 @@ interface Store {
   setReportHandled: (id: string) => void;
   updateAccount: (id: string, patch: Partial<Account>) => void;
   resolveSyncError: (id: string) => void;
+  setSessionPain: (sessionId: string, pain: Pick<SessionNote, 'painBefore' | 'painAfter'>) => void;
+  markCareDone: (deviceId: string, itemId: string) => void;
 }
 
 /**
@@ -108,6 +111,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const [raw, sess] = await Promise.all([AsyncStorage.getItem(STORAGE_KEY), AsyncStorage.getItem(SESSION_KEY)]);
         if (raw) {
           const saved: AppData = JSON.parse(raw);
+          saved.sessionNotes ??= [];
           saved.patients = saved.patients.map(p => ({ ...p, researchCode: p.researchCode ?? 'RS-' + Crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase() }));
           setData(saved);
           dataRef.current = saved;
@@ -533,10 +537,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const resolveSyncError: Store['resolveSyncError'] = (id) =>
     update((d) => ({ ...d, syncErrors: d.syncErrors.map((s) => (s.id === id ? { ...s, resolved: true } : s)) }));
 
+  // Bệnh nhân ghi mức đau cho phiên của thiết bị mình đang được gán.
+  const setSessionPain: Store['setSessionPain'] = (sessionId, pain) => {
+    const actor = meRef.current;
+    const d0 = dataRef.current;
+    const ses = d0.sessions.find((x) => x.sessionId === sessionId);
+    const owner = d0.devices.find((x) => x.id === ses?.deviceId)?.patientId;
+    if (!actor || actor.role !== 'patient' || !ses || owner !== actor.patientId) throw new Error('Không ghi được mức đau cho phiên này.');
+    const ok = (v?: number) => v === undefined || (Number.isInteger(v) && v >= 0 && v <= 10);
+    if (!ok(pain.painBefore) || !ok(pain.painAfter)) throw new Error('Mức đau từ 0 đến 10.');
+    update((d) => ({ ...d, sessionNotes: [...d.sessionNotes.filter((n) => n.sessionId !== sessionId), { sessionId, ...pain, at: nowIso() }] }));
+  };
+  // Bệnh nhân chỉ đánh dấu mục tự làm trên thiết bị của mình; mục thay linh kiện do quản trị kỹ thuật.
+  const markCareDone: Store['markCareDone'] = (deviceId, itemId) => {
+    const actor = meRef.current;
+    const dev = dataRef.current.devices.find((x) => x.id === deviceId);
+    const item = CARE_ITEMS.find((x) => x.id === itemId);
+    if (!actor || !dev || !item) throw new Error('Không tìm thấy mục chăm sóc.');
+    const allowed = actor.role === 'admin' || (actor.role === 'patient' && item.doneBy === 'patient' && dev.patientId === actor.patientId);
+    if (!allowed) throw new Error('Mục này do kỹ thuật viên thực hiện.');
+    update((d) => ({ ...d, devices: d.devices.map((x) => (x.id === deviceId ? { ...x, care: { ...x.care, [itemId]: nowIso() } } : x)) }));
+  };
+
   const value: Store = {
     ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, addWound, updateWound, addImage, labelImage,
     setExcluded, requestRetake, addEvaluation, savePlan, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
-    setReportHandled, updateAccount, resolveSyncError,
+    setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

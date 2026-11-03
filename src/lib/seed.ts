@@ -115,11 +115,16 @@ export function createSeed(): AppData {
       },
     ],
     devices: [
-      { id: 'd-1', code: 'TB-001', model: 'Plasma Pro + mô-đun IoMT ESP32', patientId: 'p-1', online: true, lastSync: '2026-10-11T17:05:00.000Z', firmware: '0.3.1', power: 'off', simulated: true },
+      { id: 'd-1', code: 'TB-001', model: 'Plasma Pro + mô-đun IoMT ESP32', patientId: 'p-1', online: true, lastSync: '2026-10-11T17:05:00.000Z', firmware: '0.3.1', power: 'off', simulated: true, care: { clean: '2026-10-06T00:00:00.000Z' } },
       { id: 'd-2', code: 'TB-002', model: 'Plasma Pro + mô-đun IoMT ESP32', patientId: 'p-2', online: false, lastSync: '2026-10-07T08:12:00.000Z', firmware: '0.3.1', power: 'off', simulated: true },
       { id: 'd-3', code: 'TB-003', model: 'Plasma Pro + mô-đun IoMT ESP32', online: false, lastSync: null, firmware: '0.3.0', power: 'off', simulated: true },
     ],
     sessions: [...sesP1, ...sessions('d-2', ['2026-10-02', '2026-10-03', '2026-10-04'], [1, 2, 1])],
+    sessionNotes: [
+      { sessionId: 'd-1-20261006-1', painBefore: 5, painAfter: 3, at: '2026-10-06T08:00:00.000Z' },
+      { sessionId: 'd-1-20261007-1', painBefore: 4, painAfter: 3, at: '2026-10-07T08:00:00.000Z' },
+      { sessionId: 'd-1-20261009-2', painBefore: 3, painAfter: 2, at: '2026-10-09T13:00:00.000Z' },
+    ],
     reports: [
       { id: 'r-1', patientId: 'p-2', date: '2026-10-10T08:30:00.000Z', kind: 'symptom', content: 'Rát nhẹ quanh vết thương sau buổi tối.', painLevel: 3, handled: false },
       { id: 'r-2', patientId: 'p-2', date: '2026-10-07T08:30:00.000Z', kind: 'device', content: 'Thiết bị không hiện kết nối Wi-Fi.', handled: false },

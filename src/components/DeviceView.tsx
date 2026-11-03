@@ -183,6 +183,10 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
               {tech
                 ? `Mã phiên ${s.sessionId} · ${STATUS[s.status]} · ${SOURCE[s.source]}${s.energyWh !== null ? ` · ${s.energyWh} Wh` : ''}`
                 : STATUS[s.status]}
+              {(() => {
+                const n = data.sessionNotes.find((x) => x.sessionId === s.sessionId);
+                return n ? ` · Bệnh nhân ghi đau ${n.painBefore ?? '–'} → ${n.painAfter ?? '–'}/10` : '';
+              })()}
             </Text>
           </View>
         ))}

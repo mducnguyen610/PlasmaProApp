@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
+import { AdherenceCalendar } from '@/components/AdherenceCalendar';
 import { Card, Chip, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
 import { fmtDate, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
@@ -11,11 +12,14 @@ import { C } from '@/theme';
 // Hồ sơ và lịch sử của bệnh nhân: thông tin cá nhân, bác sĩ phụ trách, vết thương, ảnh và nhận xét.
 export default function PatientHistory() {
   const { me } = useStore();
-  const { patient, account, woundsOf, imagesOf } = useLookups();
+  const { patient, account, woundsOf, imagesOf, device, sessionsOf, activePlan } = useLookups();
   const p = patient(me?.patientId);
   if (!p) return null;
+  const dev = device(p.deviceId);
   return (
     <Screen header={<Header title="Hồ sơ và lịch sử" subtitle={p.code} />}>
+      {dev && <AdherenceCalendar sessions={sessionsOf(dev.id)} plan={activePlan(p.id)} lastSyncDay={dev.lastSync?.slice(0, 10) ?? null} canEdit />}
+      <SectionTitle>Hồ sơ</SectionTitle>
       <Card>
         <InfoRow label="Họ tên" value={p.name} />
         <InfoRow label="Năm sinh" value={String(p.birthYear)} />
