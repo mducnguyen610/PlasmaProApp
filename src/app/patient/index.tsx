@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { latestEvaluation } from '@/lib/access';
-import { areaReview, courseProgress, courseStatus, followUpDates, fmtDuration, phaseLabel, phasesOf } from '@/lib/course';
+import { areaReview, courseProgress, courseStatus, followUpDates, phaseLabel, phasesOf } from '@/lib/course';
 import { ReviewNote } from '@/components/CourseCard';
 import { SeverityCard } from '@/components/SeverityCard';
 import { DateBadge } from '@/components/DateBadge';
@@ -62,7 +62,9 @@ export default function PatientHome() {
   return (
     <Screen header={<Header title="Trang chủ" subtitle={`${p.name} · ${p.code}`} right={<DateBadge />} />}>
       <SimBadge />
-      <SectionTitle action="Chi tiết" onAction={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id } })}>Đợt điều trị</SectionTitle>
+      <SectionTitle action="Chi tiết" onAction={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id } })}>
+        {treating ? `Đợt điều trị · ${treating.w.code} ${treating.w.location}` : 'Đợt điều trị'}
+      </SectionTitle>
       <Card hero style={{ padding: 20 }}>
         {plan && pr && status ? (
           <>
@@ -74,16 +76,13 @@ export default function PatientHome() {
                 <Text style={{ color: C.textSoft }}>{status.detail}</Text>
               </View>
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {phase && <Chip icon="layers-outline" tone="blue" label={`Giai đoạn ${pr.phaseIndex + 1}/${pr.phaseCount}: ${phaseLabel(phase)}`} />}
-              <Chip icon="lock-closed-outline" tone="gray" label={`Thiết bị khóa ở mức ${plan.doseLevel ?? '—'}, ${fmtDuration(plan.durationSec)}`} />
-            </View>
+            {/* Mức năng lượng và thời gian chỉ hiện ở Lịch trình: trang chủ giữ một câu chính và một chip (quy tắc đơn giản cho bệnh nhân). */}
+            {phase && <View style={{ flexDirection: 'row' }}><Chip icon="layers-outline" tone="blue" label={`Giai đoạn ${pr.phaseIndex + 1}/${pr.phaseCount}: ${phaseLabel(phase)}`} /></View>}
             {dev && lastSyncDay !== today && (
               <Muted>{dev.lastSync ? `Thiết bị gửi dữ liệu lần cuối ${fmtDateTime(dev.lastSync)}, nên số lần hôm nay có thể chưa đầy đủ.` : 'Thiết bị chưa gửi dữ liệu, nên số lần hôm nay có thể chưa đầy đủ.'}</Muted>
             )}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
               <View style={{ flex: 1, gap: 14 }}>
-                <Stat label={`Vết thương · ${treating!.w.location}`} value={treating!.w.code} />
                 <Stat label="Dự kiến xem lại đợt" value={fmtDate(plan.endDate).slice(0, 5)} unit={fmtDate(plan.endDate).slice(6)} tone="red" />
               </View>
               <Ring value={pr.done} max={pr.total} label={`${pr.done}`} sub={`/ ${pr.total} buổi`} />

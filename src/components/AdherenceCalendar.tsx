@@ -18,12 +18,16 @@ const HIGH_PAIN = 7;
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
 /** Mỗi trạng thái có biểu tượng và chữ riêng, không chỉ dựa vào màu (khác bản Nerivio). */
-const KIND: Record<Exclude<DayKind, 'outside'>, { label: string; color: string; bg: string; icon?: 'checkmark' | 'alert' }> = {
+/**
+ * Chú giải chỉ có 5 nhóm cho bệnh nhân: Đã điều trị, Có lịch, Nghỉ, Lệch lịch, Chưa có dữ liệu.
+ * "Lệch lịch" gộp bỏ lỡ, thiếu lần và chiếu ngoài lịch; chữ trong ô và trình đọc màn hình vẫn nói rõ từng loại (`detail`).
+ */
+const KIND: Record<Exclude<DayKind, 'outside'>, { label: string; detail?: string; color: string; bg: string; icon?: 'checkmark' | 'alert' }> = {
   met: { label: 'Đã điều trị', color: C.green, bg: C.greenSoft, icon: 'checkmark' },
-  partial: { label: 'Thiếu', color: C.amber, bg: C.amberSoft },
-  over: { label: 'Ngoài lịch / thừa', color: C.amber, bg: C.amberSoft, icon: 'alert' },
-  none: { label: 'Bỏ lỡ', color: C.red, bg: C.redSoft },
-  rest: { label: 'Nghỉ theo lịch', color: C.textFaint, bg: C.card },
+  partial: { label: 'Lệch lịch', detail: 'Thiếu lần', color: C.amber, bg: C.amberSoft },
+  over: { label: 'Lệch lịch', detail: 'Chiếu ngoài lịch hoặc thừa lần', color: C.amber, bg: C.amberSoft, icon: 'alert' },
+  none: { label: 'Lệch lịch', detail: 'Bỏ lỡ', color: C.amber, bg: C.amberSoft },
+  rest: { label: 'Nghỉ', color: C.textFaint, bg: C.card },
   planned: { label: 'Có lịch', color: C.primary, bg: C.primarySoft },
   unsynced: { label: 'Chưa có dữ liệu', color: C.textSoft, bg: C.neutralSoft },
   today: { label: 'Hôm nay', color: C.primary, bg: C.primarySoft },
@@ -38,6 +42,7 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString('vi-VN', { hour: 
 
 function cellText(c: DayCell, target: number | null | undefined) {
   if (c.kind === 'unsynced') return '?';
+  if (c.kind === 'none') return 'bỏ lỡ';
   if (c.kind === 'rest') return 'nghỉ';
   if (c.kind === 'planned') return 'lịch';
   if (c.kind === 'over') return `${c.count}×`;
@@ -111,7 +116,7 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
                 onPress={() => { setSelected(c.date); setEditing(null); }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={`Ngày ${day} tháng ${Number(m)}${k ? `: ${k.label}${c.kind !== 'unsynced' ? `, ${c.count} lần` : ''}` : ''}${hasReminder ? ', có lịch hẹn' : ''}`}
+                accessibilityLabel={`Ngày ${day} tháng ${Number(m)}${k ? `: ${k.detail ?? k.label}${c.kind !== 'unsynced' ? `, ${c.count} lần` : ''}` : ''}${hasReminder ? ', có lịch hẹn' : ''}`}
                 style={{ width: `${100 / 7}%`, height: 52, padding: 2 }}>
                 <View style={{ flex: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: k ? k.bg : 'transparent', borderWidth: on ? 2 : 0, borderColor: C.primary }}>
                   {hasReminder && <Ionicons name="calendar" size={10} color={C.violet} style={{ position: 'absolute', top: 3, right: 4 }} />}
@@ -134,7 +139,7 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
               <Text style={{ fontSize: 12, color: C.textSoft }}>Lịch hẹn</Text>
             </View>
           )}
-          {(['met', 'planned', 'rest', 'none', 'over', 'unsynced'] as const).map((kind) => (
+          {(['met', 'planned', 'rest', 'none', 'unsynced'] as const).map((kind) => (
             <View key={kind} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: KIND[kind].bg, borderWidth: 1, borderColor: KIND[kind].color }} />
               <Text style={{ fontSize: 12, color: C.textSoft }}>{KIND[kind].label}</Text>
@@ -158,6 +163,9 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
           ))}
           {selected > today && !reminders.some((r) => r.date === selected) && <Muted>Chưa có lịch hẹn ngày này.</Muted>}
           {selectedCell?.kind === 'unsynced' && <Muted>Thiết bị chưa gửi dữ liệu ngày này. Số phiên sẽ hiện khi thiết bị kết nối Wi-Fi.</Muted>}
+          {selectedCell?.kind === 'none' && <Muted>Ngày có lịch nhưng thiết bị không ghi nhận phiên chiếu nào.</Muted>}
+          {selectedCell?.kind === 'over' && <Muted>Có phiên chiếu ngoài lịch hoặc nhiều hơn số lần của buổi. Hãy báo bác sĩ phụ trách.</Muted>}
+          {selectedCell?.kind === 'partial' && <Muted>Chưa chiếu đủ số lần của buổi.</Muted>}
           {selectedCell?.kind === 'rest' && <Muted>Ngày nghỉ theo lịch của đợt. Thiết bị không phát vào ngày này.</Muted>}
           {selectedCell?.kind === 'planned' && <Muted>Có buổi điều trị theo lịch.</Muted>}
           {daySessions.length === 0 && selectedCell?.kind !== 'unsynced' && selectedCell?.kind !== 'rest' && selected <= today && <Muted>Không có phiên điều trị.</Muted>}

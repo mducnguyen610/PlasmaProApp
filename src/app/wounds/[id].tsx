@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
@@ -9,7 +10,7 @@ import { ImageTile } from '@/components/items';
 import { Button, Card, Chip, Empty, Header, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
 import { ClosureActions } from '@/components/ClosureActions';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
-import { areaReview, courseProgress, followUpDates } from '@/lib/course';
+import { areaReview, courseProgress, fmtDuration, followUpDates, phaseLabel, phasesOf } from '@/lib/course';
 import { fmtDate, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
 import { assessmentSummary } from '@/lib/assessment';
 import { formatAreaDisplay } from '@/lib/naming';
@@ -24,6 +25,7 @@ export default function WoundDetail() {
   const w = wound(id);
   const p = patient(w?.patientId);
   const canView = useCanView(p);
+  const [showCourse, setShowCourse] = useState(false);
   if (!w || !p || !canView) return <NoAccess />;
 
   const isDoctor = me?.role === 'doctor';
@@ -32,6 +34,7 @@ export default function WoundDetail() {
   const plan = coursePlan(w.id, { patientView: !isDoctor });
   const dev = data.devices.find((x) => x.id === p.deviceId);
   const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id).filter((s) => !s.woundId || s.woundId === w.id), today, dev.lastSync?.slice(0, 10) ?? null) : null;
+  const currentPhase = plan && pr && pr.phaseIndex >= 0 ? phasesOf(plan)[pr.phaseIndex] : undefined;
   const byDate = new Map<string, typeof images>();
   for (const im of [...images].reverse()) byDate.set(im.captureDate, [...(byDate.get(im.captureDate) ?? []), im]);
   const evals = data.evaluations
@@ -57,10 +60,29 @@ export default function WoundDetail() {
         {plan ? (
           <>
             <Chip label={`Phiên bản ${plan.version} · ${PLAN_STATUS[plan.status].label}`} tone={PLAN_STATUS[plan.status].tone} />
-            <PhaseList plan={plan} current={pr?.phaseIndex} />
-            <DoseRows plan={plan} />
-            {pr && isDoctor && <ProgressRows pr={pr} />}
+            {/* Một dòng tóm tắt; giai đoạn, liều và số liệu tuân thủ đầy đủ nằm sau nút "Xem chi tiết đợt". */}
+            <Text style={{ color: C.text, fontWeight: '600' }}>
+              {currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1}/${pr!.phaseCount}: ${phaseLabel(currentPhase)}` : `${phasesOf(plan).length} giai đoạn`} · mức {plan.doseLevel ?? '—'}, {fmtDuration(plan.durationSec)}
+            </Text>
+            {pr && (
+              <Text style={{ color: pr.missed + pr.extra > 0 && isDoctor ? C.amber : C.textSoft }}>
+                Buổi {pr.done}/{pr.total}
+                {isDoctor && pr.missed > 0 ? ` · bỏ lỡ ${pr.missed}` : ''}
+                {isDoctor && pr.extra > 0 ? ` · ngoài lịch ${pr.extra}` : ''}
+                {plan.status === 'active' && pr.next ? ` · tiếp theo ${fmtDate(pr.next)}` : ''}
+              </Text>
+            )}
             <ReviewNote review={areaReview(images, plan, today)} forPatient={!isDoctor} />
+            <Text accessibilityRole="button" accessibilityState={{ expanded: showCourse }} onPress={() => setShowCourse(!showCourse)} style={{ color: C.primary, fontWeight: '600', paddingVertical: 10 }}>
+              {showCourse ? 'Ẩn chi tiết đợt' : 'Xem chi tiết đợt'}
+            </Text>
+            {showCourse && (
+              <>
+                <PhaseList plan={plan} current={pr?.phaseIndex} />
+                <DoseRows plan={plan} />
+                {pr && isDoctor && <ProgressRows pr={pr} />}
+              </>
+            )}
           </>
         ) : <Muted>Chưa có đợt điều trị cho vết thương này.</Muted>}
         {isDoctor && <ClosureActions woundId={w.id} status={w.status} check1={w.closureCheck1} followUpFrom={w.followUpFrom} today={today} hasPlan={!!plan} onNewCourse={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />}
