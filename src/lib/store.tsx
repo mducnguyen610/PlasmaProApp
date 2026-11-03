@@ -53,6 +53,7 @@ interface Store {
   setResearchReady: (imageId: string, ready: boolean) => Promise<void>;
   setResearchConsent: (consent: boolean) => void;
   logout: () => void;
+  finishOnboarding: () => void;
   resetDemo: () => void;
   addPatient: (p: Omit<Patient, 'id' | 'code' | 'createdAt' | 'researchCode'>, woundLocation?: string) => Promise<{ patient: Patient; activation: Activation }>;
   issueActivation: (patientId: string) => Promise<Activation>;
@@ -74,6 +75,17 @@ interface Store {
   setReportHandled: (id: string) => void;
   updateAccount: (id: string, patch: Partial<Account>) => void;
   resolveSyncError: (id: string) => void;
+}
+
+/**
+ * Đăng nhập đúng mật khẩu nhưng tài khoản chưa đồng ý phiên bản điều khoản hiện hành (R8).
+ * Màn đăng nhập bắt lỗi này để hiện ô đồng ý; người đã đồng ý đúng phiên bản không bị hỏi lại.
+ */
+export class TermsRequiredError extends Error {
+  constructor(public reason: 'first' | 'updated') {
+    super(reason === 'first' ? 'Hãy đọc và đồng ý điều khoản trước lần đăng nhập đầu tiên.' : `Điều khoản đã cập nhật (phiên bản ${TERMS_VERSION}). Hãy đọc và đồng ý để tiếp tục.`);
+    this.name = 'TermsRequiredError';
+  }
 }
 
 /** Mã kích hoạt chỉ trả về một lần cho bác sĩ; trong dữ liệu chỉ lưu bản băm. */
@@ -133,19 +145,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setMeId(null);
     AsyncStorage.removeItem(SESSION_KEY).catch(() => {});
   }, []);
+  const finishOnboarding = () => {
+    const actor = meRef.current;
+    if (!actor) return;
+    update(d => ({ ...d, accounts: d.accounts.map(a => a.id === actor.id ? { ...a, onboardingDoneAt: nowIso() } : a) }));
+  };
   const resetDemo = () => {
     if (meRef.current?.role !== 'admin') throw new Error('Cần quyền quản trị.');
     update(() => createSeed()); logout();
   };
+  // Chỉ hỏi đồng ý điều khoản khi tài khoản chưa đồng ý phiên bản hiện hành (đề xuất 4, rủi ro R8).
   const authenticate: Store['authenticate'] = async (username, password, agreed) => {
-    if (!agreed) throw new Error('Bạn cần đồng ý điều khoản trước khi đăng nhập.');
     const account = dataRef.current.accounts.find(a => a.username.toLowerCase() === normalizeUsername(username));
     if (account && isPendingActivation(account)) throw new Error('Tài khoản chưa kích hoạt. Hãy chọn "Kích hoạt tài khoản" và nhập mã bác sĩ đưa.');
     if (!account || !await verifyPassword(account, password)) throw new Error('Tên đăng nhập hoặc mật khẩu chưa đúng.');
     const current = dataRef.current.accounts.find(a => a.id === account.id)!;
     if (current.pendingApproval) throw new Error('Tài khoản đang chờ quản trị duyệt.');
     if (current.locked) throw new Error('Tài khoản đã bị khóa.');
-    update(d => ({ ...d, accounts: d.accounts.map(a => a.id === account.id ? { ...a, termsVersion: TERMS_VERSION, termsAcceptedAt: nowIso() } : a) }));
+    if (current.termsVersion !== TERMS_VERSION) {
+      if (!agreed) throw new TermsRequiredError(current.termsVersion ? 'updated' : 'first');
+      update(d => ({ ...d, accounts: d.accounts.map(a => a.id === account.id ? { ...a, termsVersion: TERMS_VERSION, termsAcceptedAt: nowIso() } : a) }));
+    }
     login(account.id);
   };
   const register: Store['register'] = async (input) => {
@@ -514,7 +534,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     update((d) => ({ ...d, syncErrors: d.syncErrors.map((s) => (s.id === id ? { ...s, resolved: true } : s)) }));
 
   const value: Store = {
-    ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, addWound, updateWound, addImage, labelImage,
+    ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, addWound, updateWound, addImage, labelImage,
     setExcluded, requestRetake, addEvaluation, savePlan, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
     setReportHandled, updateAccount, resolveSyncError,
   };
