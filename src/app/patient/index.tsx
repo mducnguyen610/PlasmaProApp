@@ -1,15 +1,17 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
 import { latestEvaluation } from '@/lib/access';
+import { metStreak, todayStatus } from '@/lib/adherence';
 import { SeverityCard } from '@/components/SeverityCard';
 import { DateBadge } from '@/components/DateBadge';
 import { TaskRow } from '@/components/items';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Header, Muted, Ring, Screen, SectionTitle, SimBadge, Stat, WoundPhoto } from '@/components/ui';
 import { notify } from '@/lib/dialog';
-import { fmtDate, TREND } from '@/lib/format';
+import { fmtDate, fmtDateTime, TREND } from '@/lib/format';
 import { formatAreaForName } from '@/lib/naming';
 import { computeReminders, scheduleReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
@@ -21,7 +23,7 @@ const dayDiff = (a: string, b: string) => Math.round((new Date(`${b}T00:00:00Z`)
 // Điều hướng sang Lịch trình, Lịch sử, Thiết bị nằm ở thanh tab, không lặp lại bằng thẻ gradient.
 export default function PatientHome() {
   const { data, me } = useStore();
-  const { patient, account, woundsOf, sessionsOf } = useLookups();
+  const { patient, account, woundsOf, sessionsOf, device } = useLookups();
   const [busy, setBusy] = useState(false);
   const p = patient(me?.patientId);
   if (!p) return null;
@@ -33,7 +35,13 @@ export default function PatientHome() {
   const evals = data.evaluations.filter((e) => woundIds.has(e.woundId) && e.visibleToPatient).sort((a, b) => b.date.localeCompare(a.date) || data.evaluations.indexOf(b) - data.evaluations.indexOf(a));
   const latest = evals[0];
   const retakes = data.images.filter((i) => i.patientId === p.id && i.retakeRequested);
-  const todaySessions = p.deviceId ? sessionsOf(p.deviceId).filter((s) => s.start.slice(0, 10) === today && s.status === 'completed').length : 0;
+  const sessions = p.deviceId ? sessionsOf(p.deviceId) : [];
+  const todaySessions = sessions.filter((s) => s.start.slice(0, 10) === today && s.status === 'completed').length;
+  const dev = device(p.deviceId);
+  const lastSyncDay = dev?.lastSync?.slice(0, 10) ?? null;
+  const status = todayStatus(todaySessions, plan?.sessionsPerDay);
+  const streak = plan ? metStreak(sessions, plan.sessionsPerDay, today, lastSyncDay, plan.startDate) : 0;
+  const statusColor = status.kind === 'met' ? C.green : status.kind === 'over' ? C.amber : C.primary;
   const totalDays = plan ? Math.max(1, dayDiff(plan.startDate, plan.endDate)) : 0;
   const doneDays = plan ? Math.min(totalDays, Math.max(0, dayDiff(plan.startDate, today))) : 0;
   const lastLabeled = data.images
@@ -46,13 +54,34 @@ export default function PatientHome() {
       <SectionTitle action="Chi tiết" onAction={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id } })}>Điều trị hôm nay</SectionTitle>
       <Card hero style={{ padding: 20 }}>
         {plan ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ flex: 1, gap: 14 }}>
-              <Stat label="Hôm nay" value={plan.sessionsPerDay != null ? `${todaySessions}/${plan.sessionsPerDay}` : todaySessions} unit="lần" tone="blue" />
-              <Stat label="Hiệu lực đến" value={fmtDate(plan.endDate).slice(0, 5)} unit={fmtDate(plan.endDate).slice(6)} tone="red" />
+          <>
+            {/* Một câu chính kiểu myAir: bệnh nhân biết ngay hôm nay còn phải làm mấy lần. */}
+            <View accessible accessibilityRole="summary" accessibilityLabel={`${status.title}. ${status.detail}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name={status.kind === 'met' ? 'checkmark-circle' : status.kind === 'over' ? 'alert-circle' : 'time-outline'} size={30} color={statusColor} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: statusColor }}>{status.title}</Text>
+                <Text style={{ color: C.textSoft }}>{status.detail}</Text>
+              </View>
             </View>
-            <Ring value={doneDays} max={totalDays} label={`${doneDays}`} sub={`/ ${totalDays} ngày`} />
-          </View>
+            {plan.sessionsPerDay != null && (
+              <View style={{ flexDirection: 'row' }}>
+                <Chip
+                  icon={streak > 0 ? 'flame-outline' : 'ribbon-outline'}
+                  tone={streak > 0 ? 'green' : 'gray'}
+                  label={streak > 0 ? `${streak} ngày liên tiếp làm đủ liệu trình` : 'Chưa có chuỗi ngày làm đủ'}
+                />
+              </View>
+            )}
+            {dev && lastSyncDay !== today && (
+              <Muted>{dev.lastSync ? `Thiết bị gửi dữ liệu lần cuối ${fmtDateTime(dev.lastSync)}, nên số lần hôm nay có thể chưa đầy đủ.` : 'Thiết bị chưa gửi dữ liệu, nên số lần hôm nay có thể chưa đầy đủ.'}</Muted>
+            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
+              <View style={{ flex: 1, gap: 14 }}>
+                <Stat label="Hiệu lực đến" value={fmtDate(plan.endDate).slice(0, 5)} unit={fmtDate(plan.endDate).slice(6)} tone="red" />
+              </View>
+              <Ring value={doneDays} max={totalDays} label={`${doneDays}`} sub={`/ ${totalDays} ngày`} />
+            </View>
+          </>
         ) : (
           <Muted>Chưa có liệu trình được bác sĩ xác nhận.</Muted>
         )}
