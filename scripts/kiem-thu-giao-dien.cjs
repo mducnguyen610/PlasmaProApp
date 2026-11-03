@@ -158,7 +158,7 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     const sum = await p.getByText(/bỏ lỡ \d+/).count();
     rec('TC08d', 'Dòng tóm tắt luôn nêu số buổi bỏ lỡ', sum > 0 || missed, '');
     const sub = await visible(p, /Loét tĩnh mạch chân/, false);
-    rec('TC08e', 'Nhóm tổn thương nằm ở phụ đề tiêu đề', sub, '');
+    rec('TC08e', 'Vị trí và nhóm tổn thương hiện đủ trong thân trang', sub, '');
     await p.context().close();
   }
 
@@ -170,6 +170,7 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     await p.getByText('3. Xác nhận').click(); await p.waitForTimeout(300);
     await p.getByText('Lưu phiên bản mới').click(); await p.waitForTimeout(400);
     const e1 = await visible(p, 'Nhập lý do thay đổi để lưu vết phiên bản.');
+    const sumOk = (await p.getByText(/^Giai đoạn 1: mỗi ngày .*Mức 8, 3 phút, 1 lần mỗi buổi\.$/).count()) > 0;
     // Xóa ngày của giai đoạn 1 rồi lưu từ bước 3: phải quay về bước 1 và báo lỗi.
     await p.getByText('1. Lịch').click(); await p.waitForTimeout(300);
     await p.getByPlaceholder('dd/mm/yyyy').first().fill('');
@@ -179,6 +180,7 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     const e2 = await visible(p, 'Giai đoạn 1: ngày theo dạng dd/mm/yyyy.');
     const back = await visible(p, 'Lịch theo giai đoạn');
     rec('TC09a', 'Biểu mẫu mở ở bước 1 (Lịch)', step1, '');
+    rec('TC09d', 'Bước 3 tóm tắt lịch và liều trước khi lưu', sumOk, '');
     rec('TC09b', 'Thiếu lý do: báo lỗi ở bước 3', e1, '');
     rec('TC09c', 'Ngày giai đoạn sai: tự quay về bước 1 và báo lỗi', e2 && back, `lỗi: ${e2}; về bước 1: ${back}`);
     await p.context().close();
