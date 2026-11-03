@@ -16,12 +16,12 @@ const HIGH_PAIN = 7;
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
 /** Mỗi trạng thái có biểu tượng và chữ riêng, không chỉ dựa vào màu (khác bản Nerivio). */
-const KIND: Record<Exclude<DayKind, 'outside'>, { label: string; color: string; bg: string; icon?: 'checkmark' | 'help' | 'alert' }> = {
+const KIND: Record<Exclude<DayKind, 'outside'>, { label: string; color: string; bg: string; icon?: 'checkmark' | 'alert' }> = {
   met: { label: 'Đủ', color: C.green, bg: C.greenSoft, icon: 'checkmark' },
   partial: { label: 'Thiếu', color: C.amber, bg: C.amberSoft },
   over: { label: 'Quá số lần', color: C.amber, bg: C.amberSoft, icon: 'alert' },
   none: { label: 'Không dùng', color: C.red, bg: C.redSoft },
-  unsynced: { label: 'Chưa có dữ liệu', color: C.textSoft, bg: C.neutralSoft, icon: 'help' },
+  unsynced: { label: 'Chưa có dữ liệu', color: C.textSoft, bg: C.neutralSoft },
   today: { label: 'Hôm nay', color: C.primary, bg: C.primarySoft },
 };
 
