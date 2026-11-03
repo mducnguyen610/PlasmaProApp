@@ -10,7 +10,7 @@ export default function PatientTabs() {
   return (
     <RoleTabs
       role="patient"
-      fab={{ icon: 'calendar', label: 'Lịch trình điều trị', onPress: () => router.navigate('/patient/schedule') }}
+      fab={{ icon: 'calendar', label: 'Lịch trình điều trị', onPress: () => router.push('/schedule') }}
       tabs={[
         { name: 'index', title: 'Trang chủ', icon: 'home-outline', iconOn: 'home' },
         { name: 'history', title: 'Lịch sử', icon: 'time-outline', iconOn: 'time' },

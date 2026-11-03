@@ -97,7 +97,7 @@ export default function PatientHome() {
         <Card style={{ borderWidth: 1.5, borderColor: C.red }}>
           <Text style={{ color: C.red, fontWeight: '700' }}>Cần hẹn bác sĩ chụp lại</Text>
           {retakes.map((im) => (
-            <TaskRow key={im.id} icon="camera-outline" tone="red" title={`Ảnh ${im.id} · ${im.capture?.sourceDateKnown === false ? 'Chưa rõ ngày chụp' : fmtDate(im.captureDate)}`} detail={im.retakeRequested!} onPress={() => router.navigate('/patient/schedule')} />
+            <TaskRow key={im.id} icon="camera-outline" tone="red" title={`Ảnh ${im.id} · ${im.capture?.sourceDateKnown === false ? 'Chưa rõ ngày chụp' : fmtDate(im.captureDate)}`} detail={im.retakeRequested!} onPress={() => router.push('/schedule')} />
           ))}
         </Card>
       )}
