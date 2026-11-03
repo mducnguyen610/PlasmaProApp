@@ -15,7 +15,7 @@ type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tab
 type TabDef = { name: string; title: string; icon: IconName; iconOn: IconName; badge?: number };
 
 /** Thanh tab của mẫu Fitness App: nền trắng, bo trên, nút tròn gradient nổi ở giữa. */
-function BottomBar({ state, navigation, tabs, fab }: BottomTabBarProps & { tabs: TabDef[]; fab?: { icon: IconName; onPress: () => void; label: string } }) {
+function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarProps & { tabs: TabDef[]; fab?: { icon: IconName; onPress: () => void; label: string } }) {
   const insets = useSafeAreaInsets();
   const items = state.routes.map((r, i) => ({ route: r, index: i, def: tabs.find((t) => t.name === r.name)! })).filter((x) => x.def);
   const half = Math.ceil(items.length / 2);
@@ -28,8 +28,8 @@ function BottomBar({ state, navigation, tabs, fab }: BottomTabBarProps & { tabs:
         accessibilityLabel={x.def.badge ? `${x.def.title}, ${x.def.badge} mục mới` : x.def.title}
         accessibilityState={{ selected: on }}
         onPress={() => {
-          const ev = navigation.emit({ type: 'tabPress', target: x.route.key, canPreventDefault: true });
-          if (!on && !ev.defaultPrevented) navigation.navigate(x.route.name);
+          const ev = emitter.emit({ type: 'tabPress', target: x.route.key, canPreventDefault: true });
+          if (!on && !ev.defaultPrevented) navigateToTab(x.route.key);
         }}
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingTop: 10 }}>
         <View>
