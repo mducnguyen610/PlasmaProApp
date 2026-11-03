@@ -12,7 +12,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { MONO, Text, TextInput } from '@/components/Text';
 import { DEMO_ASSETS } from '@/lib/seed';
 import type { WoundImage } from '@/lib/types';
-import { bar, C, cardShape, G, shadow, type GradientName } from '@/theme';
+import { bar, C, cardShape, G, shadow, type GradientName, T } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -128,8 +128,8 @@ export function Ring({ value, max, label, sub, size = 108, color = C.primary }: 
           <Circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={8} strokeLinecap="round" fill="none" strokeDasharray={`${circ * pct} ${circ}`} />
         </Svg>
       </View>
-      <Text style={{ fontWeight: '500', fontSize: 24, color: C.primary, letterSpacing: 0 }}>{label}</Text>
-      <Text style={{ fontSize: 12, color: C.textSoft, fontWeight: '700' }}>{sub}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ fontWeight: '500', fontSize: T.stat, color: C.primary, letterSpacing: 0 }}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ fontSize: T.caption, color: C.textSoft, fontWeight: '700' }}>{sub}</Text>
     </View>
   );
 }
@@ -143,7 +143,7 @@ export function SectionTitle({ children, right, action, onAction }: { icon?: Ico
       {right}
       {action && (
         <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button" accessibilityLabel={action} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44, paddingHorizontal: 4 }}>
-          <Text style={{ color: C.primary, fontSize: 15 }}>{action}</Text>
+          <Text style={{ color: C.primary, fontSize: T.label }}>{action}</Text>
           <Ionicons name="arrow-forward" size={16} color={C.primary} />
         </Pressable>
       )}
@@ -237,7 +237,7 @@ export function Choices<T extends string>({ value, options, onChange }: { value:
         const on = o.value === value;
         return (
           <Pressable key={o.value} onPress={() => onChange(o.value)} accessibilityRole="radio" accessibilityLabel={o.label} accessibilityState={{ checked: on, selected: on }} style={[s.choice, on && { backgroundColor: C.primary, borderColor: C.primary }]}>
-            <Text style={{ color: on ? C.onPrimary : C.grey, fontWeight: '500', fontSize: 14 }}>{o.label}</Text>
+            <Text style={{ color: on ? C.onPrimary : C.grey, fontWeight: '500', fontSize: T.label }}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -257,12 +257,26 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
   );
 }
 
-export function InfoRow({ label, value, mono }: { label: string; value: ReactNode; mono?: boolean }) {
+/**
+ * Dòng nhãn và giá trị. Giá trị dài (trên 24 ký tự, hoặc nhãn cộng giá trị trên 38) tự xếp nhãn ở trên, giá trị ở dưới cỡ thân bài,
+ * để màn 390 px không bị dồn hai cột chữ nhỏ (đề xuất 6).
+ */
+export function InfoRow({ label, value, mono, stack }: { label: string; value: ReactNode; mono?: boolean; stack?: boolean }) {
+  const isText = typeof value === 'string' || typeof value === 'number';
+  const stacked = stack ?? (isText && (String(value).length > 24 || label.length + String(value).length > 38));
+  if (stacked) {
+    return (
+      <View style={{ gap: 2, paddingVertical: 4 }}>
+        <Text style={s.infoLabel}>{label}</Text>
+        {isText ? <Text style={[{ color: C.text, fontSize: T.body, fontWeight: '500' }, mono && { fontFamily: MONO, fontSize: T.caption }]} selectable>{value}</Text> : value}
+      </View>
+    );
+  }
   return (
     <View style={s.infoRow}>
       <Text style={s.infoLabel}>{label}</Text>
-      {typeof value === 'string' || typeof value === 'number' ? (
-        <Text style={[s.infoValue, mono && { fontFamily: MONO, fontSize: 12 }]} selectable>{value}</Text>
+      {isText ? (
+        <Text style={[s.infoValue, mono && { fontFamily: MONO, fontSize: T.caption }]} selectable>{value}</Text>
       ) : (
         value
       )}
@@ -270,16 +284,29 @@ export function InfoRow({ label, value, mono }: { label: string; value: ReactNod
   );
 }
 
-/** Chỉ số kiểu "Eaten / Burned": vạch màu dọc, nhãn xám nhạt, số đậm. */
+/** Lưới số liệu ngắn 2 cột thay cho nhiều dòng nhãn và giá trị (đề xuất 6). */
+export function StatGrid({ items }: { items: { label: string; value: string | number; tone?: 'amber' | 'red' | 'green' }[] }) {
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {items.map((it) => (
+        <View key={it.label} accessible accessibilityLabel={`${it.label}: ${it.value}`} style={{ flexGrow: 1, flexBasis: '45%', padding: 10, borderRadius: 12, backgroundColor: it.tone === 'amber' ? C.amberSoft : it.tone === 'red' ? C.redSoft : it.tone === 'green' ? C.greenSoft : C.surfaceMuted }}>
+          <Text style={{ fontSize: T.stat, fontWeight: '700', color: it.tone === 'amber' ? C.amber : it.tone === 'red' ? C.red : C.text }}>{it.value}</Text>
+          <Text style={{ fontSize: T.small, color: C.textSoft }}>{it.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function Stat({ value, label, tone = 'blue', unit }: { value: string | number; label: string; tone?: Tone; unit?: string }) {
   return (
     <View accessible accessibilityLabel={`${label}: ${value}${unit ? ' ' + unit : ''}`} style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
       <View style={{ width: 2, borderRadius: 4, backgroundColor: TONE_BAR[tone], opacity: 0.8 }} />
       <View style={{ paddingVertical: 2, flex: 1, minWidth: 0 }}>
-        <Text style={{ color: C.textSoft, fontWeight: '500', fontSize: 13 }}>{label}</Text>
+        <Text style={{ color: C.textSoft, fontWeight: '500', fontSize: T.small }}>{label}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
-          <Text style={{ color: C.text, fontWeight: '700', fontSize: 18 }}>{value}</Text>
-          {unit ? <Text style={{ color: C.textSoft, fontSize: 12, marginBottom: 3 }}>{unit}</Text> : null}
+          <Text style={{ color: C.text, fontWeight: '700', fontSize: T.cardTitle }}>{value}</Text>
+          {unit ? <Text style={{ color: C.textSoft, fontSize: T.caption, marginBottom: 3 }}>{unit}</Text> : null}
         </View>
       </View>
     </View>
@@ -305,7 +332,7 @@ export function WoundPhoto({ image, style }: { image: WoundImage; style?: StyleP
 }
 
 export function Muted({ children, style }: { children: ReactNode; style?: object }) {
-  return <Text style={[{ color: C.textSoft, fontSize: 13, lineHeight: 19 }, style]}>{children}</Text>;
+  return <Text style={[{ color: C.textSoft, fontSize: T.small, lineHeight: 21 }, style]}>{children}</Text>;
 }
 
 export function H({ children, size = 16 }: { children: ReactNode; size?: number }) {
@@ -320,27 +347,27 @@ export const s = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 },
   roundBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: C.text, fontSize: 22, fontWeight: '700', letterSpacing: 1.2 },
-  headerSub: { color: C.textSoft, fontSize: 13, marginTop: 2 },
+  headerSub: { color: C.textSoft, fontSize: T.small, marginTop: 2 },
   headerBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.primarySoft, paddingHorizontal: 12, paddingVertical: 8, minHeight: 44, borderRadius: 22 },
-  headerBtnText: { color: C.primary, fontWeight: '500', fontSize: 13 },
+  headerBtnText: { color: C.primary, fontWeight: '500', fontSize: T.small },
   card: { backgroundColor: C.card, padding: 16, gap: 10, ...shadow },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginTop: 4 },
-  sectionTitle: { color: C.textSoft, fontSize: 18, fontWeight: '500', letterSpacing: 0.5 },
+  sectionTitle: { color: C.text, fontSize: T.cardTitle, fontWeight: '700', letterSpacing: 0.2, flexShrink: 1 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, alignSelf: 'flex-start' },
-  chipText: { fontSize: 12, fontWeight: '600' },
+  chipText: { fontSize: T.caption, fontWeight: '600' },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 24 },
   btnShadow: { shadowColor: C.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 4, height: 8 }, elevation: 5, borderRadius: 24 },
-  btnText: { fontSize: 15, fontWeight: '500', letterSpacing: 0.3 },
-  label: { color: C.grey, fontSize: 14, fontWeight: '500' },
-  input: { backgroundColor: C.surfaceMuted, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.text },
-  hint: { color: C.textFaint, fontSize: 12 },
-  error: { color: C.red, fontSize: 12, fontWeight: '500' },
+  btnText: { fontSize: T.body, fontWeight: '500', letterSpacing: 0.3 },
+  label: { color: C.grey, fontSize: T.label, fontWeight: '500' },
+  input: { backgroundColor: C.surfaceMuted, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: T.body, color: C.text },
+  hint: { color: C.textFaint, fontSize: T.caption },
+  error: { color: C.red, fontSize: T.caption, fontWeight: '500' },
   choice: { paddingHorizontal: 14, paddingVertical: 8, minHeight: 44, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: C.border, backgroundColor: C.card },
   seg: { flexDirection: 'row', backgroundColor: C.card, borderRadius: 24, padding: 4, gap: 4, ...shadow },
   segItem: { flex: 1, paddingVertical: 9, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
   segItemOn: { backgroundColor: C.primary },
-  segText: { color: C.grey, fontSize: 14, fontWeight: '500', textAlign: 'center' },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 3 },
-  infoLabel: { color: C.textSoft, fontSize: 13 },
-  infoValue: { color: C.text, fontSize: 13, fontWeight: '500', flexShrink: 1, textAlign: 'right' },
+  segText: { color: C.grey, fontSize: T.label, fontWeight: '500', textAlign: 'center' },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 4 },
+  infoLabel: { color: C.textSoft, fontSize: T.label },
+  infoValue: { color: C.text, fontSize: T.label, fontWeight: '500', flexShrink: 1, textAlign: 'right' },
 });

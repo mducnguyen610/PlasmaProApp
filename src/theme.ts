@@ -90,3 +90,23 @@ export const F = {
   medium: 'GoogleSansFlex-Medium',
   bold: 'GoogleSansFlex-Bold',
 } as const;
+
+/**
+ * Thang cỡ chữ dùng chung (đề xuất 1 của bản góp ý cỡ chữ, 03/11/2026).
+ * Tham chiếu: Apple HIG chữ thân bài mặc định 17 pt; Material 3 "body large" 16 sp.
+ * Không chữ nào nhỏ hơn T.min (Text tự chặn dưới).
+ */
+export const T = {
+  min: 12,
+  caption: 13,
+  small: 14,
+  label: 15,
+  body: 16,
+  cardTitle: 18,
+  screenTitle: 22,
+  stat: 24,
+  display: 32,
+} as const;
+
+/** Hệ số cỡ chữ theo vai trò: bệnh nhân thân bài 17 (đề xuất 2). Bác sĩ và kỹ thuật giữ 16. */
+export const ROLE_SCALE = { patient: 17 / 16, doctor: 1, admin: 1 } as const;

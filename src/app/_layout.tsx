@@ -7,7 +7,8 @@ import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { StoreProvider, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { FontScaleContext } from '@/components/Text';
+import { C, ROLE_SCALE } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -21,7 +22,7 @@ if (Platform.OS !== 'web') {
 }
 
 function Root() {
-  const { ready } = useStore();
+  const { ready, me } = useStore();
   // Google Sans Flex đã ghép bộ Latin và Vietnamese từ gói font được cung cấp.
   const [fontsLoaded, fontError] = useFonts({
     'GoogleSansFlex-Regular': require('../../assets/fonts/GoogleSansFlex-Regular.ttf'),
@@ -34,10 +35,10 @@ function Root() {
   }, [done]);
   if (!done) return null;
   return (
-    <>
+    <FontScaleContext.Provider value={me ? ROLE_SCALE[me.role] : 1}>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} />
-    </>
+    </FontScaleContext.Provider>
   );
 }
 

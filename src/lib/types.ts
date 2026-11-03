@@ -26,7 +26,11 @@ export interface Account {
   activationAttempts?: number;
 }
 
-export type WoundStatus = 'active' | 'paused' | 'closed';
+/**
+ * active: đang trong đợt điều trị. awaiting_closure: bác sĩ ghi nhận biểu mô đã khép lần 1, chờ xác nhận lần 2.
+ * follow_up: đã xác nhận liền, đang theo dõi sau điều trị (không còn phiên chiếu). closed: kết thúc theo dõi.
+ */
+export type WoundStatus = 'active' | 'paused' | 'awaiting_closure' | 'follow_up' | 'closed';
 
 export interface Patient {
   id: string;
@@ -54,6 +58,10 @@ export interface Wound {
   group?: string;
   startDate: string;
   status: WoundStatus;
+  /** Ngày bác sĩ ghi nhận biểu mô đã khép lần 1 (chờ xác nhận lần 2 sau 14 ngày, theo FDA 2006). */
+  closureCheck1?: string;
+  /** Ngày xác nhận liền lần 2, bắt đầu theo dõi sau điều trị. */
+  followUpFrom?: string;
 }
 
 export type LabelStatus = 'unlabeled' | 'labeled' | 'excluded';
@@ -105,6 +113,12 @@ export interface SessionNote {
   sessionId: string;
   painBefore?: number;
   painAfter?: number;
+  /** Dung nạp trong lúc chiếu (slide 35: "sans douleurs, ni brûlant ou piquant"). */
+  burning?: boolean;
+  stinging?: boolean;
+  /** Phản ứng da quanh vết thương ngày hôm sau (slide 29: ban đỏ, phù). */
+  rednessNextDay?: boolean;
+  swellingNextDay?: boolean;
   at: string;
 }
 
@@ -137,10 +151,34 @@ export interface Evaluation {
 }
 
 export type PlanStatus = 'draft' | 'active' | 'paused' | 'ended';
+/**
+ * Một giai đoạn của đợt điều trị (slide 39, 40: mỗi ngày rồi thưa dần).
+ * - daily: mỗi ngày.
+ * - every_n_days: cách n ngày tính từ ngày đầu giai đoạn (n = 2 là cách ngày).
+ * - n_per_week: n buổi mỗi tuần vào các thứ cố định (xem WEEK_DAYS trong course.ts).
+ */
+export type PhasePattern = 'daily' | 'every_n_days' | 'n_per_week';
+export interface CoursePhase { from: string; to: string; pattern: PhasePattern; n: number }
+export type CourseEndReason = 'healed' | 'stopped' | 'no_progress' | 'other';
 
 export interface TreatmentPlan {
   id: string;
   patientId: string;
+  /** Đợt điều trị gắn với một vết thương. Bản cũ không có trường này thì coi là vết đầu tiên của bệnh nhân. */
+  woundId?: string;
+  /** Các giai đoạn; trống thì coi như mỗi ngày từ startDate đến endDate. */
+  phases?: CoursePhase[];
+  /** Mức năng lượng trên thiết bị (thiết bị tại nhà bị khóa ở mức này, slide 24). */
+  doseLevel?: number | null;
+  /** Thời gian chiếu mỗi lần, giây. */
+  durationSec?: number | null;
+  /** Hệ số giây/cm² để gợi ý thời gian theo diện tích (S2k 2022, Stratmann 2020). Chờ nhóm phần cứng xác nhận. */
+  secondsPerCm2?: number | null;
+  /** Diện tích dùng để so sánh ở mốc xem lại. */
+  areaAtStart?: number | null;
+  /** Ngày thứ mấy của đợt cần xem lại hiệu quả (mặc định 28, Sheehan 2003). */
+  reviewAtDay?: number | null;
+  endReason?: CourseEndReason;
   version: number;
   status: PlanStatus;
   sessionsPerDay: number | null;
@@ -156,6 +194,7 @@ export interface TreatmentPlan {
   confirmed: boolean;
 }
 
+export type DeviceLifecycle = 'in_use' | 'returned' | 'disinfected' | 'ready';
 export interface Device {
   id: string;
   /** Mã thiết bị in trên vỏ, ví dụ TB-001. */
@@ -169,6 +208,10 @@ export interface Device {
   simulated: boolean;
   /** Lần gần nhất làm từng mục chăm sóc (mã mục trong maintenance.ts → thời điểm ISO). */
   care?: Record<string, string>;
+  /** Đầu phát dùng riêng cho bệnh nhân đang giữ thiết bị (slide 25 "embouts à usage individuel"). */
+  tip?: { code: string; issuedAt: string };
+  /** Vòng đời thiết bị cho thuê (slide 24): đang dùng, đã thu hồi, đã khử khuẩn, sẵn sàng cấp. */
+  lifecycle?: DeviceLifecycle;
 }
 
 export interface DeviceSession {
@@ -180,6 +223,8 @@ export interface DeviceSession {
   energyWh: number | null;
   status: 'completed' | 'interrupted' | 'over_limit';
   source: 'device' | 'manual' | 'simulated';
+  /** Vết thương được chiếu trong phiên (bệnh nhân chọn trên thiết bị hoặc ứng dụng khi có nhiều vết). */
+  woundId?: string;
 }
 
 export interface SymptomReport {

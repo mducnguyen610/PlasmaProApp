@@ -25,16 +25,16 @@ export function PatientCard({ patient }: { patient: Patient }) {
         <IconBadge icon="person-outline" />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>{patient.name}</Text>
-          <Text style={{ color: C.textSoft, fontSize: 12 }}>Mã hồ sơ: {patient.code} · {patient.sex}, {patient.birthYear}</Text>
+          <Text style={{ color: C.textSoft, fontSize: 13 }}>Mã hồ sơ: {patient.code} · {patient.sex}, {patient.birthYear}</Text>
         </View>
         <Chip label={active ? 'Đang theo dõi' : 'Tạm dừng'} tone={active ? 'green' : 'amber'} />
       </View>
       {severity && <Chip label={'Mức độ cao nhất: ' + SEVERITY[severity].label} tone={SEVERITY[severity].tone} />}
       <View style={{ flexDirection: 'row', backgroundColor: C.surfaceMuted, borderRadius: 12, padding: 10, justifyContent: 'space-between' }}>
-        <Text style={{ color: C.textSoft, fontSize: 12 }}>
+        <Text style={{ color: C.textSoft, fontSize: 13 }}>
           Thiết bị: <Text style={{ color: C.text, fontWeight: '700' }}>{dev?.code ?? 'Chưa gán'}</Text>
         </Text>
-        <Text style={{ color: C.textSoft, fontSize: 12 }}>
+        <Text style={{ color: C.textSoft, fontSize: 13 }}>
           {wounds.length} vết thương{unlabeled ? ` · ` : ''}
           {unlabeled ? <Text style={{ color: C.amber, fontWeight: '700' }}>{unlabeled} ảnh chờ nhãn</Text> : null}
         </Text>
@@ -60,8 +60,8 @@ export function ImageTile({ image, width = 150 }: { image: WoundImage; width?: n
           <Chip label="Chụp lại" tone="red" icon="refresh" />
         </View>
       )}
-      <Text style={{ fontSize: 12, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>
-      <Text style={{ fontSize: 12, color: C.textFaint }} numberOfLines={1}>{image.filename}</Text>
+      <Text style={{ fontSize: 13, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>
+      <Text style={{ fontSize: 13, color: C.textFaint }} numberOfLines={1}>{image.filename}</Text>
     </Pressable>
   );
 }
@@ -72,7 +72,7 @@ export function TaskRow({ icon, tone, title, detail, onPress }: { icon: IconName
       <IconBadge icon={icon} tone={tone} size={36} />
       <View style={{ flex: 1 }}>
         <Text style={{ fontWeight: '600', color: C.text }}>{title}</Text>
-        <Text style={{ color: C.textSoft, fontSize: 12 }} numberOfLines={2}>{detail}</Text>
+        <Text style={{ color: C.textSoft, fontSize: 13 }} numberOfLines={2}>{detail}</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
     </Pressable>

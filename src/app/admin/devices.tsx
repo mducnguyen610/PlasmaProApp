@@ -45,7 +45,7 @@ export default function AdminDevices() {
             <Chip label={d.online ? 'Online' : 'Offline'} tone={d.online ? 'green' : 'gray'} />
           </View>
           <Muted>Đồng bộ gần nhất: {d.lastSync ? fmtDateTime(d.lastSync) : 'chưa từng'} · Firmware {d.firmware}</Muted>
-          <Text style={{ color: C.text, fontSize: 13, fontWeight: '600' }}>Gán cho bệnh nhân</Text>
+          <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Gán cho bệnh nhân</Text>
           <Choices
             value={d.patientId ?? 'none'}
             onChange={(v) => assignDevice(d.id, v === 'none' ? null : v)}

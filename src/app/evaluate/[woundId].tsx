@@ -88,7 +88,7 @@ export default function Evaluate() {
         <Field label="Đặc điểm vết thương" value={characteristics} onChangeText={setCharacteristics} multiline placeholder="Nền, bờ, da xung quanh, dịch tiết, mô hạt…" />
         <Field label="Triệu chứng" value={symptoms} onChangeText={setSymptoms} multiline placeholder="Đau, khó chịu…" />
         <Field label="Nguồn thông tin triệu chứng" value={symptomSource} onChangeText={setSymptomSource} />
-        <Text style={{ color: C.text, fontSize: 13, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
+        <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
         <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
         <Field label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
         <Field label="Ngày tái đánh giá" value={nextReview} onChangeText={setNextReview} placeholder="dd/mm/yyyy" />

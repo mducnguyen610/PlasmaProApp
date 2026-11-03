@@ -1,12 +1,13 @@
 import { Platform } from 'react-native';
 
+import { followUpDates } from './course';
 import { fmtDate } from './format';
 import type { AppData } from './types';
 
 export interface Reminder {
   id: string;
   date: string;
-  kind: 'photo' | 'review' | 'retake' | 'plan';
+  kind: 'photo' | 'review' | 'retake' | 'plan' | 'followup';
   title: string;
   body: string;
 }
@@ -27,7 +28,13 @@ export function computeReminders(data: AppData, patientId: string, today: string
     .filter((p) => p.patientId === patientId && p.confirmed && p.status === 'active')
     .sort((a, b) => b.version - a.version)[0];
   const every = plan ? parseEveryDays(plan.reviewSchedule) : null;
-  const wounds = data.wounds.filter((w) => w.patientId === patientId && w.status === 'active');
+  const wounds = data.wounds.filter((w) => w.patientId === patientId && (w.status === 'active' || w.status === 'awaiting_closure'));
+  // Sau khi liền: hẹn chụp ảnh kiểm tra ở các mốc theo dõi (FDA 2006: ít nhất 3 tháng; mốc cụ thể chờ bác sĩ chọn).
+  for (const w of data.wounds.filter((x) => x.patientId === patientId && x.status === 'follow_up' && x.followUpFrom)) {
+    for (const m of followUpDates(w.followUpFrom!).filter((x) => x.date >= today)) {
+      out.push({ id: `fu-${w.id}-${m.days}`, date: m.date, kind: 'followup', title: `Kiểm tra sau điều trị ${w.code}`, body: `${m.days} ngày sau khi liền: tái khám để bác sĩ chụp ảnh ${w.location}, chắc vết thương không mở lại.` });
+    }
+  }
 
   for (const w of wounds) {
     const imgs = data.images.filter((i) => i.woundId === w.id && i.capture?.sourceDateKnown !== false).sort((a, b) => b.captureDate.localeCompare(a.captureDate));
@@ -48,7 +55,7 @@ export function computeReminders(data: AppData, patientId: string, today: string
     }
   }
   if (plan && plan.endDate >= today) {
-    out.push({ id: `plan-${plan.id}`, date: plan.endDate, kind: 'plan', title: 'Kết thúc liệu trình', body: `Liệu trình v${plan.version} kết thúc ngày ${fmtDate(plan.endDate)}.` });
+    out.push({ id: `plan-${plan.id}`, date: plan.endDate, kind: 'plan', title: 'Bác sĩ xem lại đợt điều trị', body: `Ngày dự kiến của đợt v${plan.version} (${fmtDate(plan.endDate)}). Đợt kết thúc khi bác sĩ xác nhận vết thương đã liền, không tự dừng theo ngày.` });
   }
   return out.sort((a, b) => a.date.localeCompare(b.date));
 }
