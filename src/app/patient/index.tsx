@@ -3,10 +3,9 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { latestEvaluation } from '@/lib/access';
+import { latestEvaluation, SEVERITY } from '@/lib/access';
 import { areaReview, courseProgress, courseStatus, followUpDates, phaseLabel, phasesOf } from '@/lib/course';
 import { ReviewNote } from '@/components/CourseCard';
-import { SeverityCard } from '@/components/SeverityCard';
 import { DateBadge } from '@/components/DateBadge';
 import { TaskRow } from '@/components/items';
 import { Text } from '@/components/Text';
@@ -34,15 +33,14 @@ export default function PatientHome() {
   if (!p) return null;
   const today = new Date().toISOString().slice(0, 10);
   const reminders = computeReminders(data, p.id, today);
+  const upcoming = reminders.filter((r) => r.date >= today);
+  const next = upcoming[0];
   const wounds = woundsOf(p.id);
-  const woundIds = new Set(wounds.map((w) => w.id));
   const courses = wounds.map((w) => ({ w, plan: coursePlan(w.id, { patientView: true }) }));
   const treating = courses.find((c) => c.plan?.status === 'active');
   const plan = treating?.plan;
   const followUp = courses.find((c) => c.w.status === 'follow_up');
   const awaiting = courses.find((c) => c.w.status === 'awaiting_closure');
-  const evals = data.evaluations.filter((e) => woundIds.has(e.woundId) && e.visibleToPatient).sort((a, b) => b.date.localeCompare(a.date) || data.evaluations.indexOf(b) - data.evaluations.indexOf(a));
-  const latest = evals[0];
   const retakes = data.images.filter((i) => i.patientId === p.id && i.retakeRequested);
   const sessions = p.deviceId ? sessionsOf(p.deviceId) : [];
   const dev = device(p.deviceId);
@@ -55,9 +53,6 @@ export default function PatientHome() {
   const review = plan && treating ? areaReview(imagesOf(treating.w.id), plan, today) : null;
   const nextCheck = followUp?.w.followUpFrom ? followUpDates(followUp.w.followUpFrom).find((x) => x.date >= today) : undefined;
   const steps = status?.kind === 'treat' ? BEFORE : status?.kind === 'done' ? AFTER : [];
-  const lastLabeled = data.images
-    .filter((i) => i.patientId === p.id && i.areaCm2 !== null && i.status === 'labeled')
-    .sort((a, b) => b.captureDate.localeCompare(a.captureDate))[0];
 
   return (
     <Screen header={<Header title="Trang chủ" subtitle={`${p.name} · ${p.code}`} right={<DateBadge />} />}>
@@ -139,12 +134,6 @@ export default function PatientHome() {
         </Card>
       )}
 
-      <SectionTitle>Tình trạng vết thương</SectionTitle>
-      {wounds.length === 0 && <Card><Muted>Hồ sơ mới đang chờ bác sĩ phụ trách tiếp nhận và đánh giá.</Muted></Card>}
-      {wounds.map(w => {
-        const evaluation = latestEvaluation(data, w.id, true);
-        return <SeverityCard key={w.id} title={w.code + ' · ' + w.location} evaluation={evaluation} doctor={account(evaluation?.doctorId)?.name} />;
-      })}
       {retakes.length > 0 && (
         <Card style={{ borderWidth: 1.5, borderColor: C.red }}>
           <Text style={{ color: C.red, fontWeight: '700' }}>Cần hẹn bác sĩ chụp lại</Text>
@@ -154,38 +143,26 @@ export default function PatientHome() {
         </Card>
       )}
 
-      <Button label="Báo triệu chứng hoặc sự cố" icon="medkit-outline" variant="secondary" onPress={() => router.push('/report')} />
-      <SectionTitle>Nhận xét của bác sĩ</SectionTitle>
+      {/* Chỉ một lịch hẹn gần nhất; danh sách đầy đủ ở Lịch trình (đề xuất 4). */}
+      <SectionTitle action={upcoming.length > 1 ? `Tất cả (${upcoming.length})` : undefined} onAction={() => router.push('/schedule')}>Lịch hẹn gần nhất</SectionTitle>
       <Card>
-        {latest ? (
-          <>
-            <Text style={{ color: C.textSoft, fontSize: 12 }}>{fmtDate(latest.date)} · {account(latest.doctorId)?.name}</Text>
-            <Text style={{ color: C.text, lineHeight: 21 }}>{latest.instructions || latest.characteristics}</Text>
-            {latest.nextReview && latest.nextReview >= today ? <Muted>Tái đánh giá: {fmtDate(latest.nextReview)}</Muted> : null}
-          </>
-        ) : (
-          <Muted>Chưa có nhận xét được công bố.</Muted>
-        )}
-        <Chip label={`Bác sĩ phụ trách: ${account(p.doctorId)?.name ?? '—'}`} tone="blue" icon="medkit-outline" />
-      </Card>
-      <SectionTitle>Nhắc lịch</SectionTitle>
-      <Card>
-        {reminders.length === 0 && <Muted>Chưa có lịch nhắc. Lịch được lấy từ liệu trình và đánh giá của bác sĩ.</Muted>}
-        {reminders.map((r) => (
-          <View key={r.id} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-            <View style={{ width: 2, alignSelf: 'stretch', borderRadius: 4, backgroundColor: r.date === today ? bar.red : bar.blue }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: C.text, fontWeight: '500' }}>{r.title}</Text>
-              <Text style={{ color: C.textSoft, fontSize: 12 }}>{r.body}</Text>
+        {next ? (
+          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+            <View style={{ width: 3, alignSelf: 'stretch', borderRadius: 4, backgroundColor: next.date === today ? bar.red : bar.blue }} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: next.date === today ? C.red : C.primary, fontWeight: '700' }}>{next.date === today ? 'Hôm nay' : fmtDate(next.date)}</Text>
+              <Text style={{ color: C.text, fontWeight: '600' }}>{next.title}</Text>
+              <Muted>{next.body}</Muted>
             </View>
-            <Text style={{ color: r.date === today ? C.red : C.primary, fontWeight: '700', fontSize: 13 }}>{r.date === today ? 'Hôm nay' : fmtDate(r.date).slice(0, 5)}</Text>
           </View>
-        ))}
-        {reminders.length > 0 && (
+        ) : (
+          <Muted>Chưa có lịch hẹn. Lịch được lấy từ đợt điều trị và đánh giá của bác sĩ.</Muted>
+        )}
+        {upcoming.length > 0 && (
           <Button
             label="Bật nhắc trên điện thoại"
             icon="notifications-outline"
-            variant="secondary"
+            variant="ghost"
             loading={busy}
             onPress={async () => {
               setBusy(true);
@@ -193,7 +170,7 @@ export default function PatientHome() {
                 const r = await scheduleReminders(reminders);
                 notify(
                   r.denied ? 'Chưa bật được nhắc' : 'Đã đặt nhắc',
-                  r.denied ? 'Cần cho phép thông báo trong Cài đặt (trình duyệt không hỗ trợ).' : `${r.scheduled} thông báo lúc 8:00 các ngày trên.`,
+                  r.denied ? 'Cần cho phép thông báo trong Cài đặt (trình duyệt không hỗ trợ).' : `${r.scheduled} thông báo lúc 8:00 các ngày hẹn.`,
                 );
               } catch (e) {
                 notify('Chưa bật được nhắc', String(e));
@@ -205,27 +182,48 @@ export default function PatientHome() {
         )}
       </Card>
 
-      <SectionTitle action="Lịch sử" onAction={() => router.navigate('/patient/history')}>Diện tích gần nhất</SectionTitle>
-      <Card hero style={{ padding: 20 }}>
-        {lastLabeled ? (
-          <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: C.textSoft, fontWeight: '500' }}>Bác sĩ đã đo</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4 }}>
-                <Text style={{ fontSize: 32, fontWeight: '500', color: C.primary }}>{formatAreaForName(lastLabeled.areaCm2!).replace('.', ',')}</Text>
-                <Text style={{ fontSize: 18, fontWeight: '500', color: C.primary, marginBottom: 5 }}>cm²</Text>
+      {/* Một thẻ cho mỗi vết thương: diện tích, ảnh, mức độ và lời dặn của bác sĩ. Trước đây lời dặn lặp ở hai thẻ (đề xuất 4). */}
+      <SectionTitle action="Lịch sử" onAction={() => router.navigate('/patient/history')}>Vết thương</SectionTitle>
+      {wounds.length === 0 && <Card><Muted>Hồ sơ mới đang chờ bác sĩ phụ trách tiếp nhận và đánh giá.</Muted></Card>}
+      {wounds.map((w) => {
+        const ev = latestEvaluation(data, w.id, true);
+        const img = data.images
+          .filter((i) => i.woundId === w.id && i.areaCm2 !== null && i.status === 'labeled')
+          .sort((a, b) => b.captureDate.localeCompare(a.captureDate))[0];
+        const rv = treating && treating.w.id === w.id ? review : null;
+        return (
+          <Card key={w.id}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{w.code} · {w.location}</Text>
+            {img ? (
+              <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4 }}>
+                    <Text style={{ fontSize: 32, fontWeight: '600', color: C.primary }}>{formatAreaForName(img.areaCm2!).replace('.', ',')}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '500', color: C.primary, marginBottom: 5 }}>cm²</Text>
+                  </View>
+                  <Muted>{img.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : 'Bác sĩ đo ngày ' + fmtDate(img.captureDate)}</Muted>
+                </View>
+                <WoundPhoto image={img} style={{ width: 110, height: 82, borderRadius: 8, borderTopRightRadius: 40 }} />
               </View>
-              <Text style={{ color: C.textSoft, fontSize: 13 }}>{lastLabeled.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : 'Ngày chụp ' + fmtDate(lastLabeled.captureDate)}</Text>
-              {latest && <View style={{ marginTop: 8 }}><Chip label={TREND[latest.trend].label} tone={TREND[latest.trend].tone} /></View>}
-              {review && review.state !== 'no_data' && <View style={{ marginTop: 8 }}><ReviewNote review={review} forPatient /></View>}
+            ) : <Muted>Chưa có số đo do bác sĩ nhập.</Muted>}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {ev?.severity && <Chip label={`Mức độ: ${SEVERITY[ev.severity].label}`} tone={SEVERITY[ev.severity].tone} />}
+              {ev && <Chip label={TREND[ev.trend].label} tone={TREND[ev.trend].tone} />}
             </View>
-            <WoundPhoto image={lastLabeled} style={{ width: 110, height: 82, borderRadius: 8, borderTopRightRadius: 40 }} />
-          </View>
-        ) : (
-          <Muted>Chưa có số đo do bác sĩ nhập.</Muted>
-        )}
-      </Card>
+            {rv && rv.state !== 'no_data' && <ReviewNote review={rv} forPatient />}
+            {ev ? (
+              <View style={{ gap: 4, padding: 12, borderRadius: 12, backgroundColor: C.surfaceMuted }}>
+                <Text style={{ color: C.text, fontWeight: '600' }}>Lời dặn của bác sĩ</Text>
+                <Text style={{ color: C.text, lineHeight: 24 }}>{ev.instructions || ev.characteristics}</Text>
+                <Muted>{account(ev.doctorId)?.name ?? 'Bác sĩ phụ trách'} · {fmtDate(ev.date)}{ev.nextReview && ev.nextReview >= today ? ` · tái đánh giá ${fmtDate(ev.nextReview)}` : ''}</Muted>
+              </View>
+            ) : <Muted>Chưa có đánh giá được công bố. Không suy ra mức độ từ diện tích.</Muted>}
+          </Card>
+        );
+      })}
 
+      <Button label="Báo triệu chứng hoặc sự cố" icon="medkit-outline" variant="secondary" onPress={() => router.push('/report')} />
+      <Chip label={`Bác sĩ phụ trách: ${account(p.doctorId)?.name ?? '—'}`} tone="blue" icon="medkit-outline" />
     </Screen>
   );
 }

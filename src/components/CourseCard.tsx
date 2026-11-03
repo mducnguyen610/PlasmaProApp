@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { View } from 'react-native';
 
 import { Text } from '@/components/Text';
-import { Chip, InfoRow, Muted } from '@/components/ui';
+import { Chip, InfoRow, Muted, StatGrid } from '@/components/ui';
 import { type AreaReview, type CourseProgress, fmtDuration, phaseLabel, phasesOf, REVIEW_MIN_REDUCTION } from '@/lib/course';
 import { fmtDate } from '@/lib/format';
 import type { TreatmentPlan } from '@/lib/types';
@@ -20,7 +20,7 @@ export function PhaseList({ plan, current }: { plan: TreatmentPlan; current?: nu
             <Text style={{ fontWeight: '700', color: on ? C.primary : C.textSoft, width: 22 }}>{i + 1}</Text>
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '600', color: C.text }}>{phaseLabel(p)}</Text>
-              <Text style={{ fontSize: 12, color: C.textSoft }}>{fmtDate(p.from)} đến {fmtDate(p.to)}</Text>
+              <Text style={{ fontSize: 13, color: C.textSoft }}>{fmtDate(p.from)} đến {fmtDate(p.to)}</Text>
             </View>
             {on && <Chip label="Hiện tại" tone="blue" />}
           </View>
@@ -44,10 +44,14 @@ export function DoseRows({ plan }: { plan: TreatmentPlan }) {
 export function ProgressRows({ pr }: { pr: CourseProgress }) {
   return (
     <>
-      <InfoRow label="Buổi đã làm" value={`${pr.done}/${pr.total}`} />
-      <InfoRow label="Buổi bỏ lỡ (đã đồng bộ)" value={String(pr.missed)} />
-      <InfoRow label="Chiếu ngoài lịch hoặc thừa" value={String(pr.extra)} />
-      <InfoRow label="Thiết bị chặn không phát" value={String(pr.blocked)} />
+      <StatGrid
+        items={[
+          { label: 'Buổi đã làm', value: `${pr.done}/${pr.total}` },
+          { label: 'Bỏ lỡ (đã đồng bộ)', value: pr.missed, tone: pr.missed > 0 ? 'amber' : undefined },
+          { label: 'Ngoài lịch hoặc thừa', value: pr.extra, tone: pr.extra > 0 ? 'amber' : undefined },
+          { label: 'Thiết bị chặn', value: pr.blocked },
+        ]}
+      />
       {pr.next && <InfoRow label="Buổi tiếp theo" value={fmtDate(pr.next)} />}
     </>
   );
@@ -69,7 +73,7 @@ export function ReviewNote({ review, forPatient }: { review: AreaReview; forPati
       <Ionicons name={low ? 'alert-circle-outline' : review.state === 'ok' ? 'checkmark-circle-outline' : 'time-outline'} size={20} color={low ? C.amber : review.state === 'ok' ? C.green : C.textSoft} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ color: C.text }}>{line}</Text>
-        <Text style={{ color: C.textSoft, fontSize: 12 }}>
+        <Text style={{ color: C.textSoft, fontSize: 14 }}>
           {review.state === 'pending'
             ? `Mốc xem lại hiệu quả: ${fmtDate(review.reviewDate)}.`
             : low

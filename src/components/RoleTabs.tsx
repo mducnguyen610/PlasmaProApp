@@ -36,11 +36,11 @@ function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarPro
           <Ionicons name={on ? x.def.iconOn : x.def.icon} size={25} color={on ? C.primary : C.textFaint} />
           {x.def.badge ? (
             <View style={{ position: 'absolute', top: -4, right: -10, minWidth: 20, height: 20, borderRadius: 10, backgroundColor: C.red, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
-              <Text style={{ color: C.onPrimary, fontSize: 12, fontWeight: '700' }}>{x.def.badge}</Text>
+              <Text style={{ color: C.onPrimary, fontSize: 13, fontWeight: '700' }}>{x.def.badge}</Text>
             </View>
           ) : null}
         </View>
-        <Text style={{ fontSize: 12, color: on ? C.primary : C.textFaint, fontWeight: on ? '700' : '500' }}>{x.def.title}</Text>
+        <Text style={{ fontSize: 13, color: on ? C.primary : C.textFaint, fontWeight: on ? '700' : '500' }}>{x.def.title}</Text>
         <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: on ? C.primary : 'transparent' }} />
       </Pressable>
     );

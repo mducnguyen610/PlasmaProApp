@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/Text';
@@ -101,7 +101,7 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
           <NavBtn icon="chevron-forward" label="Tháng sau" onPress={() => { setMonth(shiftMonth(month, 1)); setSelected(null); }} />
         </View>
         <View style={{ flexDirection: 'row' }}>
-          {WEEKDAYS.map((w) => <Text key={w} style={{ flex: 1, textAlign: 'center', fontSize: 12, color: C.textSoft, fontWeight: '600' }}>{w}</Text>)}
+          {WEEKDAYS.map((w) => <Text key={w} style={{ flex: 1, textAlign: 'center', fontSize: 13, color: C.textSoft, fontWeight: '600' }}>{w}</Text>)}
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
           {cells.map((c, i) => {
@@ -120,13 +120,9 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
                 style={{ width: `${100 / 7}%`, height: 52, padding: 2 }}>
                 <View style={{ flex: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: k ? k.bg : 'transparent', borderWidth: on ? 2 : 0, borderColor: C.primary }}>
                   {hasReminder && <Ionicons name="calendar" size={10} color={C.violet} style={{ position: 'absolute', top: 3, right: 4 }} />}
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: k ? C.text : C.textFaint }}>{day}</Text>
-                  {k && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
-                      {k.icon && <Ionicons name={k.icon} size={10} color={k.color} />}
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: k.color }}>{cellText(c, target)}</Text>
-                    </View>
-                  )}
+                  {/* Ô lịch: số ngày cỡ 15 và một biểu tượng thay cho chữ cỡ 10 (đề xuất 3); chữ đầy đủ ở accessibilityLabel và ô chi tiết. */}
+                  <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 15, fontWeight: '700', color: k && c.kind !== 'rest' ? C.text : C.textFaint }}>{day}</Text>
+                  {k && <CellMark kind={c.kind} color={k.color} text={cellText(c, target)} />}
                 </View>
               </Pressable>
             );
@@ -136,13 +132,13 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
           {reminders.length > 0 && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Ionicons name="calendar" size={12} color={C.violet} />
-              <Text style={{ fontSize: 12, color: C.textSoft }}>Lịch hẹn</Text>
+              <Text style={{ fontSize: 13, color: C.textSoft }}>Lịch hẹn</Text>
             </View>
           )}
           {(['met', 'planned', 'rest', 'none', 'unsynced'] as const).map((kind) => (
             <View key={kind} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: KIND[kind].bg, borderWidth: 1, borderColor: KIND[kind].color }} />
-              <Text style={{ fontSize: 12, color: C.textSoft }}>{KIND[kind].label}</Text>
+              <Text style={{ fontSize: 13, color: C.textSoft }}>{KIND[kind].label}</Text>
             </View>
           ))}
         </View>
@@ -157,7 +153,7 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
               <Ionicons name="calendar" size={18} color={C.violet} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontWeight: '700', color: C.text }}>{r.title}</Text>
-                <Text style={{ color: C.textSoft, fontSize: 13 }}>{r.body}</Text>
+                <Text style={{ color: C.textSoft, fontSize: 14 }}>{r.body}</Text>
               </View>
             </View>
           ))}
@@ -180,7 +176,7 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontWeight: '600', color: C.text }}>{done ? 'Phiên điều trị' : 'Phiên bị ngắt'} · {s.durationMin} phút</Text>
-                    <Text style={{ color: C.textSoft, fontSize: 13 }}>
+                    <Text style={{ color: C.textSoft, fontSize: 14 }}>
                       {n ? noteText(n) : 'Chưa ghi cảm giác'}
                     </Text>
                   </View>
@@ -193,12 +189,12 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
                     <PainRow label="Đau trước phiên" value={before} onChange={setBefore} />
                     <PainRow label="Đau sau phiên" value={after} onChange={setAfter} />
                     <Muted>0 = không đau, 10 = đau nhất. Có thể bỏ trống một trong hai.</Muted>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: C.text }}>Trong lúc chiếu</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: C.text }}>Trong lúc chiếu</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       <Toggle label="Nóng rát" on={!!flags.burning} onPress={() => setFlags({ ...flags, burning: !flags.burning })} />
                       <Toggle label="Châm chích" on={!!flags.stinging} onPress={() => setFlags({ ...flags, stinging: !flags.stinging })} />
                     </View>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: C.text }}>Ngày hôm sau, da quanh vết thương</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: C.text }}>Ngày hôm sau, da quanh vết thương</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       <Toggle label="Đỏ da" on={!!flags.rednessNextDay} onPress={() => setFlags({ ...flags, rednessNextDay: !flags.rednessNextDay })} />
                       <Toggle label="Sưng" on={!!flags.swellingNextDay} onPress={() => setFlags({ ...flags, swellingNextDay: !flags.swellingNextDay })} />
@@ -244,7 +240,7 @@ function Toggle({ label, on, onPress }: { label: string; on: boolean; onPress: (
 function PainRow({ label, value, onChange }: { label: string; value?: number; onChange: (v: number | undefined) => void }) {
   return (
     <View style={{ gap: 4 }}>
-      <Text style={{ fontSize: 13, fontWeight: '600', color: C.text }}>{label}{value !== undefined ? `: ${value}/10` : ''}</Text>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: C.text }}>{label}{value !== undefined ? `: ${value}/10` : ''}</Text>
       <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
         {Array.from({ length: 11 }, (_, i) => (
           <Pressable
@@ -260,6 +256,20 @@ function PainRow({ label, value, onChange }: { label: string; value?: number; on
       </View>
     </View>
   );
+}
+
+const MARK: Partial<Record<DayKind, React.ComponentProps<typeof Ionicons>['name']>> = {
+  met: 'checkmark-circle', planned: 'ellipse', none: 'close-circle', over: 'alert-circle', partial: 'remove-circle', unsynced: 'help-circle', today: 'time',
+};
+
+function CellMark({ kind, color, text }: { kind: DayKind; color: string; text: string }) {
+  const icon = MARK[kind];
+  if (!icon) return null; // ngày nghỉ: chỉ làm mờ số ngày
+  // Nhiều lần trong một buổi thì hiện số (2×, 1/2) thay biểu tượng.
+  if ((kind === 'over' || kind === 'partial' || kind === 'met') && /\d/.test(text) && text !== '1×') {
+    return <Text maxFontSizeMultiplier={1.2} style={{ fontSize: 12, fontWeight: '700', color }}>{text}</Text>;
+  }
+  return <Ionicons name={icon} size={kind === 'planned' ? 8 : 15} color={color} />;
 }
 
 function NavBtn({ icon, label, onPress }: { icon: 'chevron-back' | 'chevron-forward'; label: string; onPress: () => void }) {

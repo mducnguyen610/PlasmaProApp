@@ -153,7 +153,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
               <View accessible accessibilityRole="progressbar" accessibilityLabel={`${c.item.label}: còn ${Math.max(0, c.remaining)} trên ${c.item.everySessions} lần`} style={{ height: 6, borderRadius: 3, backgroundColor: C.surfaceMuted, overflow: 'hidden' }}>
                 <View style={{ width: `${pct * 100}%`, height: '100%', backgroundColor: color }} />
               </View>
-              <Text style={{ fontSize: 12, color: C.textFaint }}>
+              <Text style={{ fontSize: 13, color: C.textFaint }}>
                 {c.item.everySessions === 1 ? 'Sau mỗi phiên' : `Chu kỳ ${c.item.everySessions} phiên`} · {c.item.doneBy === 'patient' ? 'bệnh nhân tự làm' : 'kỹ thuật làm'} · lần gần nhất {c.lastDone ? fmtDate(c.lastDone) : 'chưa ghi nhận'}
               </Text>
               <Button label="Đánh dấu đã làm" variant="ghost" icon="checkmark-done-outline" onPress={() => doCare(c.item.id, c.item.label)} />
@@ -225,10 +225,10 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         )}
         {syncedDays.map(({ d, n }) => (
           <View key={d} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Text style={{ width: 46, color: C.textSoft, fontSize: 12 }}>{fmtDate(d).slice(0, 5)}</Text>
+            <Text style={{ width: 46, color: C.textSoft, fontSize: 13 }}>{fmtDate(d).slice(0, 5)}</Text>
             <View style={{ flex: 1, height: 22, backgroundColor: C.surfaceMuted, borderRadius: 8, overflow: 'hidden', justifyContent: 'center' }}>
               {n > 0 && <View style={{ width: `${(n / maxN) * 100}%`, height: '100%', backgroundColor: C.primary, borderRadius: 8 }} />}
-              {n === 0 && <Text style={{ fontSize: 12, color: C.textFaint, marginLeft: 8 }}>{plan && !isScheduled(plan, d) ? 'Nghỉ theo lịch' : plan ? 'Bỏ lỡ' : 'Không sử dụng'}</Text>}
+              {n === 0 && <Text style={{ fontSize: 13, color: C.textFaint, marginLeft: 8 }}>{plan && !isScheduled(plan, d) ? 'Nghỉ theo lịch' : plan ? 'Bỏ lỡ' : 'Không sử dụng'}</Text>}
             </View>
             <Text style={{ width: 28, textAlign: 'right', fontWeight: '700', color: C.text }}>{n > 0 ? `${n}×` : ''}</Text>
           </View>
@@ -244,7 +244,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
               <Text style={{ fontWeight: '600', color: C.text }}>{fmtDateTime(s.start)}</Text>
               <Text style={{ color: C.textSoft }}>{s.durationMin} phút</Text>
             </View>
-            <Text style={{ fontSize: 12, color: C.textFaint }}>
+            <Text style={{ fontSize: 13, color: C.textFaint }}>
               {tech
                 ? `Mã phiên ${s.sessionId} · ${STATUS[s.status]} · ${SOURCE[s.source]}${s.energyWh !== null ? ` · ${s.energyWh} Wh` : ''}`
                 : STATUS[s.status]}

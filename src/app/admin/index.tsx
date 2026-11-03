@@ -44,7 +44,7 @@ export default function AdminAccounts() {
             <IconBadge icon={a.role === 'doctor' ? 'medkit-outline' : a.role === 'patient' ? 'person-outline' : 'construct-outline'} tone={a.role === 'doctor' ? 'blue' : a.role === 'patient' ? 'green' : 'violet'} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '700', color: C.text }}>{a.role === 'patient' ? data.patients.find((p) => p.id === a.patientId)?.code : a.name}</Text>
-              <Text style={{ color: C.textSoft, fontSize: 12 }}>{ROLE[a.role]} · @{a.username}</Text>
+              <Text style={{ color: C.textSoft, fontSize: 13 }}>{ROLE[a.role]} · @{a.username}</Text>
             </View>
             <Chip label={a.pendingApproval ? 'Chờ duyệt' : a.locked ? 'Đã khóa' : 'Hoạt động'} tone={a.locked ? 'red' : 'green'} />
           </View>

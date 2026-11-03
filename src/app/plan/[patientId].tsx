@@ -5,7 +5,7 @@ import { Text } from '@/components/Text';
 
 import { DoseRows, PhaseList } from '@/components/CourseCard';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, Segmented } from '@/components/ui';
 import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, suggestDurationSec } from '@/lib/course';
 import { notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, PLAN_STATUS } from '@/lib/format';
@@ -86,6 +86,7 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   const [reason, setReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [step, setStep] = useState(0);
 
   if (!p || !canView) return <NoAccess />;
 
@@ -103,23 +104,24 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   const suggestion = suggestDurationSec(lastArea?.areaCm2, numOrNull(spc));
   const setPhase = (i: number, patch: Partial<PhaseDraft>) => setPhases(phases.map((x, k) => (k === i ? { ...x, ...patch } : x)));
 
+  const fail = (st: number, msg: string) => { setStep(st); setErr(msg); };
   const save = () => {
     const parsed: CoursePhase[] = [];
     for (const [i, ph] of phases.entries()) {
       const from = fromVn(ph.from);
       const to = fromVn(ph.to);
       const n = ph.pattern === 'daily' ? 1 : Number(ph.n);
-      if (!from || !to) return setErr(`Giai đoạn ${i + 1}: ngày theo dạng dd/mm/yyyy.`);
-      if (to < from) return setErr(`Giai đoạn ${i + 1}: ngày kết thúc phải sau ngày bắt đầu.`);
-      if (i > 0 && from <= parsed[i - 1].to) return setErr(`Giai đoạn ${i + 1} phải bắt đầu sau giai đoạn ${i}.`);
-      if (!Number.isInteger(n) || n < 1 || (ph.pattern === 'n_per_week' && n > 7)) return setErr(`Giai đoạn ${i + 1}: N phải là số nguyên${ph.pattern === 'n_per_week' ? ' từ 1 đến 7' : ' từ 1'}.`);
+      if (!from || !to) return fail(0, `Giai đoạn ${i + 1}: ngày theo dạng dd/mm/yyyy.`);
+      if (to < from) return fail(0, `Giai đoạn ${i + 1}: ngày kết thúc phải sau ngày bắt đầu.`);
+      if (i > 0 && from <= parsed[i - 1].to) return fail(0, `Giai đoạn ${i + 1} phải bắt đầu sau giai đoạn ${i}.`);
+      if (!Number.isInteger(n) || n < 1 || (ph.pattern === 'n_per_week' && n > 7)) return fail(0, `Giai đoạn ${i + 1}: N phải là số nguyên${ph.pattern === 'n_per_week' ? ' từ 1 đến 7' : ' từ 1'}.`);
       parsed.push({ from, to, pattern: ph.pattern, n });
     }
     const nums = [perVisit, gap, level, duration, spc, reviewDay].map(numOrNull);
-    if (nums.some((n) => n !== null && (!Number.isFinite(n) || n < 0))) return setErr('Thông số phải là số không âm.');
-    if (status === 'active' && (nums[2] === null || nums[3] === null)) return setErr('Đợt "Đang áp dụng" cần mức năng lượng và thời gian chiếu để khóa trên thiết bị.');
-    if (!reason.trim()) return setErr('Nhập lý do thay đổi để lưu vết phiên bản.');
-    if (status === 'active' && !confirmed) return setErr('Đợt "Đang áp dụng" cần bác sĩ xác nhận.');
+    if (nums.some((n) => n !== null && (!Number.isFinite(n) || n < 0))) return fail(1, 'Thông số phải là số không âm.');
+    if (status === 'active' && (nums[2] === null || nums[3] === null)) return fail(1, 'Đợt "Đang áp dụng" cần mức năng lượng và thời gian chiếu để khóa trên thiết bị.');
+    if (!reason.trim()) return fail(2, 'Nhập lý do thay đổi để lưu vết phiên bản.');
+    if (status === 'active' && !confirmed) return fail(2, 'Đợt "Đang áp dụng" cần bác sĩ xác nhận.');
     setErr(null);
     savePlan({
       patientId: p.id, woundId, status, phases: parsed, sessionsPerDay: nums[0] ?? 1, minIntervalMin: nums[1], targetEnergyWh: null,
@@ -141,8 +143,12 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
       <Card>
         <SectionTitle icon="flash-outline">Thiết lập phiên bản mới</SectionTitle>
         <Muted>Mỗi vết thương một đợt. Giá trị điều trị cụ thể do nhóm chuyên môn đặt; ứng dụng không đặt sẵn lịch hay liều.</Muted>
-        <Choices<PlanStatus> value={status} onChange={setStatus} options={(['draft', 'active', 'paused', 'ended'] as const).map((v) => ({ value: v, label: PLAN_STATUS[v].label }))} />
 
+        {/* Biểu mẫu chia 3 bước (đề xuất 8): Lịch, Liều, Xác nhận. Lỗi đưa người dùng về đúng bước. */}
+        <Segmented<string> value={String(step)} onChange={(v) => setStep(Number(v))} options={['Lịch', 'Liều', 'Xác nhận'].map((l, i) => ({ value: String(i), label: `${i + 1}. ${l}` }))} />
+        {err ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{err}</Text> : null}
+        {step === 0 && (
+          <>
         <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Lịch theo giai đoạn</Text>
         <Muted>Ví dụ: mỗi ngày trong 2 tuần đầu, sau đó 3 buổi mỗi tuần (dạng liệu trình ở slide 39, 40).</Muted>
         {phases.map((ph, i) => (
@@ -176,6 +182,10 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
           />
         )}
 
+          </>
+        )}
+        {step === 1 && (
+          <>
         <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Liều mỗi lần chiếu</Text>
         <Muted>Thiết bị tại nhà bị khóa ở mức và thời gian này; bệnh nhân không đổi được (slide 24).</Muted>
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -199,14 +209,27 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
           <View style={{ flex: 1 }}><Field label="Giãn cách (phút)" value={gap} onChangeText={setGap} keyboardType="number-pad" hint="Chỉ khi nhiều lần mỗi buổi." /></View>
         </View>
         <Field label="Mốc xem lại hiệu quả (ngày thứ)" value={reviewDay} onChangeText={setReviewDay} keyboardType="number-pad" hint="So diện tích với đầu đợt; mặc định ngày 28 (Sheehan 2003)." />
+          </>
+        )}
+        {step === 2 && (
+          <>
+            <Text style={{ fontWeight: '700', color: C.text }}>Tóm tắt</Text>
+            <Muted>{phases.map((ph, i) => `Giai đoạn ${i + 1}: ${phaseLabel({ from: '', to: '', pattern: ph.pattern, n: Number(ph.n) || 1 }).toLowerCase()} (${ph.from || '?'} đến ${ph.to || '?'})`).join('; ')}. Mức {level || '?'}, {duration ? fmtDuration(numOrNull(duration)) : '? giây'}, {perVisit || 1} lần mỗi buổi.</Muted>
+            <Choices<PlanStatus> value={status} onChange={setStatus} options={(['draft', 'active', 'paused', 'ended'] as const).map((v) => ({ value: v, label: PLAN_STATUS[v].label }))} />
         <Field label="Lịch tái khám" value={review} onChangeText={setReview} placeholder="Ví dụ: tái đánh giá mỗi 7 ngày" />
         <Field label="Ghi chú" value={notes} onChangeText={setNotes} multiline />
-        <Field label="Lý do thay đổi" value={reason} onChangeText={setReason} placeholder="Bắt buộc" error={err} />
+        <Field label="Lý do thay đổi" value={reason} onChangeText={setReason} placeholder="Bắt buộc" />
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={{ flex: 1, color: C.text }}>Bác sĩ xác nhận đợt điều trị (bệnh nhân sẽ xem được)</Text>
           <Switch value={confirmed} onValueChange={setConfirmed} />
         </View>
-        <Button label="Lưu phiên bản mới" icon="save-outline" onPress={save} />
+            <Button label="Lưu phiên bản mới" icon="save-outline" onPress={save} />
+          </>
+        )}
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {step > 0 && <View style={{ flex: 1 }}><Button label="Quay lại" variant="ghost" onPress={() => setStep(step - 1)} /></View>}
+          {step < 2 && <View style={{ flex: 1 }}><Button label="Tiếp" icon="arrow-forward" variant="secondary" onPress={() => setStep(step + 1)} /></View>}
+        </View>
       </Card>
 
       <SectionTitle icon="git-branch-outline">Các phiên bản</SectionTitle>

@@ -26,6 +26,8 @@ export default function WoundDetail() {
   const p = patient(w?.patientId);
   const canView = useCanView(p);
   const [showCourse, setShowCourse] = useState(false);
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [showOldEvals, setShowOldEvals] = useState(false);
   if (!w || !p || !canView) return <NoAccess />;
 
   const isDoctor = me?.role === 'doctor';
@@ -42,15 +44,26 @@ export default function WoundDetail() {
     .sort((a, b) => b.date.localeCompare(a.date) || data.evaluations.indexOf(b) - data.evaluations.indexOf(a));
 
 
+  const retakes = images.filter((i) => i.retakeRequested);
+  const dates = [...byDate.entries()];
+  const shownDates = showAllPhotos ? dates : dates.slice(0, 2);
+  const shownEvals = showOldEvals ? evals : evals.slice(0, 1);
+
+  // Thứ tự theo việc bác sĩ cần quyết định (đề xuất 5): cảnh báo, đợt điều trị, diện tích, đánh giá, album.
+  // Vị trí, nhóm, ngày bắt đầu đưa lên đầu trang thay cho một thẻ riêng.
   return (
-    <Screen header={<Header back title={`${w.code} · ${w.location}`} subtitle={`${p.name} · ${p.code}`} />}>
-      <Card>
-        <InfoRow label="Vị trí" value={w.location} />
-        {w.group ? <InfoRow label="Nhóm tổn thương" value={w.group} /> : null}
-        <InfoRow label="Bắt đầu" value={fmtDate(w.startDate)} />
-        <InfoRow label="Số ảnh" value={String(images.length)} />
+    <Screen header={<Header back title={`${w.code} · ${w.location}`} subtitle={`${p.name} · ${p.code}${w.group ? ` · ${w.group}` : ''}`} />}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
-      </Card>
+        <Muted>Bắt đầu {fmtDate(w.startDate)} · {images.length} ảnh</Muted>
+      </View>
+
+      {isDoctor && retakes.length > 0 && (
+        <Card style={{ borderWidth: 1.5, borderColor: C.red }}>
+          <Text style={{ color: C.red, fontWeight: '700' }}>Đã yêu cầu chụp lại {retakes.length} ảnh</Text>
+          {retakes.map((im) => <Muted key={im.id}>{im.id}: {im.retakeRequested}</Muted>)}
+        </Card>
+      )}
 
       {/* Đợt điều trị của vết thương: tiến độ, mốc xem lại tuần 4, kết thúc khi liền rồi theo dõi. */}
       <Card>
@@ -89,38 +102,21 @@ export default function WoundDetail() {
         {!isDoctor && w.status === 'follow_up' && w.followUpFrom && <Muted>Đã liền ngày {fmtDate(w.followUpFrom)}. Các lần kiểm tra: {followUpDates(w.followUpFrom).map((x) => fmtDate(x.date)).join(', ')}.</Muted>}
       </Card>
 
-      <SeverityCard title="Mức độ vết thương" evaluation={evals[0]} doctor={account(evals[0]?.doctorId)?.name} />
-      {isDoctor && <Button label="Chụp / thêm ảnh có hướng dẫn" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />}
-
       <Card>
-        <SectionTitle icon="stats-chart-outline">Diện tích theo thời gian</SectionTitle>
+        <SectionTitle icon="stats-chart-outline" right={images.length >= 2 ? <Text onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} style={{ color: C.primary, fontWeight: '600' }}>So sánh trước/sau</Text> : null}>Diện tích</SectionTitle>
         <AreaChart images={images} />
+        {isDoctor && <Button label="Chụp / thêm ảnh có hướng dẫn" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />}
       </Card>
 
-      <SectionTitle
-        icon="albums-outline"
-        right={images.length >= 2 ? <Text onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} style={{ color: C.primary, fontWeight: '600' }}>So sánh trước/sau</Text> : null}>
-        Album ảnh
-      </SectionTitle>
-      {images.length === 0 && <Card><Empty icon="image-outline" text={isDoctor ? "Chưa có ảnh. Chụp hoặc tải ảnh lên để bắt đầu." : "Chưa có ảnh do bác sĩ chụp."} /></Card>}
-      {[...byDate.entries()].map(([date, ims]) => (
-        <View key={date} style={{ gap: 8 }}>
-          <Text style={{ color: C.textSoft, fontWeight: '700', fontSize: 13 }}>Ngày chụp / thêm ảnh {fmtDate(date)}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-            {ims.map((im) => (
-              <ImageTile key={im.id} image={im} width={160} />
-            ))}
-          </View>
-        </View>
-      ))}
+      <SeverityCard title="Mức độ vết thương" evaluation={evals[0]} doctor={account(evals[0]?.doctorId)?.name} />
 
       <SectionTitle
         icon="clipboard-outline"
         right={isDoctor ? <Text onPress={() => router.push({ pathname: '/evaluate/[woundId]', params: { woundId: w.id } })} style={{ color: C.primary, fontWeight: '600' }}>+ Ghi đánh giá</Text> : null}>
-        {isDoctor ? 'Lịch sử đánh giá' : 'Nhận xét của bác sĩ'}
+        {isDoctor ? 'Đánh giá gần nhất' : 'Nhận xét của bác sĩ'}
       </SectionTitle>
       {evals.length === 0 && <Card><Empty text="Chưa có đánh giá." /></Card>}
-      {evals.map((e) => (
+      {shownEvals.map((e) => (
         <Card key={e.id}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={{ fontWeight: '700', color: C.text, flex: 1 }}>{fmtDate(e.date)} · {account(e.doctorId)?.name}</Text>
@@ -135,6 +131,21 @@ export default function WoundDetail() {
           {isDoctor && <Chip label={e.visibleToPatient ? 'Bệnh nhân xem được' : 'Chỉ nội bộ'} tone={e.visibleToPatient ? 'blue' : 'gray'} />}
         </Card>
       ))}
+      {evals.length > 1 && <Button variant="ghost" label={showOldEvals ? 'Ẩn đánh giá cũ' : `Xem đánh giá cũ (${evals.length - 1})`} onPress={() => setShowOldEvals(!showOldEvals)} />}
+
+      <SectionTitle icon="albums-outline">Album ảnh</SectionTitle>
+      {images.length === 0 && <Card><Empty icon="image-outline" text={isDoctor ? 'Chưa có ảnh. Chụp hoặc tải ảnh lên để bắt đầu.' : 'Chưa có ảnh do bác sĩ chụp.'} /></Card>}
+      {shownDates.map(([date, ims]) => (
+        <View key={date} style={{ gap: 8 }}>
+          <Text style={{ color: C.textSoft, fontWeight: '700', fontSize: 14 }}>Ngày chụp / thêm ảnh {fmtDate(date)}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+            {ims.map((im) => (
+              <ImageTile key={im.id} image={im} width={160} />
+            ))}
+          </View>
+        </View>
+      ))}
+      {dates.length > 2 && <Button variant="ghost" label={showAllPhotos ? 'Thu gọn album' : `Xem tất cả (${dates.length} ngày chụp)`} onPress={() => setShowAllPhotos(!showAllPhotos)} />}
     </Screen>
   );
 }

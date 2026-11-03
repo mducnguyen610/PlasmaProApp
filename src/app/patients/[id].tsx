@@ -53,7 +53,7 @@ export default function PatientDetail() {
           <IconBadge icon="person-outline" size={48} />
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{p.name}</Text>
-            <Text style={{ color: C.textSoft, fontSize: 13 }}>SĐT: {p.phone || '—'} · Thiết bị: <Text style={{ color: C.primary, fontWeight: '700' }}>{dev?.code ?? 'Chưa gán'}</Text></Text>
+            <Text style={{ color: C.textSoft, fontSize: 14 }}>SĐT: {p.phone || '—'} · Thiết bị: <Text style={{ color: C.primary, fontWeight: '700' }}>{dev?.code ?? 'Chưa gán'}</Text></Text>
           </View>
         </View>
         <InfoRow label="Mã hồ sơ" value={p.code} />
@@ -182,7 +182,7 @@ export default function PatientDetail() {
               <Chip label={r.kind === 'device' ? 'Sự cố thiết bị' : 'Triệu chứng'} tone={r.kind === 'device' ? 'teal' : 'red'} />
               {r.painLevel !== undefined && <Chip label={`Mức đau ${r.painLevel}/10`} tone="gray" />}
               <View style={{ flex: 1 }} />
-              <Text style={{ color: C.textFaint, fontSize: 12 }}>{fmtDateTime(r.date)}</Text>
+              <Text style={{ color: C.textFaint, fontSize: 13 }}>{fmtDateTime(r.date)}</Text>
             </View>
             <Text style={{ color: C.text }}>{r.content}</Text>
             <Muted>Nguồn: bệnh nhân báo qua ứng dụng</Muted>
