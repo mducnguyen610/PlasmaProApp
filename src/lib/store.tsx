@@ -53,6 +53,7 @@ interface Store {
   setResearchReady: (imageId: string, ready: boolean) => Promise<void>;
   setResearchConsent: (consent: boolean) => void;
   logout: () => void;
+  finishOnboarding: () => void;
   resetDemo: () => void;
   addPatient: (p: Omit<Patient, 'id' | 'code' | 'createdAt' | 'researchCode'>, woundLocation?: string) => Promise<{ patient: Patient; activation: Activation }>;
   issueActivation: (patientId: string) => Promise<Activation>;
@@ -133,6 +134,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setMeId(null);
     AsyncStorage.removeItem(SESSION_KEY).catch(() => {});
   }, []);
+  const finishOnboarding = () => {
+    const actor = meRef.current;
+    if (!actor) return;
+    update(d => ({ ...d, accounts: d.accounts.map(a => a.id === actor.id ? { ...a, onboardingDoneAt: nowIso() } : a) }));
+  };
   const resetDemo = () => {
     if (meRef.current?.role !== 'admin') throw new Error('Cần quyền quản trị.');
     update(() => createSeed()); logout();
@@ -514,7 +520,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     update((d) => ({ ...d, syncErrors: d.syncErrors.map((s) => (s.id === id ? { ...s, resolved: true } : s)) }));
 
   const value: Store = {
-    ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, addWound, updateWound, addImage, labelImage,
+    ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, addWound, updateWound, addImage, labelImage,
     setExcluded, requestRetake, addEvaluation, savePlan, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
     setReportHandled, updateAccount, resolveSyncError,
   };

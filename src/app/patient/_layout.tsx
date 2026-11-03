@@ -1,8 +1,12 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 
 import { RoleTabs } from '@/components/RoleTabs';
+import { useStore } from '@/lib/store';
 
 export default function PatientTabs() {
+  const { me } = useStore();
+  // Lần đầu đăng nhập: xem hướng dẫn 4 màn trước khi vào trang chủ (có thể bỏ qua).
+  if (me?.role === 'patient' && !me.onboardingDoneAt) return <Redirect href="/onboarding" />;
   return (
     <RoleTabs
       role="patient"

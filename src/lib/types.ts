@@ -12,6 +12,8 @@ export interface Account {
   pendingApproval?: boolean;
   termsVersion?: string;
   termsAcceptedAt?: string;
+  /** Thời điểm bệnh nhân xem xong hoặc bỏ qua hướng dẫn lần đầu (đề xuất 3 của bản đánh giá trải nghiệm). */
+  onboardingDoneAt?: string;
   locked: boolean;
   /** Bác sĩ được cấp quyền xuất dữ liệu nghiên cứu (đặc tả mục 9). */
   researchAccess?: boolean;

@@ -39,6 +39,15 @@ export function AccountScreen() {
         <Muted>Tùy chọn. Chỉ chia sẻ ảnh đã được bác sĩ kiểm tra và bỏ thông tin nhận dạng. Rút đồng ý sẽ ngừng chia sẻ mới; không tự thu hồi các tệp đã tải.</Muted>
         <Switch accessibilityLabel="Đồng ý nghiên cứu" value={!!data.patients.find(p => p.id === me.patientId)?.researchConsent} onValueChange={setResearchConsent} />
       </Card>}
+      {me.role === 'patient' && <Card onPress={() => router.push({ pathname: '/onboarding', params: { review: '1' } })}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <IconBadge icon="help-circle-outline" tone="green" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: '700', color: C.text }}>Xem lại hướng dẫn sử dụng</Text>
+            <Muted>Thiết bị là gì, mỗi ngày làm gì, báo triệu chứng ở đâu, khi khẩn cấp</Muted>
+          </View>
+        </View>
+      </Card>}
       <Card onPress={() => router.push('/compliance')}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconBadge icon="document-text-outline" tone="teal" />
