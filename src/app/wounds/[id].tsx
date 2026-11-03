@@ -52,7 +52,9 @@ export default function WoundDetail() {
   // Thứ tự theo việc bác sĩ cần quyết định (đề xuất 5): cảnh báo, đợt điều trị, diện tích, đánh giá, album.
   // Vị trí, nhóm, ngày bắt đầu đưa lên đầu trang thay cho một thẻ riêng.
   return (
-    <Screen header={<Header back title={`${w.code} · ${w.location}`} subtitle={`${p.name} · ${p.code}${w.group ? ` · ${w.group}` : ''}`} />}>
+    <Screen header={<Header back title={`${w.code} · ${w.location}`} subtitle={`${p.name} · ${p.code}`} />}>
+      {/* Tiêu đề có thể bị cắt khi chữ to: vị trí và nhóm tổn thương luôn hiện đủ ở đây để tránh nhầm vết (R15). */}
+      <Text style={{ fontWeight: '700', color: C.text }}>{w.location}{w.group ? <Text style={{ fontWeight: '400', color: C.textSoft }}>{` · ${w.group}`}</Text> : null}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
         <Muted>Bắt đầu {fmtDate(w.startDate)} · {images.length} ảnh</Muted>
