@@ -8,6 +8,7 @@ import { NoAccess, useCanView } from '@/components/Guard';
 import { ImageTile } from '@/components/items';
 import { Button, Card, Chip, Empty, Header, InfoRow, Muted, Screen, SectionTitle, Segmented } from '@/components/ui';
 import { fmtDate, TREND, WOUND_STATUS } from '@/lib/format';
+import { assessmentSummary } from '@/lib/assessment';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import type { WoundStatus } from '@/lib/types';
@@ -88,6 +89,7 @@ export default function WoundDetail() {
             <Chip label={TREND[e.trend].label} tone={TREND[e.trend].tone} />
           </View>
           <InfoRow label="Diện tích" value={formatAreaDisplay(e.areaCm2)} />
+          {isDoctor && e.assessment ? <Text style={{ color: C.text }}>{assessmentSummary(e.assessment)}</Text> : null}
           {e.characteristics ? <Muted>Đặc điểm: {e.characteristics}</Muted> : null}
           {e.symptoms ? <Muted>Triệu chứng: {e.symptoms} (nguồn: {e.symptomSource || '—'})</Muted> : null}
           {e.instructions ? <Text style={{ color: C.text }}>Hướng dẫn: {e.instructions}</Text> : null}

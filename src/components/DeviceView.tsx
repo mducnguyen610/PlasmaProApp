@@ -4,11 +4,12 @@ import { Text } from '@/components/Text';
 
 import { Button, Card, Chip, Empty, InfoRow, Muted, SectionTitle, SimBadge, Stat } from '@/components/ui';
 import { computeAdherence } from '@/lib/adherence';
+import { CARE_ITEMS, careStatus } from '@/lib/maintenance';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import type { Device } from '@/lib/types';
-import { C } from '@/theme';
+import { bar, C } from '@/theme';
 
 const SOURCE = { device: 'Thiết bị gửi', manual: 'Nhập tay', simulated: 'Mô phỏng' } as const;
 const STATUS = { completed: 'Hoàn tất', interrupted: 'Bị ngắt', over_limit: 'Ngắt do vượt ngưỡng' } as const;
@@ -35,7 +36,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
   const tech = level === 'tech';
   const patientView = level === 'patient';
   const canControl = level === 'doctor';
-  const { data, setDevicePower, simulateSession } = useStore();
+  const { data, setDevicePower, simulateSession, markCareDone } = useStore();
   const { sessionsOf, patient, activePlan } = useLookups();
   const sessions = sessionsOf(device.id);
   const rawCount = data.sessions.filter((s) => s.deviceId === device.id).length;
@@ -49,6 +50,12 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
   const maxN = Math.max(1, ...perDay.map((x) => x.n));
   const totalMin = sessions.reduce((s, x) => s + x.durationMin, 0);
   const todayN = perDay[0]?.n ?? 0;
+  const care = CARE_ITEMS.map((it) => careStatus(it, sessions, device.care?.[it.id]));
+  const patientDue = care.filter((c) => c.due);
+  const doCare = (itemId: string, label: string) =>
+    confirm(label, 'Ghi nhận đã làm xong; bộ đếm của mục này bắt đầu lại từ 0.', () => {
+      try { markCareDone(device.id, itemId); } catch (e) { notify('Chưa ghi được', e instanceof Error ? e.message : String(e)); }
+    }, 'Đã làm xong');
   const unsyncedDays = perDay.filter((x) => !lastSyncDay || x.d > lastSyncDay);
   const syncedDays = perDay.filter((x) => lastSyncDay && x.d <= lastSyncDay);
   const oldest = unsyncedDays[unsyncedDays.length - 1]?.d;
@@ -105,6 +112,47 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         )}
         {canControl && <Muted>Phạm vi điều khiển theo khả năng phần cứng thực tế và thống nhất với nhóm thiết bị.</Muted>}
       </Card>
+
+      {/* Chăm sóc thiết bị (mẫu myAir). Bệnh nhân chỉ thấy mục đến hạn; kỹ thuật thấy đủ thanh tuổi thọ. */}
+      {patientView && patientDue.map((c) => (
+        <Card key={c.item.id} style={{ borderWidth: 1.5, borderColor: C.amber }}>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            <Ionicons name="construct-outline" size={22} color={C.amber} />
+            <Text style={{ flex: 1, fontWeight: '700', color: C.text }}>
+              {c.item.doneBy === 'patient' ? `Đến lúc ${c.item.label.toLowerCase()}` : `Cần ${c.item.label.toLowerCase()}`}
+            </Text>
+          </View>
+          <Muted>{c.remaining > 0 ? `Còn khoảng ${c.remaining} lần dùng.` : 'Đã đến hạn.'} {c.item.howTo}</Muted>
+          {c.item.doneBy === 'patient'
+            ? <Button label="Tôi đã làm xong" icon="checkmark" variant="secondary" onPress={() => doCare(c.item.id, c.item.label)} />
+            : <Muted>Kỹ thuật viên sẽ làm khi tái khám. Bạn vẫn dùng thiết bị bình thường.</Muted>}
+        </Card>
+      ))}
+      {tech && <Card>
+        <SectionTitle icon="construct-outline">Chăm sóc thiết bị</SectionTitle>
+        {care.map((c) => {
+          const pct = Math.max(0, Math.min(1, c.remaining / c.item.everySessions));
+          const color = c.due ? bar.red : pct < 0.5 ? bar.amber : bar.green;
+          return (
+            <View key={c.item.id} style={{ gap: 4, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ flex: 1, fontWeight: '600', color: C.text }}>{c.item.label}</Text>
+                <Text style={{ color: c.due ? C.red : C.textSoft, fontWeight: c.due ? '700' : '400' }}>
+                  {c.remaining > 0 ? `còn ~${c.remaining} lần` : `quá ${-c.remaining} lần`}
+                </Text>
+              </View>
+              <View accessible accessibilityRole="progressbar" accessibilityLabel={`${c.item.label}: còn ${Math.max(0, c.remaining)} trên ${c.item.everySessions} lần`} style={{ height: 6, borderRadius: 3, backgroundColor: C.surfaceMuted, overflow: 'hidden' }}>
+                <View style={{ width: `${pct * 100}%`, height: '100%', backgroundColor: color }} />
+              </View>
+              <Text style={{ fontSize: 12, color: C.textFaint }}>
+                Chu kỳ {c.item.everySessions} phiên · {c.item.doneBy === 'patient' ? 'bệnh nhân tự làm' : 'kỹ thuật làm'} · lần gần nhất {c.lastDone ? fmtDate(c.lastDone) : 'chưa ghi nhận'}
+              </Text>
+              <Button label="Đánh dấu đã làm" variant="ghost" icon="checkmark-done-outline" onPress={() => doCare(c.item.id, c.item.label)} />
+            </View>
+          );
+        })}
+        <Muted>Danh mục và chu kỳ là giá trị giả định cho demo, chờ nhóm phần cứng xác nhận. Đếm theo số phiên thiết bị ghi, không theo ngày.</Muted>
+      </Card>}
 
       {tech && <Card>
         <SectionTitle icon="pulse-outline">Mô phỏng thiết bị IoMT</SectionTitle>
@@ -183,6 +231,10 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
               {tech
                 ? `Mã phiên ${s.sessionId} · ${STATUS[s.status]} · ${SOURCE[s.source]}${s.energyWh !== null ? ` · ${s.energyWh} Wh` : ''}`
                 : STATUS[s.status]}
+              {(() => {
+                const n = data.sessionNotes.find((x) => x.sessionId === s.sessionId);
+                return n ? ` · Bệnh nhân ghi đau ${n.painBefore ?? '–'} → ${n.painAfter ?? '–'}/10` : '';
+              })()}
             </Text>
           </View>
         ))}

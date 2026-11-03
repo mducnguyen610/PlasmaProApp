@@ -100,6 +100,24 @@ export type Severity = 'mild' | 'moderate' | 'severe';
 
 export type Trend = 'improving' | 'stable' | 'worsening' | 'insufficient';
 
+/** Mức đau bệnh nhân tự ghi cho một phiên điều trị (mẫu Nerivio). Lưu riêng để không sửa nhật ký thiết bị gửi lên. */
+export interface SessionNote {
+  sessionId: string;
+  painBefore?: number;
+  painAfter?: number;
+  at: string;
+}
+
+/** Trường đánh giá có cấu trúc (mẫu Swift). Danh mục là bản nháp, chờ bác sĩ trong nhóm chọn thang. */
+export interface WoundAssessment {
+  woundType: string;
+  pressureStage?: string;
+  granulation?: string;
+  epithelial?: string;
+  exudate: string;
+  infection: string;
+}
+
 export interface Evaluation {
   id: string;
   woundId: string;
@@ -115,6 +133,7 @@ export interface Evaluation {
   instructions: string;
   nextReview?: string;
   visibleToPatient: boolean;
+  assessment?: WoundAssessment;
 }
 
 export type PlanStatus = 'draft' | 'active' | 'paused' | 'ended';
@@ -148,6 +167,8 @@ export interface Device {
   firmware: string;
   power: 'on' | 'off' | 'pending';
   simulated: boolean;
+  /** Lần gần nhất làm từng mục chăm sóc (mã mục trong maintenance.ts → thời điểm ISO). */
+  care?: Record<string, string>;
 }
 
 export interface DeviceSession {
@@ -188,6 +209,7 @@ export interface AppData {
   plans: TreatmentPlan[];
   devices: Device[];
   sessions: DeviceSession[];
+  sessionNotes: SessionNote[];
   reports: SymptomReport[];
   syncErrors: SyncError[];
   counters: { image: number; patient: number };
