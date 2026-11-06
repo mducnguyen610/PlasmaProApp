@@ -12,7 +12,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { MONO, Text, TextInput } from '@/components/Text';
 import { DEMO_ASSETS } from '@/lib/seed';
 import type { WoundImage } from '@/lib/types';
-import { bar, C, cardShape, G, shadow, type GradientName, T } from '@/theme';
+import { bar, C, cardShape, G, radius, shadow, type GradientName, T } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -48,6 +48,10 @@ export function HeaderButton({ icon, label, onPress }: { icon: IconName; label?:
   );
 }
 
+/** Chiều cao thanh tab (không kể vùng an toàn) và phần nút giữa nhô lên trên thanh. Dùng chung với RoleTabs. */
+export const TAB_BAR_HEIGHT = 62;
+export const FAB_RISE = 30;
+
 /** Vai trò có thanh tab nổi ở đáy (RoleTabs); màn hình trong các nhóm này cần chừa chỗ cho thanh tab. */
 const TAB_GROUPS = ['patient', 'doctor', 'admin'];
 
@@ -55,7 +59,8 @@ export function Screen({ children, header, padded = true }: { children: ReactNod
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
   const hasTabBar = TAB_GROUPS.includes(segments[0] ?? '');
-  const bottom = hasTabBar ? 110 : insets.bottom + 24;
+  // Thanh tab cao TAB_BAR_HEIGHT + vùng an toàn, nút giữa nhô thêm FAB_RISE: chừa đủ để mục cuối không nằm dưới nút.
+  const bottom = hasTabBar ? TAB_BAR_HEIGHT + FAB_RISE + insets.bottom + 24 : insets.bottom + 24;
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, width: '100%', maxWidth: 1080, alignSelf: 'center' }}>
       {header}
@@ -66,8 +71,8 @@ export function Screen({ children, header, padded = true }: { children: ReactNod
   );
 }
 
-export function Card({ children, style, onPress, hero, accessibilityLabel }: { children: ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void; hero?: boolean; accessibilityLabel?: string }) {
-  const shape = cardShape(hero ? 68 : 32);
+export function Card({ children, style, onPress, accessibilityLabel }: { children: ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void; hero?: boolean; accessibilityLabel?: string }) {
+  const shape = cardShape();
   if (onPress) {
     return (
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={({ pressed }) => [s.card, shape, style, pressed && { opacity: 0.85 }]}>
@@ -93,7 +98,7 @@ export function GradientCard({
         colors={G[colors]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[cardShape(54), { flexGrow: 1, padding: 14, paddingTop: 48, minHeight: 196, gap: 6, shadowColor: G[colors][1], shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 1, height: 4 }, elevation: 4 }]}>
+        style={[cardShape(), { flexGrow: 1, padding: 14, paddingTop: 48, minHeight: 196, gap: 6, shadowColor: G[colors][1], shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 1, height: 4 }, elevation: 4 }]}>
         <Text style={{ color: C.onPrimary, fontWeight: '700', fontSize: 16, letterSpacing: 0.2 }} numberOfLines={2}>{title}</Text>
         <View style={{ flex: 1 }}>
           {lines.map((l, i) => (
@@ -289,7 +294,7 @@ export function StatGrid({ items }: { items: { label: string; value: string | nu
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {items.map((it) => (
-        <View key={it.label} accessible accessibilityLabel={`${it.label}: ${it.value}`} style={{ flexGrow: 1, flexBasis: '45%', padding: 10, borderRadius: 12, backgroundColor: it.tone === 'amber' ? C.amberSoft : it.tone === 'red' ? C.redSoft : it.tone === 'green' ? C.greenSoft : C.surfaceMuted }}>
+        <View key={it.label} accessible accessibilityLabel={`${it.label}: ${it.value}`} style={{ flexGrow: 1, flexBasis: '45%', padding: 10, borderRadius: radius.m, backgroundColor: it.tone === 'amber' ? C.amberSoft : it.tone === 'red' ? C.redSoft : it.tone === 'green' ? C.greenSoft : C.surfaceMuted }}>
           <Text style={{ fontSize: T.stat, fontWeight: '700', color: it.tone === 'amber' ? C.amber : it.tone === 'red' ? C.red : C.text }}>{it.value}</Text>
           <Text style={{ fontSize: T.small, color: C.textSoft }}>{it.label}</Text>
         </View>
@@ -331,6 +336,17 @@ export function WoundPhoto({ image, style }: { image: WoundImage; style?: StyleP
   );
 }
 
+/** Khung lưu ý có biểu tượng (cảnh báo đồng bộ, dữ liệu chưa đủ). Không dùng màu làm tín hiệu duy nhất (WCAG 1.4.1). */
+export function Notice({ children, tone = 'amber', icon = 'alert-circle-outline' }: { children: ReactNode; tone?: Tone; icon?: IconName }) {
+  const [bg, fg] = TONES[tone];
+  return (
+    <View accessible accessibilityRole="alert" style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 12, borderRadius: radius.m, backgroundColor: bg }}>
+      <Ionicons name={icon} size={22} color={fg} style={{ marginTop: 1 }} />
+      <Text style={{ flex: 1, color: C.text, fontSize: T.small, lineHeight: 21 }}>{children}</Text>
+    </View>
+  );
+}
+
 export function Muted({ children, style }: { children: ReactNode; style?: object }) {
   return <Text style={[{ color: C.textSoft, fontSize: T.small, lineHeight: 21 }, style]}>{children}</Text>;
 }
@@ -341,7 +357,7 @@ export function H({ children, size = 16 }: { children: ReactNode; size?: number 
 
 export const s = StyleSheet.create({
   header: {
-    backgroundColor: C.card, paddingHorizontal: 16, paddingBottom: 14, borderBottomLeftRadius: 32,
+    backgroundColor: C.card, paddingHorizontal: 16, paddingBottom: 14, borderBottomLeftRadius: radius.sheet, borderBottomRightRadius: radius.sheet,
     shadowColor: C.grey, shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 1.1, height: 1.1 }, elevation: 4, zIndex: 2,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 },

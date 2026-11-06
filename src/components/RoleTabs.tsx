@@ -6,16 +6,21 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Text';
-import type { IconName } from '@/components/ui';
+import { FAB_RISE, TAB_BAR_HEIGHT, type IconName } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import type { Role } from '@/lib/types';
-import { C, G } from '@/theme';
+import { C, G, radius } from '@/theme';
 
 type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 type TabDef = { name: string; title: string; icon: IconName; iconOn: IconName; badge?: number };
 
-/** Thanh tab của mẫu Fitness App: nền trắng, bo trên, nút tròn gradient nổi ở giữa. */
-function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarProps & { tabs: TabDef[]; fab?: { icon: IconName; onPress: () => void; label: string } }) {
+/** Lề ngang của thanh tab: nhãn ngoài cùng ("Trang chủ", "Tài khoản") cách mép màn hình tối thiểu 16 pt. */
+const BAR_SIDE = 12;
+/** Chỗ dành cho nút giữa và nhãn của nó. */
+const FAB_SLOT = 80;
+
+/** Thanh tab của mẫu Fitness App: nền trắng, bo trên, nút tròn gradient nổi ở giữa, có nhãn bên dưới. */
+function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarProps & { tabs: TabDef[]; fab?: { icon: IconName; onPress: () => void; label: string; title: string } }) {
   const insets = useSafeAreaInsets();
   const items = state.routes.map((r, i) => ({ route: r, index: i, def: tabs.find((t) => t.name === r.name)! })).filter((x) => x.def);
   const half = Math.ceil(items.length / 2);
@@ -40,7 +45,7 @@ function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarPro
             </View>
           ) : null}
         </View>
-        <Text style={{ fontSize: 13, color: on ? C.primary : C.textFaint, fontWeight: on ? '700' : '500' }}>{x.def.title}</Text>
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ fontSize: 13, color: on ? C.primary : C.textFaint, fontWeight: on ? '700' : '500' }}>{x.def.title}</Text>
         <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: on ? C.primary : 'transparent' }} />
       </Pressable>
     );
@@ -50,30 +55,39 @@ function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarPro
       <View style={{ width: '100%', maxWidth: 1080 }}>
       <View
         style={{
-          flexDirection: 'row', backgroundColor: C.card, paddingBottom: insets.bottom, minHeight: 62 + insets.bottom,
-          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          flexDirection: 'row', backgroundColor: C.card, paddingBottom: insets.bottom, paddingHorizontal: BAR_SIDE, minHeight: TAB_BAR_HEIGHT + insets.bottom,
+          borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
           shadowColor: C.grey, shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: -2 }, elevation: 12,
         }}>
         {items.slice(0, half).map(render)}
-        {fab && <View style={{ width: 84 }} />}
+        {fab && (
+          // Nhãn của nút giữa nằm trong thanh, cùng hàng với nhãn các tab, để người dùng biết nút mở gì.
+          <View style={{ width: FAB_SLOT, alignItems: 'center', justifyContent: 'center', gap: 3, paddingTop: 10 }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+            {/* Cùng khung với một tab (chỗ biểu tượng 25, nhãn, chấm 5) để nhãn thẳng hàng với các nhãn khác. */}
+            <View style={{ height: 25 }} />
+            <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ fontSize: 13, color: C.primary, fontWeight: '600' }}>{fab.title}</Text>
+            <View style={{ height: 5 }} />
+          </View>
+        )}
         {items.slice(half).map(render)}
       </View>
       {fab && (
-        <View style={{ position: 'absolute', top: -30, left: 0, right: 0, alignItems: 'center' }} pointerEvents="box-none">
-          <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
-            <Pressable
-              onPress={fab.onPress}
-              accessibilityRole="button"
-              accessibilityLabel={fab.label}
-              style={({ pressed }) => ({
-                borderRadius: 30, transform: [{ scale: pressed ? 0.94 : 1 }],
-                shadowColor: C.primary, shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 8, height: 16 }, elevation: 8,
-              })}>
-              <LinearGradient colors={G.fab} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={fab.icon} size={28} color={C.onPrimary} />
-              </LinearGradient>
-            </Pressable>
-          </View>
+        // Giữ vị trí nút giữa (quyết định 03/11/2026). Bỏ vòng nền xám 76 pt và bóng lan rộng màu xanh:
+        // vòng nền che chữ phía sau, bóng 16 pt lệch xuống dưới phải lan lên nội dung như một vầng sáng.
+        <View style={{ position: 'absolute', top: -FAB_RISE, left: 0, right: 0, alignItems: 'center' }} pointerEvents="box-none">
+          <Pressable
+            onPress={fab.onPress}
+            accessibilityRole="button"
+            accessibilityLabel={fab.label}
+            hitSlop={6}
+            style={({ pressed }) => ({
+              borderRadius: 30, borderWidth: 4, borderColor: C.card, transform: [{ scale: pressed ? 0.94 : 1 }],
+              shadowColor: C.grey, shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 4,
+            })}>
+            <LinearGradient colors={G.fab} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={fab.icon} size={28} color={C.onPrimary} />
+            </LinearGradient>
+          </Pressable>
         </View>
       )}
       </View>
@@ -82,7 +96,7 @@ function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarPro
 }
 
 /** Thanh tab theo vai trò; chặn truy cập nếu tài khoản không đúng vai trò (đặc tả mục 9). */
-export function RoleTabs({ role, tabs, fab }: { role: Role; tabs: TabDef[]; fab?: { icon: IconName; onPress: () => void; label: string } }) {
+export function RoleTabs({ role, tabs, fab }: { role: Role; tabs: TabDef[]; fab?: { icon: IconName; onPress: () => void; label: string; title: string } }) {
   const { me } = useStore();
   if (!me || me.role !== role) return <Redirect href="/" />;
   return (

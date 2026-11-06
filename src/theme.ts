@@ -10,8 +10,8 @@ export const C = {
   card: '#FFFFFF',
   text: '#17262A', // darkerText
   textBody: '#253840', // darkText
-  textSoft: '#4A6572', // lightText
-  textFaint: '#5F707D', // tối hơn #8A9AA6 để đạt 4,5:1 trên nền trắng và nền xám
+  textSoft: '#3F5764', // tối hơn #4A6572 (lightText) để đạt tối thiểu 6,4:1 trên mọi nền sáng của ứng dụng, kể cả primarySoft
+  textFaint: '#52626E', // tối hơn #5F707D: bản cũ chỉ đạt 4,32:1 trên primarySoft; nay tối thiểu 5,3:1 trên mọi nền sáng
   grey: '#3A5160',
   border: '#E6E8F0',
   green: '#187B4E',
@@ -67,15 +67,15 @@ export type GradientName = keyof typeof G;
 
 export const gradient = G.fab;
 
-export const radius = { s: 8, m: 12, l: 16 } as const;
+/**
+ * Bán kính bo góc dùng chung. Thẻ và ảnh bo đều bốn góc (trước đây thẻ bo 8/8/8 và góc trên phải 32, 54 hoặc 68,
+ * nhìn trên iPhone thành các thẻ cạnh nhau không đều).
+ * s: chip nhỏ, ô tích; m: khối trong thẻ, ô nhập, ảnh; card: mọi thẻ; sheet: thanh tiêu đề và thanh tab.
+ */
+export const radius = { s: 8, m: 12, card: 16, sheet: 24 } as const;
 
-/** Thẻ bất đối xứng của mẫu: ba góc 8, góc trên phải lớn. */
-export const cardShape = (topRight = 32) => ({
-  borderTopLeftRadius: 8,
-  borderBottomLeftRadius: 8,
-  borderBottomRightRadius: 8,
-  borderTopRightRadius: topRight,
-});
+/** Hình dạng thẻ: bo đều bốn góc theo radius.card. */
+export const cardShape = () => ({ borderRadius: radius.card });
 
 export const shadow = {
   shadowColor: '#3A5160',

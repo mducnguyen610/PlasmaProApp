@@ -33,7 +33,7 @@ assert.equal(pr.today, 'treat');
 assert.equal(pr.next, '2026-10-14');
 assert.equal(pr.phaseIndex, 1);
 const fmt = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7);
-assert.equal(courseStatus(pr, fmt).detail, 'Buổi 8/13 của đợt');
+assert.equal(courseStatus(pr, fmt).detail, 'Hôm nay là buổi 8/13 của đợt');
 const pr2 = courseProgress(plan, [...s, ses('2026-10-14')], '2026-10-14', '2026-10-14');
 assert.equal(courseStatus(pr2, fmt).kind, 'done');
 assert.equal(pr2.next, '2026-10-16');

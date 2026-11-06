@@ -9,13 +9,13 @@ import { ReviewNote } from '@/components/CourseCard';
 import { DateBadge } from '@/components/DateBadge';
 import { TaskRow } from '@/components/items';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Header, Muted, Ring, Screen, SectionTitle, SimBadge, Stat, WoundPhoto } from '@/components/ui';
+import { Button, Card, Chip, Header, Muted, Notice, Ring, Screen, SectionTitle, SimBadge, Stat, WoundPhoto } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, TREND } from '@/lib/format';
 import { formatAreaForName } from '@/lib/naming';
 import { computeReminders, scheduleReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
-import { bar, C } from '@/theme';
+import { bar, C, radius } from '@/theme';
 
 // Việc trước và sau mỗi lần chiếu (slide 34: chiếu sau chăm sóc thường quy; S2k 2022: loại dịch tiết, không làm khô vết).
 // Nội dung là bản nháp cho demo, cần bác sĩ trong nhóm duyệt.
@@ -74,13 +74,16 @@ export default function PatientHome() {
             {/* Mức năng lượng và thời gian chỉ hiện ở Lịch trình: trang chủ giữ một câu chính và một chip (quy tắc đơn giản cho bệnh nhân). */}
             {phase && <View style={{ flexDirection: 'row' }}><Chip icon="layers-outline" tone="blue" label={`Giai đoạn ${pr.phaseIndex + 1}/${pr.phaseCount}: ${phaseLabel(phase)}`} /></View>}
             {dev && lastSyncDay !== today && (
-              <Muted>{dev.lastSync ? `Thiết bị gửi dữ liệu lần cuối ${fmtDateTime(dev.lastSync)}, nên số lần hôm nay có thể chưa đầy đủ.` : 'Thiết bị chưa gửi dữ liệu, nên số lần hôm nay có thể chưa đầy đủ.'}</Muted>
+              <Notice icon="cloud-offline-outline">
+                {dev.lastSync ? `Chưa nhận dữ liệu hôm nay (lần cuối ${fmtDateTime(dev.lastSync)}). Số buổi có thể chưa đủ.` : 'Thiết bị chưa gửi dữ liệu. Số buổi có thể chưa đủ.'}
+              </Notice>
             )}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
-              <View style={{ flex: 1, gap: 14 }}>
-                <Stat label="Dự kiến xem lại đợt" value={fmtDate(plan.endDate).slice(0, 5)} unit={fmtDate(plan.endDate).slice(6)} tone="red" />
+            {/* Vòng tiến độ đặt trước, mốc xem lại đợt nằm sát bên phải: không còn khoảng trống giữa hai khối. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 }}>
+              <Ring size={128} value={pr.done} max={pr.total} label={`${pr.done}/${pr.total}`} sub="buổi đã xong" />
+              <View style={{ flex: 1, alignItems: 'flex-start' }}>
+                <Stat label="Dự kiến xem lại đợt" value={fmtDate(plan.endDate)} tone="red" />
               </View>
-              <Ring value={pr.done} max={pr.total} label={`${pr.done}`} sub={`/ ${pr.total} buổi`} />
             </View>
           </>
         ) : followUp ? (
@@ -124,8 +127,9 @@ export default function PatientHome() {
           {steps.map((t) => {
             const on = !!checked[t];
             return (
-              <Pressable key={t} onPress={() => setChecked({ ...checked, [t]: !on })} accessibilityRole="checkbox" accessibilityState={{ checked: on }} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Ionicons name={on ? 'checkbox' : 'square-outline'} size={24} color={on ? C.green : C.textSoft} />
+              // Cả dòng là vùng bấm, cao tối thiểu 48 pt (Apple HIG 44 pt, Material 48 dp), có phản hồi khi chạm.
+              <Pressable key={t} onPress={() => setChecked({ ...checked, [t]: !on })} accessibilityRole="checkbox" accessibilityLabel={t} accessibilityState={{ checked: on }} style={({ pressed }) => ({ minHeight: 48, paddingVertical: 6, marginHorizontal: -8, paddingHorizontal: 8, borderRadius: radius.s, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pressed ? C.surfaceMuted : 'transparent' })}>
+                <Ionicons name={on ? 'checkbox' : 'square-outline'} size={28} color={on ? C.green : C.textSoft} />
                 <Text style={{ flex: 1, color: C.text }}>{t}</Text>
               </Pressable>
             );
@@ -203,7 +207,7 @@ export default function PatientHome() {
                   </View>
                   <Muted>{img.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : 'Bác sĩ đo ngày ' + fmtDate(img.captureDate)}</Muted>
                 </View>
-                <WoundPhoto image={img} style={{ width: 110, height: 82, borderRadius: 8, borderTopRightRadius: 40 }} />
+                <WoundPhoto image={img} style={{ width: 110, height: 82, borderRadius: radius.m }} />
               </View>
             ) : <Muted>Chưa có số đo do bác sĩ nhập.</Muted>}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -212,7 +216,7 @@ export default function PatientHome() {
             </View>
             {rv && rv.state !== 'no_data' && <ReviewNote review={rv} forPatient />}
             {ev ? (
-              <View style={{ gap: 4, padding: 12, borderRadius: 12, backgroundColor: C.surfaceMuted }}>
+              <View style={{ gap: 4, padding: 12, borderRadius: radius.m, backgroundColor: C.surfaceMuted }}>
                 <Text style={{ color: C.text, fontWeight: '600' }}>Lời dặn của bác sĩ</Text>
                 <Text style={{ color: C.text, lineHeight: 24 }}>{ev.instructions || ev.characteristics}</Text>
                 <Muted>{account(ev.doctorId)?.name ?? 'Bác sĩ phụ trách'} · {fmtDate(ev.date)}{ev.nextReview && ev.nextReview >= today ? ` · tái đánh giá ${fmtDate(ev.nextReview)}` : ''}</Muted>

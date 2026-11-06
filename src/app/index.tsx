@@ -33,7 +33,7 @@ export default function Login() {
     finally { setBusy(false); }
   };
   return <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 24, paddingTop: insets.top + 24, paddingBottom: 48, gap: 20, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
-    <LinearGradient colors={G.night} style={[cardShape(68), { padding: 28, gap: 12, overflow: 'hidden' }]}>
+    <LinearGradient colors={G.night} style={[cardShape(), { padding: 28, gap: 12, overflow: 'hidden' }]}>
       <View style={{ position: 'absolute', right: -25, top: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: '#ffffff15' }} />
       <Ionicons name="pulse" size={40} color={C.onPrimary} />
       <Text style={{ color: C.onPrimary, fontSize: 32, fontWeight: '700' }}>Plasma Pro</Text>

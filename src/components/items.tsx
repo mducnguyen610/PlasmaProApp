@@ -9,7 +9,7 @@ import { fmtDate, LABEL_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, WoundImage } from '@/lib/types';
-import { C } from '@/theme';
+import { C, radius } from '@/theme';
 
 export function PatientCard({ patient }: { patient: Patient }) {
   const { device, woundsOf } = useLookups();
@@ -51,7 +51,7 @@ export function ImageTile({ image, width = 150 }: { image: WoundImage; width?: n
       accessibilityRole="button"
       accessibilityLabel={`Ảnh ${image.id}, ${image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'chờ nhãn'}${image.retakeRequested ? ', cần chụp lại' : ''}`}
       style={{ width }}>
-      <WoundPhoto image={image} style={{ width, height: width * 0.75, borderRadius: 8, borderTopRightRadius: 32 }} />
+      <WoundPhoto image={image} style={{ width, height: width * 0.75, borderRadius: radius.m }} />
       <View style={{ position: 'absolute', top: 6, left: 6 }}>
         <Chip label={image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'Chờ nhãn'} tone={st.tone} />
       </View>

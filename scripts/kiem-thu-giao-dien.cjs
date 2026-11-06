@@ -222,8 +222,42 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     await p.context().close();
   }
 
+  // TC13 đến TC17: các lỗi giao diện Trang chủ bệnh nhân đo trên ảnh iPhone 11 (06/11/2026), khung 414 px và 320 px.
+  for (const w of [414, 320]) {
+    const p = await newPage(w);
+    await login(p, 'benhnhan'); await go(p, '/patient');
+    const m = await p.evaluate(() => {
+      const tabs = [...document.querySelectorAll('[role=tab]')];
+      const bar = tabs[0].parentElement.getBoundingClientRect();
+      const texts = (root) => [...root.querySelectorAll('div')].filter((d) => d.children.length === 0 && d.textContent.trim() && !/ionicons/i.test(getComputedStyle(d).fontFamily));
+      const label = (e) => texts(e).at(-1)?.getBoundingClientRect();
+      const first = label(tabs[0]); const last = label(tabs.at(-1));
+      const fab = document.querySelector('[aria-label="Lịch trình điều trị"]');
+      const fabLabel = [...document.querySelectorAll('div')].some((d) => d.children.length === 0 && d.textContent.trim() === 'Lịch trình');
+      const sc = [...document.querySelectorAll('div')].filter((d) => d.scrollHeight > d.clientHeight + 20 && /auto|scroll/.test(getComputedStyle(d).overflowY)).sort((a, b) => b.scrollHeight - a.scrollHeight)[0];
+      sc.scrollTop = sc.scrollHeight;
+      const content = sc.firstElementChild; const kids = [...content.children];
+      const lastBottom = Math.max(...kids.map((k) => k.getBoundingClientRect().bottom));
+      const fabTop = fab.getBoundingClientRect().top;
+      const rows = [...document.querySelectorAll('[role=checkbox]')].map((e) => e.getBoundingClientRect().height);
+      const wrapped = tabs.some((t) => { const r = label(t); return r && r.height > 24; });
+      return { left: first.left - bar.left, right: window.innerWidth - last.right, fabLabel, gapBelow: fabTop - lastBottom, rows, wrapped };
+    });
+    // 414 px (iPhone 11): tối thiểu 16. 320 px: nhãn "Tài khoản" rộng hơn ô tab, chỉ đạt 12 (giới hạn đã biết).
+    const minSide = w >= 375 ? 16 : 12;
+    rec(`TC13-${w}`, `Nhãn tab ngoài cùng cách mép tối thiểu ${minSide} px (${w} px)`, m.left >= minSide && m.right >= minSide, `trái ${Math.round(m.left)}, phải ${Math.round(m.right)}`);
+    rec(`TC14-${w}`, `Nhãn tab không xuống dòng (${w} px)`, !m.wrapped, '');
+    rec(`TC15-${w}`, `Nút giữa có nhãn "Lịch trình" (${w} px)`, m.fabLabel, '');
+    rec(`TC16-${w}`, `Cuộn hết trang, mục cuối nằm trên nút giữa (${w} px)`, m.gapBelow >= 8, `khoảng cách ${Math.round(m.gapBelow)} px`);
+    rec(`TC17-${w}`, `Dòng ô tích cao tối thiểu 44 px (${w} px)`, m.rows.length > 0 && m.rows.every((h) => h >= 44), m.rows.map(Math.round).join(', '));
+    const t = await p.getByText('buổi đã xong').count();
+    rec(`TC18-${w}`, `Vòng tiến độ ghi rõ "buổi đã xong" (${w} px)`, t > 0, '');
+    if (w === 320) await p.screenshot({ path: OUT + '/tc13-320px.png' });
+    await p.context().close();
+  }
+
   await b.close();
-  const pass = results.filter((r) => r.pass).length;
+  const pass =results.filter((r) => r.pass).length;
   console.log(`TỔNG: ${pass}/${results.length} đạt`);
   console.log('JSON ' + JSON.stringify(results));
 })();

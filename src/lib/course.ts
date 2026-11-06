@@ -141,7 +141,7 @@ export function courseStatus(pr: CourseProgress, fmt: (iso: string) => string): 
   return {
     kind: 'treat',
     title: 'Hôm nay có buổi điều trị',
-    detail: pr.perVisit > 1 ? `Buổi ${pr.done + (pr.todayCount > 0 ? 0 : 1)}/${pr.total} · đã chiếu ${pr.todayCount}/${pr.perVisit} lần` : `Buổi ${pr.done + 1}/${pr.total} của đợt`,
+    detail: pr.perVisit > 1 ? `Hôm nay là buổi ${pr.done + (pr.todayCount > 0 ? 0 : 1)}/${pr.total} · đã chiếu ${pr.todayCount}/${pr.perVisit} lần` : `Hôm nay là buổi ${pr.done + 1}/${pr.total} của đợt`,
   };
 }
 
