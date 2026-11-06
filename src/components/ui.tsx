@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useSegments } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -344,6 +344,28 @@ export function Notice({ children, tone = 'amber', icon = 'alert-circle-outline'
       <Ionicons name={icon} size={22} color={fg} style={{ marginTop: 1 }} />
       <Text style={{ flex: 1, color: C.text, fontSize: T.small, lineHeight: 21 }}>{children}</Text>
     </View>
+  );
+}
+
+/**
+ * Dòng bật/tắt: cả dòng bấm được, cao tối thiểu 48 (theo mẫu ô tích của Trang chủ bệnh nhân),
+ * nhãn bên trái, mô tả tùy chọn, công tắc bên phải. Công tắc trần chỉ khoảng 40 × 24.
+ */
+export function SwitchRow({ label, detail, value, onChange, disabled, muted }: { label: string; detail?: ReactNode; value: boolean; onChange: (v: boolean) => void; disabled?: boolean; muted?: boolean }) {
+  return (
+    <Pressable
+      onPress={() => !disabled && onChange(!value)}
+      disabled={disabled}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value, disabled }}
+      style={({ pressed }) => ({ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6, paddingHorizontal: muted ? 12 : 8, marginHorizontal: muted ? 0 : -8, borderRadius: radius.m, backgroundColor: pressed ? C.neutralSoft : muted ? C.surfaceMuted : 'transparent' })}>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ color: C.text, fontWeight: detail ? '600' : '400' }}>{label}</Text>
+        {detail ? <Text style={{ color: C.textSoft, fontSize: T.small, lineHeight: 21 }}>{detail}</Text> : null}
+      </View>
+      <Switch value={value} onValueChange={onChange} disabled={disabled} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden />
+    </Pressable>
   );
 }
 

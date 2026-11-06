@@ -6,7 +6,7 @@ import { Chip, InfoRow, Muted, StatGrid } from '@/components/ui';
 import { type AreaReview, type CourseProgress, fmtDuration, phaseLabel, phasesOf, REVIEW_MIN_REDUCTION } from '@/lib/course';
 import { fmtDate } from '@/lib/format';
 import type { TreatmentPlan } from '@/lib/types';
-import { C } from '@/theme';
+import { C, radius } from '@/theme';
 
 /** Các giai đoạn của đợt, giai đoạn hiện tại được tô đậm. */
 export function PhaseList({ plan, current }: { plan: TreatmentPlan; current?: number }) {
@@ -16,7 +16,7 @@ export function PhaseList({ plan, current }: { plan: TreatmentPlan; current?: nu
       {ps.map((p, i) => {
         const on = i === current;
         return (
-          <View key={i} accessible accessibilityLabel={`Giai đoạn ${i + 1}: ${phaseLabel(p)}, từ ${fmtDate(p.from)} đến ${fmtDate(p.to)}${on ? ', đang áp dụng' : ''}`} style={{ flexDirection: 'row', gap: 10, alignItems: 'center', padding: 10, borderRadius: 10, backgroundColor: on ? C.primarySoft : C.surfaceMuted }}>
+          <View key={i} accessible accessibilityLabel={`Giai đoạn ${i + 1}: ${phaseLabel(p)}, từ ${fmtDate(p.from)} đến ${fmtDate(p.to)}${on ? ', đang áp dụng' : ''}`} style={{ flexDirection: 'row', gap: 10, alignItems: 'center', padding: 12, borderRadius: radius.m, backgroundColor: on ? C.primarySoft : C.surfaceMuted }}>
             <Text style={{ fontWeight: '700', color: on ? C.primary : C.textSoft, width: 22 }}>{i + 1}</Text>
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '600', color: C.text }}>{phaseLabel(p)}</Text>
@@ -69,7 +69,7 @@ export function ReviewNote({ review, forPatient }: { review: AreaReview; forPati
   if (forPatient) return <Text style={{ color: C.text }}>{line}</Text>;
   const low = review.state === 'low';
   return (
-    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 10, borderRadius: 10, backgroundColor: low ? C.amberSoft : review.state === 'ok' ? C.greenSoft : C.surfaceMuted }}>
+    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 12, borderRadius: radius.m, backgroundColor: low ? C.amberSoft : review.state === 'ok' ? C.greenSoft : C.surfaceMuted }}>
       <Ionicons name={low ? 'alert-circle-outline' : review.state === 'ok' ? 'checkmark-circle-outline' : 'time-outline'} size={20} color={low ? C.amber : review.state === 'ok' ? C.green : C.textSoft} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ color: C.text }}>{line}</Text>

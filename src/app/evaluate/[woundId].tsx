@@ -1,11 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, Switch, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Choices, Field, Header, InfoRow, Muted, Screen } from '@/components/ui';
+import { Button, Card, Choices, Field, Header, InfoRow, Muted, Screen, SwitchRow } from '@/components/ui';
 import { SEVERITY } from '@/lib/access';
 import { assessmentError, EXUDATE, HELP, INFECTION, PERCENT_BANDS, PRESSURE, PRESSURE_STAGES, WOUND_TYPES, woundAge } from '@/lib/assessment';
 import { TREND } from '@/lib/format';
@@ -92,10 +92,7 @@ export default function Evaluate() {
         <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
         <Field label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
         <Field label="Ngày tái đánh giá" value={nextReview} onChangeText={setNextReview} placeholder="dd/mm/yyyy" />
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ flex: 1, color: C.text }}>Công bố cho bệnh nhân xem</Text>
-          <Switch value={visible} onValueChange={setVisible} />
-        </View>
+        <SwitchRow label="Công bố cho bệnh nhân xem" value={visible} onChange={setVisible} />
       </Card>
       {err ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{err}</Text> : null}
       <Button label="Lưu đánh giá" icon="save-outline" onPress={save} />

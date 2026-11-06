@@ -1,11 +1,11 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Switch, View } from 'react-native';
+import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { DoseRows, PhaseList } from '@/components/CourseCard';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, Segmented } from '@/components/ui';
+import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, Segmented, SwitchRow } from '@/components/ui';
 import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, suggestDurationSec } from '@/lib/course';
 import { notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, PLAN_STATUS } from '@/lib/format';
@@ -219,10 +219,7 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         <Field label="Lịch tái khám" value={review} onChangeText={setReview} placeholder="Ví dụ: tái đánh giá mỗi 7 ngày" />
         <Field label="Ghi chú" value={notes} onChangeText={setNotes} multiline />
         <Field label="Lý do thay đổi" value={reason} onChangeText={setReason} placeholder="Bắt buộc" />
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ flex: 1, color: C.text }}>Bác sĩ xác nhận đợt điều trị (bệnh nhân sẽ xem được)</Text>
-          <Switch value={confirmed} onValueChange={setConfirmed} />
-        </View>
+        <SwitchRow label="Bác sĩ xác nhận đợt điều trị" detail="Bệnh nhân sẽ xem được đợt này" value={confirmed} onChange={setConfirmed} />
             <Button label="Lưu phiên bản mới" icon="save-outline" onPress={save} />
           </>
         )}

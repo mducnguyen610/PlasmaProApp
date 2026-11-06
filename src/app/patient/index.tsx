@@ -7,7 +7,7 @@ import { latestEvaluation, SEVERITY } from '@/lib/access';
 import { areaReview, courseProgress, courseStatus, followUpDates, phaseLabel, phasesOf } from '@/lib/course';
 import { ReviewNote } from '@/components/CourseCard';
 import { DateBadge } from '@/components/DateBadge';
-import { TaskRow } from '@/components/items';
+import { AppointmentRow, TaskRow } from '@/components/items';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Header, Muted, Notice, Ring, Screen, SectionTitle, SimBadge, Stat, WoundPhoto } from '@/components/ui';
 import { notify } from '@/lib/dialog';
@@ -15,7 +15,7 @@ import { fmtDate, fmtDateTime, TREND } from '@/lib/format';
 import { formatAreaForName } from '@/lib/naming';
 import { computeReminders, scheduleReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
-import { bar, C, radius } from '@/theme';
+import { C, radius } from '@/theme';
 
 // Việc trước và sau mỗi lần chiếu (slide 34: chiếu sau chăm sóc thường quy; S2k 2022: loại dịch tiết, không làm khô vết).
 // Nội dung là bản nháp cho demo, cần bác sĩ trong nhóm duyệt.
@@ -151,14 +151,7 @@ export default function PatientHome() {
       <SectionTitle action={upcoming.length > 1 ? `Tất cả (${upcoming.length})` : undefined} onAction={() => router.push('/schedule')}>Lịch hẹn gần nhất</SectionTitle>
       <Card>
         {next ? (
-          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-            <View style={{ width: 3, alignSelf: 'stretch', borderRadius: 4, backgroundColor: next.date === today ? bar.red : bar.blue }} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ color: next.date === today ? C.red : C.primary, fontWeight: '700' }}>{next.date === today ? 'Hôm nay' : fmtDate(next.date)}</Text>
-              <Text style={{ color: C.text, fontWeight: '600' }}>{next.title}</Text>
-              <Muted>{next.body}</Muted>
-            </View>
-          </View>
+          <AppointmentRow date={next.date} title={next.title} body={next.body} today={today} />
         ) : (
           <Muted>Chưa có lịch hẹn. Lịch được lấy từ đợt điều trị và đánh giá của bác sĩ.</Muted>
         )}

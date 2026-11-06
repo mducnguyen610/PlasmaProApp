@@ -52,7 +52,7 @@ export default function WoundDetail() {
   // Thứ tự theo việc bác sĩ cần quyết định (đề xuất 5): cảnh báo, đợt điều trị, diện tích, đánh giá, album.
   // Vị trí, nhóm, ngày bắt đầu đưa lên đầu trang thay cho một thẻ riêng.
   return (
-    <Screen header={<Header back title={`${w.code} · ${w.location}`} subtitle={`${p.name} · ${p.code}`} />}>
+    <Screen header={<Header back title={`Vết thương ${w.code}`} subtitle={`${p.name} · ${p.code}`} />}>
       {/* Tiêu đề có thể bị cắt khi chữ to: vị trí và nhóm tổn thương luôn hiện đủ ở đây để tránh nhầm vết (R15). */}
       <Text style={{ fontWeight: '700', color: C.text }}>{w.location}{w.group ? <Text style={{ fontWeight: '400', color: C.textSoft }}>{` · ${w.group}`}</Text> : null}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -81,14 +81,14 @@ export default function WoundDetail() {
             </Text>
             {pr && (
               <Text style={{ color: pr.missed + pr.extra > 0 && isDoctor ? C.amber : C.textSoft }}>
-                Buổi {pr.done}/{pr.total}
+                {pr.done}/{pr.total} buổi đã xong
                 {isDoctor && pr.missed > 0 ? ` · bỏ lỡ ${pr.missed}` : ''}
                 {isDoctor && pr.extra > 0 ? ` · ngoài lịch ${pr.extra}` : ''}
                 {plan.status === 'active' && pr.next ? ` · tiếp theo ${fmtDate(pr.next)}` : ''}
               </Text>
             )}
             <ReviewNote review={areaReview(images, plan, today)} forPatient={!isDoctor} />
-            <Text accessibilityRole="button" accessibilityState={{ expanded: showCourse }} onPress={() => setShowCourse(!showCourse)} style={{ color: C.primary, fontWeight: '600', paddingVertical: 10 }}>
+            <Text accessibilityRole="button" accessibilityState={{ expanded: showCourse }} onPress={() => setShowCourse(!showCourse)} style={{ color: C.primary, fontWeight: '600', paddingVertical: 12, minHeight: 44 }}>
               {showCourse ? 'Ẩn chi tiết đợt' : 'Xem chi tiết đợt'}
             </Text>
             {showCourse && (

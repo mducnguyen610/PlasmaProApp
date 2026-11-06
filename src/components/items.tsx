@@ -9,7 +9,22 @@ import { fmtDate, LABEL_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, WoundImage } from '@/lib/types';
-import { C, radius } from '@/theme';
+import { bar, C, radius } from '@/theme';
+
+/** Một lịch hẹn: vạch màu, ngày (đỏ nếu hôm nay), tiêu đề đậm, mô tả. Dùng chung cho Trang chủ và Lịch trình. */
+export function AppointmentRow({ date, title, body, today }: { date: string; title: string; body?: string; today: string }) {
+  const isToday = date === today;
+  return (
+    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+      <View style={{ width: 3, alignSelf: 'stretch', borderRadius: 4, backgroundColor: isToday ? bar.red : bar.blue }} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ color: isToday ? C.red : C.primary, fontWeight: '700' }}>{isToday ? 'Hôm nay' : fmtDate(date)}</Text>
+        <Text style={{ color: C.text, fontWeight: '600' }}>{title}</Text>
+        {body ? <Text style={{ color: C.textSoft, fontSize: 14, lineHeight: 21 }}>{body}</Text> : null}
+      </View>
+    </View>
+  );
+}
 
 export function PatientCard({ patient }: { patient: Patient }) {
   const { device, woundsOf } = useLookups();
@@ -36,7 +51,7 @@ export function PatientCard({ patient }: { patient: Patient }) {
         </Text>
         <Text style={{ color: C.textSoft, fontSize: 13 }}>
           {wounds.length} vết thương{unlabeled ? ` · ` : ''}
-          {unlabeled ? <Text style={{ color: C.amber, fontWeight: '700' }}>{unlabeled} ảnh chờ nhãn</Text> : null}
+          {unlabeled ? <Text style={{ color: C.amber, fontWeight: '700' }}>{unlabeled} ảnh chưa đo</Text> : null}
         </Text>
       </View>
     </Card>
@@ -49,11 +64,11 @@ export function ImageTile({ image, width = 150 }: { image: WoundImage; width?: n
     <Pressable
       onPress={() => router.push({ pathname: '/images/[id]', params: { id: image.id } })}
       accessibilityRole="button"
-      accessibilityLabel={`Ảnh ${image.id}, ${image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'chờ nhãn'}${image.retakeRequested ? ', cần chụp lại' : ''}`}
+      accessibilityLabel={`Ảnh ${image.id}, ${image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'chưa đo diện tích'}${image.retakeRequested ? ', cần chụp lại' : ''}`}
       style={{ width }}>
       <WoundPhoto image={image} style={{ width, height: width * 0.75, borderRadius: radius.m }} />
       <View style={{ position: 'absolute', top: 6, left: 6 }}>
-        <Chip label={image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'Chờ nhãn'} tone={st.tone} />
+        <Chip label={image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'Chưa đo'} tone={st.tone} />
       </View>
       {image.retakeRequested && (
         <View style={{ position: 'absolute', top: 6, right: 6 }}>

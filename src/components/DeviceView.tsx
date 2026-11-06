@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Chip, Empty, InfoRow, Muted, SectionTitle, SimBadge, Stat } from '@/components/ui';
+import { Button, Card, Chip, Empty, InfoRow, Muted, Notice, SectionTitle, SimBadge, Stat } from '@/components/ui';
 import { noteText } from '@/components/AdherenceCalendar';
 import { ProgressRows } from '@/components/CourseCard';
 import { courseProgress, isScheduled } from '@/lib/course';
@@ -84,12 +84,12 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={{ fontSize: 18, fontWeight: '800', color: C.text, flex: 1 }}>{device.code}</Text>
-          <Chip label={device.online ? 'Online' : 'Offline'} tone={device.online ? 'green' : 'gray'} icon={device.online ? 'wifi' : 'cloud-offline-outline'} />
+          <Chip label={device.online ? 'Đang kết nối' : 'Mất kết nối'} tone={device.online ? 'green' : 'gray'} icon={device.online ? 'wifi' : 'cloud-offline-outline'} />
         </View>
         {patientView && (
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
             <Text style={{ fontSize: 32, fontWeight: '700', color: C.primary }}>{restToday ? 'Nghỉ' : plan ? `${todayN}/${plan.sessionsPerDay ?? 1}` : todayN}</Text>
-            <Text style={{ fontSize: 16, color: C.textSoft, marginBottom: 6 }}>{restToday ? 'theo lịch hôm nay' : 'lần điều trị hôm nay'}</Text>
+            <Text style={{ fontSize: 16, color: C.textSoft, marginBottom: 6 }}>{restToday ? 'theo lịch hôm nay' : lastSyncDay === today ? 'lần chiếu hôm nay' : 'lần chiếu đã nhận hôm nay'}</Text>
           </View>
         )}
         {device.tip
@@ -218,10 +218,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         {/* Ngày sau lần đồng bộ cuối là "chưa có dữ liệu", không phải "không sử dụng" (đặc tả 7.2).
             Các ngày này luôn liền nhau ở cuối khoảng, nên gộp thành một câu thay vì lặp từng dòng. */}
         {unsyncedDays.length > 0 && (
-          <View accessible style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: C.amberSoft, borderRadius: 8, padding: 12 }}>
-            <Ionicons name="cloud-offline-outline" size={20} color={C.amber} />
-            <Text style={{ flex: 1, color: C.amber, lineHeight: 20 }}>{unsyncedText}</Text>
-          </View>
+          <Notice icon="cloud-offline-outline">{unsyncedText}</Notice>
         )}
         {syncedDays.map(({ d, n }) => (
           <View key={d} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>

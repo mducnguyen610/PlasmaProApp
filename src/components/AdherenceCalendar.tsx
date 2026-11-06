@@ -11,7 +11,7 @@ import { fmtDate } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import type { Reminder } from '@/lib/reminders';
 import type { DeviceSession, SessionNote, TreatmentPlan } from '@/lib/types';
-import { C } from '@/theme';
+import { C, radius } from '@/theme';
 
 // Ngưỡng cảnh báo đau giống màn Báo triệu chứng; đề xuất cho demo, cần bác sĩ xác nhận.
 const HIGH_PAIN = 7;
@@ -149,7 +149,7 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
         <Card>
           <Text style={{ fontWeight: '700', fontSize: 16, color: C.text }}>{fmtDate(selected)}</Text>
           {reminders.filter((r) => r.date === selected).map((r) => (
-            <View key={r.id} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: C.violetSoft, borderRadius: 8, padding: 10 }}>
+            <View key={r.id} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: C.violetSoft, borderRadius: radius.m, padding: 12 }}>
               <Ionicons name="calendar" size={18} color={C.violet} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontWeight: '700', color: C.text }}>{r.title}</Text>
@@ -164,7 +164,9 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
           {selectedCell?.kind === 'partial' && <Muted>Chưa chiếu đủ số lần của buổi.</Muted>}
           {selectedCell?.kind === 'rest' && <Muted>Ngày nghỉ theo lịch của đợt. Thiết bị không phát vào ngày này.</Muted>}
           {selectedCell?.kind === 'planned' && <Muted>Có buổi điều trị theo lịch.</Muted>}
-          {daySessions.length === 0 && selectedCell?.kind !== 'unsynced' && selectedCell?.kind !== 'rest' && selected <= today && <Muted>Không có phiên điều trị.</Muted>}
+          {/* Hôm nay chưa có phiên: nói rõ là có buổi và dữ liệu có thể chưa về, không ghi "Không có phiên" (cùng ý với cảnh báo đồng bộ ở Trang chủ). */}
+          {selectedCell?.kind === 'today' && daySessions.length === 0 && <Muted>{lastSyncDay !== today ? 'Hôm nay có buổi điều trị. Số lần chiếu sẽ hiện khi thiết bị gửi dữ liệu.' : 'Hôm nay có buổi điều trị, thiết bị chưa ghi nhận lần chiếu nào.'}</Muted>}
+          {daySessions.length === 0 && !['unsynced', 'rest', 'planned', 'today'].includes(selectedCell?.kind ?? '') && selected <= today && <Muted>Không có phiên điều trị.</Muted>}
           {daySessions.map((s) => {
             const n = note(s.sessionId);
             const done = s.status === 'completed';

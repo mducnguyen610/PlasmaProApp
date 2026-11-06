@@ -123,7 +123,7 @@ export function createSeed(): AppData {
         id: 'pl-1', patientId: 'p-1', woundId: 'w-1', version: 2, status: 'active', sessionsPerDay: 1, minIntervalMin: null, targetEnergyWh: null,
         ...plan1, doseLevel: 8, durationSec: 180, secondsPerCm2: 20, areaAtStart: 12.5, reviewAtDay: 28,
         reviewSchedule: 'Tái đánh giá mỗi 7 ngày',
-        notes: 'Mức năng lượng, thời gian và lịch là giá trị MÔ PHỎNG theo dạng liệu trình trên slide 34 và 39, không phải chỉ định điều trị.',
+        notes: 'Mức năng lượng, thời gian và lịch là giá trị mô phỏng theo dạng liệu trình trên slide 34 và 39, không phải chỉ định điều trị.',
         editedBy: DOCTOR, editedAt: `${D(-16)}T09:00:00.000Z`, reason: 'Vết thương cải thiện: chuyển sang 3 buổi mỗi tuần', confirmed: true,
       },
       {
