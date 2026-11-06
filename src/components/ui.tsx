@@ -60,10 +60,10 @@ export function Screen({ children, header, padded = true }: { children: ReactNod
   const segments = useSegments() as string[];
   const hasTabBar = TAB_GROUPS.includes(segments[0] ?? '');
   // Thanh tab cao TAB_BAR_HEIGHT + vùng an toàn, nút giữa nhô thêm FAB_RISE: chừa đủ để mục cuối không nằm dưới nút.
-  // Kéo hết trang: mục cuối dừng ngay trên thanh tab (và trên phần nút giữa nhô lên, nếu vai trò có nút giữa), chỉ chừa 8.
+  // Kéo hết trang: mục cuối dừng ngay trên thanh tab (và trên phần nút giữa nhô lên, kể cả viền 4, nếu vai trò có nút giữa), chỉ chừa 8.
   // Quản trị không có nút giữa nên không cộng FAB_RISE. Màn không có thanh tab chỉ chừa vùng an toàn và 16.
   const hasFab = segments[0] === 'patient' || segments[0] === 'doctor';
-  const bottom = hasTabBar ? TAB_BAR_HEIGHT + (hasFab ? FAB_RISE : 0) + insets.bottom + 8 : insets.bottom + 16;
+  const bottom = hasTabBar ? TAB_BAR_HEIGHT + (hasFab ? FAB_RISE + 4 : 0) + insets.bottom + 8 : insets.bottom + 16;
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, width: '100%', maxWidth: 1080, alignSelf: 'center' }}>
       {header}
