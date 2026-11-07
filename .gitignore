@@ -41,3 +41,7 @@ example
 # generated native folders
 /ios
 /android
+
+# Tệp APK dựng sẵn: đăng lên GitHub Releases, không đưa vào repo
+dist-apk/
+*.apk

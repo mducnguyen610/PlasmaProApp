@@ -78,6 +78,15 @@ Quy tắc đặt tên (mục 4.3, 4.4) nằm trong `src/lib/naming.ts`, có ki�
 - ZIP chứa bản ảnh nghiên cứu dùng mã RS, diện tích khớp CSV; kèm `labels.csv` + `README.txt`).
 - Quyền sửa nhãn và xuất dữ liệu theo tài khoản: chỉ bác sĩ phụ trách sửa nhãn; chỉ bác sĩ có quyền nghiên cứu xuất; chỉ ảnh của bệnh nhân đã đồng ý.
 
+## Tệp APK Android
+
+Hai tệp APK không còn nằm trong repo để bản tải ZIP nhẹ hơn khoảng 110 MB. Cả hai được dựng từ mã gốc commit `10e9f40` (18/10/2026, Expo SDK 57), chưa gồm các thay đổi về sau, chỉ dùng để tham khảo:
+
+- Bản thường: https://github.com/mducnguyen610/PlasmaProApp/raw/10e9f40/dist-apk/PlasmaPro-1.0.0.apk
+- Bản có AR (ARCore): https://github.com/mducnguyen610/PlasmaProApp/raw/10e9f40/dist-apk/PlasmaPro-AR.apk
+
+Khi dựng APK mới, đăng lên mục Releases của GitHub thay vì đưa vào repo.
+
 ## Căn cứ pháp lý
 
 Danh sách văn bản (số hiệu, ngày, nguồn) nằm trong `src/lib/compliance.ts` và hiển thị trong app ở Tài khoản → Căn cứ pháp lý.
