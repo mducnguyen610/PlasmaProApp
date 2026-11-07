@@ -249,7 +249,9 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     rec(`TC14-${w}`, `Nhãn tab không xuống dòng (${w} px)`, !m.wrapped, '');
     rec(`TC15-${w}`, `Nút giữa có nhãn "Lịch trình" (${w} px)`, m.fabLabel, '');
     rec(`TC16-${w}`, `Cuộn hết trang, mục cuối nằm trên nút giữa (${w} px)`, m.gapBelow >= 8, `khoảng cách ${Math.round(m.gapBelow)} px`);
-    rec(`TC17-${w}`, `Dòng ô tích cao tối thiểu 44 px (${w} px)`, m.rows.length > 0 && m.rows.every((h) => h >= 44), m.rows.map(Math.round).join(', '));
+    // Ngày nghỉ theo lịch không có danh sách "Trước/Sau khi chiếu": ca này không áp dụng, ghi rõ thay vì báo lỗi.
+    const restDay = m.rows.length === 0 && (await p.getByText('Hôm nay nghỉ theo lịch').count()) > 0;
+    rec(`TC17-${w}`, `Dòng ô tích cao tối thiểu 44 px (${w} px)`, restDay || (m.rows.length > 0 && m.rows.every((h) => h >= 44)), restDay ? 'không áp dụng: hôm nay nghỉ theo lịch' : m.rows.map(Math.round).join(', '));
     const t = await p.getByText('buổi đã xong').count();
     rec(`TC18-${w}`, `Vòng tiến độ ghi rõ "buổi đã xong" (${w} px)`, t > 0, '');
     if (w === 320) await p.screenshot({ path: OUT + '/tc13-320px.png' });
