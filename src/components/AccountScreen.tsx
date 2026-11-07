@@ -8,13 +8,12 @@ import { fmtDateTime } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import { C } from '@/theme';
 
-const ROLE_LABEL = { doctor: 'Bác sĩ', patient: 'Bệnh nhân', admin: 'Quản trị kỹ thuật' } as const;
 
 export function AccountScreen() {
   const { data, me, logout, resetDemo, setResearchConsent } = useStore();
   if (!me) return null;
   return (
-    <Screen header={<Header title="Tài khoản" subtitle={ROLE_LABEL[me.role]} />}>
+    <Screen header={<Header title="Tài khoản" />}>
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconBadge icon="person" size={48} />

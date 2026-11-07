@@ -11,7 +11,8 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { MONO, Text, TextInput } from '@/components/Text';
 import { DEMO_ASSETS } from '@/lib/seed';
-import type { WoundImage } from '@/lib/types';
+import { useStore } from '@/lib/store';
+import type { Role, WoundImage } from '@/lib/types';
 import { bar, C, cardShape, G, radius, shadow, type GradientName, T } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -20,6 +21,7 @@ export function Header({
   title, subtitle, back, right, children,
 }: { title: string; subtitle?: string; back?: boolean; right?: ReactNode; children?: ReactNode }) {
   const insets = useSafeAreaInsets();
+  const { me } = useStore();
   return (
     <View style={[s.header, { paddingTop: insets.top + 8 }]}>
       <View style={s.headerRow}>
@@ -30,11 +32,35 @@ export function Header({
         )}
         <View style={{ flex: 1, paddingHorizontal: back ? 4 : 8 }}>
           <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
-          {subtitle ? <Text style={s.headerSub} numberOfLines={1}>{subtitle}</Text> : null}
+          {/* Nhãn vai trò có biểu tượng trên mọi màn sau đăng nhập: nhận ra ngay đang ở tài khoản nào (rủi ro R9 máy dùng chung).
+              Có chữ, không chỉ dựa vào màu (WCAG 2.2 SC 1.4.1). */}
+          {(me || subtitle) ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 2, marginTop: 2 }}>
+              {me ? <RoleBadge role={me.role} /> : null}
+              {subtitle ? <Text style={[s.headerSub, { marginTop: 0 }]} numberOfLines={1}>{subtitle}</Text> : null}
+            </View>
+          ) : null}
         </View>
         {right}
       </View>
       {children}
+    </View>
+  );
+}
+
+const ROLE_BADGE: Record<Role, { label: string; icon: IconName }> = {
+  patient: { label: 'Bệnh nhân', icon: 'person' },
+  doctor: { label: 'Bác sĩ', icon: 'medkit' },
+  admin: { label: 'Kỹ thuật', icon: 'construct' },
+};
+
+/** Nhãn vai trò: biểu tượng và chữ, nền xám nhạt chung cho cả ba vai trò (không dùng màu riêng theo vai trò). */
+export function RoleBadge({ role }: { role: Role }) {
+  const b = ROLE_BADGE[role];
+  return (
+    <View accessible accessibilityLabel={`Vai trò: ${b.label}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: C.neutralSoft }}>
+      <Ionicons name={b.icon} size={12} color={C.textSoft} />
+      <Text style={{ fontSize: T.caption, fontWeight: '600', color: C.textSoft }}>{b.label}</Text>
     </View>
   );
 }

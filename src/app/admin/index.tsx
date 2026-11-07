@@ -19,7 +19,7 @@ export default function AdminAccounts() {
   const pending = data.accounts.filter((a) => a.pendingApproval).length;
   const openErrors = data.syncErrors.filter((e) => !e.resolved).length;
   return (
-    <Screen header={<Header title="Quản lý tài khoản" subtitle="Quản trị kỹ thuật" />}>
+    <Screen header={<Header title="Quản lý tài khoản" />}>
       <SectionTitle icon="analytics-outline">Tổng quan hệ thống</SectionTitle>
       <Card hero style={{ padding: 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
