@@ -2,7 +2,7 @@
 
 Ứng dụng di động cho hệ thống IoMT của thiết bị Plasma Pro điều trị tại nhà, dựng theo
 `Plasma_Pro_Dac_ta_chuc_nang_app (1).md` (v1.1, 12/10/2026) và slide `IoT_Plasma_Pro_System V2.pptx`.
-Viết bằng Expo SDK 57 (React Native, TypeScript, Expo Router) để chạy thử trên iPhone qua Expo Go từ máy Windows.
+Viết bằng Expo SDK 58 (React Native, TypeScript, Expo Router) để chạy thử trên iPhone qua Expo Go từ máy Windows.
 
 Toàn bộ dữ liệu trong bản demo là **dữ liệu mô phỏng**, lưu cục bộ trên máy; ảnh mẫu trong `assets/demo` là hình vẽ trừu tượng, không phải ảnh bệnh nhân.
 
@@ -21,7 +21,7 @@ Toàn bộ dữ liệu trong bản demo là **dữ liệu mô phỏng**, lưu c�
 
 ## Chạy trên iPhone (Expo Go)
 
-1. Cài **Expo Go** từ App Store trên iPhone.
+1. Cài **Expo Go** bản mới nhất (58.x, hỗ trợ SDK 58) từ App Store trên iPhone. Laptop cần Node.js 22.13 trở lên (hoặc 24.3 trở lên).
 2. iPhone và laptop dùng chung một mạng Wi-Fi.
 3. Trên laptop:
 

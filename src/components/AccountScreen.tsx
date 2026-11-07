@@ -1,19 +1,19 @@
 import { router } from 'expo-router';
-import { Switch, View } from 'react-native';
+import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Chip, Header, IconBadge, InfoRow, Muted, Screen } from '@/components/ui';
+import { Button, Card, Chip, Header, IconBadge, InfoRow, Muted, Screen, SwitchRow } from '@/components/ui';
 import { confirm } from '@/lib/dialog';
+import { fmtDateTime } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import { C } from '@/theme';
 
-const ROLE_LABEL = { doctor: 'Bác sĩ', patient: 'Bệnh nhân', admin: 'Quản trị kỹ thuật' } as const;
 
 export function AccountScreen() {
   const { data, me, logout, resetDemo, setResearchConsent } = useStore();
   if (!me) return null;
   return (
-    <Screen header={<Header title="Tài khoản" subtitle={ROLE_LABEL[me.role]} />}>
+    <Screen header={<Header title="Tài khoản" />}>
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconBadge icon="person" size={48} />
@@ -32,12 +32,22 @@ export function AccountScreen() {
 
       <Card onPress={() => router.push('/terms')}>
         <Text style={{ fontWeight: '700' }}>Điều khoản sử dụng & quyền riêng tư</Text>
-        <Muted>Đã đồng ý: {me.termsAcceptedAt ? new Date(me.termsAcceptedAt).toLocaleString('vi-VN') : 'Chưa ghi nhận theo phiên bản mới'}</Muted>
+        <Muted>Đã đồng ý: {me.termsAcceptedAt ? `${fmtDateTime(me.termsAcceptedAt)}${me.termsVersion ? ` (phiên bản ${me.termsVersion})` : ''}` : 'Chưa ghi nhận theo phiên bản mới'}</Muted>
+        <Muted>Chỉ hỏi đồng ý lại khi điều khoản đổi phiên bản.</Muted>
       </Card>
       {me.role === 'patient' && <Card>
         <Text style={{ fontWeight: '700' }}>Đồng ý sử dụng ảnh cho nghiên cứu</Text>
         <Muted>Tùy chọn. Chỉ chia sẻ ảnh đã được bác sĩ kiểm tra và bỏ thông tin nhận dạng. Rút đồng ý sẽ ngừng chia sẻ mới; không tự thu hồi các tệp đã tải.</Muted>
-        <Switch accessibilityLabel="Đồng ý nghiên cứu" value={!!data.patients.find(p => p.id === me.patientId)?.researchConsent} onValueChange={setResearchConsent} />
+        <SwitchRow muted label={data.patients.find(p => p.id === me.patientId)?.researchConsent ? 'Đang cho phép' : 'Không cho phép'} value={!!data.patients.find(p => p.id === me.patientId)?.researchConsent} onChange={setResearchConsent} />
+      </Card>}
+      {me.role === 'patient' && <Card onPress={() => router.push({ pathname: '/onboarding', params: { review: '1' } })}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <IconBadge icon="help-circle-outline" tone="green" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: '700', color: C.text }}>Xem lại hướng dẫn sử dụng</Text>
+            <Muted>Thiết bị là gì, mỗi ngày làm gì, báo triệu chứng ở đâu, khi khẩn cấp</Muted>
+          </View>
+        </View>
       </Card>}
       <Card onPress={() => router.push('/compliance')}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>

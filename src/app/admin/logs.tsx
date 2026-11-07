@@ -16,7 +16,7 @@ export default function AdminLogs() {
       {list.map((e) => (
         <Card key={e.id}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ color: C.textSoft, fontSize: 12, flex: 1 }}>{fmtDateTime(e.at)}</Text>
+            <Text style={{ color: C.textSoft, fontSize: 13, flex: 1 }}>{fmtDateTime(e.at)}</Text>
             <Chip label={e.resolved ? 'Đã xử lý' : 'Chưa xử lý'} tone={e.resolved ? 'green' : 'red'} />
           </View>
           <Text style={{ color: C.text }}>{e.message}</Text>

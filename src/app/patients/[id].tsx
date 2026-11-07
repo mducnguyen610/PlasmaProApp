@@ -1,12 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, Switch, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { ActivationCode } from '@/components/ActivationCode';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Empty, Field, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
+import { Button, Card, Chip, Empty, Field, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, WoundPhoto, SwitchRow } from '@/components/ui';
 import { isPendingActivation } from '@/lib/auth';
 import { confirm, notify } from '@/lib/dialog';
 import { buildReportHtml, shareReport } from '@/lib/report';
@@ -53,30 +53,27 @@ export default function PatientDetail() {
           <IconBadge icon="person-outline" size={48} />
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{p.name}</Text>
-            <Text style={{ color: C.textSoft, fontSize: 13 }}>SĐT: {p.phone || '—'} · Thiết bị: <Text style={{ color: C.primary, fontWeight: '700' }}>{dev?.code ?? 'Chưa gán'}</Text></Text>
+            <Text style={{ color: C.textSoft, fontSize: 14 }}>SĐT: {p.phone || '—'} · Thiết bị: <Text style={{ color: C.primary, fontWeight: '700' }}>{dev?.code ?? 'Chưa gán'}</Text></Text>
           </View>
         </View>
         <InfoRow label="Mã hồ sơ" value={p.code} />
         <InfoRow label="Giới tính, năm sinh" value={`${p.sex}, ${p.birthYear}`} />
         <InfoRow label="Bác sĩ phụ trách" value={account(p.doctorId)?.name ?? '—'} />
         <InfoRow label="Ngày tạo hồ sơ" value={fmtDate(p.createdAt)} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surfaceMuted, borderRadius: 12, padding: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontWeight: '600', color: C.text }}>Đồng ý dùng ảnh cho nghiên cứu</Text>
-            <Muted>{p.researchConsent ? `Ghi nhận ngày ${fmtDate(p.consentDate)}` : 'Chưa đồng ý: ảnh không được đưa vào bộ dữ liệu xuất'}</Muted>
-          </View>
-          <Switch
-            disabled={!isDoctor}
-            value={p.researchConsent}
-            onValueChange={(v) =>
-              confirm(
-                v ? 'Ghi nhận đồng ý' : 'Rút lại đồng ý',
-                v ? 'Xác nhận bệnh nhân đã đồng ý bằng văn bản cho việc dùng ảnh (đã mã hóa) để nghiên cứu.' : 'Ảnh của bệnh nhân sẽ không còn được xuất vào bộ dữ liệu.',
-                () => updatePatient(p.id, { researchConsent: v, consentDate: v ? new Date().toISOString().slice(0, 10) : undefined }),
-              )
-            }
-          />
-        </View>
+        <SwitchRow
+          muted
+          label="Đồng ý dùng ảnh cho nghiên cứu"
+          detail={p.researchConsent ? `Ghi nhận ngày ${fmtDate(p.consentDate)}` : 'Chưa đồng ý: ảnh không được đưa vào bộ dữ liệu xuất'}
+          disabled={!isDoctor}
+          value={p.researchConsent}
+          onChange={(v) =>
+            confirm(
+              v ? 'Ghi nhận đồng ý' : 'Rút lại đồng ý',
+              v ? 'Xác nhận bệnh nhân đã đồng ý bằng văn bản cho việc dùng ảnh (đã mã hóa) để nghiên cứu.' : 'Ảnh của bệnh nhân sẽ không còn được xuất vào bộ dữ liệu.',
+              () => updatePatient(p.id, { researchConsent: v, consentDate: v ? new Date().toISOString().slice(0, 10) : undefined }),
+            )
+          }
+        />
       </Card>
 
       {isDoctor && (
@@ -118,7 +115,7 @@ export default function PatientDetail() {
         <Card style={{ flex: 1 }} onPress={() => (dev ? router.push({ pathname: '/devices/[id]', params: { id: dev.id } }) : undefined)}>
           <IconBadge icon="hardware-chip-outline" tone="teal" size={36} />
           <Text style={{ fontWeight: '700', color: C.text }}>Thiết bị</Text>
-          {dev ? <Chip label={dev.online ? 'Online' : 'Offline'} tone={dev.online ? 'green' : 'gray'} /> : <Muted>Chưa gán (quản trị gán)</Muted>}
+          {dev ? <Chip label={dev.online ? 'Đang kết nối' : 'Mất kết nối'} tone={dev.online ? 'green' : 'gray'} /> : <Muted>Chưa gán (quản trị gán)</Muted>}
         </Card>
       </View>
 
@@ -182,7 +179,7 @@ export default function PatientDetail() {
               <Chip label={r.kind === 'device' ? 'Sự cố thiết bị' : 'Triệu chứng'} tone={r.kind === 'device' ? 'teal' : 'red'} />
               {r.painLevel !== undefined && <Chip label={`Mức đau ${r.painLevel}/10`} tone="gray" />}
               <View style={{ flex: 1 }} />
-              <Text style={{ color: C.textFaint, fontSize: 12 }}>{fmtDateTime(r.date)}</Text>
+              <Text style={{ color: C.textFaint, fontSize: 13 }}>{fmtDateTime(r.date)}</Text>
             </View>
             <Text style={{ color: C.text }}>{r.content}</Text>
             <Muted>Nguồn: bệnh nhân báo qua ứng dụng</Muted>

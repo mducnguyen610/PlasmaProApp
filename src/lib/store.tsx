@@ -8,13 +8,16 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Platform } from 'react-native';
 
 import { reassignDevice } from './devices';
+import { CLOSURE_CONFIRM_DAYS, addDays, isScheduled } from './course';
+import { CARE_ITEMS, LIFECYCLE } from './maintenance';
 import { buildFilename } from './naming';
 import { createSeed, DEMO_ASSETS } from './seed';
 import type {
-  Account, AppData, Device, DeviceSession, Evaluation, Patient, SymptomReport, TreatmentPlan, Wound, WoundImage,
+  Account, AppData, Device, DeviceLifecycle, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
 } from './types';
 
-const STORAGE_KEY = 'plasmapro.demo.v1';
+// v2: dữ liệu demo theo đợt điều trị (ngày tính từ hôm nay); bản v1 cũ không được đọc lại.
+const STORAGE_KEY = 'plasmapro.demo.v2';
 const SESSION_KEY = 'plasmapro.session.v1';
 
 export const nowIso = () => new Date().toISOString();
@@ -53,6 +56,7 @@ interface Store {
   setResearchReady: (imageId: string, ready: boolean) => Promise<void>;
   setResearchConsent: (consent: boolean) => void;
   logout: () => void;
+  finishOnboarding: () => void;
   resetDemo: () => void;
   addPatient: (p: Omit<Patient, 'id' | 'code' | 'createdAt' | 'researchCode'>, woundLocation?: string) => Promise<{ patient: Patient; activation: Activation }>;
   issueActivation: (patientId: string) => Promise<Activation>;
@@ -74,6 +78,22 @@ interface Store {
   setReportHandled: (id: string) => void;
   updateAccount: (id: string, patch: Partial<Account>) => void;
   resolveSyncError: (id: string) => void;
+  setSessionPain: (sessionId: string, pain: Pick<SessionNote, 'painBefore' | 'painAfter' | 'burning' | 'stinging' | 'rednessNextDay' | 'swellingNextDay'>) => void;
+  markCareDone: (deviceId: string, itemId: string) => void;
+  /** Quy trình kết thúc đợt khi liền thương (FDA 2006: xác nhận ở hai lần khám cách 2 tuần), rồi theo dõi. */
+  recordClosure: (woundId: string, step: 'check1' | 'confirm' | 'not_healed' | 'reopen' | 'end_follow_up' | 'pause' | 'resume') => void;
+  setLifecycle: (deviceId: string, next: DeviceLifecycle) => void;
+}
+
+/**
+ * Đăng nhập đúng mật khẩu nhưng tài khoản chưa đồng ý phiên bản điều khoản hiện hành (R8).
+ * Màn đăng nhập bắt lỗi này để hiện ô đồng ý; người đã đồng ý đúng phiên bản không bị hỏi lại.
+ */
+export class TermsRequiredError extends Error {
+  constructor(public reason: 'first' | 'updated') {
+    super(reason === 'first' ? 'Hãy đọc và đồng ý điều khoản trước lần đăng nhập đầu tiên.' : `Điều khoản đã cập nhật (phiên bản ${TERMS_VERSION}). Hãy đọc và đồng ý để tiếp tục.`);
+    this.name = 'TermsRequiredError';
+  }
 }
 
 /** Mã kích hoạt chỉ trả về một lần cho bác sĩ; trong dữ liệu chỉ lưu bản băm. */
@@ -96,6 +116,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const [raw, sess] = await Promise.all([AsyncStorage.getItem(STORAGE_KEY), AsyncStorage.getItem(SESSION_KEY)]);
         if (raw) {
           const saved: AppData = JSON.parse(raw);
+          saved.sessionNotes ??= [];
           saved.patients = saved.patients.map(p => ({ ...p, researchCode: p.researchCode ?? 'RS-' + Crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase() }));
           setData(saved);
           dataRef.current = saved;
@@ -133,19 +154,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setMeId(null);
     AsyncStorage.removeItem(SESSION_KEY).catch(() => {});
   }, []);
+  const finishOnboarding = () => {
+    const actor = meRef.current;
+    if (!actor) return;
+    update(d => ({ ...d, accounts: d.accounts.map(a => a.id === actor.id ? { ...a, onboardingDoneAt: nowIso() } : a) }));
+  };
   const resetDemo = () => {
     if (meRef.current?.role !== 'admin') throw new Error('Cần quyền quản trị.');
     update(() => createSeed()); logout();
   };
+  // Chỉ hỏi đồng ý điều khoản khi tài khoản chưa đồng ý phiên bản hiện hành (đề xuất 4, rủi ro R8).
   const authenticate: Store['authenticate'] = async (username, password, agreed) => {
-    if (!agreed) throw new Error('Bạn cần đồng ý điều khoản trước khi đăng nhập.');
     const account = dataRef.current.accounts.find(a => a.username.toLowerCase() === normalizeUsername(username));
     if (account && isPendingActivation(account)) throw new Error('Tài khoản chưa kích hoạt. Hãy chọn "Kích hoạt tài khoản" và nhập mã bác sĩ đưa.');
     if (!account || !await verifyPassword(account, password)) throw new Error('Tên đăng nhập hoặc mật khẩu chưa đúng.');
     const current = dataRef.current.accounts.find(a => a.id === account.id)!;
     if (current.pendingApproval) throw new Error('Tài khoản đang chờ quản trị duyệt.');
     if (current.locked) throw new Error('Tài khoản đã bị khóa.');
-    update(d => ({ ...d, accounts: d.accounts.map(a => a.id === account.id ? { ...a, termsVersion: TERMS_VERSION, termsAcceptedAt: nowIso() } : a) }));
+    if (current.termsVersion !== TERMS_VERSION) {
+      if (!agreed) throw new TermsRequiredError(current.termsVersion ? 'updated' : 'first');
+      update(d => ({ ...d, accounts: d.accounts.map(a => a.id === account.id ? { ...a, termsVersion: TERMS_VERSION, termsAcceptedAt: nowIso() } : a) }));
+    }
     login(account.id);
   };
   const register: Store['register'] = async (input) => {
@@ -394,12 +423,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const savePlan: Store['savePlan'] = (p) =>
     update((d) => {
       requireDoctor(p.patientId);
-      const prev = d.plans.filter((x) => x.patientId === p.patientId);
+      // Đợt điều trị gắn với vết thương: phiên bản đánh số riêng cho từng vết.
+      const sameWound = (x: TreatmentPlan) => x.patientId === p.patientId && (x.woundId ?? null) === (p.woundId ?? null);
+      const prev = d.plans.filter(sameWound);
       const version = prev.reduce((m, x) => Math.max(m, x.version), 0) + 1;
       const plan: TreatmentPlan = { ...p, id: `pl-${Date.now()}`, version, editedBy: meRef.current?.id ?? 'unknown', editedAt: nowIso() };
       // Lưu phiên bản mới, giữ các phiên bản cũ để truy vết (đặc tả 7.1).
       const plans = d.plans.map((x) =>
-        x.patientId === p.patientId && x.status === 'active' && plan.status === 'active' ? { ...x, status: 'ended' as const } : x,
+        sameWound(x) && (x.status === 'active' || x.status === 'paused') && plan.status === 'active' ? { ...x, status: 'ended' as const } : x,
       );
       return { ...d, plans: [...plans, plan] };
     });
@@ -443,6 +474,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const plan = d0.plans
       .filter((p) => p.patientId === dev.patientId && p.status === 'active' && p.confirmed)
       .sort((a, b) => b.version - a.version)[0];
+    const perVisit = plan?.sessionsPerDay ?? 1;
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
     const seen = new Set<string>();
@@ -453,11 +485,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const last = [...mine].sort((a, b) => b.start.localeCompare(a.start))[0];
     const gapMin = last ? (now.getTime() - new Date(last.start).getTime()) / 60000 - last.durationMin : Infinity;
 
+    // Thiết bị tại nhà bị khóa thông số theo y lệnh (slide 24): không có đợt đang áp dụng, ngày nghỉ theo lịch
+    // hoặc đã đủ số lần của buổi thì thiết bị không phát.
     let status: 'completed' | 'over_limit' = 'completed';
-    let message = 'Thiết bị đã gửi phiên điều trị hoàn tất.';
-    if (plan?.sessionsPerDay != null && todayCount >= plan.sessionsPerDay) {
+    let message = `Thiết bị đã chiếu ở mức ${plan?.doseLevel ?? '—'} trong ${plan?.durationSec != null ? Math.round(plan.durationSec / 6) / 10 : '—'} phút và gửi phiên hoàn tất.`;
+    if (!plan) {
       status = 'over_limit';
-      message = `Đã đủ ${plan.sessionsPerDay} lần/ngày theo liệu trình: thiết bị ngắt nguồn.`;
+      message = 'Chưa có đợt điều trị đang áp dụng: thiết bị không phát.';
+    } else if (!isScheduled(plan, today)) {
+      status = 'over_limit';
+      message = 'Hôm nay là ngày nghỉ theo lịch của đợt: thiết bị không phát.';
+    } else if (todayCount >= perVisit) {
+      status = 'over_limit';
+      message = `Đã đủ ${perVisit} lần của buổi hôm nay: thiết bị không phát thêm.`;
     } else if (plan?.minIntervalMin != null && gapMin < plan.minIntervalMin) {
       status = 'over_limit';
       message = `Chưa đủ giãn cách ${plan.minIntervalMin} phút (mới ${Math.max(0, Math.round(gapMin))} phút): thiết bị ngắt nguồn.`;
@@ -466,10 +506,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       sessionId: `${dev.code}-${now.getTime()}`,
       deviceId,
       start: now.toISOString(),
-      durationMin: status === 'completed' ? 15 : 0,
+      durationMin: status === 'completed' ? Math.round((plan?.durationSec ?? 180) / 6) / 10 : 0,
       energyWh: null,
       status,
       source: 'simulated',
+      woundId: plan?.woundId,
     };
     const resend = Math.random() < 0.3;
     update((d) => ({
@@ -496,7 +537,70 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // tránh hai thiết bị cùng trỏ vào một hồ sơ (nhật ký điều trị bị tách đôi).
   const assignDevice: Store['assignDevice'] = (deviceId, patientId) => {
     requireAdmin();
-    update((d) => ({ ...d, ...reassignDevice(d.devices, d.patients, deviceId, patientId) }));
+    const dev = dataRef.current.devices.find((x) => x.id === deviceId);
+    if (patientId && (dev?.lifecycle === 'returned' || dev?.lifecycle === 'disinfected')) throw new Error('Thiết bị chưa khử khuẩn và kiểm tra xong, chưa cấp được cho bệnh nhân khác.');
+    update((d) => {
+      const linked = reassignDevice(d.devices, d.patients, deviceId, patientId);
+      // Giao thiết bị kèm một đầu phát mới dùng riêng cho bệnh nhân (slide 25).
+      const n = d.devices.filter((x) => x.tip).length + 1;
+      const devices = linked.devices.map((x) => (x.id === deviceId && patientId
+        ? { ...x, lifecycle: 'in_use' as const, tip: x.patientId === dev?.patientId && x.tip ? x.tip : { code: `ĐP-${String(n).padStart(4, '0')}`, issuedAt: todayIso() } }
+        : x));
+      return { ...d, devices, patients: linked.patients };
+    });
+  };
+
+  const setLifecycle: Store['setLifecycle'] = (deviceId, next) => {
+    requireAdmin();
+    const dev = dataRef.current.devices.find((x) => x.id === deviceId);
+    if (!dev) throw new Error('Không tìm thấy thiết bị.');
+    if (LIFECYCLE[dev.lifecycle ?? 'ready']?.next !== next) throw new Error('Bước này chưa làm được ở trạng thái hiện tại.');
+    update((d) => {
+      // Thu hồi: gỡ khỏi bệnh nhân, bỏ đầu phát cũ (đầu phát dùng riêng không cấp lại).
+      const base = next === 'returned' ? reassignDevice(d.devices, d.patients, deviceId, null) : { devices: d.devices, patients: d.patients };
+      return {
+        ...d,
+        patients: base.patients,
+        devices: base.devices.map((x) => (x.id === deviceId ? { ...x, lifecycle: next, ...(next === 'returned' ? { tip: undefined, power: 'off' as const } : {}) } : x)),
+      };
+    });
+  };
+
+  const recordClosure: Store['recordClosure'] = (woundId, step) => {
+    const w = dataRef.current.wounds.find((x) => x.id === woundId);
+    if (!w) throw new Error('Không tìm thấy vết thương.');
+    requireDoctor(w.patientId);
+    const today = todayIso();
+    if (step === 'confirm' && (!w.closureCheck1 || today < addDays(w.closureCheck1, CLOSURE_CONFIRM_DAYS))) {
+      throw new Error(`Xác nhận lần 2 cần cách lần 1 ít nhất ${CLOSURE_CONFIRM_DAYS} ngày.`);
+    }
+    const nextWound: Record<typeof step, Partial<Wound>> = {
+      check1: { status: 'awaiting_closure', closureCheck1: today },
+      confirm: { status: 'follow_up', followUpFrom: today },
+      not_healed: { status: 'active', closureCheck1: undefined },
+      reopen: { status: 'active', closureCheck1: undefined, followUpFrom: undefined },
+      end_follow_up: { status: 'closed' },
+      pause: { status: 'paused' },
+      resume: { status: 'active' },
+    };
+    const planChange: Partial<Record<typeof step, Partial<TreatmentPlan>>> = {
+      check1: { status: 'paused' },
+      confirm: { status: 'ended', endReason: 'healed' },
+      not_healed: { status: 'active' },
+      pause: { status: 'paused' },
+      resume: { status: 'active' },
+    };
+    update((d) => {
+      const course = d.plans
+        .filter((p) => p.patientId === w.patientId && (p.woundId ?? null) === woundId && p.status !== 'draft' && p.status !== 'ended')
+        .sort((a, b) => b.version - a.version)[0];
+      const pc = planChange[step];
+      return {
+        ...d,
+        wounds: d.wounds.map((x) => (x.id === woundId ? { ...x, ...nextWound[step] } : x)),
+        plans: pc && course ? d.plans.map((p) => (p.id === course.id ? { ...p, ...pc } : p)) : d.plans,
+      };
+    });
   };
 
   const addReport: Store['addReport'] = (r) =>
@@ -513,10 +617,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const resolveSyncError: Store['resolveSyncError'] = (id) =>
     update((d) => ({ ...d, syncErrors: d.syncErrors.map((s) => (s.id === id ? { ...s, resolved: true } : s)) }));
 
+  // Bệnh nhân ghi mức đau cho phiên của thiết bị mình đang được gán.
+  const setSessionPain: Store['setSessionPain'] = (sessionId, pain) => {
+    const actor = meRef.current;
+    const d0 = dataRef.current;
+    const ses = d0.sessions.find((x) => x.sessionId === sessionId);
+    const owner = d0.devices.find((x) => x.id === ses?.deviceId)?.patientId;
+    if (!actor || actor.role !== 'patient' || !ses || owner !== actor.patientId) throw new Error('Không ghi được mức đau cho phiên này.');
+    const ok = (v?: number) => v === undefined || (Number.isInteger(v) && v >= 0 && v <= 10);
+    const prevNote = d0.sessionNotes.find((n) => n.sessionId === sessionId);
+    if (!ok(pain.painBefore) || !ok(pain.painAfter)) throw new Error('Mức đau từ 0 đến 10.');
+    update((d) => ({ ...d, sessionNotes: [...d.sessionNotes.filter((n) => n.sessionId !== sessionId), { ...prevNote, sessionId, ...pain, at: nowIso() }] }));
+  };
+  // Bệnh nhân chỉ đánh dấu mục tự làm trên thiết bị của mình; mục thay linh kiện do quản trị kỹ thuật.
+  const markCareDone: Store['markCareDone'] = (deviceId, itemId) => {
+    const actor = meRef.current;
+    const dev = dataRef.current.devices.find((x) => x.id === deviceId);
+    const item = CARE_ITEMS.find((x) => x.id === itemId);
+    if (!actor || !dev || !item) throw new Error('Không tìm thấy mục chăm sóc.');
+    const allowed = actor.role === 'admin' || (actor.role === 'patient' && item.doneBy === 'patient' && dev.patientId === actor.patientId);
+    if (!allowed) throw new Error('Mục này do kỹ thuật viên thực hiện.');
+    update((d) => ({ ...d, devices: d.devices.map((x) => (x.id === deviceId ? { ...x, care: { ...x.care, [itemId]: nowIso() } } : x)) }));
+  };
+
   const value: Store = {
-    ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, addWound, updateWound, addImage, labelImage,
+    ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, addWound, updateWound, addImage, labelImage,
     setExcluded, requestRetake, addEvaluation, savePlan, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
-    setReportHandled, updateAccount, resolveSyncError,
+    setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -552,6 +679,15 @@ export function useLookups() {
         .filter((s) => (seen.has(s.sessionId) ? false : (seen.add(s.sessionId), true)))
         .sort((a, b) => b.start.localeCompare(a.start));
     };
-    return { patient, wound, account, device, woundsOf, imagesOf, activePlan, sessionsOf };
+    /** Đợt điều trị mới nhất (không tính nháp) của một vết thương. Bản cũ không có woundId thì gán cho vết đầu tiên. */
+    const coursePlan = (woundId: string, opts?: { patientView?: boolean }) => {
+      const w = data.wounds.find((x) => x.id === woundId);
+      if (!w) return undefined;
+      const first = data.wounds.find((x) => x.patientId === w.patientId)?.id;
+      return data.plans
+        .filter((p) => p.patientId === w.patientId && (p.woundId ?? first) === woundId && p.status !== 'draft' && (!opts?.patientView || p.confirmed))
+        .sort((a, b) => b.version - a.version)[0];
+    };
+    return { patient, wound, account, device, woundsOf, imagesOf, activePlan, sessionsOf, coursePlan };
   }, [data]);
 }

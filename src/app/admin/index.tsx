@@ -1,7 +1,7 @@
-import { Switch, View } from 'react-native';
+import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Chip, Choices, Header, IconBadge, Muted, Ring, Screen, SectionTitle, Stat } from '@/components/ui';
+import { Button, Card, Chip, Choices, Header, IconBadge, Muted, Ring, Screen, SectionTitle, Stat, SwitchRow } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import { C } from '@/theme';
 
@@ -19,7 +19,7 @@ export default function AdminAccounts() {
   const pending = data.accounts.filter((a) => a.pendingApproval).length;
   const openErrors = data.syncErrors.filter((e) => !e.resolved).length;
   return (
-    <Screen header={<Header title="Quản lý tài khoản" subtitle="Quản trị kỹ thuật" />}>
+    <Screen header={<Header title="Quản lý tài khoản" />}>
       <SectionTitle icon="analytics-outline">Tổng quan hệ thống</SectionTitle>
       <Card hero style={{ padding: 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -29,11 +29,11 @@ export default function AdminAccounts() {
               <Stat label="Chờ duyệt" value={pending} tone="amber" />
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Stat label="Thiết bị online" value={`${online}/${data.devices.length}`} tone="green" />
-              <Stat label="Lỗi đồng bộ mở" value={openErrors} tone="red" />
+              <Stat label="Đang kết nối" value={`${online}/${data.devices.length}`} tone="green" />
+              <Stat label="Lỗi chưa xử lý" value={openErrors} tone="red" />
             </View>
           </View>
-          <Ring value={labeled} max={usable} label={`${pct}%`} sub="ảnh có nhãn" />
+          <Ring value={labeled} max={usable} label={`${pct}%`} sub="ảnh đã đo" />
         </View>
         <Muted>{labeled}/{usable} ảnh dùng được đã có diện tích do bác sĩ nhập.</Muted>
       </Card>
@@ -44,22 +44,16 @@ export default function AdminAccounts() {
             <IconBadge icon={a.role === 'doctor' ? 'medkit-outline' : a.role === 'patient' ? 'person-outline' : 'construct-outline'} tone={a.role === 'doctor' ? 'blue' : a.role === 'patient' ? 'green' : 'violet'} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '700', color: C.text }}>{a.role === 'patient' ? data.patients.find((p) => p.id === a.patientId)?.code : a.name}</Text>
-              <Text style={{ color: C.textSoft, fontSize: 12 }}>{ROLE[a.role]} · @{a.username}</Text>
+              <Text style={{ color: C.textSoft, fontSize: 13 }}>{ROLE[a.role]} · @{a.username}</Text>
             </View>
             <Chip label={a.pendingApproval ? 'Chờ duyệt' : a.locked ? 'Đã khóa' : 'Hoạt động'} tone={a.locked ? 'red' : 'green'} />
           </View>
           {a.pendingApproval && <Button label="Duyệt tài khoản" onPress={() => updateAccount(a.id, { pendingApproval: false, locked: false })} />}
           {a.id !== me?.id && (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ flex: 1, color: C.text }}>Khóa tài khoản</Text>
-              <Switch value={a.locked} onValueChange={(v) => updateAccount(a.id, { locked: v })} />
-            </View>
+            <SwitchRow label="Khóa tài khoản" value={a.locked} onChange={(v) => updateAccount(a.id, { locked: v })} />
           )}
           {(a.role === 'doctor' || a.role === 'admin') && !a.pendingApproval && (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ flex: 1, color: C.text }}>Quyền xuất dữ liệu nghiên cứu</Text>
-              <Switch value={!!a.researchAccess} onValueChange={(v) => updateAccount(a.id, { researchAccess: v })} />
-            </View>
+            <SwitchRow label="Quyền xuất dữ liệu nghiên cứu" value={!!a.researchAccess} onChange={(v) => updateAccount(a.id, { researchAccess: v })} />
           )}
         </Card>
       ))}

@@ -23,7 +23,7 @@ export default function PatientList() {
     .filter((p) => !q || norm(`${p.name} ${p.code}`).includes(norm(q)));
 
   return (
-    <Screen header={<Header title="Danh sách bệnh nhân" right={<HeaderButton icon="add" label="Thêm mới" onPress={() => router.push('/patients/new')} />} />}>
+    <Screen header={<Header title="Bệnh nhân" right={<HeaderButton icon="add" label="Thêm mới" onPress={() => router.push('/patients/new')} />} />}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 14, ...shadow }}>
         <Ionicons name="search" size={18} color={C.textFaint} />
         <TextInput

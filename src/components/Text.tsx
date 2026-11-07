@@ -1,6 +1,8 @@
 import { Platform, StyleSheet, Text as RNText, TextInput as RNTextInput, type TextInputProps, type TextProps, type TextStyle } from 'react-native';
 
-import { C, F } from '@/theme';
+import { createContext, useContext } from 'react';
+
+import { C, F, T } from '@/theme';
 
 /** Font đơn cách: Menlo chỉ có trên iOS; Android dùng họ 'monospace' của hệ thống. */
 export const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' });
@@ -15,10 +17,23 @@ function withGoogleSansFlex(style: TextProps['style'], base: TextStyle): TextSty
   return { ...rest, fontFamily: family };
 }
 
+/** Hệ số cỡ chữ theo vai trò người đang đăng nhập (ROLE_SCALE trong theme.ts). */
+export const FontScaleContext = createContext(1);
+
+/** Nhân hệ số vai trò và chặn dưới T.min; lineHeight được nhân theo để dòng không chồng nhau. */
+function scaled(style: TextStyle, k: number): TextStyle {
+  const size = style.fontSize ?? T.body;
+  const out = Math.max(T.min, Math.round(size * k * 2) / 2);
+  const ratio = out / size;
+  return { ...style, fontSize: out, ...(style.lineHeight ? { lineHeight: Math.round(style.lineHeight * ratio) } : {}) };
+}
+
 export function Text({ style, ...props }: TextProps) {
-  return <RNText {...props} style={withGoogleSansFlex(style, { color: C.textBody })} />;
+  const k = useContext(FontScaleContext);
+  return <RNText {...props} style={scaled(withGoogleSansFlex(style, { color: C.textBody }), k)} />;
 }
 
 export function TextInput({ style, ...props }: TextInputProps) {
-  return <RNTextInput {...props} style={withGoogleSansFlex(style, {})} />;
+  const k = useContext(FontScaleContext);
+  return <RNTextInput {...props} style={scaled(withGoogleSansFlex(style, {}), k)} />;
 }

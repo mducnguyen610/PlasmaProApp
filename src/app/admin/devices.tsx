@@ -42,10 +42,10 @@ export default function AdminDevices() {
         <Card key={d.id}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={{ fontWeight: '800', color: C.text, flex: 1, fontSize: 16 }}>{d.code}</Text>
-            <Chip label={d.online ? 'Online' : 'Offline'} tone={d.online ? 'green' : 'gray'} />
+            <Chip label={d.online ? 'Đang kết nối' : 'Mất kết nối'} tone={d.online ? 'green' : 'gray'} />
           </View>
           <Muted>Đồng bộ gần nhất: {d.lastSync ? fmtDateTime(d.lastSync) : 'chưa từng'} · Firmware {d.firmware}</Muted>
-          <Text style={{ color: C.text, fontSize: 13, fontWeight: '600' }}>Gán cho bệnh nhân</Text>
+          <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Gán cho bệnh nhân</Text>
           <Choices
             value={d.patientId ?? 'none'}
             onChange={(v) => assignDevice(d.id, v === 'none' ? null : v)}

@@ -9,7 +9,22 @@ import { fmtDate, LABEL_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, WoundImage } from '@/lib/types';
-import { C } from '@/theme';
+import { bar, C, radius } from '@/theme';
+
+/** Một lịch hẹn: vạch màu, ngày (đỏ nếu hôm nay), tiêu đề đậm, mô tả. Dùng chung cho Trang chủ và Lịch trình. */
+export function AppointmentRow({ date, title, body, today }: { date: string; title: string; body?: string; today: string }) {
+  const isToday = date === today;
+  return (
+    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+      <View style={{ width: 3, alignSelf: 'stretch', borderRadius: 4, backgroundColor: isToday ? bar.red : bar.blue }} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ color: isToday ? C.red : C.primary, fontWeight: '700' }}>{isToday ? 'Hôm nay' : fmtDate(date)}</Text>
+        <Text style={{ color: C.text, fontWeight: '600' }}>{title}</Text>
+        {body ? <Text style={{ color: C.textSoft, fontSize: 14, lineHeight: 21 }}>{body}</Text> : null}
+      </View>
+    </View>
+  );
+}
 
 export function PatientCard({ patient }: { patient: Patient }) {
   const { device, woundsOf } = useLookups();
@@ -25,18 +40,18 @@ export function PatientCard({ patient }: { patient: Patient }) {
         <IconBadge icon="person-outline" />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>{patient.name}</Text>
-          <Text style={{ color: C.textSoft, fontSize: 12 }}>Mã hồ sơ: {patient.code} · {patient.sex}, {patient.birthYear}</Text>
+          <Text style={{ color: C.textSoft, fontSize: 13 }}>Mã hồ sơ: {patient.code} · {patient.sex}, {patient.birthYear}</Text>
         </View>
         <Chip label={active ? 'Đang theo dõi' : 'Tạm dừng'} tone={active ? 'green' : 'amber'} />
       </View>
       {severity && <Chip label={'Mức độ cao nhất: ' + SEVERITY[severity].label} tone={SEVERITY[severity].tone} />}
       <View style={{ flexDirection: 'row', backgroundColor: C.surfaceMuted, borderRadius: 12, padding: 10, justifyContent: 'space-between' }}>
-        <Text style={{ color: C.textSoft, fontSize: 12 }}>
+        <Text style={{ color: C.textSoft, fontSize: 13 }}>
           Thiết bị: <Text style={{ color: C.text, fontWeight: '700' }}>{dev?.code ?? 'Chưa gán'}</Text>
         </Text>
-        <Text style={{ color: C.textSoft, fontSize: 12 }}>
+        <Text style={{ color: C.textSoft, fontSize: 13 }}>
           {wounds.length} vết thương{unlabeled ? ` · ` : ''}
-          {unlabeled ? <Text style={{ color: C.amber, fontWeight: '700' }}>{unlabeled} ảnh chờ nhãn</Text> : null}
+          {unlabeled ? <Text style={{ color: C.amber, fontWeight: '700' }}>{unlabeled} ảnh chưa đo</Text> : null}
         </Text>
       </View>
     </Card>
@@ -49,19 +64,19 @@ export function ImageTile({ image, width = 150 }: { image: WoundImage; width?: n
     <Pressable
       onPress={() => router.push({ pathname: '/images/[id]', params: { id: image.id } })}
       accessibilityRole="button"
-      accessibilityLabel={`Ảnh ${image.id}, ${image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'chờ nhãn'}${image.retakeRequested ? ', cần chụp lại' : ''}`}
+      accessibilityLabel={`Ảnh ${image.id}, ${image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'chưa đo diện tích'}${image.retakeRequested ? ', cần chụp lại' : ''}`}
       style={{ width }}>
-      <WoundPhoto image={image} style={{ width, height: width * 0.75, borderRadius: 8, borderTopRightRadius: 32 }} />
+      <WoundPhoto image={image} style={{ width, height: width * 0.75, borderRadius: radius.m }} />
       <View style={{ position: 'absolute', top: 6, left: 6 }}>
-        <Chip label={image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'Chờ nhãn'} tone={st.tone} />
+        <Chip label={image.areaCm2 !== null ? formatAreaDisplay(image.areaCm2) : 'Chưa đo'} tone={st.tone} />
       </View>
       {image.retakeRequested && (
         <View style={{ position: 'absolute', top: 6, right: 6 }}>
           <Chip label="Chụp lại" tone="red" icon="refresh" />
         </View>
       )}
-      <Text style={{ fontSize: 12, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>
-      <Text style={{ fontSize: 12, color: C.textFaint }} numberOfLines={1}>{image.filename}</Text>
+      <Text style={{ fontSize: 13, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>
+      <Text style={{ fontSize: 13, color: C.textFaint }} numberOfLines={1}>{image.filename}</Text>
     </Pressable>
   );
 }
@@ -72,7 +87,7 @@ export function TaskRow({ icon, tone, title, detail, onPress }: { icon: IconName
       <IconBadge icon={icon} tone={tone} size={36} />
       <View style={{ flex: 1 }}>
         <Text style={{ fontWeight: '600', color: C.text }}>{title}</Text>
-        <Text style={{ color: C.textSoft, fontSize: 12 }} numberOfLines={2}>{detail}</Text>
+        <Text style={{ color: C.textSoft, fontSize: 13 }} numberOfLines={2}>{detail}</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
     </Pressable>
