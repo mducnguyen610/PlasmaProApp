@@ -45,3 +45,6 @@ example
 # Tệp APK dựng sẵn: đăng lên GitHub Releases, không đưa vào repo
 dist-apk/
 *.apk
+
+# Ảnh lỗi do scripts/kiem-thu-giao-dien.cjs tạo ra
+/tc*.png
