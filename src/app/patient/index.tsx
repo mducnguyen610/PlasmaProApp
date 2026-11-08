@@ -102,7 +102,7 @@ export default function PatientHome() {
               variant="secondary"
               onPress={() => {
                 addReport({ patientId: p.id, kind: 'symptom', content: `Vết thương ${followUp.w.code} (${followUp.w.location}) có dấu hiệu mở lại.` });
-                notify('Đã gửi cho bác sĩ', 'Bác sĩ sẽ liên hệ để hẹn khám. Nếu chảy máu, có mủ hoặc sốt, hãy đến cơ sở y tế.');
+                notify('Đã ghi nhận', 'Bác sĩ phụ trách sẽ xem khi mở ứng dụng. Hãy gọi cho bác sĩ để hẹn khám. Nếu chảy máu, có mủ hoặc sốt, hãy gọi 115 hoặc đến cơ sở y tế, không chờ phản hồi trong ứng dụng.');
               }}
             />
           </>
