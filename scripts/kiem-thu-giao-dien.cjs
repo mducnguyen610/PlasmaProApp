@@ -226,6 +226,9 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
   for (const w of [414, 320]) {
     const p = await newPage(w);
     await login(p, 'benhnhan'); await go(p, '/patient');
+    // Danh sách bước thu gọn mặc định (bản rút gọn 08/11/2026): mở ra trước khi đo dòng ô tích.
+    const stepsHeader = p.getByText(/^(Trước|Sau) khi chiếu$/);
+    if (await stepsHeader.count()) { await stepsHeader.first().click(); await p.waitForTimeout(300); }
     const m = await p.evaluate(() => {
       const tabs = [...document.querySelectorAll('[role=tab]')];
       const bar = tabs[0].parentElement.getBoundingClientRect();

@@ -12,6 +12,18 @@ import type { Patient, WoundImage } from '@/lib/types';
 import { bar, C, radius } from '@/theme';
 
 /** Một lịch hẹn: vạch màu, ngày (đỏ nếu hôm nay), tiêu đề đậm, mô tả. Dùng chung cho Trang chủ và Lịch trình. */
+/** Ô ngày làm điểm neo: số ngày lớn, tháng nhỏ; nền đỏ nhạt nếu là hôm nay. */
+export function DateTile({ date, today }: { date: string; today: string }) {
+  const isToday = date === today;
+  const [, m, d] = date.split('-');
+  return (
+    <View accessible accessibilityLabel={isToday ? 'Hôm nay' : `Ngày ${Number(d)} tháng ${Number(m)}`} style={{ width: 60, paddingVertical: 6, borderRadius: radius.m, alignItems: 'center', backgroundColor: isToday ? C.redSoft : C.primarySoft }}>
+      <Text style={{ fontSize: 24, lineHeight: 28, fontWeight: '700', color: isToday ? C.red : C.primary }}>{Number(d)}</Text>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: isToday ? C.red : C.primary }}>{isToday ? 'Hôm nay' : `Th${Number(m)}`}</Text>
+    </View>
+  );
+}
+
 export function AppointmentRow({ date, title, body, today }: { date: string; title: string; body?: string; today: string }) {
   const isToday = date === today;
   return (

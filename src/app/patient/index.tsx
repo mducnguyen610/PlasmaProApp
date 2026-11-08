@@ -4,12 +4,11 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { latestEvaluation, SEVERITY } from '@/lib/access';
-import { areaReview, courseProgress, courseStatus, followUpDates, phaseLabel, phasesOf, localDay } from '@/lib/course';
-import { ReviewNote } from '@/components/CourseCard';
+import { areaReview, courseProgress, courseStatus, followUpDates, localDay } from '@/lib/course';
 import { DateBadge } from '@/components/DateBadge';
-import { AppointmentRow, TaskRow } from '@/components/items';
+import { DateTile, TaskRow } from '@/components/items';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Header, Muted, Notice, Ring, Screen, SectionTitle, SimBadge, Stat, WoundPhoto } from '@/components/ui';
+import { Button, Card, Chip, Header, Muted, Ring, Screen, SectionTitle, SimBadge, WoundPhoto } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, TREND } from '@/lib/format';
 import { formatAreaForName } from '@/lib/naming';
@@ -29,6 +28,8 @@ export default function PatientHome() {
   const { patient, account, woundsOf, sessionsOf, device, coursePlan, imagesOf } = useLookups();
   const [busy, setBusy] = useState(false);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [openSteps, setOpenSteps] = useState(false);
+  const [openNote, setOpenNote] = useState(false);
   const p = patient(me?.patientId);
   if (!p) return null;
   const today = localDay();
@@ -49,42 +50,45 @@ export default function PatientHome() {
   const pr = plan ? courseProgress(plan, woundSessions, today, lastSyncDay) : null;
   const status = pr ? courseStatus(pr, fmtDate) : null;
   const statusColor = status?.kind === 'done' ? C.green : status?.kind === 'over' ? C.amber : status?.kind === 'rest' ? C.textSoft : C.primary;
-  const phase = plan && pr && pr.phaseIndex >= 0 ? phasesOf(plan)[pr.phaseIndex] : undefined;
   const review = plan && treating ? areaReview(imagesOf(treating.w.id), plan, today) : null;
   const nextCheck = followUp?.w.followUpFrom ? followUpDates(followUp.w.followUpFrom).find((x) => x.date >= today) : undefined;
   const steps = status?.kind === 'treat' ? BEFORE : status?.kind === 'done' ? AFTER : [];
 
   return (
     <Screen header={<Header title="Trang chủ" subtitle={`${p.name} · ${p.code}`} right={<DateBadge />} />}>
-      <SimBadge />
-      <SectionTitle action="Chi tiết" onAction={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id } })}>
-        {treating ? `Đợt điều trị · ${treating.w.code} ${treating.w.location}` : 'Đợt điều trị'}
-      </SectionTitle>
-      <Card hero style={{ padding: 20 }}>
+      {/* Bản rút gọn (08/11/2026): mỗi thẻ một điểm neo thị giác (vòng tiến độ, ô ngày hẹn, số diện tích),
+          chữ phụ đưa vào chạm để xem hoặc sang Lịch trình. */}
+      <Card hero style={{ padding: 20, gap: 14 }}>
+        {treating && (
+          <Pressable onPress={() => router.push('/schedule')} accessibilityRole="button" accessibilityLabel="Xem lịch trình của đợt" hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 }}>
+            <Text style={{ flex: 1, color: C.textSoft, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>Đợt điều trị · {treating.w.code}</Text>
+            <Text style={{ color: C.primary, fontSize: 14 }}>Lịch trình</Text>
+            <Ionicons name="chevron-forward" size={16} color={C.primary} />
+          </Pressable>
+        )}
         {plan && pr && status ? (
           <>
-            {/* Câu chính theo lịch của đợt: ngày có buổi, ngày nghỉ, đã xong. Không dùng chuỗi ngày liên tiếp. */}
-            <View accessible accessibilityRole="summary" accessibilityLabel={`${status.title}. ${status.detail}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Ionicons name={status.kind === 'done' ? 'checkmark-circle' : status.kind === 'over' ? 'alert-circle' : status.kind === 'rest' ? 'moon-outline' : 'time-outline'} size={30} color={statusColor} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: statusColor }}>{status.title}</Text>
+            {/* Điểm neo: vòng tiến độ lớn bên trái, câu chính bên phải. Giai đoạn, liều, mốc xem lại nằm ở Lịch trình. */}
+            <View accessible accessibilityRole="summary" accessibilityLabel={`${status.title}. ${status.detail}. Đã xong ${pr.done} trên ${pr.total} buổi.`} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              <Ring size={120} value={pr.done} max={pr.total} label={`${pr.done}/${pr.total}`} sub="buổi đã xong" color={statusColor === C.textSoft ? C.primary : statusColor} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <Ionicons name={status.kind === 'done' ? 'checkmark-circle' : status.kind === 'over' ? 'alert-circle' : status.kind === 'rest' ? 'moon' : 'flash'} size={28} color={statusColor} />
+                <Text style={{ fontSize: 22, lineHeight: 28, fontWeight: '700', color: statusColor }}>{status.title}</Text>
                 <Text style={{ color: C.textSoft }}>{status.detail}</Text>
               </View>
             </View>
-            {/* Mức năng lượng và thời gian chỉ hiện ở Lịch trình: trang chủ giữ một câu chính và một chip (quy tắc đơn giản cho bệnh nhân). */}
-            {phase && <View style={{ flexDirection: 'row' }}><Chip icon="layers-outline" tone="blue" label={`Giai đoạn ${pr.phaseIndex + 1}/${pr.phaseCount}: ${phaseLabel(phase)}`} /></View>}
-            {dev && lastSyncDay !== today && (
-              <Notice icon="cloud-offline-outline">
-                {dev.lastSync ? `Chưa nhận dữ liệu hôm nay (lần cuối ${fmtDateTime(dev.lastSync)}). Số buổi có thể chưa đủ.` : 'Thiết bị chưa gửi dữ liệu. Số buổi có thể chưa đủ.'}
-              </Notice>
+            {/* Cảnh báo đồng bộ thu thành một chip; chạm để đọc giải thích. Ngày nghỉ không cần cảnh báo. */}
+            {dev && lastSyncDay !== today && status.kind !== 'rest' && (
+              <Pressable
+                onPress={() => notify('Chưa nhận dữ liệu hôm nay', dev.lastSync ? `Thiết bị gửi dữ liệu lần cuối ${fmtDateTime(dev.lastSync)}. Số buổi sẽ cập nhật khi thiết bị bật ở nơi có Wi-Fi.` : 'Thiết bị chưa gửi dữ liệu lần nào.')}
+                accessibilityRole="button"
+                accessibilityLabel="Chưa đồng bộ hôm nay. Chạm để xem chi tiết"
+                style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 36, paddingHorizontal: 12, borderRadius: 999, backgroundColor: C.amberSoft }}>
+                <Ionicons name="cloud-offline-outline" size={18} color={C.amber} />
+                <Text style={{ color: C.amber, fontWeight: '600', fontSize: 14 }}>Chưa đồng bộ hôm nay</Text>
+                <Ionicons name="information-circle-outline" size={18} color={C.amber} />
+              </Pressable>
             )}
-            {/* Vòng tiến độ đặt trước, mốc xem lại đợt nằm sát bên phải: không còn khoảng trống giữa hai khối. */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 }}>
-              <Ring size={128} value={pr.done} max={pr.total} label={`${pr.done}/${pr.total}`} sub="buổi đã xong" />
-              <View style={{ flex: 1, alignItems: 'flex-start' }}>
-                <Stat label="Dự kiến xem lại đợt" value={fmtDate(plan.endDate)} tone="red" />
-              </View>
-            </View>
           </>
         ) : followUp ? (
           <>
@@ -123,8 +127,14 @@ export default function PatientHome() {
 
       {steps.length > 0 && (
         <Card>
-          <SectionTitle icon="list-circle-outline">{status?.kind === 'treat' ? 'Trước khi chiếu' : 'Sau khi chiếu'}</SectionTitle>
-          {steps.map((t) => {
+          {/* Thu gọn mặc định: một dòng có số bước đã tích. Mở ra khi cần. */}
+          <Pressable onPress={() => setOpenSteps(!openSteps)} accessibilityRole="button" accessibilityState={{ expanded: openSteps }} accessibilityLabel={`${status?.kind === 'treat' ? 'Trước khi chiếu' : 'Sau khi chiếu'}, đã làm ${steps.filter((t) => checked[t]).length} trên ${steps.length} bước`} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Ionicons name="list" size={26} color={C.primary} />
+            <Text style={{ flex: 1, fontSize: 18, fontWeight: '700', color: C.text }}>{status?.kind === 'treat' ? 'Trước khi chiếu' : 'Sau khi chiếu'}</Text>
+            <Text style={{ color: steps.every((t) => checked[t]) ? C.green : C.textSoft, fontWeight: '700' }}>{steps.filter((t) => checked[t]).length}/{steps.length}</Text>
+            <Ionicons name={openSteps ? 'chevron-up' : 'chevron-down'} size={22} color={C.textSoft} />
+          </Pressable>
+          {openSteps && steps.map((t) => {
             const on = !!checked[t];
             return (
               // Cả dòng là vùng bấm, cao tối thiểu 48 pt (Apple HIG 44 pt, Material 48 dp), có phản hồi khi chạm.
@@ -134,7 +144,7 @@ export default function PatientHome() {
               </Pressable>
             );
           })}
-          <Muted>Nội dung theo hướng dẫn chung, bác sĩ có thể dặn khác cho từng người.</Muted>
+          {openSteps && <Muted>Theo hướng dẫn chung, bác sĩ có thể dặn khác.</Muted>}
         </Card>
       )}
 
@@ -151,17 +161,16 @@ export default function PatientHome() {
       <SectionTitle action={upcoming.length > 1 ? `Tất cả (${upcoming.length})` : undefined} onAction={() => router.push('/schedule')}>Lịch hẹn gần nhất</SectionTitle>
       <Card>
         {next ? (
-          <AppointmentRow date={next.date} title={next.title} body={next.body} today={today} />
-        ) : (
-          <Muted>Chưa có lịch hẹn. Lịch được lấy từ đợt điều trị và đánh giá của bác sĩ.</Muted>
-        )}
-        {upcoming.length > 0 && (
-          <Button
-            label="Bật nhắc trên điện thoại"
-            icon="notifications-outline"
-            variant="ghost"
-            loading={busy}
-            onPress={async () => {
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <DateTile date={next.date} today={today} />
+            <Text style={{ flex: 1, color: C.text, fontWeight: '600', fontSize: 17 }}>{next.title}</Text>
+            {/* Nút chuông thay cho nút chữ "Bật nhắc trên điện thoại". */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Bật nhắc lịch hẹn trên điện thoại"
+              disabled={busy}
+              style={({ pressed }) => ({ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? C.primarySoft : C.surfaceMuted })}
+              onPress={async () => {
               setBusy(true);
               try {
                 const r = await scheduleReminders(reminders);
@@ -174,8 +183,12 @@ export default function PatientHome() {
               } finally {
                 setBusy(false);
               }
-            }}
-          />
+            }}>
+              <Ionicons name="notifications-outline" size={24} color={C.primary} />
+            </Pressable>
+          </View>
+        ) : (
+          <Muted>Chưa có lịch hẹn.</Muted>
         )}
       </Card>
 
@@ -198,21 +211,31 @@ export default function PatientHome() {
                     <Text style={{ fontSize: 32, fontWeight: '600', color: C.primary }}>{formatAreaForName(img.areaCm2!).replace('.', ',')}</Text>
                     <Text style={{ fontSize: 18, fontWeight: '500', color: C.primary, marginBottom: 5 }}>cm²</Text>
                   </View>
-                  <Muted>{img.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : 'Bác sĩ đo ngày ' + fmtDate(img.captureDate)}</Muted>
+                  {rv && rv.state !== 'no_data' && rv.reduction != null ? (
+                    <View style={{ flexDirection: 'row' }}>
+                      <Chip icon={rv.reduction >= 0 ? 'trending-down' : 'trending-up'} tone={rv.reduction >= 0 ? 'green' : 'amber'} label={`${rv.reduction >= 0 ? 'Giảm' : 'Tăng'} ${Math.round(Math.abs(rv.reduction) * 100)}% từ đầu đợt`} />
+                    </View>
+                  ) : null}
+                  <Muted>{img.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : 'Đo ' + fmtDate(img.captureDate).slice(0, 5)}</Muted>
                 </View>
                 <WoundPhoto image={img} style={{ width: 110, height: 82, borderRadius: radius.m }} />
               </View>
             ) : <Muted>Chưa có số đo do bác sĩ nhập.</Muted>}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {ev?.severity && <Chip label={`Mức độ: ${SEVERITY[ev.severity].label}`} tone={SEVERITY[ev.severity].tone} />}
-              {ev && <Chip label={TREND[ev.trend].label} tone={TREND[ev.trend].tone} />}
+              {ev && !(rv && rv.state !== 'no_data') && <Chip label={TREND[ev.trend].label} tone={TREND[ev.trend].tone} />}
             </View>
-            {rv && rv.state !== 'no_data' && <ReviewNote review={rv} forPatient />}
             {ev ? (
               <View style={{ gap: 4, padding: 12, borderRadius: radius.m, backgroundColor: C.surfaceMuted }}>
-                <Text style={{ color: C.text, fontWeight: '600' }}>Lời dặn của bác sĩ</Text>
-                <Text style={{ color: C.text, lineHeight: 24 }}>{ev.instructions || ev.characteristics}</Text>
-                <Muted>{account(ev.doctorId)?.name ?? 'Bác sĩ phụ trách'} · {fmtDate(ev.date)}{ev.nextReview && ev.nextReview >= today ? ` · tái đánh giá ${fmtDate(ev.nextReview)}` : ''}</Muted>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="chatbubble-ellipses" size={20} color={C.primary} />
+                  <Text style={{ flex: 1, color: C.text, fontWeight: '600' }}>Lời dặn của bác sĩ</Text>
+                  <Text style={{ color: C.textSoft, fontSize: 14 }}>{fmtDate(ev.date).slice(0, 5)}</Text>
+                </View>
+                {/* Hai dòng đầu, chạm để đọc hết. */}
+                <Text onPress={() => setOpenNote(!openNote)} numberOfLines={openNote ? undefined : 2} style={{ color: C.text, lineHeight: 24 }}>{ev.instructions || ev.characteristics}</Text>
+                {openNote && <Muted>{account(ev.doctorId)?.name ?? 'Bác sĩ phụ trách'}{ev.nextReview && ev.nextReview >= today ? ` · tái đánh giá ${fmtDate(ev.nextReview)}` : ''}</Muted>}
+                <Text onPress={() => setOpenNote(!openNote)} accessibilityRole="button" style={{ color: C.primary, fontWeight: '600', paddingVertical: 8 }}>{openNote ? 'Thu gọn' : 'Đọc hết'}</Text>
               </View>
             ) : <Muted>Chưa có đánh giá được công bố. Không suy ra mức độ từ diện tích.</Muted>}
           </Card>
@@ -220,7 +243,7 @@ export default function PatientHome() {
       })}
 
       <Button label="Báo triệu chứng hoặc sự cố" icon="medkit-outline" variant="secondary" onPress={() => router.push('/report')} />
-      <Chip label={`Bác sĩ phụ trách: ${account(p.doctorId)?.name ?? '—'}`} tone="blue" icon="medkit-outline" />
+      <SimBadge />
     </Screen>
   );
 }
