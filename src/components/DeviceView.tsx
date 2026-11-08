@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Chip, Empty, InfoRow, Muted, Notice, SectionTitle, Segmented, SimBadge, Stat } from '@/components/ui';
+import { Button, Card, Chip, Divider, Empty, InfoRow, Muted, Notice, SectionTitle, Segmented, SimBadge, NumberTile } from '@/components/ui';
 import { noteText } from '@/components/AdherenceCalendar';
 import { ProgressRows } from '@/components/CourseCard';
 import { courseProgress, isScheduled, localDay } from '@/lib/course';
@@ -124,6 +124,18 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
             }
           />
         )}
+        {!patientView && <>
+        <Divider />
+        <SectionTitle icon="ribbon-outline">Tiến độ đợt điều trị</SectionTitle>
+        {!pr ? (
+          <Muted>Bệnh nhân chưa có đợt điều trị đang áp dụng.</Muted>
+        ) : (
+          <>
+            <ProgressRows pr={pr} />
+            <Muted>Chỉ số tuân thủ, không phải đánh giá vết thương. Ngày nghỉ không tính là bỏ lỡ.</Muted>
+          </>
+        )}
+        </>}
       </Card>}
 
       {/* Chăm sóc thiết bị (mẫu myAir). Bệnh nhân chỉ thấy mục đến hạn; kỹ thuật thấy đủ thanh tuổi thọ. */}
@@ -165,9 +177,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           );
         })}
         <Muted>Cách vệ sinh là giả định cho demo, theo hướng dẫn nhà sản xuất khi có.</Muted>
-      </Card>}
-
-      {tech && tab === 'care' && LIFECYCLE[device.lifecycle ?? 'ready'].next && <Card>
+        {LIFECYCLE[device.lifecycle ?? 'ready'].next && <>
+        <Divider />
         <SectionTitle icon="sync-outline">Vòng đời thiết bị cho thuê</SectionTitle>
         <Muted>Thu hồi, khử khuẩn, kiểm tra rồi mới cấp lại. Đầu phát cũ không cấp lại.</Muted>
         <Button
@@ -178,6 +189,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
             try { setLifecycle(device.id, LIFECYCLE[device.lifecycle ?? 'ready'].next as NonNullable<Device['lifecycle']>); } catch (e) { notify('Chưa ghi được', e instanceof Error ? e.message : String(e)); }
           }, 'Xác nhận')}
         />
+        </>}
       </Card>}
 
       {tech && tab === 'log' && <Card>
@@ -194,22 +206,10 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         />
       </Card>}
 
-      {!patientView && show('overview') && <Card>
-        <SectionTitle icon="ribbon-outline">Tiến độ đợt điều trị</SectionTitle>
-        {!pr ? (
-          <Muted>Bệnh nhân chưa có đợt điều trị đang áp dụng.</Muted>
-        ) : (
-          <>
-            <ProgressRows pr={pr} />
-            <Muted>Chỉ số tuân thủ, không phải đánh giá vết thương. Ngày nghỉ không tính là bỏ lỡ.</Muted>
-          </>
-        )}
-      </Card>}
 
       {!patientView && show('overview') && <View style={{ flexDirection: 'row', gap: 10 }}>
-        <Stat value={sessions.length} label={tech ? 'Phiên (đã bỏ trùng lặp)' : 'Số phiên'} />
-        <Stat value={`${totalMin}′`} label="Tổng thời gian" tone="violet" />
-        <Stat value={pr ? `${pr.done}/${pr.total}` : '—'} label="Buổi của đợt" tone="teal" />
+        <NumberTile value={sessions.length} label={tech ? 'Phiên (bỏ trùng)' : 'Số phiên'} tone="blue" icon="pulse-outline" />
+        <NumberTile value={`${totalMin}′`} label="Tổng thời gian" tone="violet" icon="time-outline" />
       </View>}
       {tech && tab === 'log' && rawCount !== sessions.length && (
         <Muted>Đã bỏ {rawCount - sessions.length} bản ghi thiết bị gửi lại trùng mã phiên.</Muted>
@@ -242,9 +242,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Ionicons name="moon-outline" size={14} color={C.textFaint} /><Text style={{ fontSize: 13, color: C.textSoft }}>Nghỉ</Text></View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Ionicons name="alert-circle" size={14} color={C.amber} /><Text style={{ fontSize: 13, color: C.textSoft }}>Bỏ lỡ</Text></View>
         </View>
-      </Card>}
-
-      {!patientView && show('log') && <Card>
+        {!patientView && <>
+        <Divider />
         <SectionTitle icon="list-outline">Phiên sử dụng</SectionTitle>
         {sessions.length === 0 && <Empty text="Chưa có phiên nào được ghi nhận." />}
         {sessions.slice(0, allSessions ? 30 : 5).map((s) => (
@@ -265,6 +264,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           </View>
         ))}
         {sessions.length > 5 && <Button label={allSessions ? 'Thu gọn' : `Xem thêm (${Math.min(sessions.length, 30) - 5})`} variant="ghost" onPress={() => setAllSessions(!allSessions)} />}
+        </>}
       </Card>}
     </>
   );

@@ -52,7 +52,7 @@ export default function Schedule() {
     </Card>
     {dev
       ? <AdherenceCalendar sessions={sessionsOf(dev.id)} plan={plan} lastSyncDay={(dev.lastSync ? localDay(dev.lastSync) : null)} reminders={reminders} canEdit />
-      : <Card><Empty icon="hardware-chip-outline" text="Chưa được gán thiết bị." /></Card>}
+      : <Empty icon="hardware-chip-outline" text="Chưa được gán thiết bị." />}
     <SectionTitle>Lịch hẹn sắp tới</SectionTitle>
     {reminders.some(r => r.date >= today) ? <Card>
       {reminders.filter(r => r.date >= today).slice(0, 5).map((r, i) => (

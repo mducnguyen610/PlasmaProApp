@@ -142,10 +142,10 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
   {
     const p = await newPage();
     await login(p, 'bacsi'); await go(p, '/wounds/w-1');
-    const order = ['Diện tích', 'Đợt điều trị', 'Mức độ vết thương', 'Đánh giá gần nhất', 'Album ảnh'];
+    const order = ['Đang điều trị', 'Diện tích', 'Đợt điều trị', 'Đánh giá gần nhất', 'Album ảnh'];
     const ys = []; for (const t of order) ys.push(await yOf(p, t));
     const ok = ys.every((y) => y != null) && ys.every((y, i) => i === 0 || y > ys[i - 1]);
-    rec('TC08a', 'Trang vết thương: diện tích (điểm neo) → đợt → mức độ → đánh giá → album', ok, JSON.stringify(ys.map((y) => (y == null ? null : Math.round(y)))));
+    rec('TC08a', 'Trang vết thương: thẻ tổng quan (trạng thái, diện tích) → đợt → đánh giá → album', ok, JSON.stringify(ys.map((y) => (y == null ? null : Math.round(y)))));
     const dates0 = await p.getByText(/^Chụp \d/).count();
     await p.getByText(/^Xem tất cả \(\d+ ngày chụp\)/).click(); await p.waitForTimeout(300);
     const dates1 = await p.getByText(/^Chụp \d/).count();

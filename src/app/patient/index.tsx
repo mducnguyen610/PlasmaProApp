@@ -8,7 +8,7 @@ import { areaReview, courseProgress, courseStatus, followUpDates, localDay } fro
 import { DateBadge } from '@/components/DateBadge';
 import { DateTile, TaskRow } from '@/components/items';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Header, Muted, Ring, Screen, SectionTitle, SimBadge, WoundPhoto } from '@/components/ui';
+import { Button, Card, Chip, Divider, Header, Muted, Ring, Screen, SectionTitle, SimBadge, WoundPhoto } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, TREND } from '@/lib/format';
 import { formatAreaForName } from '@/lib/naming';
@@ -123,11 +123,10 @@ export default function PatientHome() {
         ) : (
           <Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted>
         )}
-      </Card>
-
-      {steps.length > 0 && (
-        <Card>
-          {/* Thu gọn mặc định: một dòng có số bước đã tích. Mở ra khi cần. */}
+        {steps.length > 0 && (
+        <View style={{ gap: 10 }}>
+          <Divider />
+          {/* Gộp vào thẻ Hôm nay. Thu gọn mặc định: một dòng có số bước đã tích. Mở ra khi cần. */}
           <Pressable onPress={() => setOpenSteps(!openSteps)} accessibilityRole="button" accessibilityState={{ expanded: openSteps }} accessibilityLabel={`${status?.kind === 'treat' ? 'Trước khi chiếu' : 'Sau khi chiếu'}, đã làm ${steps.filter((t) => checked[t]).length} trên ${steps.length} bước`} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Ionicons name="list" size={26} color={C.primary} />
             <Text style={{ flex: 1, fontSize: 18, fontWeight: '700', color: C.text }}>{status?.kind === 'treat' ? 'Trước khi chiếu' : 'Sau khi chiếu'}</Text>
@@ -145,21 +144,14 @@ export default function PatientHome() {
             );
           })}
           {openSteps && <Muted>Theo hướng dẫn chung, bác sĩ có thể dặn khác.</Muted>}
-        </Card>
-      )}
-
-      {retakes.length > 0 && (
-        <Card style={{ borderWidth: 1.5, borderColor: C.red }}>
-          <Text style={{ color: C.red, fontWeight: '700' }}>Cần hẹn bác sĩ chụp lại</Text>
-          {retakes.map((im) => (
-            <TaskRow key={im.id} icon="camera-outline" tone="red" title={`Ảnh ${im.id} · ${im.capture?.sourceDateKnown === false ? 'Chưa rõ ngày chụp' : fmtDate(im.captureDate)}`} detail={im.retakeRequested!} onPress={() => router.push('/schedule')} />
-          ))}
-        </Card>
-      )}
-
-      {/* Chỉ một lịch hẹn gần nhất; danh sách đầy đủ ở Lịch trình (đề xuất 4). */}
-      <SectionTitle action={upcoming.length > 1 ? `Tất cả (${upcoming.length})` : undefined} onAction={() => router.push('/schedule')}>Lịch hẹn gần nhất</SectionTitle>
-      <Card>
+        </View>
+        )}
+        {/* Lịch hẹn gần nhất gộp vào thẻ Hôm nay thay cho một thẻ riêng; danh sách đầy đủ ở Lịch trình. */}
+        <Divider />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{ flex: 1, color: C.textSoft, fontSize: 14, fontWeight: '600' }}>Lịch hẹn gần nhất</Text>
+          {upcoming.length > 1 && <Text onPress={() => router.push('/schedule')} accessibilityRole="link" style={{ color: C.primary, fontWeight: '600', fontSize: 14, paddingVertical: 8 }}>Tất cả ({upcoming.length}) ›</Text>}
+        </View>
         {next ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <DateTile date={next.date} today={today} />
@@ -204,6 +196,10 @@ export default function PatientHome() {
         return (
           <Card key={w.id}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{w.code} · {w.location}</Text>
+            {/* Yêu cầu chụp lại nằm trong thẻ vết thương thay cho một thẻ viền đỏ riêng. */}
+            {retakes.filter((im) => im.woundId === w.id).map((im) => (
+              <TaskRow key={im.id} icon="camera-outline" tone="red" title={`Cần hẹn bác sĩ chụp lại ảnh ${im.capture?.sourceDateKnown === false ? 'chưa rõ ngày' : fmtDate(im.captureDate)}`} detail={im.retakeRequested!} onPress={() => router.push('/schedule')} />
+            ))}
             {img ? (
               <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
                 <View style={{ flex: 1 }}>

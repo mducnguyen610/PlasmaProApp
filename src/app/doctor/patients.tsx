@@ -7,7 +7,7 @@ import { TextInput } from '@/components/Text';
 import { PatientCard } from '@/components/items';
 import { patientSeverity, SEVERITY } from '@/lib/access';
 import type { Severity } from '@/lib/types';
-import { Choices, Empty, Header, HeaderButton, Screen } from '@/components/ui';
+import { Choices, Empty, Header, HeaderButton, ListCard, Screen } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import { C, shadow } from '@/theme';
 
@@ -37,9 +37,9 @@ export default function PatientList() {
       </View>
       <Choices<Severity | 'all'> value={level} onChange={setLevel} options={[{ value: 'all', label: 'Tất cả' }, ...(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))]} />
       {list.length === 0 && <Empty icon="search" text="Không tìm thấy bệnh nhân phù hợp." />}
-      {list.map((p) => (
-        <PatientCard key={p.id} patient={p} />
-      ))}
+      <ListCard>
+        {list.map((p) => <PatientCard key={p.id} patient={p} />)}
+      </ListCard>
     </Screen>
   );
 }

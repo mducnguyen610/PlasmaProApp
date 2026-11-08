@@ -4,7 +4,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { patientSeverity, SEVERITY } from '@/lib/access';
-import { Card, Chip, IconBadge, WoundPhoto, type IconName } from '@/components/ui';
+import { Chip, IconBadge, WoundPhoto, type IconName } from '@/components/ui';
 import { fmtDate, LABEL_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
@@ -46,9 +46,9 @@ export function PatientCard({ patient }: { patient: Patient }) {
   const unlabeled = data.images.filter((i) => i.patientId === patient.id && i.status === 'unlabeled').length;
   const severity = patientSeverity(data, patient.id);
   const active = wounds.some((w) => w.status === 'active');
-  // Bản rút gọn (08/11/2026): một dòng tên, một dòng mã; mức độ là điểm neo bên phải; chỉ hiện việc cần làm khi có.
+  // Một dòng trong ListCard (không còn thẻ riêng cho mỗi bệnh nhân). Bản rút gọn (08/11/2026): một dòng tên, một dòng mã; mức độ là điểm neo bên phải; chỉ hiện việc cần làm khi có.
   return (
-    <Card onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityLabel={`${patient.name}, ${patient.code}${severity ? `, mức độ ${SEVERITY[severity].label}` : ''}${unlabeled ? `, ${unlabeled} ảnh chưa đo` : ''}`}>
+    <Pressable onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityRole="button" style={({ pressed }) => ({ paddingVertical: 12, gap: 8, opacity: pressed ? 0.7 : 1 })} accessibilityLabel={`${patient.name}, ${patient.code}${severity ? `, mức độ ${SEVERITY[severity].label}` : ''}${unlabeled ? `, ${unlabeled} ảnh chưa đo` : ''}`}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <IconBadge icon="person-outline" />
         <View style={{ flex: 1 }}>
@@ -56,14 +56,15 @@ export function PatientCard({ patient }: { patient: Patient }) {
           <Text style={{ color: C.textSoft, fontSize: 13 }}>{patient.code} · {dev?.code ?? 'chưa gán thiết bị'}</Text>
         </View>
         {severity ? <Chip label={SEVERITY[severity].label} tone={SEVERITY[severity].tone} /> : null}
+        <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
       </View>
       {(unlabeled > 0 || !active) && (
-        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', paddingLeft: 52 }}>
           {unlabeled > 0 && <Chip icon="pricetag-outline" tone="amber" label={`${unlabeled} ảnh chưa đo`} />}
           {!active && <Chip label="Tạm dừng" tone="gray" />}
         </View>
       )}
-    </Card>
+    </Pressable>
   );
 }
 

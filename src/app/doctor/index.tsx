@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { DateBadge } from '@/components/DateBadge';
 import { View } from 'react-native';
 import { PatientCard } from '@/components/items';
-import { Card, Header, Muted, NumberTile, Screen, SectionTitle, SimBadge, type IconName } from '@/components/ui';
+import { Card, Header, ListCard, Muted, NumberTile, Screen, SectionTitle, SimBadge, type IconName } from '@/components/ui';
 import { useLookups, useStore } from '@/lib/store';
 
 type Task = { key: string; icon: IconName; tone: 'amber' | 'red' | 'blue' | 'violet'; count: number; label: string; onPress: () => void };
@@ -41,9 +41,9 @@ export default function DoctorHome() {
       )}
 
       <SectionTitle action="Danh sách" onAction={() => router.navigate('/doctor/patients')}>Bệnh nhân</SectionTitle>
-      {mine.map((p) => (
-        <PatientCard key={p.id} patient={p} />
-      ))}
+      <ListCard>
+        {mine.map((p) => <PatientCard key={p.id} patient={p} />)}
+      </ListCard>
       <SimBadge />
     </Screen>
   );

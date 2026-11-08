@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useSegments } from 'expo-router';
-import { useState, type ComponentProps, type ReactNode } from 'react';
+import { Children, useState, type ComponentProps, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
@@ -418,6 +418,27 @@ export function Disclosure({ title, summary, icon, children, initiallyOpen = fal
       </Pressable>
       {open ? children : null}
     </View>
+  );
+}
+
+/** Đường kẻ mảnh tách các phần trong cùng một thẻ, thay cho việc tách thành nhiều thẻ. */
+export function Divider() {
+  return <View style={{ height: 1, backgroundColor: C.border, marginVertical: 4 }} />;
+}
+
+/** Một thẻ chứa cả danh sách: các mục cùng loại xếp thành dòng, tách bằng đường kẻ (kiểu inset grouped). */
+export function ListCard({ children }: { children: ReactNode }) {
+  const items = Children.toArray(children).filter(Boolean);
+  if (!items.length) return null;
+  return (
+    <Card style={{ gap: 0, paddingVertical: 4 }}>
+      {items.map((c, i) => (
+        <View key={i}>
+          {i > 0 && <View style={{ height: 1, backgroundColor: C.border }} />}
+          {c}
+        </View>
+      ))}
+    </Card>
   );
 }
 

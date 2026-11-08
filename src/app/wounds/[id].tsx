@@ -1,14 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { SeverityCard } from '@/components/SeverityCard';
+import { SEVERITY } from '@/lib/access';
 import { AreaChart } from '@/components/AreaChart';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { ImageTile } from '@/components/items';
-import { Button, Card, Chip, Disclosure, Empty, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
@@ -52,15 +51,16 @@ export default function WoundDetail() {
   const pctOf = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
 
   const retakes = images.filter((i) => i.retakeRequested);
+  const sev = evals[0]?.severity;
   const dates = [...byDate.entries()];
   const shownDates = showAllPhotos ? dates : dates.slice(0, 2);
   const shownEvals = showOldEvals ? evals : evals.slice(0, 1);
 
-  // Thứ tự: cảnh báo, diện tích (điểm neo), đợt điều trị, mức độ, đánh giá, album.
-  // Vị trí, nhóm, ngày bắt đầu đưa lên đầu trang thay cho một thẻ riêng.
+  // Ba thẻ: tổng quan (vị trí, trạng thái, mức độ, diện tích), đợt điều trị, đánh giá. Album không đóng khung.
   return (
     <Screen header={<Header back title={`Vết thương ${w.code}`} subtitle={`${p.name} · ${p.code}`} />}>
-      {/* Tiêu đề có thể bị cắt khi chữ to: vị trí và nhóm tổn thương luôn hiện đủ ở đây để tránh nhầm vết (R15). */}
+      {/* Thẻ 1, tổng quan: vị trí, trạng thái, mức độ, cảnh báo chụp lại và diện tích (điểm neo) trong một thẻ.
+          Vị trí và nhóm tổn thương luôn hiện đủ để tránh nhầm vết (R15). */}
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconBadge icon="body-outline" tone="teal" size={44} />
@@ -69,28 +69,17 @@ export default function WoundDetail() {
             {w.group ? <Text style={{ color: C.textSoft }}>{w.group}</Text> : null}
           </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="calendar-outline" size={16} color={C.textSoft} />
-            <Text style={{ color: C.textSoft }}>Từ {fmtDate(w.startDate)}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="images-outline" size={16} color={C.textSoft} />
-            <Text style={{ color: C.textSoft }}>{images.length} ảnh</Text>
-          </View>
+          <Chip label={sev ? `Mức độ ${SEVERITY[sev].label.toLowerCase()}` : 'Chưa đánh giá mức độ'} tone={sev ? SEVERITY[sev].tone : 'gray'} />
+          {isDoctor && retakes.length > 0 && (
+            <Pressable accessibilityRole="button" hitSlop={10} onPress={() => notify(`Đã yêu cầu chụp lại ${retakes.length} ảnh`, retakes.map((im) => `${im.id}: ${im.retakeRequested}`).join('\n'))}>
+              <Chip icon="camera-reverse-outline" tone="red" label={`Chụp lại ${retakes.length} ảnh`} />
+            </Pressable>
+          )}
         </View>
-      </Card>
-
-      {isDoctor && retakes.length > 0 && (
-        <Card style={{ borderWidth: 1.5, borderColor: C.red }}>
-          <Text style={{ color: C.red, fontWeight: '700' }}>Đã yêu cầu chụp lại {retakes.length} ảnh</Text>
-          {retakes.map((im) => <Muted key={im.id}>{im.id}: {im.retakeRequested}</Muted>)}
-        </Card>
-      )}
-
-      {/* Điểm neo: số đo mới nhất cỡ lớn, chip thay đổi so với đầu đợt, rồi biểu đồ. */}
-      <Card>
+        <Text style={{ color: C.textSoft }}>Từ {fmtDate(w.startDate)} · {images.length} ảnh</Text>
+        <Divider />
         <SectionTitle icon="stats-chart-outline" right={images.length >= 2 ? <Text onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} style={{ color: C.primary, fontWeight: '600' }}>So sánh</Text> : null}>Diện tích</SectionTitle>
         {latest ? (
           <View style={{ gap: 8 }}>
@@ -136,20 +125,21 @@ export default function WoundDetail() {
         {!isDoctor && w.status === 'follow_up' && w.followUpFrom && <Muted>Đã liền ngày {fmtDate(w.followUpFrom)}. Các lần kiểm tra: {followUpDates(w.followUpFrom).map((x) => fmtDate(x.date)).join(', ')}.</Muted>}
       </Card>
 
-      <SeverityCard title="Mức độ vết thương" evaluation={evals[0]} doctor={account(evals[0]?.doctorId)?.name} />
-
+      {/* Thẻ 3: đánh giá gần nhất và các đánh giá cũ trong cùng một thẻ, tách bằng đường kẻ. */}
+      <Card>
       <SectionTitle
         icon="clipboard-outline"
         right={isDoctor ? <Text onPress={() => router.push({ pathname: '/evaluate/[woundId]', params: { woundId: w.id } })} style={{ color: C.primary, fontWeight: '600' }}>+ Ghi đánh giá</Text> : null}>
         {isDoctor ? 'Đánh giá gần nhất' : 'Nhận xét của bác sĩ'}
       </SectionTitle>
-      {evals.length === 0 && <Card><Empty text="Chưa có đánh giá." /></Card>}
+      {evals.length === 0 && <Muted>Chưa có đánh giá.</Muted>}
       {shownEvals.map((e, i) => {
         // Đánh giá gần nhất mặc định 3 dòng; các trường còn lại mở bằng "Xem đầy đủ".
         const full = i > 0 || openEval;
         const main = (isDoctor && e.assessment ? assessmentSummary(e.assessment) : '') || e.instructions || e.characteristics || '';
         return (
-          <Card key={e.id}>
+          <View key={e.id} style={{ gap: 10 }}>
+            {i > 0 && <Divider />}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text style={{ fontWeight: '700', color: C.text, flex: 1 }}>{fmtDate(e.date)} · {account(e.doctorId)?.name}</Text>
               <Chip label={TREND[e.trend].label} tone={TREND[e.trend].tone} />
@@ -171,13 +161,14 @@ export default function WoundDetail() {
                 {i === 0 && <Text onPress={() => setOpenEval(false)} accessibilityRole="button" style={{ color: C.primary, fontWeight: '600', paddingVertical: 8 }}>Thu gọn</Text>}
               </>
             )}
-          </Card>
+          </View>
         );
       })}
       {evals.length > 1 && <Button variant="ghost" label={showOldEvals ? 'Ẩn đánh giá cũ' : `Xem đánh giá cũ (${evals.length - 1})`} onPress={() => setShowOldEvals(!showOldEvals)} />}
+      </Card>
 
       <SectionTitle icon="albums-outline">Album ảnh</SectionTitle>
-      {images.length === 0 && <Card><Empty icon="image-outline" text={isDoctor ? 'Chưa có ảnh. Chụp hoặc tải ảnh lên để bắt đầu.' : 'Chưa có ảnh do bác sĩ chụp.'} /></Card>}
+      {images.length === 0 && <Muted>{isDoctor ? 'Chưa có ảnh. Chụp hoặc tải ảnh lên để bắt đầu.' : 'Chưa có ảnh do bác sĩ chụp.'}</Muted>}
       {shownDates.map(([date, ims]) => (
         <View key={date} style={{ gap: 8 }}>
           <Text style={{ color: C.textSoft, fontWeight: '700', fontSize: 14 }}>Chụp {fmtDate(date)}</Text>

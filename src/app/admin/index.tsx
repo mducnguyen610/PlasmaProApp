@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Chip, Choices, Disclosure, Header, IconBadge, Muted, NumberTile, Screen, SectionTitle, SwitchRow } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Header, IconBadge, ListCard, Muted, NumberTile, Screen, SectionTitle, SwitchRow } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import { C } from '@/theme';
 
@@ -57,12 +57,14 @@ export default function AdminAccounts() {
       </Card>
 
       <SectionTitle icon="git-network-outline">Phân công bác sĩ phụ trách</SectionTitle>
-      {data.patients.map((p) => (
-        <Card key={p.id}>
-          <Text style={{ fontWeight: '700', color: C.text }}>{p.code}</Text>
-          <Choices value={p.doctorId} onChange={(v) => updatePatient(p.id, { doctorId: v })} options={doctors.map((d) => ({ value: d.id, label: d.name }))} />
-        </Card>
-      ))}
+      <ListCard>
+        {data.patients.map((p) => (
+          <View key={p.id} style={{ gap: 8, paddingVertical: 12 }}>
+            <Text style={{ fontWeight: '700', color: C.text }}>{p.code}</Text>
+            <Choices value={p.doctorId} onChange={(v) => updatePatient(p.id, { doctorId: v })} options={doctors.map((d) => ({ value: d.id, label: d.name }))} />
+          </View>
+        ))}
+      </ListCard>
     </Screen>
   );
 }

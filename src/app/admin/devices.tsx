@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Chip, Choices, Field, Header, Muted, Screen, SectionTitle, SimBadge } from '@/components/ui';
+import { Button, Chip, Choices, Disclosure, Field, Header, ListCard, Muted, Screen, SimBadge } from '@/components/ui';
 import { fmtDateTime } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import { C } from '@/theme';
@@ -18,8 +18,9 @@ export default function AdminDevices() {
   return (
     <Screen header={<Header title="Thiết bị" subtitle="Đăng ký và gán thiết bị" />}>
       <SimBadge />
-      <Card>
-        <SectionTitle icon="add-circle-outline">Đăng ký thiết bị mới</SectionTitle>
+      {/* Một thẻ cho cả danh sách: mỗi thiết bị một dòng, gán bệnh nhân và nhật ký nằm trong phần mở rộng. */}
+      <ListCard>
+      <View style={{ paddingVertical: 4 }}><Disclosure icon="add-circle-outline" title="Đăng ký thiết bị mới">
         <Field
           label="Mã thiết bị"
           value={code}
@@ -37,14 +38,12 @@ export default function AdminDevices() {
             setCode('');
           }}
         />
-      </Card>
+      </Disclosure></View>
       {data.devices.map((d) => (
-        <Card key={d.id}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontWeight: '800', color: C.text, flex: 1, fontSize: 16 }}>{d.code}</Text>
-            <Chip label={d.online ? 'Đang kết nối' : 'Mất kết nối'} tone={d.online ? 'green' : 'gray'} />
-          </View>
-          <Muted>Đồng bộ gần nhất: {d.lastSync ? fmtDateTime(d.lastSync) : 'chưa từng'} · Firmware {d.firmware}</Muted>
+        <View key={d.id} style={{ paddingVertical: 4 }}>
+          <Disclosure icon="hardware-chip-outline" title={d.code} summary={`${data.patients.find((p) => p.id === d.patientId)?.code ?? 'Chưa gán'} · đồng bộ ${d.lastSync ? fmtDateTime(d.lastSync) : 'chưa từng'}`}
+            right={<Chip label={d.online ? 'Đang kết nối' : 'Mất kết nối'} tone={d.online ? 'green' : 'gray'} />}>
+          <Muted>Firmware {d.firmware}</Muted>
           <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Gán cho bệnh nhân</Text>
           <Choices
             value={d.patientId ?? 'none'}
@@ -52,8 +51,10 @@ export default function AdminDevices() {
             options={[{ value: 'none', label: 'Chưa gán' }, ...data.patients.map((p) => ({ value: p.id, label: p.code }))]}
           />
           <Button label="Xem nhật ký" variant="ghost" icon="list-outline" onPress={() => router.push({ pathname: '/devices/[id]', params: { id: d.id } })} />
-        </Card>
+          </Disclosure>
+        </View>
       ))}
+      </ListCard>
     </Screen>
   );
 }

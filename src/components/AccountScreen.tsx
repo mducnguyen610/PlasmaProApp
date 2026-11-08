@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Chip, Disclosure, Header, IconBadge, InfoRow, Muted, Screen, SwitchRow, type IconName } from '@/components/ui';
+import { Button, Card, Divider, Chip, Disclosure, Header, IconBadge, InfoRow, Muted, Screen, SwitchRow, type IconName } from '@/components/ui';
 import { confirm } from '@/lib/dialog';
 import { localDay } from '@/lib/course';
 import { fmtDate } from '@/lib/format';
@@ -45,20 +45,21 @@ export function AccountScreen() {
             value={<Chip label={me.researchAccess ? 'Được cấp' : 'Chưa cấp'} tone={me.researchAccess ? 'green' : 'gray'} />}
           />
         )}
-      </Card>
-
-      {/* Bản rút gọn (08/11/2026): danh sách cài đặt, mỗi dòng một tên và một giá trị ngắn; giải thích dài mở khi cần. */}
-      <Card style={{ gap: 0, paddingVertical: 4 }}>
+        {/* Một thẻ: hồ sơ, các dòng cài đặt và (bệnh nhân) đồng ý nghiên cứu, tách bằng đường kẻ. */}
+        <Divider />
+        <View>
         <SettingRow icon="shield-checkmark-outline" title="Điều khoản và quyền riêng tư" value={me.termsAcceptedAt ? `Đã đồng ý ${fmtDate(localDay(me.termsAcceptedAt))}` : 'Chưa đồng ý bản mới'} onPress={() => router.push('/terms')} />
         {me.role === 'patient' && <SettingRow icon="help-circle-outline" title="Hướng dẫn sử dụng" onPress={() => router.push({ pathname: '/onboarding', params: { review: '1' } })} />}
         <SettingRow icon="document-text-outline" title="Căn cứ pháp lý" onPress={() => router.push('/compliance')} last />
-      </Card>
-      {me.role === 'patient' && <Card>
+        </View>
+      {me.role === 'patient' && <>
+        <Divider />
         <SwitchRow label="Dùng ảnh cho nghiên cứu" detail={data.patients.find(p => p.id === me.patientId)?.researchConsent ? 'Đang cho phép' : 'Không cho phép'} value={!!data.patients.find(p => p.id === me.patientId)?.researchConsent} onChange={setResearchConsent} />
         <Disclosure title="Điều gì được chia sẻ?">
           <Muted>Tùy chọn. Chỉ chia sẻ ảnh đã được bác sĩ kiểm tra và bỏ thông tin nhận dạng. Rút đồng ý sẽ ngừng chia sẻ mới; không tự thu hồi các tệp đã tải.</Muted>
         </Disclosure>
-      </Card>}
+      </>}
+      </Card>
 
       {/* Khôi phục xóa dữ liệu của mọi vai trò trên máy, nên chỉ quản trị kỹ thuật được thấy. */}
       {me?.role === 'admin' && <Card>
