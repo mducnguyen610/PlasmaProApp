@@ -1,12 +1,11 @@
-import { router } from 'expo-router';
 import { AdherenceCalendar } from '@/components/AdherenceCalendar';
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { View } from 'react-native';
-import { AppointmentRow } from '@/components/items';
-import { Button, Card, Chip, Empty, Header, Muted, Notice, Ring, Screen, SectionTitle } from '@/components/ui';
+import { DateTile } from '@/components/items';
+import { Card, Disclosure, Empty, Header, Muted, Notice, Ring, Screen, SectionTitle } from '@/components/ui';
 import { DoseRows, PhaseList } from '@/components/CourseCard';
-import { courseProgress, courseStatus, localDay } from '@/lib/course';
+import { courseProgress, courseStatus, fmtDuration, localDay, phasesOf } from '@/lib/course';
 import { fmtDate, PLAN_STATUS } from '@/lib/format';
 import { computeReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
@@ -26,36 +25,45 @@ export default function Schedule() {
   const course = courses.find((c) => c.plan!.status === 'active') ?? courses[0];
   const plan = course?.plan;
   const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id).filter((s) => !s.woundId || s.woundId === course!.w.id), today, (dev.lastSync ? localDay(dev.lastSync) : null)) : null;
-  return <Screen header={<Header back title="Lịch trình của tôi" subtitle="Theo đợt điều trị bác sĩ đã xác nhận" />}>
-    {/* Một lịch duy nhất cho bệnh nhân: giai đoạn của đợt, ngày có buổi và ngày nghỉ, cảm giác theo phiên, lịch hẹn. */}
+  const phases = plan ? phasesOf(plan) : [];
+  const ph = pr && pr.phaseIndex >= 0 ? phases[pr.phaseIndex] : undefined;
+  const st = pr ? courseStatus(pr, fmtDate) : null;
+  return <Screen header={<Header back title="Lịch trình của tôi" />}>
+    {/* Bản rút gọn (08/11/2026): lịch tháng là điểm neo, nằm ngay dưới một dòng tóm tắt đợt.
+        Giai đoạn, liều và ghi chú thu vào mục "Liệu trình". */}
     <Card hero>
       {plan ? <>
-        <Chip label={plan.status === 'active' ? `Đợt đang áp dụng · ${course!.w.code}` : `Đợt ${PLAN_STATUS[plan.status].label.toLowerCase()} · ${course!.w.code}`} tone={plan.status === 'active' ? 'blue' : 'gray'} />
-        {/* Cùng cách ghi với Trang chủ: vòng "x/y buổi đã xong" và câu trạng thái của hôm nay. */}
-        {pr && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            <Ring size={128} value={pr.done} max={pr.total} label={`${pr.done}/${pr.total}`} sub="buổi đã xong" />
-            <View style={{ flex: 1, gap: 4 }}>
-              {plan.status === 'active' ? <>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{courseStatus(pr, fmtDate).title}</Text>
-                <Muted>{courseStatus(pr, fmtDate).detail}</Muted>
-              </> : <Muted>Đợt đã dừng hoặc kết thúc, lịch dưới đây để xem lại.</Muted>}
-            </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          {pr && <Ring size={88} value={pr.done} max={pr.total} label={`${pr.done}/${pr.total}`} sub="đã xong" />}
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ color: C.textSoft, fontSize: 14, fontWeight: '600' }}>{plan.status === 'active' ? `Đợt điều trị · ${course!.w.code}` : `Đợt ${PLAN_STATUS[plan.status].label.toLowerCase()} · ${course!.w.code}`}</Text>
+            {plan.status === 'active' && st ? <>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{st.title}</Text>
+              <Muted>{st.detail}</Muted>
+            </> : <Muted>Lịch dưới đây để xem lại.</Muted>}
           </View>
-        )}
-        <PhaseList plan={plan} current={pr?.phaseIndex} />
-        <DoseRows plan={plan} />
-        {plan.notes ? <Notice icon="information-circle-outline">{plan.notes}</Notice> : null}
+        </View>
+        <Disclosure icon="options-outline" title="Liệu trình" summary={[ph ? `Giai đoạn ${pr!.phaseIndex + 1}/${phases.length}` : `${phases.length} giai đoạn`, plan.doseLevel != null ? `mức ${plan.doseLevel}` : null, fmtDuration(plan.durationSec)].filter(Boolean).join(' · ')}>
+          <PhaseList plan={plan} current={pr?.phaseIndex} />
+          <DoseRows plan={plan} />
+          {plan.notes ? <Notice icon="information-circle-outline">{plan.notes}</Notice> : null}
+        </Disclosure>
       </> : <Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted>}
     </Card>
     {dev
       ? <AdherenceCalendar sessions={sessionsOf(dev.id)} plan={plan} lastSyncDay={(dev.lastSync ? localDay(dev.lastSync) : null)} reminders={reminders} canEdit />
-      : <Card><Empty icon="hardware-chip-outline" text="Chưa được gán thiết bị, nên chưa có nhật ký điều trị." /></Card>}
+      : <Card><Empty icon="hardware-chip-outline" text="Chưa được gán thiết bị." /></Card>}
     <SectionTitle>Lịch hẹn sắp tới</SectionTitle>
-    {reminders.some(r => r.date >= today) && <Card>
-      {reminders.filter(r => r.date >= today).slice(0, 5).map((r, i) => <View key={r.id} style={i > 0 ? { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 12 } : undefined}><AppointmentRow date={r.date} title={r.title} body={r.body} today={today} /></View>)}
-    </Card>}
-    {!reminders.some(r => r.date >= today) && <Muted>Chưa có lịch hẹn. Lịch được lấy từ liệu trình và đánh giá của bác sĩ.</Muted>}
-    <Button label="Xem thiết bị" variant="secondary" icon="hardware-chip-outline" onPress={() => router.navigate('/patient/device')} />
+    {reminders.some(r => r.date >= today) ? <Card>
+      {reminders.filter(r => r.date >= today).slice(0, 5).map((r, i) => (
+        <View key={r.id} accessible accessibilityLabel={`${fmtDate(r.date)}: ${r.title}. ${r.body}`} style={[{ flexDirection: 'row', alignItems: 'center', gap: 14 }, i > 0 && { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 12 }]}>
+          <DateTile date={r.date} today={today} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ color: C.text, fontWeight: '600' }}>{r.title}</Text>
+            <Text style={{ color: C.textSoft, fontSize: 14 }} numberOfLines={1}>{r.body}</Text>
+          </View>
+        </View>
+      ))}
+    </Card> : <Muted>Chưa có lịch hẹn.</Muted>}
   </Screen>;
 }

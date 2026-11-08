@@ -190,6 +190,8 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
   {
     const p = await newPage();
     await login(p, 'quantri'); await go(p, '/devices/d-1');
+    // Chi tiết thiết bị chia thẻ (bản rút gọn 08/11/2026): nút giả lập nằm ở thẻ Nhật ký.
+    await p.getByText('Nhật ký', { exact: true }).first().click(); await p.waitForTimeout(300);
     await p.getByText('Giả lập một phiên điều trị').click(); await p.waitForTimeout(600);
     const msg = p.dialogs.join(' | ');
     const blocked = /nghỉ|không có buổi|không phát/i.test(msg);

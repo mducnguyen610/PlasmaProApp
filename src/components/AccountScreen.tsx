@@ -1,13 +1,30 @@
 import { router } from 'expo-router';
-import { View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Chip, Header, IconBadge, InfoRow, Muted, Screen, SwitchRow } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Header, IconBadge, InfoRow, Muted, Screen, SwitchRow, type IconName } from '@/components/ui';
 import { confirm } from '@/lib/dialog';
-import { fmtDateTime } from '@/lib/format';
+import { localDay } from '@/lib/course';
+import { fmtDate } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import { C } from '@/theme';
 
+
+/** Một dòng cài đặt: biểu tượng, tên, giá trị ngắn, mũi tên. Cao tối thiểu 52. */
+function SettingRow({ icon, title, value, onPress, last }: { icon: IconName; title: string; value?: string; onPress: () => void; last?: boolean }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={value ? `${title}, ${value}` : title}
+      style={({ pressed }) => ({ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, borderBottomWidth: last ? 0 : 1, borderBottomColor: C.border, opacity: pressed ? 0.7 : 1 })}>
+      <Ionicons name={icon} size={22} color={C.primary} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: C.text, fontWeight: '600' }}>{title}</Text>
+        {value ? <Text style={{ color: C.textSoft, fontSize: 14 }}>{value}</Text> : null}
+      </View>
+      <Ionicons name="chevron-forward" size={20} color={C.textFaint} />
+    </Pressable>
+  );
+}
 
 export function AccountScreen() {
   const { data, me, logout, resetDemo, setResearchConsent } = useStore();
@@ -30,34 +47,18 @@ export function AccountScreen() {
         )}
       </Card>
 
-      <Card onPress={() => router.push('/terms')}>
-        <Text style={{ fontWeight: '700' }}>Điều khoản sử dụng & quyền riêng tư</Text>
-        <Muted>Đã đồng ý: {me.termsAcceptedAt ? `${fmtDateTime(me.termsAcceptedAt)}${me.termsVersion ? ` (phiên bản ${me.termsVersion})` : ''}` : 'Chưa ghi nhận theo phiên bản mới'}</Muted>
-        <Muted>Chỉ hỏi đồng ý lại khi điều khoản đổi phiên bản.</Muted>
+      {/* Bản rút gọn (08/11/2026): danh sách cài đặt, mỗi dòng một tên và một giá trị ngắn; giải thích dài mở khi cần. */}
+      <Card style={{ gap: 0, paddingVertical: 4 }}>
+        <SettingRow icon="shield-checkmark-outline" title="Điều khoản và quyền riêng tư" value={me.termsAcceptedAt ? `Đã đồng ý ${fmtDate(localDay(me.termsAcceptedAt))}` : 'Chưa đồng ý bản mới'} onPress={() => router.push('/terms')} />
+        {me.role === 'patient' && <SettingRow icon="help-circle-outline" title="Hướng dẫn sử dụng" onPress={() => router.push({ pathname: '/onboarding', params: { review: '1' } })} />}
+        <SettingRow icon="document-text-outline" title="Căn cứ pháp lý" onPress={() => router.push('/compliance')} last />
       </Card>
       {me.role === 'patient' && <Card>
-        <Text style={{ fontWeight: '700' }}>Đồng ý sử dụng ảnh cho nghiên cứu</Text>
-        <Muted>Tùy chọn. Chỉ chia sẻ ảnh đã được bác sĩ kiểm tra và bỏ thông tin nhận dạng. Rút đồng ý sẽ ngừng chia sẻ mới; không tự thu hồi các tệp đã tải.</Muted>
-        <SwitchRow muted label={data.patients.find(p => p.id === me.patientId)?.researchConsent ? 'Đang cho phép' : 'Không cho phép'} value={!!data.patients.find(p => p.id === me.patientId)?.researchConsent} onChange={setResearchConsent} />
+        <SwitchRow label="Dùng ảnh cho nghiên cứu" detail={data.patients.find(p => p.id === me.patientId)?.researchConsent ? 'Đang cho phép' : 'Không cho phép'} value={!!data.patients.find(p => p.id === me.patientId)?.researchConsent} onChange={setResearchConsent} />
+        <Disclosure title="Điều gì được chia sẻ?">
+          <Muted>Tùy chọn. Chỉ chia sẻ ảnh đã được bác sĩ kiểm tra và bỏ thông tin nhận dạng. Rút đồng ý sẽ ngừng chia sẻ mới; không tự thu hồi các tệp đã tải.</Muted>
+        </Disclosure>
       </Card>}
-      {me.role === 'patient' && <Card onPress={() => router.push({ pathname: '/onboarding', params: { review: '1' } })}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <IconBadge icon="help-circle-outline" tone="green" />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontWeight: '700', color: C.text }}>Xem lại hướng dẫn sử dụng</Text>
-            <Muted>Thiết bị là gì, mỗi ngày làm gì, báo triệu chứng ở đâu, khi khẩn cấp</Muted>
-          </View>
-        </View>
-      </Card>}
-      <Card onPress={() => router.push('/compliance')}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <IconBadge icon="document-text-outline" tone="teal" />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontWeight: '700', color: C.text }}>Căn cứ pháp lý và tuân thủ</Text>
-            <Muted>Văn bản của Bộ Y tế và pháp luật liên quan áp dụng cho ứng dụng</Muted>
-          </View>
-        </View>
-      </Card>
 
       {/* Khôi phục xóa dữ liệu của mọi vai trò trên máy, nên chỉ quản trị kỹ thuật được thấy. */}
       {me?.role === 'admin' && <Card>

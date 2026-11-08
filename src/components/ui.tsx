@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useSegments } from 'expo-router';
-import type { ComponentProps, ReactNode } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
@@ -394,6 +394,43 @@ export function SwitchRow({ label, detail, value, onChange, disabled, muted }: {
         {detail ? <Text style={{ color: C.textSoft, fontSize: T.small, lineHeight: 21 }}>{detail}</Text> : null}
       </View>
       <Switch value={value} onValueChange={onChange} disabled={disabled} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden />
+    </Pressable>
+  );
+}
+
+/**
+ * Mục thu gọn: một dòng tiêu đề (biểu tượng, tên, tóm tắt ngắn bên phải), chạm để mở nội dung.
+ * Dùng cho thông tin xem khi cần (liều, giải thích, công tắc quản trị), giữ màn hình ít chữ.
+ */
+export function Disclosure({ title, summary, icon, children, initiallyOpen = false, summaryTone }: { title: string; summary?: string; icon?: IconName; children: ReactNode; initiallyOpen?: boolean; summaryTone?: string }) {
+  const [open, setOpen] = useState(initiallyOpen);
+  return (
+    <View style={{ gap: 10 }}>
+      <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={summary ? `${title}, ${summary}` : title}
+        style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        {icon ? <Ionicons name={icon} size={22} color={C.primary} /> : null}
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ color: C.text, fontWeight: '700' }}>{title}</Text>
+          {summary ? <Text style={{ color: summaryTone ?? C.textSoft, fontSize: T.small }} numberOfLines={1}>{summary}</Text> : null}
+        </View>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={22} color={C.textSoft} />
+      </Pressable>
+      {open ? children : null}
+    </View>
+  );
+}
+
+/** Ô số lớn làm điểm neo (đếm việc, tổng quan). Bấm được nếu có onPress. */
+export function NumberTile({ value, label, tone = 'blue', icon, onPress }: { value: string | number; label: string; tone?: Tone; icon?: IconName; onPress?: () => void }) {
+  const [bg, fg] = TONES[tone];
+  return (
+    <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={`${value} ${label}`}
+      style={({ pressed }) => ({ flexGrow: 1, flexBasis: '30%', minHeight: 88, padding: 12, gap: 2, borderRadius: radius.m, backgroundColor: bg, opacity: pressed ? 0.8 : 1 })}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        {icon ? <Ionicons name={icon} size={18} color={fg} /> : null}
+        <Text style={{ fontSize: 28, lineHeight: 34, fontWeight: '700', color: fg }}>{value}</Text>
+      </View>
+      <Text style={{ fontSize: T.small, color: C.text, fontWeight: '600' }}>{label}</Text>
     </Pressable>
   );
 }
