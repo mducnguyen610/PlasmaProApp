@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
@@ -7,7 +8,7 @@ import { SeverityCard } from '@/components/SeverityCard';
 import { AreaChart } from '@/components/AreaChart';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { ImageTile } from '@/components/items';
-import { Button, Card, Chip, Disclosure, Empty, Header, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Empty, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
@@ -60,11 +61,26 @@ export default function WoundDetail() {
   return (
     <Screen header={<Header back title={`Vết thương ${w.code}`} subtitle={`${p.name} · ${p.code}`} />}>
       {/* Tiêu đề có thể bị cắt khi chữ to: vị trí và nhóm tổn thương luôn hiện đủ ở đây để tránh nhầm vết (R15). */}
-      <Text style={{ fontWeight: '700', color: C.text }}>{w.location}{w.group ? <Text style={{ fontWeight: '400', color: C.textSoft }}>{` · ${w.group}`}</Text> : null}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
-        <Muted>Bắt đầu {fmtDate(w.startDate)} · {images.length} ảnh</Muted>
-      </View>
+      <Card>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <IconBadge icon="body-outline" tone="teal" size={44} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontWeight: '700', fontSize: 18, color: C.text }}>{w.location}</Text>
+            {w.group ? <Text style={{ color: C.textSoft }}>{w.group}</Text> : null}
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="calendar-outline" size={16} color={C.textSoft} />
+            <Text style={{ color: C.textSoft }}>Từ {fmtDate(w.startDate)}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="images-outline" size={16} color={C.textSoft} />
+            <Text style={{ color: C.textSoft }}>{images.length} ảnh</Text>
+          </View>
+        </View>
+      </Card>
 
       {isDoctor && retakes.length > 0 && (
         <Card style={{ borderWidth: 1.5, borderColor: C.red }}>
