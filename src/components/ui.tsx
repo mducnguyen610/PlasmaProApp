@@ -402,7 +402,7 @@ export function SwitchRow({ label, detail, value, onChange, disabled, muted }: {
  * Mục thu gọn: một dòng tiêu đề (biểu tượng, tên, tóm tắt ngắn bên phải), chạm để mở nội dung.
  * Dùng cho thông tin xem khi cần (liều, giải thích, công tắc quản trị), giữ màn hình ít chữ.
  */
-export function Disclosure({ title, summary, icon, children, initiallyOpen = false, summaryTone }: { title: string; summary?: string; icon?: IconName; children: ReactNode; initiallyOpen?: boolean; summaryTone?: string }) {
+export function Disclosure({ title, summary, icon, children, initiallyOpen = false, summaryTone, right }: { title: string; summary?: string; icon?: IconName; children: ReactNode; initiallyOpen?: boolean; summaryTone?: string; right?: ReactNode }) {
   const [open, setOpen] = useState(initiallyOpen);
   return (
     <View style={{ gap: 10 }}>
@@ -413,6 +413,7 @@ export function Disclosure({ title, summary, icon, children, initiallyOpen = fal
           <Text style={{ color: C.text, fontWeight: '700' }}>{title}</Text>
           {summary ? <Text style={{ color: summaryTone ?? C.textSoft, fontSize: T.small }} numberOfLines={1}>{summary}</Text> : null}
         </View>
+        {right}
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={22} color={C.textSoft} />
       </Pressable>
       {open ? children : null}

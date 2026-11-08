@@ -46,26 +46,23 @@ export function PatientCard({ patient }: { patient: Patient }) {
   const unlabeled = data.images.filter((i) => i.patientId === patient.id && i.status === 'unlabeled').length;
   const severity = patientSeverity(data, patient.id);
   const active = wounds.some((w) => w.status === 'active');
+  // Bản rút gọn (08/11/2026): một dòng tên, một dòng mã; mức độ là điểm neo bên phải; chỉ hiện việc cần làm khi có.
   return (
-    <Card onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })}>
+    <Card onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityLabel={`${patient.name}, ${patient.code}${severity ? `, mức độ ${SEVERITY[severity].label}` : ''}${unlabeled ? `, ${unlabeled} ảnh chưa đo` : ''}`}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <IconBadge icon="person-outline" />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>{patient.name}</Text>
-          <Text style={{ color: C.textSoft, fontSize: 13 }}>Mã hồ sơ: {patient.code} · {patient.sex}, {patient.birthYear}</Text>
+          <Text style={{ color: C.textSoft, fontSize: 13 }}>{patient.code} · {dev?.code ?? 'chưa gán thiết bị'}</Text>
         </View>
-        <Chip label={active ? 'Đang theo dõi' : 'Tạm dừng'} tone={active ? 'green' : 'amber'} />
+        {severity ? <Chip label={SEVERITY[severity].label} tone={SEVERITY[severity].tone} /> : null}
       </View>
-      {severity && <Chip label={'Mức độ cao nhất: ' + SEVERITY[severity].label} tone={SEVERITY[severity].tone} />}
-      <View style={{ flexDirection: 'row', backgroundColor: C.surfaceMuted, borderRadius: 12, padding: 10, justifyContent: 'space-between' }}>
-        <Text style={{ color: C.textSoft, fontSize: 13 }}>
-          Thiết bị: <Text style={{ color: C.text, fontWeight: '700' }}>{dev?.code ?? 'Chưa gán'}</Text>
-        </Text>
-        <Text style={{ color: C.textSoft, fontSize: 13 }}>
-          {wounds.length} vết thương{unlabeled ? ` · ` : ''}
-          {unlabeled ? <Text style={{ color: C.amber, fontWeight: '700' }}>{unlabeled} ảnh chưa đo</Text> : null}
-        </Text>
-      </View>
+      {(unlabeled > 0 || !active) && (
+        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+          {unlabeled > 0 && <Chip icon="pricetag-outline" tone="amber" label={`${unlabeled} ảnh chưa đo`} />}
+          {!active && <Chip label="Tạm dừng" tone="gray" />}
+        </View>
+      )}
     </Card>
   );
 }

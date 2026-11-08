@@ -142,16 +142,16 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
   {
     const p = await newPage();
     await login(p, 'bacsi'); await go(p, '/wounds/w-1');
-    const order = ['Đợt điều trị', 'Diện tích', 'Mức độ vết thương', 'Đánh giá gần nhất', 'Album ảnh'];
+    const order = ['Diện tích', 'Đợt điều trị', 'Mức độ vết thương', 'Đánh giá gần nhất', 'Album ảnh'];
     const ys = []; for (const t of order) ys.push(await yOf(p, t));
     const ok = ys.every((y) => y != null) && ys.every((y, i) => i === 0 || y > ys[i - 1]);
-    rec('TC08a', 'Trang vết thương: đợt → diện tích → mức độ → đánh giá → album', ok, JSON.stringify(ys.map((y) => (y == null ? null : Math.round(y)))));
-    const dates0 = await p.getByText(/^Ngày chụp \/ thêm ảnh/).count();
+    rec('TC08a', 'Trang vết thương: diện tích (điểm neo) → đợt → mức độ → đánh giá → album', ok, JSON.stringify(ys.map((y) => (y == null ? null : Math.round(y)))));
+    const dates0 = await p.getByText(/^Chụp \d/).count();
     await p.getByText(/^Xem tất cả \(\d+ ngày chụp\)/).click(); await p.waitForTimeout(300);
-    const dates1 = await p.getByText(/^Ngày chụp \/ thêm ảnh/).count();
+    const dates1 = await p.getByText(/^Chụp \d/).count();
     rec('TC08b', 'Album mặc định 2 ngày, "Xem tất cả" mở đủ', dates0 === 2 && dates1 > 2, `${dates0} → ${dates1}`);
     const hidden0 = await visible(p, 'Mỗi ngày');
-    await p.getByText('Xem chi tiết đợt').click(); await p.waitForTimeout(300);
+    await p.getByText(/^Giai đoạn \d\/\d · mức/).first().click(); await p.waitForTimeout(300);
     const shown1 = await visible(p, 'Mỗi ngày');
     const missed = await visible(p, /Bỏ lỡ/, false);
     rec('TC08c', 'Chi tiết đợt ẩn mặc định, mở được; số buổi bỏ lỡ vẫn hiện ở dòng tóm tắt', !hidden0 && shown1, `ẩn trước: ${!hidden0}; hiện sau: ${shown1}`);
