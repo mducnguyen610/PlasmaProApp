@@ -8,7 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Platform } from 'react-native';
 
 import { reassignDevice } from './devices';
-import { CLOSURE_CONFIRM_DAYS, addDays, isScheduled } from './course';
+import { CLOSURE_CONFIRM_DAYS, addDays, isScheduled, localDay } from './course';
 import { CARE_ITEMS, LIFECYCLE } from './maintenance';
 import { buildFilename } from './naming';
 import { createSeed, DEMO_ASSETS } from './seed';
@@ -21,7 +21,7 @@ const STORAGE_KEY = 'plasmapro.demo.v2';
 const SESSION_KEY = 'plasmapro.session.v1';
 
 export const nowIso = () => new Date().toISOString();
-export const todayIso = () => new Date().toISOString().slice(0, 10);
+export const todayIso = () => localDay();
 
 async function persistImageFile(uri: string, imageId: string, ext: string): Promise<string> {
   if (Platform.OS === 'web') {
@@ -476,12 +476,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => b.version - a.version)[0];
     const perVisit = plan?.sessionsPerDay ?? 1;
     const now = new Date();
-    const today = now.toISOString().slice(0, 10);
+    const today = localDay(now);
     const seen = new Set<string>();
     const mine = d0.sessions
       .filter((s) => s.deviceId === deviceId)
       .filter((s) => (seen.has(s.sessionId) ? false : (seen.add(s.sessionId), true)));
-    const todayCount = mine.filter((s) => s.start.slice(0, 10) === today && s.status !== 'over_limit').length;
+    const todayCount = mine.filter((s) => localDay(s.start) === today && s.status !== 'over_limit').length;
     const last = [...mine].sort((a, b) => b.start.localeCompare(a.start))[0];
     const gapMin = last ? (now.getTime() - new Date(last.start).getTime()) / 60000 - last.durationMin : Infinity;
 

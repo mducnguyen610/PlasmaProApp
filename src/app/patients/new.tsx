@@ -8,6 +8,7 @@ import { Text } from '@/components/Text';
 import { Button, Card, Field, Header, Muted, Screen, Segmented } from '@/components/ui';
 import { useStore, type Activation } from '@/lib/store';
 import { C } from '@/theme';
+import { localDay } from '@/lib/course';
 
 export default function NewPatient() {
   const { addPatient, me } = useStore();
@@ -30,7 +31,7 @@ export default function NewPatient() {
       const { patient, activation } = await addPatient(
         {
           name: name.trim(), birthYear: y, sex, phone: phone.trim(), doctorId: me!.id,
-          researchConsent: consent, consentDate: consent ? new Date().toISOString().slice(0, 10) : undefined,
+          researchConsent: consent, consentDate: consent ? localDay() : undefined,
         },
         wound.trim() || undefined,
       );

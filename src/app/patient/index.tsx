@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { latestEvaluation, SEVERITY } from '@/lib/access';
-import { areaReview, courseProgress, courseStatus, followUpDates, phaseLabel, phasesOf } from '@/lib/course';
+import { areaReview, courseProgress, courseStatus, followUpDates, phaseLabel, phasesOf, localDay } from '@/lib/course';
 import { ReviewNote } from '@/components/CourseCard';
 import { DateBadge } from '@/components/DateBadge';
 import { AppointmentRow, TaskRow } from '@/components/items';
@@ -31,7 +31,7 @@ export default function PatientHome() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const p = patient(me?.patientId);
   if (!p) return null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDay();
   const reminders = computeReminders(data, p.id, today);
   const upcoming = reminders.filter((r) => r.date >= today);
   const next = upcoming[0];
@@ -44,7 +44,7 @@ export default function PatientHome() {
   const retakes = data.images.filter((i) => i.patientId === p.id && i.retakeRequested);
   const sessions = p.deviceId ? sessionsOf(p.deviceId) : [];
   const dev = device(p.deviceId);
-  const lastSyncDay = dev?.lastSync?.slice(0, 10) ?? null;
+  const lastSyncDay = (dev?.lastSync ? localDay(dev.lastSync) : null);
   const woundSessions = plan ? sessions.filter((s) => !s.woundId || s.woundId === treating!.w.id) : [];
   const pr = plan ? courseProgress(plan, woundSessions, today, lastSyncDay) : null;
   const status = pr ? courseStatus(pr, fmtDate) : null;

@@ -29,6 +29,16 @@ export const DEFAULT_REVIEW_DAY = 28;
 export const REVIEW_MIN_REDUCTION = 0.5;
 
 const MS = 86400000;
+/**
+ * Ngày theo lịch của máy (giờ địa phương), dạng YYYY-MM-DD, từ một thời điểm.
+ * Không dùng `toISOString().slice(0, 10)`: đó là ngày theo UTC, ở Việt Nam (UTC+7)
+ * sai một ngày từ 00:00 đến 06:59. Chỉ truyền thời điểm (Date, số ms, chuỗi có giờ),
+ * không truyền chuỗi chỉ có ngày vì JS hiểu chuỗi đó là nửa đêm UTC.
+ */
+export function localDay(at: Date | string | number = new Date()): string {
+  const d = at instanceof Date ? at : new Date(at);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 export const addDays = (iso: string, n: number) => new Date(new Date(`${iso.slice(0, 10)}T00:00:00Z`).getTime() + n * MS).toISOString().slice(0, 10);
 export const dayDiff = (a: string, b: string) => Math.round((new Date(`${b.slice(0, 10)}T00:00:00Z`).getTime() - new Date(`${a.slice(0, 10)}T00:00:00Z`).getTime()) / MS);
 const isoWeekday = (iso: string) => {
@@ -91,7 +101,7 @@ export interface CourseProgress {
   phaseCount: number;
 }
 
-const dayOf = (s: DeviceSession) => s.start.slice(0, 10);
+const dayOf = (s: DeviceSession) => localDay(s.start);
 
 export function courseProgress(plan: TreatmentPlan, sessions: DeviceSession[], today: string, lastSyncDay: string | null): CourseProgress {
   const ps = phasesOf(plan);

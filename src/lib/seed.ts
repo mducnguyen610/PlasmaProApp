@@ -1,6 +1,6 @@
 // Dữ liệu MÔ PHỎNG cho bản demo. Không phải dữ liệu bệnh nhân thật (đặc tả mục 4.1, 7.2).
 import { buildFilename } from './naming';
-import { addDays, scheduledDays } from './course';
+import { addDays, localDay, scheduledDays } from './course';
 import type { AppData, DeviceSession, TreatmentPlan, WoundImage } from './types';
 
 const DOCTOR = 'u-bs1';
@@ -36,7 +36,7 @@ function img(
     researchReviewedBy: DOCTOR,
     history:
       area !== null
-        ? [{ at: `${date}T10:00:00.000Z`, by: DOCTOR, fromName: buildFilename(pCode, wCode, id, null, 'png'), toName: buildFilename(pCode, wCode, id, area, 'png'), fromArea: null, toArea: area }]
+        ? [{ at: at(date, '10:00'), by: DOCTOR, fromName: buildFilename(pCode, wCode, id, null, 'png'), toName: buildFilename(pCode, wCode, id, area, 'png'), fromArea: null, toArea: area }]
         : [],
   };
 }
@@ -49,7 +49,7 @@ function courseSessions(deviceId: string, woundId: string, plan: Pick<TreatmentP
       sessionId: `${deviceId}-${d.replaceAll('-', '')}-1`,
       deviceId,
       woundId,
-      start: `${d}T08:00:00.000Z`,
+      start: at(d, '08:00'),
       durationMin: 3,
       energyWh: null,
       status: 'completed' as const,
@@ -62,8 +62,11 @@ function courseSessions(deviceId: string, woundId: string, plan: Pick<TreatmentP
  * BN001: đợt 30 ngày trước, 14 ngày đầu mỗi ngày, sau đó 3 buổi mỗi tuần; đã qua mốc xem lại tuần 4.
  * BN002: đợt cách ngày đã dừng, bác sĩ ghi nhận biểu mô khép lần 1 cách đây 15 ngày, chờ xác nhận lần 2.
  */
+/** Thời điểm theo giờ địa phương của máy, đổi sang ISO để lưu. */
+const at = (day: string, hm: string) => new Date(`${day}T${hm}:00`).toISOString();
+
 export function createSeed(): AppData {
-  const T = new Date().toISOString().slice(0, 10);
+  const T = localDay();
   const D = (n: number) => addDays(T, n);
   const images: WoundImage[] = [
     img(1, 'w-1', 'p-1', 'BN001', 'VT01', D(-30), 12.5, 1),
@@ -124,18 +127,18 @@ export function createSeed(): AppData {
         ...plan1, doseLevel: 8, durationSec: 180, secondsPerCm2: 20, areaAtStart: 12.5, reviewAtDay: 28,
         reviewSchedule: 'Tái đánh giá mỗi 7 ngày',
         notes: 'Mức năng lượng, thời gian và lịch là giá trị mô phỏng theo dạng liệu trình trên slide 34 và 39, không phải chỉ định điều trị.',
-        editedBy: DOCTOR, editedAt: `${D(-16)}T09:00:00.000Z`, reason: 'Vết thương cải thiện: chuyển sang 3 buổi mỗi tuần', confirmed: true,
+        editedBy: DOCTOR, editedAt: at(D(-16), '09:00'), reason: 'Vết thương cải thiện: chuyển sang 3 buổi mỗi tuần', confirmed: true,
       },
       {
         id: 'pl-2', patientId: 'p-2', woundId: 'w-2', version: 1, status: 'paused', sessionsPerDay: 1, minIntervalMin: null, targetEnergyWh: null,
         ...plan2, doseLevel: 6, durationSec: 120, secondsPerCm2: 15, areaAtStart: 8, reviewAtDay: 28,
         reviewSchedule: 'Tái đánh giá mỗi 7 ngày', notes: 'Giá trị mô phỏng.',
-        editedBy: DOCTOR, editedAt: `${D(-15)}T09:00:00.000Z`, reason: 'Biểu mô đã khép lần 1, dừng chiếu chờ xác nhận', confirmed: true,
+        editedBy: DOCTOR, editedAt: at(D(-15), '09:00'), reason: 'Biểu mô đã khép lần 1, dừng chiếu chờ xác nhận', confirmed: true,
       },
     ],
     devices: [
-      { id: 'd-1', code: 'TB-001', model: 'Plasma Pro + mô-đun IoMT ESP32', patientId: 'p-1', online: true, lastSync: `${D(-1)}T17:05:00.000Z`, firmware: '0.3.1', power: 'off', simulated: true, care: { clean: lastP1.replace('08:00', '08:10') }, tip: { code: 'ĐP-0001', issuedAt: D(-30) }, lifecycle: 'in_use' },
-      { id: 'd-2', code: 'TB-002', model: 'Plasma Pro + mô-đun IoMT ESP32', patientId: 'p-2', online: false, lastSync: `${D(-15)}T08:12:00.000Z`, firmware: '0.3.1', power: 'off', simulated: true, tip: { code: 'ĐP-0002', issuedAt: D(-36) }, lifecycle: 'in_use' },
+      { id: 'd-1', code: 'TB-001', model: 'Plasma Pro + mô-đun IoMT ESP32', patientId: 'p-1', online: true, lastSync: at(D(-1), '17:05'), firmware: '0.3.1', power: 'off', simulated: true, care: { clean: new Date(new Date(lastP1).getTime() + 10 * 60000).toISOString() }, tip: { code: 'ĐP-0001', issuedAt: D(-30) }, lifecycle: 'in_use' },
+      { id: 'd-2', code: 'TB-002', model: 'Plasma Pro + mô-đun IoMT ESP32', patientId: 'p-2', online: false, lastSync: at(D(-15), '08:12'), firmware: '0.3.1', power: 'off', simulated: true, tip: { code: 'ĐP-0002', issuedAt: D(-36) }, lifecycle: 'in_use' },
       { id: 'd-3', code: 'TB-003', model: 'Plasma Pro + mô-đun IoMT ESP32', online: false, lastSync: null, firmware: '0.3.0', power: 'off', simulated: true, lifecycle: 'disinfected' },
     ],
     sessions: [...sesP1, ...sesP2],
@@ -145,11 +148,11 @@ export function createSeed(): AppData {
       { sessionId: sesP1[6].sessionId, painBefore: 3, painAfter: 2, at: sesP1[6].start },
     ],
     reports: [
-      { id: 'r-1', patientId: 'p-2', date: `${D(-16)}T08:30:00.000Z`, kind: 'symptom', content: 'Rát nhẹ quanh vết thương sau buổi chiếu.', painLevel: 3, handled: false },
-      { id: 'r-2', patientId: 'p-2', date: `${D(-17)}T08:30:00.000Z`, kind: 'device', content: 'Thiết bị không hiện kết nối Wi-Fi.', handled: false },
+      { id: 'r-1', patientId: 'p-2', date: at(D(-16), '08:30'), kind: 'symptom', content: 'Rát nhẹ quanh vết thương sau buổi chiếu.', painLevel: 3, handled: false },
+      { id: 'r-2', patientId: 'p-2', date: at(D(-17), '08:30'), kind: 'device', content: 'Thiết bị không hiện kết nối Wi-Fi.', handled: false },
     ],
     syncErrors: [
-      { id: 's-1', at: `${D(-17)}T08:15:00.000Z`, deviceId: 'd-2', message: 'TB-002 mất kết nối một ngày, đã đồng bộ lại (mô phỏng).', resolved: true },
+      { id: 's-1', at: at(D(-17), '08:15'), deviceId: 'd-2', message: 'TB-002 mất kết nối một ngày, đã đồng bộ lại (mô phỏng).', resolved: true },
     ],
     counters: { image: 6, patient: 3 },
   };

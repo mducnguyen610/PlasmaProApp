@@ -13,6 +13,7 @@ import { buildReportHtml, shareReport } from '@/lib/report';
 import { fmtDate, fmtDateTime, PLAN_STATUS, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore, type Activation } from '@/lib/store';
 import { C } from '@/theme';
+import { localDay } from '@/lib/course';
 
 // BS03 – Hồ sơ bệnh nhân: thông tin, bác sĩ phụ trách, thiết bị, liệu trình, vết thương.
 export default function PatientDetail() {
@@ -70,7 +71,7 @@ export default function PatientDetail() {
             confirm(
               v ? 'Ghi nhận đồng ý' : 'Rút lại đồng ý',
               v ? 'Xác nhận bệnh nhân đã đồng ý bằng văn bản cho việc dùng ảnh (đã mã hóa) để nghiên cứu.' : 'Ảnh của bệnh nhân sẽ không còn được xuất vào bộ dữ liệu.',
-              () => updatePatient(p.id, { researchConsent: v, consentDate: v ? new Date().toISOString().slice(0, 10) : undefined }),
+              () => updatePatient(p.id, { researchConsent: v, consentDate: v ? localDay() : undefined }),
             )
           }
         />

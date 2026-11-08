@@ -11,7 +11,8 @@ export function fmtDateTime(iso?: string | null): string {
   const dt = new Date(iso);
   const hh = String(dt.getHours()).padStart(2, '0');
   const mm = String(dt.getMinutes()).padStart(2, '0');
-  return `${hh}:${mm} ${fmtDate(dt.toISOString())}`;
+  const day = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  return `${hh}:${mm} ${fmtDate(day)}`;
 }
 
 export const WOUND_STATUS: Record<WoundStatus, { label: string; tone: 'green' | 'amber' | 'gray' | 'blue' | 'violet' }> = {

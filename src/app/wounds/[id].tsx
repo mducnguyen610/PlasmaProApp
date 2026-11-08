@@ -10,7 +10,7 @@ import { ImageTile } from '@/components/items';
 import { Button, Card, Chip, Empty, Header, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
 import { ClosureActions } from '@/components/ClosureActions';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
-import { areaReview, courseProgress, fmtDuration, followUpDates, phaseLabel, phasesOf } from '@/lib/course';
+import { areaReview, courseProgress, fmtDuration, followUpDates, phaseLabel, phasesOf, localDay } from '@/lib/course';
 import { fmtDate, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
 import { assessmentSummary } from '@/lib/assessment';
 import { formatAreaDisplay } from '@/lib/naming';
@@ -32,10 +32,10 @@ export default function WoundDetail() {
 
   const isDoctor = me?.role === 'doctor';
   const images = imagesOf(w.id);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDay();
   const plan = coursePlan(w.id, { patientView: !isDoctor });
   const dev = data.devices.find((x) => x.id === p.deviceId);
-  const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id).filter((s) => !s.woundId || s.woundId === w.id), today, dev.lastSync?.slice(0, 10) ?? null) : null;
+  const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id).filter((s) => !s.woundId || s.woundId === w.id), today, (dev.lastSync ? localDay(dev.lastSync) : null)) : null;
   const currentPhase = plan && pr && pr.phaseIndex >= 0 ? phasesOf(plan)[pr.phaseIndex] : undefined;
   const byDate = new Map<string, typeof images>();
   for (const im of [...images].reverse()) byDate.set(im.captureDate, [...(byDate.get(im.captureDate) ?? []), im]);

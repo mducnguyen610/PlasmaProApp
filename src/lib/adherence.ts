@@ -1,5 +1,11 @@
 import type { DeviceSession, TreatmentPlan } from './types';
 
+// Giống localDay trong course.ts (tệp này chạy bằng node trong kiểm thử nên không import giá trị).
+const dayOf = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export interface Adherence {
   /** Ngày có dữ liệu đồng bộ trong khoảng xét (không tính ngày chưa đồng bộ). */
   daysWithData: number;
@@ -26,7 +32,7 @@ export function computeAdherence(sessions: DeviceSession[], plan: TreatmentPlan 
   let intervalViolations = 0;
   let intervalPairs = 0;
   for (const d of synced) {
-    const day = done.filter((s) => s.start.slice(0, 10) === d).sort((a, b) => a.start.localeCompare(b.start));
+    const day = done.filter((s) => dayOf(s.start) === d).sort((a, b) => a.start.localeCompare(b.start));
     if (plan?.sessionsPerDay != null) {
       if (day.length === plan.sessionsPerDay) daysMet++;
       if (day.length > plan.sessionsPerDay) daysOver++;
@@ -39,7 +45,7 @@ export function computeAdherence(sessions: DeviceSession[], plan: TreatmentPlan 
       }
     }
   }
-  const blocked = sessions.filter((s) => s.status === 'over_limit' && synced.includes(s.start.slice(0, 10))).length;
+  const blocked = sessions.filter((s) => s.status === 'over_limit' && synced.includes(dayOf(s.start))).length;
   return { daysWithData: synced.length, daysMet, daysOver, intervalViolations, intervalPairs, blocked };
 }
 
@@ -67,7 +73,7 @@ export function monthCells(month: string, sessions: DeviceSession[], target: num
   const cells: DayCell[] = Array.from({ length: lead }, () => ({ date: '', count: 0, kind: 'outside' as const }));
   for (let d = 1; d <= daysIn; d++) {
     const date = `${month}-${String(d).padStart(2, '0')}`;
-    const count = done.filter((s) => s.start.slice(0, 10) === date).length;
+    const count = done.filter((s) => dayOf(s.start) === date).length;
     let kind: DayKind;
     if (date > today && scheduled && (!planStart || date >= planStart) && (!planEnd || date <= planEnd)) kind = scheduled(date) ? 'planned' : 'rest';
     else if (date > today || (planStart && date < planStart) || (planEnd && date > planEnd)) kind = count > 0 ? 'partial' : 'outside';

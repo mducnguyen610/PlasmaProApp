@@ -5,7 +5,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 import { Button, Card, HeaderButton, Muted } from '@/components/ui';
 import { monthCells, type DayCell, type DayKind } from '@/lib/adherence';
-import { isScheduled } from '@/lib/course';
+import { isScheduled, localDay } from '@/lib/course';
 import { notify } from '@/lib/dialog';
 import { fmtDate } from '@/lib/format';
 import { useStore } from '@/lib/store';
@@ -57,7 +57,7 @@ function cellText(c: DayCell, target: number | null | undefined) {
  */
 export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, reminders = [] }: { sessions: DeviceSession[]; plan?: TreatmentPlan; lastSyncDay: string | null; canEdit: boolean; reminders?: Reminder[] }) {
   const { data, setSessionPain } = useStore();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDay();
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selected, setSelected] = useState<string | null>(today);
   const [editing, setEditing] = useState<string | null>(null);
@@ -67,7 +67,7 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
   // Lịch theo đợt: chỉ ngày có buổi mới cần chiếu; ngày nghỉ theo lịch không bị tính là bỏ lỡ.
   const target = plan ? plan.sessionsPerDay ?? 1 : null;
   const cells = monthCells(month, sessions, target, lastSyncDay, plan?.startDate ?? null, plan?.endDate ?? null, today, plan ? (d) => isScheduled(plan, d) : undefined);
-  const daySessions = selected ? sessions.filter((s) => s.start.slice(0, 10) === selected).sort((a, b) => a.start.localeCompare(b.start)) : [];
+  const daySessions = selected ? sessions.filter((s) => localDay(s.start) === selected).sort((a, b) => a.start.localeCompare(b.start)) : [];
   const note = (id: string) => data.sessionNotes.find((n) => n.sessionId === id);
   const [y, m] = month.split('-');
   const selectedCell = cells.find((c) => c.date === selected);

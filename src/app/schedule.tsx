@@ -6,13 +6,12 @@ import { View } from 'react-native';
 import { AppointmentRow } from '@/components/items';
 import { Button, Card, Chip, Empty, Header, Muted, Notice, Ring, Screen, SectionTitle } from '@/components/ui';
 import { DoseRows, PhaseList } from '@/components/CourseCard';
-import { courseProgress, courseStatus } from '@/lib/course';
+import { courseProgress, courseStatus, localDay } from '@/lib/course';
 import { fmtDate, PLAN_STATUS } from '@/lib/format';
 import { computeReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
 
-const localDay = (d: Date) => [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
 export default function Schedule() {
   const { data, me } = useStore();
   const { patient, sessionsOf, woundsOf, coursePlan } = useLookups();
@@ -26,7 +25,7 @@ export default function Schedule() {
   const courses = woundsOf(p.id).map((w) => ({ w, plan: coursePlan(w.id, { patientView: true }) })).filter((c) => c.plan);
   const course = courses.find((c) => c.plan!.status === 'active') ?? courses[0];
   const plan = course?.plan;
-  const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id).filter((s) => !s.woundId || s.woundId === course!.w.id), today, dev.lastSync?.slice(0, 10) ?? null) : null;
+  const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id).filter((s) => !s.woundId || s.woundId === course!.w.id), today, (dev.lastSync ? localDay(dev.lastSync) : null)) : null;
   return <Screen header={<Header back title="Lịch trình của tôi" subtitle="Theo đợt điều trị bác sĩ đã xác nhận" />}>
     {/* Một lịch duy nhất cho bệnh nhân: giai đoạn của đợt, ngày có buổi và ngày nghỉ, cảm giác theo phiên, lịch hẹn. */}
     <Card hero>
@@ -50,7 +49,7 @@ export default function Schedule() {
       </> : <Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted>}
     </Card>
     {dev
-      ? <AdherenceCalendar sessions={sessionsOf(dev.id)} plan={plan} lastSyncDay={dev.lastSync?.slice(0, 10) ?? null} reminders={reminders} canEdit />
+      ? <AdherenceCalendar sessions={sessionsOf(dev.id)} plan={plan} lastSyncDay={(dev.lastSync ? localDay(dev.lastSync) : null)} reminders={reminders} canEdit />
       : <Card><Empty icon="hardware-chip-outline" text="Chưa được gán thiết bị, nên chưa có nhật ký điều trị." /></Card>}
     <SectionTitle>Lịch hẹn sắp tới</SectionTitle>
     {reminders.some(r => r.date >= today) && <Card>

@@ -5,7 +5,7 @@ import { Text } from '@/components/Text';
 import { Button, Card, Chip, Empty, InfoRow, Muted, Notice, SectionTitle, SimBadge, Stat } from '@/components/ui';
 import { noteText } from '@/components/AdherenceCalendar';
 import { ProgressRows } from '@/components/CourseCard';
-import { courseProgress, isScheduled } from '@/lib/course';
+import { courseProgress, isScheduled, localDay } from '@/lib/course';
 import { CARE_ITEMS, careStatus, LIFECYCLE } from '@/lib/maintenance';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime } from '@/lib/format';
@@ -45,9 +45,9 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
   const owner = patient(device.patientId);
   // Đợt đang áp dụng của bệnh nhân giữ thiết bị (thiết bị tại nhà khóa theo đợt này).
   const plan = owner ? woundsOf(owner.id).map((w) => coursePlan(w.id)).find((x) => x?.status === 'active') : undefined;
-  const lastSyncDay = device.lastSync?.slice(0, 10) ?? null;
-  const days = lastDays(7, new Date().toISOString().slice(0, 10));
-  const perDay = days.map((d) => ({ d, n: sessions.filter((s) => s.start.slice(0, 10) === d && s.status === 'completed').length }));
+  const lastSyncDay = (device.lastSync ? localDay(device.lastSync) : null);
+  const days = lastDays(7, localDay());
+  const perDay = days.map((d) => ({ d, n: sessions.filter((s) => localDay(s.start) === d && s.status === 'completed').length }));
   const today = days[0];
   const pr = plan ? courseProgress(plan, sessions.filter((s) => !s.woundId || s.woundId === plan.woundId), today, lastSyncDay) : null;
   const restToday = plan ? !isScheduled(plan, today) : false;

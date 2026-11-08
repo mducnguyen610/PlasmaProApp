@@ -24,6 +24,7 @@ import { parseArea } from '@/lib/naming';
 import { pickPhoto, type PickedPhoto } from '@/lib/photos';
 import { useLookups, useStore } from '@/lib/store';
 import { bar, C } from '@/theme';
+import { localDay } from '@/lib/course';
 
 type Photo = PickedPhoto & { imageSource: 'live_camera' | 'gallery'; takenAt: string | null; ar?: ARCaptureData; manualOverride?: boolean };
 const TONE_COLOR: Record<ARTone, string> = { green: C.green, amber: C.amber, red: C.red, gray: C.textSoft };
@@ -188,7 +189,7 @@ export default function GuidedCapture() {
         if (!arCamera.current) return;
         const shot = await arCamera.current.capture();
         if (token !== generation.current || !mounted.current) return;
-        selectPhoto({ uri: shot.uri, ext: 'jpg', captureDate: capturedAt.slice(0, 10), width: shot.width, height: shot.height, sourceDateKnown: true, imageSource: 'live_camera', takenAt: capturedAt, ar: shot.ar });
+        selectPhoto({ uri: shot.uri, ext: 'jpg', captureDate: localDay(capturedAt), width: shot.width, height: shot.height, sourceDateKnown: true, imageSource: 'live_camera', takenAt: capturedAt, ar: shot.ar });
         return;
       }
       // Chờ vòng lấy khung bám vết thương dừng hẳn trước khi chụp ảnh thật.
@@ -198,7 +199,7 @@ export default function GuidedCapture() {
       const picture = await camera.current.takePictureAsync({ quality: 1, imageType: 'jpg', exif: false, skipProcessing: false });
       if (token !== generation.current || !mounted.current) return;
       if (!picture?.uri) throw new Error('Camera chưa trả về ảnh.');
-      selectPhoto({ uri: picture.uri, ext: 'jpg', captureDate: capturedAt.slice(0, 10), width: picture.width, height: picture.height, sourceDateKnown: true, imageSource: 'live_camera', takenAt: capturedAt, manualOverride });
+      selectPhoto({ uri: picture.uri, ext: 'jpg', captureDate: localDay(capturedAt), width: picture.width, height: picture.height, sourceDateKnown: true, imageSource: 'live_camera', takenAt: capturedAt, manualOverride });
     } catch (e) { setError(e instanceof Error ? e.message : 'Chưa chụp được ảnh.'); }
     finally { shutterLocked.current = false; setBusy(false); }
   };
