@@ -30,14 +30,15 @@ export function Header({
             <Ionicons name="chevron-back" size={22} color={C.grey} />
           </Pressable>
         )}
-        <View style={{ flex: 1, paddingHorizontal: back ? 4 : 8 }}>
+        {/* Vai trò hiện bằng ô tròn có biểu tượng làm điểm neo bên trái (rủi ro R9 máy dùng chung); trình đọc màn hình đọc tên vai trò.
+            Màn có nút quay lại dùng biểu tượng nhỏ trước dòng phụ để không chật. Tiêu đề và dòng phụ chỉ còn hai dòng. */}
+        {me && !back ? <RoleAvatar role={me.role} /> : null}
+        <View style={{ flex: 1, paddingHorizontal: back ? 4 : 10 }}>
           <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
-          {/* Nhãn vai trò có biểu tượng trên mọi màn sau đăng nhập: nhận ra ngay đang ở tài khoản nào (rủi ro R9 máy dùng chung).
-              Có chữ, không chỉ dựa vào màu (WCAG 2.2 SC 1.4.1). */}
-          {(me || subtitle) ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 2, marginTop: 2 }}>
-              {me ? <RoleBadge role={me.role} /> : null}
-              {subtitle ? <Text style={[s.headerSub, { marginTop: 0 }]} numberOfLines={1}>{subtitle}</Text> : null}
+          {(me && back) || subtitle ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              {me && back ? <View accessible accessibilityLabel={`Vai trò: ${ROLE_BADGE[me.role].label}`}><Ionicons name={ROLE_BADGE[me.role].icon} size={14} color={C.textSoft} /></View> : null}
+              {subtitle ? <Text style={[s.headerSub, { marginTop: 0, flexShrink: 1 }]} numberOfLines={1}>{subtitle}</Text> : null}
             </View>
           ) : null}
         </View>
@@ -53,6 +54,16 @@ const ROLE_BADGE: Record<Role, { label: string; icon: IconName }> = {
   doctor: { label: 'Bác sĩ', icon: 'medkit' },
   admin: { label: 'Kỹ thuật', icon: 'construct' },
 };
+
+/** Ô tròn vai trò ở đầu thanh tiêu đề. */
+export function RoleAvatar({ role }: { role: Role }) {
+  const b = ROLE_BADGE[role];
+  return (
+    <View accessible accessibilityLabel={`Vai trò: ${b.label}`} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name={b.icon} size={22} color={C.primary} />
+    </View>
+  );
+}
 
 /** Nhãn vai trò: biểu tượng và chữ, nền xám nhạt chung cho cả ba vai trò (không dùng màu riêng theo vai trò). */
 export function RoleBadge({ role }: { role: Role }) {
@@ -472,7 +483,7 @@ export const s = StyleSheet.create({
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 },
   roundBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: C.text, fontSize: 22, fontWeight: '700', letterSpacing: 1.2 },
+  headerTitle: { color: C.text, fontSize: 22, fontWeight: '700', letterSpacing: 0.2 },
   headerSub: { color: C.textSoft, fontSize: T.small, marginTop: 2 },
   headerBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.primarySoft, paddingHorizontal: 12, paddingVertical: 8, minHeight: 44, borderRadius: 22 },
   headerBtnText: { color: C.primary, fontWeight: '500', fontSize: T.small },
