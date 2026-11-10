@@ -2,6 +2,8 @@
 
 Bản nháp có 14 FR chức năng và 7 NFR, viết từ trên cương vị người thiết kế theo SMART [1, slide 20, 21]; mỗi dòng ghi nó phục vụ UR nào. Các con số ghi “(đx)” là đề xuất của hệ thống, chưa có nguồn, cần giảng viên hoặc bác sĩ chốt.
 
+**Điều chỉnh theo phạm vi đề tài (11/11/2026):** FR12 (xuất phiếu nghiên cứu), FR14 (vòng đời máy) và NFR7 (triển khai nhiều bệnh viện) không thuộc dòng nào của bảng phạm vi ở tệp 00, nên hạ xuống nice to have hoặc hướng phát triển. FR8, NFR1 và NFR6 giữ nguyên yêu cầu, nhưng phần máy chủ chỉ được đề xuất. FR11 đổi từ "AI khoanh vùng" thành "tích hợp mô-đun AI có sẵn để khoanh vùng".
+
 **Nhu cầu chức năng**
 
 | Mã | Phần mềm phải | Tiêu chí đo | UR |
