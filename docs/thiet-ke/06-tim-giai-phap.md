@@ -35,7 +35,7 @@ flowchart LR
   PAPP["<b>Ứng dụng người bệnh</b><br/>lịch, ảnh, báo đau"]
   SRV["Máy chủ IoMT<br/><i>API, dữ liệu, phân quyền</i>"]
   AI["Mô-đun AI<br/><i>khoanh vùng, tính cm²</i>"]
-  DAPP["Ứng dụng bác sĩ, điều dưỡng<br/><i>liệu trình, cảnh báo</i>"]
+  DAPP["Ứng dụng bác sĩ<br/><i>liệu trình, cảnh báo</i>"]
   IOT -- "đóng ngắt nguồn, đo trạng thái plasma" --> DEV
   IOT <-- "USB-C: liệu trình xuống, nhật ký lên" --> PAPP
   PAPP <-- "Internet, đồng bộ sau" --> SRV

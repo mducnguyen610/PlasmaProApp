@@ -15,9 +15,9 @@ Verification trên giấy đạt: 16 UR đều có FR, và mọi FR đều phụ
 | UR7 | FR3, FR9 | Bác sĩ lập một liệu trình thật trên bản mẫu | Chưa |
 | UR8 | FR10, NFR5 | Thử tác vụ với bác sĩ trên dữ liệu 30 người giả lập | Chưa |
 | UR9 | FR5, FR11 | So diện tích AI với bác sĩ trên bộ ảnh thử | Chưa |
-| UR10 | FR12 | Nghiên cứu viên đối chiếu với phiếu | Chưa |
-| UR11 | FR2, FR13 | Điều dưỡng giao và thu hồi một máy | Chưa |
-| UR12 | FR14 | WCMD xác nhận thông tin cần theo dõi | Chưa |
+| UR10 | FR12 | Bác sĩ đối chiếu với phiếu | Chưa |
+| UR11 | FR2, FR13 | Bác sĩ giao, nạp liệu trình qua USB và thu hồi một máy | Chưa |
+| UR12 | FR14 | Ngoài phạm vi ứng dụng | Không làm |
 | UR13 | NFR1, NFR2, NFR6 | Pháp chế bệnh viện rà soát | Chưa |
 | UR14 | FR4, FR11 | Nhóm nghiên cứu truy một phiên từ ảnh về liệu trình | Chưa |
 | UR15 | NFR3 | Chạy ứng dụng với thiết bị giả lập và mạch thật | Chưa |

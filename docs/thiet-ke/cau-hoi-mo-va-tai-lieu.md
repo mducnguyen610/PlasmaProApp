@@ -10,7 +10,7 @@ Bốn câu hỏi đầu chặn bước 6; các câu còn lại chặn việc ch�
 | 4 | Pháp chế bệnh viện | Được lưu ảnh và chạy AI ở đâu? | NFR6, A4 |
 | 5 | Giảng viên | Ngưỡng tỉ lệ phiên ghi nhận, độ trễ đồng bộ, sai số AI; giữ React Native hay chuyển Kotlin | FR4, FR6, FR11, A1 |
 | 6 | Bác sĩ | Phác đồ cho 3 nhóm tổn thương; ngưỡng đau cần cảnh báo; mốc chụp ảnh | FR6, FR9 |
-| 7 | Bệnh viện | Bộ vai trò đúng (điều dưỡng, kỹ thuật viên, quản trị viên, nghiên cứu viên) | UR11, UR12 |
+| 7 | Bệnh viện | Đã trả lời 11/11/2026: chỉ có bác sĩ và người bệnh | Không còn chặn |
 | 8 | Người giao mô-đun AI | Mô-đun nhận diện có sẵn ở dạng nào (mô hình chạy trên điện thoại hay dịch vụ máy chủ); đầu vào, đầu ra; đã đo sai số chưa? | C1 hay C2, TR10 |
 | 9 | Chủ đồ án | Chức năng USB/UART chạy trên Android, hay cần cả iOS (iOS không hỗ trợ CP2102N) | A1, A2 |
 

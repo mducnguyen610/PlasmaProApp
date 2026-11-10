@@ -15,20 +15,20 @@ Sơ đồ bạch tuộc 7 nhánh ở cuối mục này.
 | UR7 | Bác sĩ | Đặt và đổi liệu trình cho từng vết thương từ xa | Khi khám và khi xem dữ liệu | Điều chỉnh theo diễn biến [3, mục 2] | Must |
 | UR8 | Bác sĩ | Nhìn một màn biết ai cần chú ý; phân biệt "chưa có dữ liệu" với "không dùng" | Đầu ca, giữa các ca khám | Ít thời gian, nhiều người bệnh | Must |
 | UR9 | Bác sĩ | Xem diện tích vết thương theo thời gian, có AI đo hộ và được sửa kết quả | Khi xem hồ sơ | Đo tay chậm; AI chỉ hỗ trợ [3, mục 5.3] | Must |
-| UR10 | Bác sĩ, nghiên cứu viên | Xuất dữ liệu theo phiếu nghiên cứu | Theo mốc thử nghiệm | Giảm nhập lại | Nice |
-| UR11 | Điều dưỡng, kỹ thuật viên | Giao máy và đầu phát đúng người, nạp liệu trình, thu hồi | Khi nhập viện, xuất viện, kết thúc đợt | Đầu phát dùng riêng từng người [2, slide 25] | Must |
-| UR12 | Kỹ thuật viên, WCMD | Biết máy nào ở đâu, dùng bao nhiêu, cần bảo dưỡng | Suốt vòng đời máy cho thuê | Máy cho thuê [2, slide 24] | Nice |
+| UR10 | Bác sĩ | Xuất dữ liệu theo phiếu nghiên cứu | Theo mốc thử nghiệm | Giảm nhập lại | Nice |
+| UR11 | Bác sĩ | Giao máy và đầu phát đúng người, nạp liệu trình qua USB, thu hồi | Khi nhập viện, xuất viện, kết thúc đợt | Đầu phát dùng riêng từng người [2, slide 25] | Must |
+| UR12 | WCMD (ngoài ứng dụng) | Biết máy nào ở đâu, dùng bao nhiêu, cần bảo dưỡng | Suốt vòng đời máy cho thuê | Máy cho thuê [2, slide 24] | Ngoài phạm vi |
 | UR13 | Bệnh viện, pháp chế | Dữ liệu cá nhân và ảnh được bảo vệ theo luật; người bệnh đồng ý | Suốt nghiên cứu | Luật 91/2025/QH15; hội đồng đạo đức [5] | Must |
 | UR14 | Nhóm nghiên cứu | Dữ liệu thiết bị, ảnh, lâm sàng liên kết theo từng người, từng phiên, truy xuất được | Suốt thử nghiệm 30 người | Chỉ tiêu khả thi của đề cương [3, mục 4.7] | Must |
 | UR15 | PRATECH, WCMD | Phần mềm không phải viết lại khi bo mạch đổi | Trong 2027 và khi chuyển giao VNPT Tech | Bo mạch chưa chốt [3, mục 3] | Must |
 | UR16 | WCMD, bệnh viện | Triển khai rộng với chi phí vận hành thấp | Sau nhiệm vụ | Thương mại hóa [3, mục 5.7] | Nice |
 
-Bộ vai trò còn mở: báo cáo giữa kỳ có quản trị viên [4, mục 2.1.3], vòng cũ có kỹ thuật viên [5]. Bản nháp gộp thành "điều dưỡng, kỹ thuật viên" chờ bệnh viện xác nhận.
+Bộ vai trò đã chốt (11/11/2026): chỉ có **bác sĩ** và **người bệnh**. Báo cáo giữa kỳ có quản trị viên [4, mục 2.1.3] và vòng cũ có kỹ thuật viên [5]; việc của hai vai trò này (giao máy, nạp liệu trình, thu hồi) chuyển cho bác sĩ, còn theo dõi vòng đời máy (UR12) nằm ngoài ứng dụng.
 
 ```mermaid
 flowchart TB
-  P["<b>Phần mềm Plasma Pro</b><br/>Ứng dụng người bệnh<br/>Máy chủ IoMT, mô-đun AI<br/>Ứng dụng bác sĩ, điều dưỡng"]
-  WHO["<b>Cho ai?</b><br/>Người bệnh, người nhà<br/>Bác sĩ điều trị<br/>Điều dưỡng, kỹ thuật viên<br/><i>UR1 đến UR12</i>"]
+  P["<b>Phần mềm Plasma Pro</b><br/>Ứng dụng người bệnh<br/>Máy chủ IoMT, mô-đun AI<br/>Ứng dụng bác sĩ"]
+  WHO["<b>Cho ai?</b><br/>Người bệnh, người nhà<br/>Bác sĩ điều trị<br/><i>UR1 đến UR11</i>"]
   ACT["<b>Tác động lên gì?</b><br/>Liều, thời gian, tần suất<br/>Ảnh, diện tích vết thương<br/>Đau, biến cố<br/><i>UR2, UR3, UR4, UR9</i>"]
   NORM["<b>Tiêu chuẩn, quy định</b><br/>IEC 62304, ISO 14971<br/>IEC 62366-1, IEC 60601-1-11<br/>Luật 91/2025, NĐ 98/2021<br/><i>UR2, UR13</i>"]
   ENV["<b>Môi trường, sản phẩm khác</b><br/>Nhà người bệnh, mạng yếu<br/>Máy Plasma Pro, mạch IoT<br/>Điện thoại người bệnh<br/><i>UR6, UR11, UR15</i>"]

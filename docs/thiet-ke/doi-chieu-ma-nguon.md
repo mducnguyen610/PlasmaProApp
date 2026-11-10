@@ -54,7 +54,7 @@ Các phần dưới đây có trong mã nhưng không FR hay NFR nào yêu cầu
 
 ## Vai trò
 
-Mã có 3 vai trò: `doctor`, `patient`, `admin` (`src/lib/types.ts`). Bước 3 đang gộp thành "điều dưỡng, kỹ thuật viên" và còn chờ bệnh viện xác nhận. Chưa đổi mã cho đến khi có câu trả lời.
+Mã có 3 vai trò: `doctor`, `patient`, `admin` (`src/lib/types.ts`). Bộ vai trò đã chốt chỉ có bác sĩ và người bệnh, nên vai trò `admin` và các màn `src/app/admin/*` (duyệt tài khoản, gán thiết bị, quyền nghiên cứu, bộ dữ liệu, lỗi đồng bộ) là phần thừa. Việc gán máy cho người bệnh (FR13) chuyển sang màn của bác sĩ; duyệt tài khoản bác sĩ chuyển sang backend đề xuất. Cần một pull request riêng để gỡ vai trò này.
 
 ## Ảnh hưởng của phạm vi đề tài lên mã
 
