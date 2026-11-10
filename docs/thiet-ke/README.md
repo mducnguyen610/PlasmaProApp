@@ -24,6 +24,7 @@ Vòng thiết kế này bắt đầu ngày 10/11/2026. Kết quả vòng cũ (10
 Tài liệu đi kèm:
 
 - [doi-chieu-ma-nguon.md](doi-chieu-ma-nguon.md): gắn từng FR, NFR với tệp mã hiện có, liệt kê phần thiếu và phần thừa.
+- [doi-chieu-quy-trinh-8-buoc.md](doi-chieu-quy-trinh-8-buoc.md): xếp quy trình 8 bước của chủ đồ án vào khung 15 bước, kèm chỗ khớp và chỗ lệch.
 - [cau-hoi-mo-va-tai-lieu.md](cau-hoi-mo-va-tai-lieu.md): 9 câu hỏi đang chặn và danh mục tài liệu tham khảo [1] đến [5].
 
 ## Quy ước
