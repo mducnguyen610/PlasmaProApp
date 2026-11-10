@@ -56,12 +56,16 @@ Các phần dưới đây có trong mã nhưng không FR hay NFR nào yêu cầu
 
 Mã có 3 vai trò: `doctor`, `patient`, `admin` (`src/lib/types.ts`). Bước 3 đang gộp thành "điều dưỡng, kỹ thuật viên" và còn chờ bệnh viện xác nhận. Chưa đổi mã cho đến khi có câu trả lời.
 
+## Ảnh hưởng của phạm vi đề tài lên mã
+
+Theo bảng phạm vi ở tệp 00: backend và database chỉ đề xuất, nên FR8, NFR1, NFR6 không cần lập trình máy chủ trong đề tài; mã chỉ cần lớp lưu cục bộ và hàng đợi đồng bộ có thể nối vào backend sau. Mô-đun AI là mô-đun có sẵn, nên `woundDetect.ts` (ngưỡng màu) nên được đặt sau lớp tích hợp TR10 làm bản giả, chờ thay bằng mô-đun thật. Phần quản trị thiết bị (FR14) và bộ dữ liệu nghiên cứu (FR12, các màn `dataset`) nằm ngoài tên đề tài, nên giữ ở mức hiện có, không làm thêm.
+
 ## Thứ tự sửa mã đề xuất
 
 Theo slide 27 [1], mã chỉ nên đổi lớn sau khi bước 8 đạt validation. Thứ tự dưới đây xếp theo mức phụ thuộc vào các câu hỏi còn mở.
 
-1. **Không phụ thuộc câu hỏi mở nào:** tách lớp hợp đồng thiết bị và chuyển phần mô phỏng thành thiết bị giả lập (NFR3, TR4); đưa 3 trạng thái và thứ tự ưu tiên lên màn tổng quan của bác sĩ (FR10).
+1. **Không phụ thuộc câu hỏi mở nào:** tách lớp hợp đồng thiết bị và chuyển phần mô phỏng thành thiết bị giả lập (NFR3, TR4); tách lớp tích hợp AI và đặt bộ dò ngưỡng màu hiện có sau nó (TR10); đưa 3 trạng thái và thứ tự ưu tiên lên màn tổng quan của bác sĩ (FR10).
 2. **Chờ người dùng xác nhận UR3:** mở quyền chụp ảnh cho người bệnh, có khung hướng dẫn và vật tham chiếu (FR5).
 3. **Chờ bác sĩ:** ngưỡng đau và hướng dẫn liên hệ (FR6).
-4. **Chờ WCMD:** gói liệu trình USB, nhật ký phiên, liều J/cm², giới hạn an toàn (FR2, FR3, FR4, FR9).
-5. **Chờ pháp chế:** máy chủ, đồng bộ, AI phía máy chủ (FR8, FR11, NFR1, NFR6).
+4. **Chờ nhóm phần cứng và lựa chọn nền tảng:** mô-đun USB gốc và bộ lệnh với firmware, gói liệu trình, nhật ký phiên (FR2, FR4). **Chờ WCMD:** liều J/cm², giới hạn an toàn (FR3, FR9).
+5. **Chờ người giao mô-đun AI:** thay bản giả bằng mô-đun thật (FR11). Máy chủ và database chỉ viết đề xuất, không nằm trong danh sách sửa mã.

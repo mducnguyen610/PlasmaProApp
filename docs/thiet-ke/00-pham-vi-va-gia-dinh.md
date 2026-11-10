@@ -1,14 +1,41 @@
 # Phạm vi và giả định
 
-Tài liệu này đi lại 15 bước ở slide 12 của bài giảng [1] cho **phần mềm** Plasma Pro (ứng dụng, hệ thống IoMT, mô-đun AI). Bước 1 đến 8 viết đầy đủ đến mức có thể đem đi hỏi người dùng. Bước 9 đến 15 phụ thuộc vào kết quả validation ở bước 8, nên chỉ ghi kế hoạch.
+## Tên đề tài và phạm vi (chốt ngày 11/11/2026)
+
+**Nghiên cứu, thiết kế và phát triển ứng dụng điện thoại hỗ trợ quản lý quá trình điều trị vết thương bằng thiết bị Plasma Pro, tích hợp mô-đun nhận diện vết thương và giao tiếp USB/UART.**
+
+Đề tài là bước đầu trong đề cương triển khai của Trường ĐH Y Hà Nội [3]. Mức thực hiện từng thành phần:
+
+| Thành phần | Phạm vi thực hiện | Mức trong hồ sơ này | Khối, TR liên quan |
+|---|---|---|---|
+| Ứng dụng điện thoại | Phân tích, thiết kế và lập trình | Làm đủ 15 bước | Ứng dụng người bệnh, ứng dụng bác sĩ; TR4 đến TR6, TR11, TR12 |
+| Giao tiếp USB/UART | Phát triển chức năng gửi và nhận dữ liệu với firmware | Lập trình phía ứng dụng | TR3 (phía ứng dụng), TR4 |
+| Backend | Đề xuất kiến trúc, chức năng và phương án kết nối | Chỉ đề xuất, không lập trình | Máy chủ IoMT; TR7, TR9 |
+| Database | Đề xuất mô hình dữ liệu, bảng và quan hệ | Chỉ đề xuất, không lập trình | TR8 |
+| Mô-đun AI nhận diện vết thương | Tích hợp mô-đun có sẵn | Tích hợp, không huấn luyện mô hình | TR10 |
+| Phần cứng Plasma Pro | Sử dụng thiết bị và firmware từ đồ án phần cứng | Ngoài phạm vi; chỉ nêu yêu cầu với firmware | Mạch IoT; TR1, TR2, phía firmware của TR3 |
+
+Mọi UR, FR, TR trong hồ sơ phải truy được về một dòng của bảng trên. Phần không thuộc dòng nào được hạ xuống nice to have hoặc chuyển sang hướng phát triển.
+
+## Cách đọc
+
+Tài liệu này đi lại 15 bước ở slide 12 của bài giảng [1] cho **ứng dụng điện thoại** Plasma Pro, cùng phần đề xuất backend, database và phần tích hợp mô-đun AI. Bước 1 đến 8 viết đầy đủ đến mức có thể đem đi hỏi người dùng. Bước 9 đến 15 phụ thuộc vào kết quả validation ở bước 8, nên chỉ ghi kế hoạch.
 
 Cách đọc: mỗi bước ghi đầu vào lấy từ vòng cũ [5], phần làm mới, và sản phẩm đầu ra. Kết quả vòng cũ là giả thuyết, chưa phải quyết định.
 
-**Giả định phần cứng (GA)**, cần WCMD xác nhận trước bước 6:
+## Ràng buộc và giả định phần cứng
+
+**Ràng buộc từ phạm vi đề tài:** dùng thiết bị và firmware của đồ án phần cứng, giao tiếp với ứng dụng qua USB/UART. GA-2 dưới đây vì vậy là ràng buộc, không còn là giả định.
+
+**Giả định (GA)**, cần nhóm phần cứng hoặc WCMD xác nhận:
 
 - GA-1: Thiết bị theo mô hình HFP: liệu trình đặt sẵn, khóa theo y lệnh, người bệnh không đổi thông số [2, slide 24].
-- GA-2: Mạch IoT là mô-đun gắn ngoài, cấu hình qua USB-C (UART, CP2102N), chạy độc lập và tự ngắt khi hết thời gian, như báo cáo giữa kỳ [4, mục 3.1.3, 4.2].
+- GA-2 (ràng buộc): Mạch IoT là mô-đun gắn ngoài, cấu hình qua USB-C (UART, CP2102N), chạy độc lập và tự ngắt khi hết thời gian, như báo cáo giữa kỳ [4, mục 3.1.3, 4.2].
 - GA-3: Thiết bị có 5 mức năng lượng và 3 chế độ (Cold, Hybrid, Thermal) [4, bảng mục 3.2.1.1].
 - GA-4: Liều tính theo J/cm² = mật độ công suất × thời gian [2, slide 20, 28]. Mật độ công suất của đầu phát Plasma Pro chưa biết.
 
-GA-2 vênh với đề cương: đề cương cần IoMT tự ghi nhận và đồng bộ dữ liệu từng phiên [3, mục 4.2, 4.7], còn mạch giữa kỳ không gửi dữ liệu gì sau khi rút cáp. Mâu thuẫn này được xử lý ở bước 4 và 6.
+GA-2 vênh với đề cương: đề cương cần IoMT tự ghi nhận và đồng bộ dữ liệu từng phiên [3, mục 4.2, 4.7], còn mạch giữa kỳ không gửi dữ liệu gì sau khi rút cáp. Mâu thuẫn này được xử lý ở bước 4 và 6. Vì firmware thuộc đồ án phần cứng, phần ghi nhật ký phiên (TR2) là yêu cầu gửi nhóm phần cứng, không phải việc của đề tài này.
+
+**Rủi ro nền tảng:** iOS chỉ cho ứng dụng kết nối phụ kiện có chứng nhận MFi qua External Accessory framework [6]; chip CP2102N không thuộc loại này. Android có USB Host API [7]. Chức năng USB/UART vì vậy có thể chỉ chạy được trên Android. Lựa chọn nền tảng đang chờ chủ đồ án quyết định.
+
+**Bước 1 đến 8** viết đầy đủ đến mức có thể đem đi hỏi người dùng. **Bước 9 đến 15** phụ thuộc vào kết quả validation ở bước 8, nên chỉ ghi kế hoạch.

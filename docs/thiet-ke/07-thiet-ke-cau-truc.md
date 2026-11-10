@@ -2,6 +2,13 @@
 
 Mỗi khối cấp 1 nhận các nhu cầu kỹ thuật TR, ghi tương tác vào ra và chỉ tiêu kiểm chứng được, theo slide 28 [1]. Khối mạch IoT có 3 TR mới (TR1 đến TR3) cần nhóm đồ án nhúng đồng ý, vì mạch giữa kỳ chưa ghi nhật ký phiên [4, mục 4.2].
 
+Mức thực hiện theo phạm vi đề tài (tệp 00):
+
+- **Lập trình:** TR4, TR5 (phía ứng dụng), TR6, TR11, TR12, và phía ứng dụng của TR3 (gửi lệnh, nhận và kiểm dữ liệu).
+- **Yêu cầu gửi đồ án phần cứng:** TR1, TR2 và phía firmware của TR3. Nếu firmware không đáp ứng, FR liên quan giảm phạm vi thay vì đề tài tự sửa firmware.
+- **Chỉ đề xuất:** TR7, TR8, TR9 (backend, database), và phía máy chủ của TR5.
+- **Tích hợp:** TR10. Chỉ tiêu đo sai số dùng để nghiệm thu việc tích hợp, không dùng để đánh giá việc huấn luyện mô hình.
+
 | Mã | Khối | Nhu cầu kỹ thuật | Vào, ra | Chỉ tiêu | Từ FR |
 |---|---|---|---|---|---|
 | TR1 | Mạch IoT | Lưu liệu trình có mã kiểm tra; từ chối gói sai | Vào: gói liệu trình qua USB | 100% gói sai bị từ chối | FR2 |
@@ -13,7 +20,7 @@ Mỗi khối cấp 1 nhận các nhu cầu kỹ thuật TR, ghi tương tác và
 | TR7 | Máy chủ IoMT | Xác thực; phân quyền theo vai trò và theo quan hệ bác sĩ, người bệnh, kiểm ở máy chủ | Hai ứng dụng | 0 truy cập chéo trong kiểm thử | NFR1 |
 | TR8 | Máy chủ IoMT | Mô hình dữ liệu: người bệnh, vết thương, đợt, liệu trình có phiên bản, phiên, ảnh, kết quả đo | Nội bộ | Mọi phiên truy ngược được về liệu trình đã dùng | FR4, FR9, UR14 |
 | TR9 | Máy chủ IoMT | Nhật ký kiểm toán; tính trạng thái theo giờ Việt Nam | Nội bộ | NFR5 | FR9, FR10 |
-| TR10 | Mô-đun AI | Vào ảnh, ra vùng tổn thương, diện tích cm², độ tin cậy, phiên bản mô hình | Với máy chủ | Sai số chờ giảng viên chốt | FR11 |
+| TR10 | Lớp tích hợp mô-đun AI | Gói mô-đun có sẵn sau một giao diện chung: vào ảnh, ra vùng tổn thương, diện tích cm², độ tin cậy, phiên bản mô hình | Với ứng dụng (C2) hoặc máy chủ (C1) | Sai số chờ giảng viên chốt; chạy được với mô-đun giả khi chưa có mô-đun thật | FR11 |
 | TR11 | Ứng dụng bác sĩ, ĐD | Soạn liệu trình trong giới hạn của bảng năng lực thiết bị; hiện liều J/cm² | Với máy chủ | Không lưu được liệu trình vượt giới hạn | FR3, FR9 |
 | TR12 | Ứng dụng bác sĩ, ĐD | Màn tổng quan xếp hạng; quét mã để gán máy | Với máy chủ | FR10 | FR10, FR13 |
 
