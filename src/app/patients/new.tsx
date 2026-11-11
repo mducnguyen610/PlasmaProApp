@@ -8,6 +8,7 @@ import { Text } from '@/components/Text';
 import { Button, Card, Field, Header, Muted, Screen, Segmented } from '@/components/ui';
 import { useStore, type Activation } from '@/lib/store';
 import { C } from '@/theme';
+import { localDay } from '@/lib/course';
 
 export default function NewPatient() {
   const { addPatient, me } = useStore();
@@ -30,7 +31,7 @@ export default function NewPatient() {
       const { patient, activation } = await addPatient(
         {
           name: name.trim(), birthYear: y, sex, phone: phone.trim(), doctorId: me!.id,
-          researchConsent: consent, consentDate: consent ? new Date().toISOString().slice(0, 10) : undefined,
+          researchConsent: consent, consentDate: consent ? localDay() : undefined,
         },
         wound.trim() || undefined,
       );
@@ -59,7 +60,7 @@ export default function NewPatient() {
       <Card>
         <Field label="Họ và tên" value={name} onChangeText={setName} placeholder="Nguyễn Văn A" />
         <Field label="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" placeholder="1960" />
-        <Text style={{ color: C.text, fontSize: 13, fontWeight: '600' }}>Giới tính</Text>
+        <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Giới tính</Text>
         <Segmented value={sex} onChange={setSex} options={[{ value: 'Nam', label: 'Nam' }, { value: 'Nữ', label: 'Nữ' }]} />
         <Field label="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <Field label="Vị trí vết thương đầu tiên (không bắt buộc)" value={wound} onChangeText={setWound} placeholder="Cẳng chân trái" hint="Tạo sẵn vết thương VT01" />

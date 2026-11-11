@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Crypto from 'expo-crypto';
 import { Image } from 'expo-image';
@@ -12,34 +12,36 @@ import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
 import { WoundOutline, WoundOverlay } from '@/components/WoundOverlay';
-import { analyzeImage, detectInPhoto } from '@/lib/capture/analyzeImage';
+import { getRecognizer, type RecognitionResult } from '@/lib/ai';
+import { analyzeImage } from '@/lib/capture/analyzeImage';
 import { assessCapture, distanceSource, estimateAreaCm2, HIT_SOURCE_LABEL, type ARCaptureData, type ARSessionError, type ARTone, type ARTrackingEvent, type LiveCheck } from '@/lib/capture/ar';
 import { inspectCapabilities } from '@/lib/capture/capabilities';
 import { DEFAULT_ROI, unknownQuality } from '@/lib/capture/quality';
 import type { CaptureMetadata, CaptureQuality, DeviceCapabilities, Roi } from '@/lib/capture/types';
 import { useWoundTracker } from '@/lib/capture/useWoundTracker';
 import { waitForFrame } from '@/lib/capture/waitForFrame';
-import { coverMap, DETECTOR_ID, type WoundDetection } from '@/lib/capture/woundDetect';
+import { coverMap } from '@/lib/capture/woundDetect';
 import { parseArea } from '@/lib/naming';
 import { pickPhoto, type PickedPhoto } from '@/lib/photos';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { bar, C } from '@/theme';
+import { localDay } from '@/lib/course';
 
 type Photo = PickedPhoto & { imageSource: 'live_camera' | 'gallery'; takenAt: string | null; ar?: ARCaptureData; manualOverride?: boolean };
-const TONE_COLOR: Record<ARTone, string> = { green: '#16a34a', amber: '#d97706', red: '#dc2626', gray: '#64748b' };
+const TONE_COLOR: Record<ARTone, string> = { green: C.green, amber: C.amber, red: C.red, gray: C.textSoft };
 const METHOD_AR = 'Ước lượng AR, bác sĩ đã xem lại';
 const METHODS = ['Thước đo trên vết thương', 'Phần mềm đo trên ảnh'];
 
-function roiFrom(detection: WoundDetection | null): Roi {
+function roiFrom(detection: RecognitionResult | null): Roi {
   if (!detection?.found || !detection.box) return DEFAULT_ROI;
   const b = detection.box, pad = 0.15;
   const x = Math.max(0, b.x - b.width * pad), y = Math.max(0, b.y - b.height * pad);
   return { x, y, width: Math.min(1 - x, b.width * (1 + 2 * pad)), height: Math.min(1 - y, b.height * (1 + 2 * pad)) };
 }
 
-function estimateFor(photo: Photo | null, found: WoundDetection | null) {
+function estimateFor(photo: Photo | null, found: RecognitionResult | null) {
   const hit = photo?.ar?.centerHit;
-  if (!photo?.ar || !hit || !found?.found || !found.center) return null;
+  if (!photo?.ar || !hit || !found?.found || !found.center || found.areaFraction === null) return null;
   return estimateAreaCm2({
     areaFraction: found.areaFraction, imageWidth: photo.width, imageHeight: photo.height,
     intrinsics: photo.ar.intrinsics, distanceM: hit.centerDistanceM, point: found.center,
@@ -53,7 +55,7 @@ function CheckList({ checks }: { checks: LiveCheck[] }) {
       const color = c.ok === true ? TONE_COLOR.green : c.ok === false ? TONE_COLOR.amber : TONE_COLOR.gray;
       return <View key={c.key} style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
         <Ionicons name={c.ok === true ? 'checkmark-circle' : c.ok === false ? 'alert-circle' : 'ellipsis-horizontal-circle'} size={22} color={color} />
-        <Text style={{ width: 92, color: C.text, fontWeight: '700' }}>{c.label}</Text>
+        <Text style={{ minWidth: 92, maxWidth: '40%', color: C.text, fontWeight: '700' }}>{c.label}</Text>
         <Text style={{ flex: 1, color }}>{c.detail}</Text>
       </View>;
     })}
@@ -82,7 +84,7 @@ export default function GuidedCapture() {
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [capabilities, setCapabilities] = useState<DeviceCapabilities | null>(null);
   const [quality, setQuality] = useState<CaptureQuality>(unknownQuality());
-  const [photoWound, setPhotoWound] = useState<WoundDetection | null>(null);
+  const [photoWound, setPhotoWound] = useState<RecognitionResult | null>(null);
   const [reviewed, setReviewed] = useState(false);
   const [areaText, setAreaText] = useState('');
   const [method, setMethod] = useState(METHODS[0]);
@@ -143,7 +145,7 @@ export default function GuidedCapture() {
     if (!photo) return;
     let cancelled = false;
     void (async () => {
-      const found = await detectInPhoto(photo.uri);
+      const found = await getRecognizer().recognize(photo.uri);
       if (cancelled) return;
       setPhotoWound(found);
       const est = estimateFor(photo, found);
@@ -188,7 +190,7 @@ export default function GuidedCapture() {
         if (!arCamera.current) return;
         const shot = await arCamera.current.capture();
         if (token !== generation.current || !mounted.current) return;
-        selectPhoto({ uri: shot.uri, ext: 'jpg', captureDate: capturedAt.slice(0, 10), width: shot.width, height: shot.height, sourceDateKnown: true, imageSource: 'live_camera', takenAt: capturedAt, ar: shot.ar });
+        selectPhoto({ uri: shot.uri, ext: 'jpg', captureDate: localDay(capturedAt), width: shot.width, height: shot.height, sourceDateKnown: true, imageSource: 'live_camera', takenAt: capturedAt, ar: shot.ar });
         return;
       }
       // Chờ vòng lấy khung bám vết thương dừng hẳn trước khi chụp ảnh thật.
@@ -198,7 +200,7 @@ export default function GuidedCapture() {
       const picture = await camera.current.takePictureAsync({ quality: 1, imageType: 'jpg', exif: false, skipProcessing: false });
       if (token !== generation.current || !mounted.current) return;
       if (!picture?.uri) throw new Error('Camera chưa trả về ảnh.');
-      selectPhoto({ uri: picture.uri, ext: 'jpg', captureDate: capturedAt.slice(0, 10), width: picture.width, height: picture.height, sourceDateKnown: true, imageSource: 'live_camera', takenAt: capturedAt, manualOverride });
+      selectPhoto({ uri: picture.uri, ext: 'jpg', captureDate: localDay(capturedAt), width: picture.width, height: picture.height, sourceDateKnown: true, imageSource: 'live_camera', takenAt: capturedAt, manualOverride });
     } catch (e) { setError(e instanceof Error ? e.message : 'Chưa chụp được ảnh.'); }
     finally { shutterLocked.current = false; setBusy(false); }
   };
@@ -228,7 +230,9 @@ export default function GuidedCapture() {
           : { areaCm2: null, status: 'unavailable', method: null, reasonCodes: [...(photo.ar ? [] : ['GEOMETRY_UNAVAILABLE']), ...(photoWound?.found ? [] : ['WOUND_NOT_DETECTED'])] },
         // Diện tích bác sĩ xác nhận là số đo tham chiếu; ước lượng AR được giữ riêng.
         manualReference: { areaCm2: null, method: null, confirmedBy: null, confirmedAt: null }, geometry: null,
-        ...(photoWound?.found && photoWound.box ? { wound: { detector: DETECTOR_ID, box: photoWound.box, hull: photoWound.hull, areaFraction: photoWound.areaFraction, contrast: photoWound.contrast } } : {}),
+        ...(photoWound?.found && photoWound.box && photoWound.areaFraction !== null
+          ? { wound: { detector: photoWound.modelId, modelVersion: photoWound.modelVersion, confidence: photoWound.confidence, areaCm2: photoWound.areaCm2 ?? estimate?.areaCm2 ?? null, box: photoWound.box, hull: photoWound.hull, areaFraction: photoWound.areaFraction, ...(photoWound.contrast !== null ? { contrast: photoWound.contrast } : {}) } }
+          : {}),
         ...(photo.ar ? { ar: photo.ar } : {}),
       };
       const image = await addImage({ woundId: w.id, ...photo, source: 'doctor', capture: metadata });
@@ -245,9 +249,9 @@ export default function GuidedCapture() {
       <Chip label={photo?.imageSource === 'gallery' ? 'Ảnh từ thư viện' : 'Tự khoanh vết thương'} />
     </View>
     {photo ? <>
-      <View style={{ width: '100%', aspectRatio: photo.width / photo.height, backgroundColor: '#111827', borderRadius: 18, overflow: 'hidden' }}>
+      <View style={{ width: '100%', aspectRatio: photo.width / photo.height, backgroundColor: C.text, borderRadius: 18, overflow: 'hidden' }}>
         <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
-        {photoWound?.found ? <WoundOutline hull={photoWound.hull} color="#22c55e" /> : null}
+        {photoWound?.found ? <WoundOutline hull={photoWound.hull} color={bar.green} /> : null}
       </View>
       <Muted>{analyzing ? 'Đang khoanh vết thương trên ảnh…' : photoWound?.found ? 'Viền xanh là vùng vết thương app tự khoanh theo màu (thử nghiệm). Bác sĩ kiểm tra lại trước khi xác nhận diện tích.' : 'Chưa khoanh được vết thương trên ảnh này. Bác sĩ vẫn có thể nhập diện tích đã đo.'}</Muted>
 
@@ -267,21 +271,21 @@ export default function GuidedCapture() {
       <Button label={areaText.trim() ? 'Lưu ảnh và dán nhãn diện tích' : 'Lưu ảnh (chưa dán nhãn)'} icon="save-outline" loading={busy} disabled={analyzing || !capabilities} onPress={save} />
       <Button label="Chụp / chọn lại" variant="secondary" disabled={busy} onPress={() => { generation.current++; setPhoto(null); setQuality(unknownQuality()); setPhotoWound(null); setError(''); }} />
     </> : <>
-      <View onLayout={e => setView({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} style={{ height: 440, backgroundColor: '#17262a', borderRadius: 24, overflow: 'hidden' }}>
+      <View onLayout={e => setView({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} style={{ height: 440, backgroundColor: C.text, borderRadius: 24, overflow: 'hidden' }}>
         {liveVisible ? useAr
           ? <ARCameraView ref={arCamera} style={{ flex: 1 }} focusPoint={focusPoint} onTracking={onTracking} onError={onARError} />
           : <CameraView ref={camera} style={{ flex: 1 }} facing="back" flash="off" enableTorch={false} animateShutter={false} onCameraReady={onCameraReady} onMountError={onCameraError} />
           : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 35 }}>
-            <Text style={{ color: '#fff', fontSize: 23, fontWeight: '700', textAlign: 'center' }}>Hướng camera vào vết thương</Text>
-            <Text style={{ color: '#d9e5ec', textAlign: 'center', marginTop: 12, lineHeight: 22 }}>App tự khoanh vết thương, kiểm tra độ sáng{useAr ? ' và khoảng cách bằng AR' : ''} rồi mới cho chụp. Tránh để lộ khuôn mặt hoặc thông tin cá nhân.</Text>
+            <Text style={{ color: C.onPrimary, fontSize: 23, fontWeight: '700', textAlign: 'center' }}>Hướng camera vào vết thương</Text>
+            <Text style={{ color: C.onDarkSoft, textAlign: 'center', marginTop: 12, lineHeight: 22 }}>App tự khoanh vết thương, kiểm tra độ sáng{useAr ? ' và khoảng cách bằng AR' : ''} rồi mới cho chụp. Tránh để lộ khuôn mặt hoặc thông tin cá nhân.</Text>
           </View>}
         {liveVisible && <WoundOverlay detection={liveWound} viewWidth={view.width} viewHeight={view.height} color={overlayColor} label={readiness.ready ? 'Vết thương · đạt' : 'Vết thương'} />}
-        {liveVisible && <View accessibilityLiveRegion="polite" style={{ position: 'absolute', left: 14, top: 14, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: '#000000b3' }}>
+        {liveVisible && <View accessibilityLiveRegion="polite" style={{ position: 'absolute', left: 14, top: 14, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: C.scrim }}>
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: TONE_COLOR[readiness.tone] }} />
-          <Text style={{ color: '#fff', fontWeight: '700' }}>{readiness.ready ? 'Sẵn sàng chụp' : 'Chưa đạt'}</Text>
+          <Text style={{ color: C.onPrimary, fontWeight: '700' }}>{readiness.ready ? 'Sẵn sàng chụp' : 'Chưa đạt'}</Text>
         </View>}
-        <View style={{ position: 'absolute', bottom: 18, left: 16, right: 16, padding: 12, borderRadius: 12, backgroundColor: '#000000aa' }}>
-          <Text style={{ color: '#fff', textAlign: 'center' }}>{liveVisible ? (ready ? readiness.headline : 'Đang mở camera…') : useAr ? 'Mở camera AR rồi quét chậm quanh vết thương.' : 'Mở camera để app khoanh vết thương.'}</Text>
+        <View style={{ position: 'absolute', bottom: 18, left: 16, right: 16, padding: 12, borderRadius: 12, backgroundColor: C.scrim }}>
+          <Text style={{ color: C.onPrimary, textAlign: 'center' }}>{liveVisible ? (ready ? readiness.headline : 'Đang mở camera…') : useAr ? 'Mở camera AR rồi quét chậm quanh vết thương.' : 'Mở camera để app khoanh vết thương.'}</Text>
         </View>
       </View>
       {liveVisible && ready && <Card>

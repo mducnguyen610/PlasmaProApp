@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { notify } from './dialog';
 import { extFromUri } from './naming';
 import type { WoundImage } from './types';
+import { localDay } from './course';
 
 export interface PickedPhoto {
   uri: string;
@@ -35,7 +36,7 @@ export async function pickPhoto(source: 'camera' | 'library'): Promise<PickedPho
   return {
     uri: a.uri,
     ext: extFromUri(a.fileName ?? a.uri, a.mimeType),
-    captureDate: exifDate(a.exif) ?? new Date().toISOString().slice(0, 10),
+    captureDate: exifDate(a.exif) ?? localDay(),
     width: a.width,
     height: a.height,
     sourceDateKnown: source === 'camera' || exifDate(a.exif) !== null,

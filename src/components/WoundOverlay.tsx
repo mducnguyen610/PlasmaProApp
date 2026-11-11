@@ -3,6 +3,7 @@ import Svg, { Polygon } from 'react-native-svg';
 
 import { Text } from '@/components/Text';
 import { coverMap, type WoundDetection } from '@/lib/capture/woundDetect';
+import { C } from '@/theme';
 
 /** Viền khoanh vết thương, bám theo vị trí dò được trên khung camera (hiển thị kiểu cover). */
 export function WoundOverlay({ detection, viewWidth, viewHeight, color, label }: {
@@ -27,7 +28,7 @@ export function WoundOverlay({ detection, viewWidth, viewHeight, color, label }:
       </Svg>
       {label ? (
         <View style={{ position: 'absolute', left: Math.max(4, top.x), top: Math.max(4, top.y - 30), backgroundColor: color, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>{label}</Text>
+          <Text style={{ color: C.onPrimary, fontWeight: '700', fontSize: 13 }}>{label}</Text>
         </View>
       ) : null}
     </View>

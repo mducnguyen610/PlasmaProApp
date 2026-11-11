@@ -4,6 +4,7 @@ import { readImageBytes } from './export';
 import { fmtDate, fmtDateTime, PLAN_STATUS, TREND, WOUND_STATUS } from './format';
 import { formatAreaDisplay } from './naming';
 import type { AppData } from './types';
+import { localDay } from './course';
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
@@ -94,7 +95,7 @@ export async function shareReport(html: string, patientCode: string): Promise<st
   const { File, Directory, Paths } = await import('expo-file-system');
   const dir = new Directory(Paths.document, 'reports');
   if (!dir.exists) dir.create();
-  const dest = new File(dir, `bao_cao_${patientCode}_${new Date().toISOString().slice(0, 10)}.pdf`);
+  const dest = new File(dir, `bao_cao_${patientCode}_${localDay()}.pdf`);
   if (dest.exists) dest.delete();
   await new File(uri).copy(dest);
   const Sharing = await import('expo-sharing');

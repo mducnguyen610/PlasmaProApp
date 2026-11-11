@@ -25,17 +25,17 @@ export function AreaChart({ images }: { images: WoundImage[] }) {
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: 130 }}>
         {points.map((p) => (
           <View key={p.id} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-            <Text style={{ fontSize: 11, color: C.text, fontWeight: '700' }}>{formatAreaDisplay(p.areaCm2).replace(' cm²', '')}</Text>
+            <Text style={{ fontSize: 13, color: C.text, fontWeight: '700' }}>{formatAreaDisplay(p.areaCm2).replace(' cm²', '')}</Text>
             <View style={{ width: '70%', maxWidth: 34, height: Math.max(6, (p.areaCm2! / max) * 100), backgroundColor: C.primary, borderRadius: 8 }} />
           </View>
         ))}
       </View>
       <View style={{ flexDirection: 'row', gap: 10 }}>
         {points.map((p) => (
-          <Text key={p.id} style={{ flex: 1, textAlign: 'center', fontSize: 10, color: C.textFaint }}>{fmtDate(p.captureDate).slice(0, 5)}</Text>
+          <Text key={p.id} style={{ flex: 1, textAlign: 'center', fontSize: 13, color: C.textFaint }}>{fmtDate(p.captureDate).slice(0, 5)}</Text>
         ))}
       </View>
-      <Text style={{ fontSize: 11, color: C.textFaint }}>Đơn vị cm². Không dùng ảnh chưa rõ ngày chụp. Nguồn số đo: bác sĩ nhập, đo bên ngoài ứng dụng.</Text>
+      <Text style={{ fontSize: 13, color: C.textFaint }}>Đơn vị cm². Không dùng ảnh chưa rõ ngày chụp. Nguồn số đo: bác sĩ nhập, đo bên ngoài ứng dụng.</Text>
     </View>
   );
 }

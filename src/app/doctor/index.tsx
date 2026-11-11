@@ -1,113 +1,97 @@
 import { router } from 'expo-router';
-import { ScrollView, View } from 'react-native';
+import { useMemo } from 'react';
 
 import { DateBadge } from '@/components/DateBadge';
-import { ImageTile, PatientCard } from '@/components/items';
-import { Text } from '@/components/Text';
-import { Card, GradientCard, Header, Ring, Screen, SectionTitle, SimBadge, Stat, TONE_BAR } from '@/components/ui';
+import { View } from 'react-native';
+import { PatientCard } from '@/components/items';
+import { Card, Header, ListCard, Muted, NumberTile, Screen, SectionTitle, SimBadge, type IconName } from '@/components/ui';
+import { patientSeverity } from '@/lib/access';
+import { rankPatients, type AttentionInput } from '@/lib/attention';
+import { addDays, isScheduled, localDay } from '@/lib/course';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
 
-function MiniBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  return (
-    <View style={{ flex: 1, gap: 4 }}>
-      <Text style={{ fontSize: 14, fontWeight: '500', color: C.text }}>{label}</Text>
-      <View style={{ height: 4, width: 70, borderRadius: 4, backgroundColor: `${color}33` }}>
-        <View style={{ height: 4, width: max ? (70 * Math.min(value, max)) / max : 0, borderRadius: 4, backgroundColor: color }} />
-      </View>
-      <Text style={{ fontSize: 12, color: C.grey, opacity: 0.5 }}>{value} mục</Text>
-    </View>
-  );
-}
+type Task = { key: string; icon: IconName; tone: 'amber' | 'red' | 'blue' | 'violet'; count: number; label: string; onPress: () => void };
 
-// BS01 – Trang chủ bác sĩ, bố cục theo "My Diary" của Best Flutter UI Templates.
+// BS01 – Trang chủ bác sĩ: danh sách việc cần làm rồi danh sách bệnh nhân; số liệu tổng hợp chuyển sang quản trị kỹ thuật.
 export default function DoctorHome() {
   const { data, me } = useStore();
-  const { patient, device } = useLookups();
+  const { device, woundsOf, coursePlan, sessionsOf } = useLookups();
   const mine = data.patients.filter((p) => p.doctorId === me?.id);
+  // Xếp người bệnh theo mức cần chú ý (FR10); cách tính ở src/lib/attention.ts.
+  const ranked = useMemo(() => {
+    const today = localDay();
+    const inputs: AttentionInput[] = data.patients
+      .filter((p) => p.doctorId === me?.id)
+      .map((p) => {
+        const plans = woundsOf(p.id)
+          .filter((w) => w.status === 'active')
+          .map((w) => coursePlan(w.id))
+          .filter((pl): pl is NonNullable<typeof pl> => !!pl && pl.status === 'active');
+        const dev = device(p.deviceId);
+        const lastSyncDay = dev?.lastSync ? localDay(dev.lastSync) : null;
+        const completed = (p.deviceId ? sessionsOf(p.deviceId) : []).filter((s) => s.status === 'completed');
+        const doneOn = (d: string) => completed.some((s) => localDay(s.start) === d);
+        const todayPlans = plans.filter((pl) => isScheduled(pl, today));
+        let missedLast7 = 0;
+        for (let k = 1; k <= 7; k++) {
+          const d = addDays(today, -k);
+          // Cùng quy tắc với missed trong courseProgress: chỉ tính ngày đã có dữ liệu đồng bộ.
+          if (plans.some((pl) => isScheduled(pl, d)) && !doneOn(d) && lastSyncDay !== null && d <= lastSyncDay) missedLast7++;
+        }
+        return {
+          patientId: p.id,
+          hasActivePlan: plans.length > 0,
+          scheduledToday: todayPlans.length > 0,
+          completedToday: completed.filter((s) => localDay(s.start) === today).length,
+          targetPerDay: todayPlans.reduce((n, pl) => n + (pl.sessionsPerDay ?? 1), 0),
+          lastSyncDay,
+          today,
+          missedLast7,
+          missedYesterday: (() => {
+            const y = addDays(today, -1);
+            return plans.some((pl) => isScheduled(pl, y)) && !doneOn(y) && lastSyncDay !== null && y <= lastSyncDay;
+          })(),
+          openReports: data.reports.filter((r) => r.patientId === p.id && !r.handled).length,
+          severity: patientSeverity(data, p.id),
+        };
+      });
+    return rankPatients(inputs);
+  }, [data, me?.id, woundsOf, coursePlan, sessionsOf, device]);
   const ids = new Set(mine.map((p) => p.id));
   const myImages = data.images.filter((i) => ids.has(i.patientId));
   const unlabeled = myImages.filter((i) => i.status === 'unlabeled');
-  const labeled = myImages.filter((i) => i.status === 'labeled');
   const retakes = myImages.filter((i) => i.retakeRequested);
   const reports = data.reports.filter((r) => ids.has(r.patientId) && !r.handled);
   const drafts = data.plans.filter((p) => ids.has(p.patientId) && p.status === 'draft');
   const offline = mine.map((p) => device(p.deviceId)).filter((d) => d && !d.online);
-  const usable = myImages.filter((i) => i.status !== 'excluded').length;
-  const pct = usable ? Math.round((labeled.length / usable) * 100) : 0;
-  const recent = [...myImages].sort((a, b) => b.uploadDate.localeCompare(a.uploadDate) || b.id.localeCompare(a.id)).slice(0, 6);
+  // Chỉ hiện việc đang có; số liệu tổng hợp (tỉ lệ gán nhãn, thống kê) nằm ở màn hình quản trị kỹ thuật.
+  const candidates: (Task | false)[] = [
+    reports.length > 0 && { key: 'reports', icon: 'medkit-outline', tone: 'red', count: reports.length, label: 'Báo cáo triệu chứng, sự cố', onPress: () => router.push({ pathname: '/patients/[id]', params: { id: reports[0].patientId } }) },
+    unlabeled.length > 0 && { key: 'unlabeled', icon: 'pricetag-outline', tone: 'amber', count: unlabeled.length, label: 'Ảnh chưa đo', onPress: () => router.push({ pathname: '/images/[id]', params: { id: unlabeled[0].id } }) },
+    retakes.length > 0 && { key: 'retakes', icon: 'camera-outline', tone: 'amber', count: retakes.length, label: 'Ảnh cần chụp lại', onPress: () => router.push({ pathname: '/images/[id]', params: { id: retakes[0].id } }) },
+    drafts.length > 0 && { key: 'drafts', icon: 'flash-outline', tone: 'violet', count: drafts.length, label: 'Đợt nháp chờ xác nhận', onPress: () => router.push({ pathname: '/plan/[patientId]', params: { patientId: drafts[0].patientId } }) },
+    offline.length > 0 && { key: 'offline', icon: 'cloud-offline-outline', tone: 'blue', count: offline.length, label: 'Thiết bị chưa đồng bộ', onPress: () => router.push({ pathname: '/devices/[id]', params: { id: offline[0]!.id } }) },
+  ];
+  const tasks = candidates.filter((t): t is Task => !!t);
 
   return (
     <Screen header={<Header title="Trang chủ" subtitle={`Xin chào, ${me?.name ?? ''}`} right={<DateBadge />} />}>
-      <SimBadge />
-      <SectionTitle action="Chi tiết" onAction={() => router.navigate('/doctor/dataset')}>Tổng quan</SectionTitle>
-      <Card hero style={{ padding: 0, gap: 0 }}>
-        <View style={{ flexDirection: 'row', padding: 20, paddingBottom: 12, gap: 12, alignItems: 'center' }}>
-          <View style={{ flex: 1, gap: 14 }}>
-            <Stat label="Bệnh nhân theo dõi" value={mine.length} unit="người" tone="blue" />
-            <Stat label="Ảnh đã có diện tích" value={labeled.length} unit="ảnh" tone="red" />
-          </View>
-          <Ring value={labeled.length} max={usable} label={`${pct}%`} sub="đã gán nhãn" />
+      <SectionTitle>Việc cần làm</SectionTitle>
+      {/* Ô số lớn làm điểm neo: bác sĩ thấy ngay có bao nhiêu việc, chạm để mở việc đầu tiên. */}
+      {tasks.length === 0 ? <Card><Muted>Không có việc nào đang chờ.</Muted></Card> : (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {tasks.map((t) => <NumberTile key={t.key} value={t.count} label={t.label} icon={t.icon} tone={t.tone} onPress={t.onPress} />)}
         </View>
-        <View style={{ height: 2, backgroundColor: C.bg, marginHorizontal: 20, borderRadius: 4 }} />
-        <View style={{ flexDirection: 'row', padding: 20, paddingTop: 12, gap: 8 }}>
-          <MiniBar label="Chờ nhãn" value={unlabeled.length} max={usable} color={TONE_BAR.blue} />
-          <MiniBar label="Báo cáo" value={reports.length} max={Math.max(3, reports.length)} color="#F56E98" />
-          <MiniBar label="Chụp lại" value={retakes.length} max={Math.max(3, retakes.length)} color="#F1B440" />
-        </View>
-      </Card>
-
-      <SectionTitle action="Xử lý" onAction={() => router.navigate('/doctor/dataset')}>Việc cần làm</SectionTitle>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ gap: 14, paddingHorizontal: 20, paddingBottom: 16 }}>
-        <GradientCard
-          colors="coral"
-          icon="pricetag"
-          title="Ghi diện tích"
-          lines={unlabeled.slice(0, 3).map((i) => `${patient(i.patientId)?.code} · ${i.id}`)}
-          value={unlabeled.length}
-          unit="ảnh"
-          onPress={() => (unlabeled[0] ? router.push({ pathname: '/images/[id]', params: { id: unlabeled[0].id } }) : router.navigate('/doctor/dataset'))}
-        />
-        <GradientCard
-          colors="pink"
-          icon="medkit"
-          title="Triệu chứng, sự cố"
-          lines={reports.slice(0, 3).map((r) => `${patient(r.patientId)?.code}: ${r.content}`)}
-          value={reports.length}
-          unit="báo cáo"
-          onPress={() => reports[0] && router.push({ pathname: '/patients/[id]', params: { id: reports[0].patientId } })}
-        />
-        <GradientCard
-          colors="indigo"
-          icon="flash"
-          title="Liệu trình nháp"
-          lines={drafts.slice(0, 3).map((p) => `${patient(p.patientId)?.code} · v${p.version}`)}
-          value={drafts.length}
-          unit="chờ xác nhận"
-          onPress={() => drafts[0] && router.push({ pathname: '/plan/[patientId]', params: { patientId: drafts[0].patientId } })}
-        />
-        <GradientCard
-          colors="night"
-          icon="hardware-chip"
-          title="Thiết bị offline"
-          lines={offline.slice(0, 3).map((d) => `${d!.code} chưa đồng bộ`)}
-          value={offline.length}
-          unit="thiết bị"
-          onPress={() => offline[0] && router.push({ pathname: '/devices/[id]', params: { id: offline[0]!.id } })}
-        />
-      </ScrollView>
-
-      <SectionTitle action="Dữ liệu" onAction={() => router.navigate('/doctor/dataset')}>Ảnh mới</SectionTitle>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ gap: 12, paddingHorizontal: 20, paddingBottom: 6 }}>
-        {recent.map((im) => (
-          <ImageTile key={im.id} image={im} />
-        ))}
-      </ScrollView>
+      )}
 
       <SectionTitle action="Danh sách" onAction={() => router.navigate('/doctor/patients')}>Bệnh nhân</SectionTitle>
-      {mine.map((p) => (
-        <PatientCard key={p.id} patient={p} />
-      ))}
+      <ListCard>
+        {ranked.map((a) => {
+          const p = mine.find((x) => x.id === a.patientId);
+          return p ? <PatientCard key={p.id} patient={p} attention={a} /> : null;
+        })}
+      </ListCard>
+      <SimBadge />
     </Screen>
   );
 }

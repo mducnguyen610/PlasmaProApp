@@ -1,4 +1,6 @@
 import type { CaptureMetadata } from './capture/types';
+import type { SendResult } from './device/sender';
+import type { TransportKind } from './device/transport';
 export type Role = 'doctor' | 'patient' | 'admin';
 
 export interface Account {
@@ -12,6 +14,8 @@ export interface Account {
   pendingApproval?: boolean;
   termsVersion?: string;
   termsAcceptedAt?: string;
+  /** Thời điểm bệnh nhân xem xong hoặc bỏ qua hướng dẫn lần đầu (đề xuất 3 của bản đánh giá trải nghiệm). */
+  onboardingDoneAt?: string;
   locked: boolean;
   /** Bác sĩ được cấp quyền xuất dữ liệu nghiên cứu (đặc tả mục 9). */
   researchAccess?: boolean;
@@ -24,7 +28,11 @@ export interface Account {
   activationAttempts?: number;
 }
 
-export type WoundStatus = 'active' | 'paused' | 'closed';
+/**
+ * active: đang trong đợt điều trị. awaiting_closure: bác sĩ ghi nhận biểu mô đã khép lần 1, chờ xác nhận lần 2.
+ * follow_up: đã xác nhận liền, đang theo dõi sau điều trị (không còn phiên chiếu). closed: kết thúc theo dõi.
+ */
+export type WoundStatus = 'active' | 'paused' | 'awaiting_closure' | 'follow_up' | 'closed';
 
 export interface Patient {
   id: string;
@@ -52,6 +60,10 @@ export interface Wound {
   group?: string;
   startDate: string;
   status: WoundStatus;
+  /** Ngày bác sĩ ghi nhận biểu mô đã khép lần 1 (chờ xác nhận lần 2 sau 14 ngày, theo FDA 2006). */
+  closureCheck1?: string;
+  /** Ngày xác nhận liền lần 2, bắt đầu theo dõi sau điều trị. */
+  followUpFrom?: string;
 }
 
 export type LabelStatus = 'unlabeled' | 'labeled' | 'excluded';
@@ -98,6 +110,30 @@ export type Severity = 'mild' | 'moderate' | 'severe';
 
 export type Trend = 'improving' | 'stable' | 'worsening' | 'insufficient';
 
+/** Mức đau bệnh nhân tự ghi cho một phiên điều trị (mẫu Nerivio). Lưu riêng để không sửa nhật ký thiết bị gửi lên. */
+export interface SessionNote {
+  sessionId: string;
+  painBefore?: number;
+  painAfter?: number;
+  /** Dung nạp trong lúc chiếu (slide 35: "sans douleurs, ni brûlant ou piquant"). */
+  burning?: boolean;
+  stinging?: boolean;
+  /** Phản ứng da quanh vết thương ngày hôm sau (slide 29: ban đỏ, phù). */
+  rednessNextDay?: boolean;
+  swellingNextDay?: boolean;
+  at: string;
+}
+
+/** Trường đánh giá có cấu trúc (mẫu Swift). Danh mục là bản nháp, chờ bác sĩ trong nhóm chọn thang. */
+export interface WoundAssessment {
+  woundType: string;
+  pressureStage?: string;
+  granulation?: string;
+  epithelial?: string;
+  exudate: string;
+  infection: string;
+}
+
 export interface Evaluation {
   id: string;
   woundId: string;
@@ -113,13 +149,40 @@ export interface Evaluation {
   instructions: string;
   nextReview?: string;
   visibleToPatient: boolean;
+  assessment?: WoundAssessment;
 }
 
 export type PlanStatus = 'draft' | 'active' | 'paused' | 'ended';
+/**
+ * Một giai đoạn của đợt điều trị (slide 39, 40: mỗi ngày rồi thưa dần).
+ * - daily: mỗi ngày.
+ * - every_n_days: cách n ngày tính từ ngày đầu giai đoạn (n = 2 là cách ngày).
+ * - n_per_week: n buổi mỗi tuần vào các thứ cố định (xem WEEK_DAYS trong course.ts).
+ */
+export type PhasePattern = 'daily' | 'every_n_days' | 'n_per_week';
+export interface CoursePhase { from: string; to: string; pattern: PhasePattern; n: number }
+export type CourseEndReason = 'healed' | 'stopped' | 'no_progress' | 'other';
 
 export interface TreatmentPlan {
   id: string;
   patientId: string;
+  /** Đợt điều trị gắn với một vết thương. Bản cũ không có trường này thì coi là vết đầu tiên của bệnh nhân. */
+  woundId?: string;
+  /** Các giai đoạn; trống thì coi như mỗi ngày từ startDate đến endDate. */
+  phases?: CoursePhase[];
+  /** Mức năng lượng trên thiết bị (thiết bị tại nhà bị khóa ở mức này, slide 24). Đây là energy_level gửi firmware. */
+  doseLevel?: number | null;
+  /** Chế độ điều trị gửi firmware (treatment_mode), ví dụ cold, hybrid, thermal. Bản cũ không có trường này. */
+  treatmentMode?: string | null;
+  /** Thời gian chiếu mỗi lần, giây. */
+  durationSec?: number | null;
+  /** Hệ số giây/cm² để gợi ý thời gian theo diện tích (S2k 2022, Stratmann 2020). Chờ nhóm phần cứng xác nhận. */
+  secondsPerCm2?: number | null;
+  /** Diện tích dùng để so sánh ở mốc xem lại. */
+  areaAtStart?: number | null;
+  /** Ngày thứ mấy của đợt cần xem lại hiệu quả (mặc định 28, Sheehan 2003). */
+  reviewAtDay?: number | null;
+  endReason?: CourseEndReason;
   version: number;
   status: PlanStatus;
   sessionsPerDay: number | null;
@@ -135,6 +198,7 @@ export interface TreatmentPlan {
   confirmed: boolean;
 }
 
+export type DeviceLifecycle = 'in_use' | 'returned' | 'disinfected' | 'ready';
 export interface Device {
   id: string;
   /** Mã thiết bị in trên vỏ, ví dụ TB-001. */
@@ -146,6 +210,12 @@ export interface Device {
   firmware: string;
   power: 'on' | 'off' | 'pending';
   simulated: boolean;
+  /** Lần gần nhất làm từng mục chăm sóc (mã mục trong maintenance.ts → thời điểm ISO). */
+  care?: Record<string, string>;
+  /** Đầu phát dùng riêng cho bệnh nhân đang giữ thiết bị (slide 25 "embouts à usage individuel"). */
+  tip?: { code: string; issuedAt: string };
+  /** Vòng đời thiết bị cho thuê (slide 24): đang dùng, đã thu hồi, đã khử khuẩn, sẵn sàng cấp. */
+  lifecycle?: DeviceLifecycle;
 }
 
 export interface DeviceSession {
@@ -157,6 +227,8 @@ export interface DeviceSession {
   energyWh: number | null;
   status: 'completed' | 'interrupted' | 'over_limit';
   source: 'device' | 'manual' | 'simulated';
+  /** Vết thương được chiếu trong phiên (bệnh nhân chọn trên thiết bị hoặc ứng dụng khi có nhiều vết). */
+  woundId?: string;
 }
 
 export interface SymptomReport {
@@ -177,6 +249,23 @@ export interface SyncError {
   resolved: boolean;
 }
 
+/** Một lần gửi cấu hình điều trị xuống máy qua USB/UART. */
+export interface DeviceLinkLog {
+  id: string;
+  deviceId: string | null;
+  patientId: string;
+  planId: string;
+  planVersion: number;
+  at: string;
+  by: string;
+  transport: TransportKind;
+  result: SendResult['kind'];
+  attempts: number;
+  code?: string;
+  protocolVersion: number;
+  capsSource: 'device' | 'table' | 'none';
+}
+
 export interface AppData {
   accounts: Account[];
   patients: Patient[];
@@ -186,7 +275,10 @@ export interface AppData {
   plans: TreatmentPlan[];
   devices: Device[];
   sessions: DeviceSession[];
+  sessionNotes: SessionNote[];
   reports: SymptomReport[];
   syncErrors: SyncError[];
+  /** Nhật ký gửi cấu hình xuống máy. Tùy chọn để dữ liệu cũ đọc được. */
+  deviceLinks?: DeviceLinkLog[];
   counters: { image: number; patient: number };
 }
