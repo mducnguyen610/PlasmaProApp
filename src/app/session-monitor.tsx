@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -32,7 +33,7 @@ export default function SessionMonitor() {
         const ok = recordDeviceSession({ patientId: p.id, woundId: params.woundId, startedAt: done.startedAt.toISOString(), durationSec: done.durationSec, outcome: done.outcome });
         setSaved(ok
           ? { ok: true, text: done.outcome === 'done' ? `Đã ghi phiên điều trị ${Math.round(done.durationSec / 6) / 10} phút vào nhật ký.` : 'Phiên dừng giữa chừng, đã ghi vào nhật ký là phiên bị gián đoạn.' }
-          : { ok: false, text: 'Hồ sơ chưa được giao máy nên phiên chưa được ghi. Bác sĩ cần giao máy trên hồ sơ người bệnh.' });
+          : { ok: false, text: 'Hồ sơ chưa được giao máy nên phiên chưa được ghi. Bác sĩ cần giao máy trên hồ sơ bệnh nhân.' });
       } catch (e) {
         setSaved({ ok: false, text: e instanceof Error ? e.message : String(e) });
       }
@@ -66,10 +67,18 @@ export default function SessionMonitor() {
       {lost && st?.state === 'running' && <Notice tone="red">Mất kết nối với máy trong lúc phiên đang chạy. Hãy cắm lại cáp.</Notice>}
       {stale && <Notice>{`Chưa nhận trạng thái từ máy ${staleSec} giây. Kiểm tra cáp còn cắm chặt.`}</Notice>}
       <Card>
-        <View accessible accessibilityLabel={`${st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'}, còn ${fmtRemaining(st?.remainingSec)}`} style={{ alignItems: 'center', gap: 2, paddingVertical: 8 }}>
-          <Text style={{ fontSize: 44, fontWeight: '700', color: st?.state === 'running' ? C.primary : C.text, fontVariant: ['tabular-nums'] }}>{fmtRemaining(st?.remainingSec)}</Text>
-          <Text style={{ color: C.textSoft }}>{st ? `${SESSION_LABEL[st.state]} · thời gian còn lại` : 'Chưa nhận trạng thái'}</Text>
-        </View>
+        {st && st.state !== 'stopped' && st.state !== 'error' && st.remainingSec != null ? (
+          <View accessible accessibilityLabel={`${SESSION_LABEL[st.state]}, còn ${fmtRemaining(st.remainingSec)}`} style={{ alignItems: 'center', gap: 2, paddingVertical: 8 }}>
+            <Text style={{ fontSize: 44, fontWeight: '700', color: st.state === 'running' ? C.primary : C.text, fontVariant: ['tabular-nums'] }}>{fmtRemaining(st.remainingSec)}</Text>
+            <Text style={{ color: C.textSoft }}>{`${SESSION_LABEL[st.state]} · thời gian còn lại`}</Text>
+          </View>
+        ) : (
+          // Chưa nhận STA, hoặc phiên đã dừng, lỗi: không hiện số giây cũ dễ gây hiểu nhầm.
+          <View accessible accessibilityLabel={st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'} style={{ alignItems: 'center', gap: 6, paddingVertical: 12 }}>
+            <Ionicons name={!st ? 'radio-outline' : st.state === 'error' ? 'warning-outline' : 'stop-circle-outline'} size={36} color={st?.state === 'error' ? C.red : C.textSoft} />
+            <Text style={{ fontSize: 20, fontWeight: '700', color: C.text }}>{st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'}</Text>
+          </View>
+        )}
         <InfoRow label="Nhận lần cuối" value={link.lastStatusAt ? fmtDateTime(link.lastStatusAt) : '–'} />
         {!st && <Muted>Bắt đầu phiên trên máy; trạng thái hiện ở đây khi máy gửi về. Giữ màn này mở tới khi phiên xong để phiên được ghi vào nhật ký.</Muted>}
       </Card>

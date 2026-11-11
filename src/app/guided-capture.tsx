@@ -168,7 +168,8 @@ export default function GuidedCapture() {
     generation.current++; setAnalyzing(true); setPhoto(value); setLive(false); setReady(false); setQuality(unknownQuality());
     setPhotoWound(null); setReviewed(false); setAreaText(''); setMethod(METHODS[0]); setError('');
   };
-  if (!p || !w || !canView || me?.role !== 'doctor') return <NoAccess />;
+  if (!p || !w) return <NoAccess notFound />;
+  if (!canView || me?.role !== 'doctor') return <NoAccess />;
 
   const start = async () => {
     setError('');

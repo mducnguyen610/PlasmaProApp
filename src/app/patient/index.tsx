@@ -8,7 +8,7 @@ import { areaReview, courseProgress, courseStatus, followUpDates, localDay } fro
 import { DateBadge } from '@/components/DateBadge';
 import { DateTile, TaskRow } from '@/components/items';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Divider, Header, Muted, Ring, Screen, SectionTitle, SimBadge, WoundPhoto } from '@/components/ui';
+import { Button, Card, Chip, Divider, Header, Muted, Ring, Screen, SectionTitle, SimBadge, TextLink, WoundPhoto } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, TREND } from '@/lib/format';
 import { formatAreaForName } from '@/lib/naming';
@@ -60,7 +60,7 @@ export default function PatientHome() {
           chữ phụ đưa vào chạm để xem hoặc sang Lịch trình. */}
       <Card hero style={{ padding: 20, gap: 14 }}>
         {treating && (
-          <Pressable onPress={() => router.push('/schedule')} accessibilityRole="button" accessibilityLabel="Xem lịch trình của đợt" hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 }}>
+          <Pressable onPress={() => router.push('/schedule')} accessibilityRole="button" accessibilityLabel="Xem lịch trình của đợt" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 }}>
             <Text style={{ flex: 1, color: C.textSoft, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>Đợt điều trị · {treating.w.code}</Text>
             <Text style={{ color: C.primary, fontSize: 14 }}>Lịch trình</Text>
             <Ionicons name="chevron-forward" size={16} color={C.primary} />
@@ -154,7 +154,7 @@ export default function PatientHome() {
         <Divider />
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={{ flex: 1, color: C.textSoft, fontSize: 14, fontWeight: '600' }}>Lịch hẹn gần nhất</Text>
-          {upcoming.length > 1 && <Text onPress={() => router.push('/schedule')} accessibilityRole="link" style={{ color: C.primary, fontWeight: '600', fontSize: 14, paddingVertical: 8 }}>Tất cả ({upcoming.length}) ›</Text>}
+          {upcoming.length > 1 && <TextLink label={`Tất cả (${upcoming.length}) ›`} accessibilityLabel={`Xem tất cả ${upcoming.length} lịch hẹn`} onPress={() => router.push('/schedule')} />}
         </View>
         {next ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -233,9 +233,9 @@ export default function PatientHome() {
                   <Text style={{ color: C.textSoft, fontSize: 14 }}>{fmtDate(ev.date).slice(0, 5)}</Text>
                 </View>
                 {/* Hai dòng đầu, chạm để đọc hết. */}
-                <Text onPress={() => setOpenNote(!openNote)} numberOfLines={openNote ? undefined : 2} style={{ color: C.text, lineHeight: 24 }}>{ev.instructions || ev.characteristics}</Text>
+                <Text numberOfLines={openNote ? undefined : 2} style={{ color: C.text, lineHeight: 24 }}>{ev.instructions || ev.characteristics}</Text>
                 {openNote && <Muted>{account(ev.doctorId)?.name ?? 'Bác sĩ phụ trách'}{ev.nextReview && ev.nextReview >= today ? ` · tái đánh giá ${fmtDate(ev.nextReview)}` : ''}</Muted>}
-                <Text onPress={() => setOpenNote(!openNote)} accessibilityRole="button" style={{ color: C.primary, fontWeight: '600', paddingVertical: 8 }}>{openNote ? 'Thu gọn' : 'Đọc hết'}</Text>
+                <TextLink label={openNote ? 'Thu gọn' : 'Đọc hết'} onPress={() => setOpenNote(!openNote)} />
               </View>
             ) : <Muted>Chưa có đánh giá được công bố. Không suy ra mức độ từ diện tích.</Muted>}
           </Card>

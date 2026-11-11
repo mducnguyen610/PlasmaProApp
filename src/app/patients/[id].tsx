@@ -26,7 +26,8 @@ export default function PatientDetail() {
   const [reporting, setReporting] = useState(false);
   const [activation, setActivation] = useState<Activation | null>(null);
   const [issuing, setIssuing] = useState(false);
-  if (!p || !canView) return <NoAccess />;
+  if (!p) return <NoAccess notFound />;
+  if (!canView) return <NoAccess />;
 
   const isDoctor = me?.role === 'doctor';
   const dev = device(p.deviceId);

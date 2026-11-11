@@ -83,7 +83,7 @@ export default function ConnectDevice() {
   const capsNote = link.capsSource === 'device' ? 'Năng lực đọc từ máy' : link.identity?.kind === 'no_reply' ? 'Máy không trả lời lệnh hỏi, dùng bảng dự phòng' : link.capsSource === 'table' ? 'Dùng bảng năng lực ghi sẵn' : 'Chưa có năng lực cho mẫu này';
 
   return (
-    <Screen header={<Header back title="Nạp liệu trình xuống máy" subtitle={p.code} />}>
+    <Screen header={<Header back title="Nạp liệu trình" subtitle={p.code} />}>
       <StepRow step={step} />
       {!PROTOCOL.confirmed && !isPatient && <Notice>Giao thức chưa được firmware xác nhận.</Notice>}
 
@@ -109,7 +109,7 @@ export default function ConnectDevice() {
           )}
         </View>
       </Card>
-      {noDevice && <Notice tone="red">Hồ sơ chưa được giao máy. Bác sĩ phụ trách cần giao máy trên hồ sơ người bệnh trước khi nạp liệu trình.</Notice>}
+      {noDevice && <Notice tone="red">Hồ sơ chưa được giao máy. Bác sĩ phụ trách cần giao máy trên hồ sơ bệnh nhân trước khi nạp liệu trình.</Notice>}
       {unidentified && <Notice tone="red">Máy chưa trả lời lệnh hỏi thông tin nên chưa kiểm được phiên bản giao thức. Hãy ngắt rồi kết nối lại.</Notice>}
       {versionMismatch && idInfo && (
         <Notice tone="red">{`Máy dùng giao thức phiên bản ${idInfo.protocolVersion}, ứng dụng dùng phiên bản ${PROTOCOL.protocolVersion}, cần cập nhật ứng dụng hoặc firmware.`}</Notice>

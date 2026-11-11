@@ -15,7 +15,7 @@ export default function DoctorTabs() {
         { name: 'index', title: 'Trang chủ', icon: 'home-outline', iconOn: 'home' },
         { name: 'patients', title: 'Bệnh nhân', icon: 'people-outline', iconOn: 'people' },
         { name: 'dataset', title: 'Ảnh', icon: 'images-outline', iconOn: 'images', badge: unlabeled },
-        { name: 'account', title: 'Tài khoản', icon: 'person-circle-outline', iconOn: 'person-circle' },
+        { name: 'account', title: 'Cá nhân', icon: 'person-circle-outline', iconOn: 'person-circle' },
       ]}
     />
   );

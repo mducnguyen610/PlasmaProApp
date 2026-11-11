@@ -89,7 +89,7 @@ export default function DeviceDiagnostics() {
           {simulated ? (
             <Button label="Gửi cấu hình thử tới thiết bị giả lập (TEST01)" variant="secondary" icon="send-outline" onPress={sendTest} />
           ) : (
-            <Muted>Với máy thật, thử nạp cấu hình bằng luồng của người bệnh (Thiết bị, Kết nối máy và nạp liệu trình) để lần nạp có nhật ký.</Muted>
+            <Muted>Với máy thật, thử nạp cấu hình bằng luồng của bệnh nhân (Thiết bị, Kết nối máy và nạp liệu trình) để lần nạp có nhật ký.</Muted>
           )}
           {note && <Notice tone="blue" icon="information-circle-outline">{note}</Notice>}
         </Card>

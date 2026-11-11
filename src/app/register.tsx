@@ -39,7 +39,7 @@ export default function Register() {
         <Button label="Về đăng nhập" onPress={() => router.replace('/')} />
       </> : <>
         <Text style={{ fontWeight: '700', fontSize: 18 }}>Bạn sử dụng ứng dụng với vai trò</Text>
-        <Choices<Role> value={role} onChange={setRole} options={[{ value: 'patient', label: 'Bệnh nhân' }, { value: 'doctor', label: 'Bác sĩ' }, { value: 'admin', label: 'Kỹ thuật' }]} />
+        <Choices<Role> value={role} onChange={setRole} options={[{ value: 'patient', label: 'Bệnh nhân' }, { value: 'doctor', label: 'Bác sĩ' }, { value: 'admin', label: 'Quản trị viên' }]} />
         {role !== 'patient' && <Muted>Tài khoản chuyên môn cần quản trị duyệt; quyền nghiên cứu được cấp riêng.</Muted>}
         <Field label="Họ và tên" accessibilityLabel="Họ và tên" value={name} onChangeText={setName} placeholder="Nguyễn Văn A" />
         <Field label="Tên đăng nhập" accessibilityLabel="Tên đăng nhập" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} placeholder="Tối thiểu 4 ký tự, không dấu" />

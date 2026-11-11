@@ -41,7 +41,8 @@ export default function ImageDetail() {
   const [retakeNote, setRetakeNote] = useState('');
   const [excludeReason, setExcludeReason] = useState('');
 
-  if (!im || !p || !w || !canView) return <NoAccess />;
+  if (!im || !p || !w) return <NoAccess notFound />;
+  if (!canView) return <NoAccess />;
   const isDoctor = me?.role === 'doctor';
   const expected = { patientCode: p.code, woundCode: w.code, imageId: im.id, ext: im.ext };
 

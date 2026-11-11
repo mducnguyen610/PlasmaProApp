@@ -30,7 +30,7 @@ export function AccountScreen() {
   const { data, me, logout, resetDemo, setResearchConsent } = useStore();
   if (!me) return null;
   return (
-    <Screen header={<Header title="Tài khoản" />}>
+    <Screen header={<Header title="Cá nhân" />}>
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconBadge icon="person" size={48} />

@@ -5,7 +5,7 @@ import { Text } from '@/components/Text';
 
 import { DoseRows, PhaseList } from '@/components/CourseCard';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, Segmented, SwitchRow } from '@/components/ui';
+import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, Segmented, SwitchRow, TextLink } from '@/components/ui';
 import { capabilitiesFor, modeLabel } from '@/lib/device/capabilities';
 import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, suggestDurationSec } from '@/lib/course';
 import { notify } from '@/lib/dialog';
@@ -94,7 +94,8 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   const [err, setErr] = useState<string | null>(null);
   const [step, setStep] = useState(0);
 
-  if (!p || !canView) return <NoAccess />;
+  if (!p) return <NoAccess notFound />;
+  if (!canView) return <NoAccess />;
 
   if (me?.role === 'patient') {
     // Bệnh nhân chỉ xem đợt đã được bác sĩ xác nhận.
@@ -137,7 +138,7 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
       startDate: parsed[0].from, endDate: parsed[parsed.length - 1].to, reviewSchedule: review.trim(), notes: notes.trim(), reason: reason.trim(), confirmed,
     });
     setReason('');
-    notify('Đã lưu phiên bản mới', 'Người bệnh nạp mức, chế độ và thời gian xuống máy qua cáp USB ở màn Thiết bị (bản demo: thiết bị giả lập).');
+    notify('Đã lưu phiên bản mới', 'Bệnh nhân nạp mức, chế độ và thời gian xuống máy qua cáp USB ở màn Thiết bị (bản demo: thiết bị giả lập).');
   };
 
   return (
@@ -163,7 +164,7 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
           <View key={i} style={{ gap: 8, padding: 10, borderRadius: 10, backgroundColor: C.surfaceMuted }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ flex: 1, fontWeight: '700', color: C.text }}>Giai đoạn {i + 1}</Text>
-              {phases.length > 1 && <Text accessibilityRole="button" onPress={() => setPhases(phases.filter((_, k) => k !== i))} style={{ color: C.red, fontWeight: '600', padding: 8 }}>Xóa</Text>}
+              {phases.length > 1 && <TextLink label="Xóa" tone={C.red} accessibilityLabel={`Xóa giai đoạn ${i + 1}`} onPress={() => setPhases(phases.filter((_, k) => k !== i))} />}
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1 }}><Field label="Từ ngày" value={ph.from} onChangeText={(v) => setPhase(i, { from: v })} placeholder="dd/mm/yyyy" /></View>

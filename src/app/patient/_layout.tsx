@@ -15,7 +15,7 @@ export default function PatientTabs() {
         { name: 'index', title: 'Trang chủ', icon: 'home-outline', iconOn: 'home' },
         { name: 'history', title: 'Lịch sử', icon: 'document-text-outline', iconOn: 'document-text' },
         { name: 'device', title: 'Thiết bị', icon: 'hardware-chip-outline', iconOn: 'hardware-chip' },
-        { name: 'account', title: 'Tài khoản', icon: 'person-circle-outline', iconOn: 'person-circle' },
+        { name: 'account', title: 'Cá nhân', icon: 'person-circle-outline', iconOn: 'person-circle' },
       ]}
     />
   );

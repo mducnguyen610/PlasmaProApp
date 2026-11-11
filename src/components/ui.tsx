@@ -52,7 +52,7 @@ export function Header({
 const ROLE_BADGE: Record<Role, { label: string; icon: IconName }> = {
   patient: { label: 'Bệnh nhân', icon: 'person' },
   doctor: { label: 'Bác sĩ', icon: 'medkit' },
-  admin: { label: 'Kỹ thuật', icon: 'construct' },
+  admin: { label: 'Quản trị viên', icon: 'construct' },
 };
 
 /** Ô tròn vai trò ở đầu thanh tiêu đề. */
@@ -422,7 +422,7 @@ export function Disclosure({ title, summary, icon, children, initiallyOpen = fal
         {icon ? <Ionicons name={icon} size={22} color={C.primary} /> : null}
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={{ color: C.text, fontWeight: '700' }}>{title}</Text>
-          {summary ? <Text style={{ color: summaryTone ?? C.textSoft, fontSize: T.small }} numberOfLines={1}>{summary}</Text> : null}
+          {summary ? <Text style={{ color: summaryTone ?? C.textSoft, fontSize: T.small }} numberOfLines={2}>{summary}</Text> : null}
         </View>
         {right}
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={22} color={C.textSoft} />
@@ -433,6 +433,19 @@ export function Disclosure({ title, summary, icon, children, initiallyOpen = fal
 }
 
 /** Đường kẻ mảnh tách các phần trong cùng một thẻ, thay cho việc tách thành nhiều thẻ. */
+/**
+ * Liên kết dạng chữ (Sửa đợt, So sánh, Xem đầy đủ...): có vai trò nút cho trình đọc màn hình
+ * và vùng chạm cao tối thiểu 44 pt (Apple HIG 44 pt) dù chữ chỉ cao khoảng 20 pt.
+ */
+export function TextLink({ label, onPress, tone = C.primary, accessibilityLabel }: { label: string; onPress: () => void; tone?: string; accessibilityLabel?: string }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label}
+      style={({ pressed }) => ({ minHeight: 44, minWidth: 44, justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}>
+      <Text style={{ color: tone, fontWeight: '600' }}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export function Divider() {
   return <View style={{ height: 1, backgroundColor: C.border, marginVertical: 4 }} />;
 }

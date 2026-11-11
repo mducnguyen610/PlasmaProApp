@@ -17,10 +17,16 @@ export function useCanView(patient?: Patient) {
   return false;
 }
 
-export function NoAccess({ title = 'Không có quyền truy cập' }: { title?: string }): ReactNode {
+/**
+ * Màn chặn. Tách hai trường hợp (rà soát giao diện 11/11/2026, mục 7): `notFound` khi mã trong đường dẫn không có trong dữ liệu,
+ * còn lại là không có quyền. Tiêu đề ngắn để không bị cắt trên máy 360 pt.
+ */
+export function NoAccess({ notFound = false }: { notFound?: boolean }): ReactNode {
   return (
-    <Screen header={<Header back title={title} />}>
-      <Empty icon="lock-closed-outline" text="Tài khoản này không được phân công cho hồ sơ này, hoặc hồ sơ không tồn tại." />
+    <Screen header={<Header back title={notFound ? 'Không tìm thấy' : 'Không có quyền'} />}>
+      {notFound
+        ? <Empty icon="search-outline" text="Không tìm thấy mục này. Có thể mục đã bị xóa hoặc đường dẫn không đúng." />
+        : <Empty icon="lock-closed-outline" text="Tài khoản này không được phân công cho hồ sơ này nên không xem được." />}
       <Button label="Quay lại" variant="secondary" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
     </Screen>
   );

@@ -180,7 +180,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         <Muted>Cách vệ sinh là giả định cho demo, theo hướng dẫn nhà sản xuất khi có.</Muted>
         {device.lifecycle === 'in_use' && <>
         <Divider />
-        <Muted>Máy đang giao cho bệnh nhân. Bác sĩ phụ trách thu hồi trên hồ sơ người bệnh.</Muted>
+        <Muted>Máy đang giao cho bệnh nhân. Bác sĩ phụ trách thu hồi trên hồ sơ bệnh nhân.</Muted>
         </>}
         {device.lifecycle !== 'in_use' && LIFECYCLE[device.lifecycle ?? 'ready'].next && <>
         <Divider />
