@@ -32,7 +32,7 @@ export interface CaptureMetadata {
   /** Ước lượng tự động: chỉ có khi có phiên AR và vùng vết thương được khoanh. Chưa kiểm chứng lâm sàng. */
   automaticMeasurement: { areaCm2: number | null; status: 'unavailable' | 'estimated_unvalidated'; method: null | 'ar_pinhole_color_mask'; reasonCodes: string[]; depthM?: number; cosTilt?: number | null };
   /** Vùng vết thương do bộ dò màu khoanh trên ảnh đã lưu (tọa độ chuẩn hóa). */
-  wound?: { detector: string; box: Roi; hull: [number, number][]; areaFraction: number; contrast: number };
+  wound?: { detector: string; box: Roi; hull: [number, number][]; areaFraction: number; contrast?: number };
   manualReference: { areaCm2: number | null; method: string | null; confirmedBy: string | null; confirmedAt: string | null };
   geometry: null;
   /** Dữ liệu frame AR đồng bộ với ảnh: nội tham số, tư thế camera, ma trận, tệp chiều sâu. */

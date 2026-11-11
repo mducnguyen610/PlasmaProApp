@@ -12,14 +12,15 @@ import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
 import { WoundOutline, WoundOverlay } from '@/components/WoundOverlay';
-import { analyzeImage, detectInPhoto } from '@/lib/capture/analyzeImage';
+import { getRecognizer, type RecognitionResult } from '@/lib/ai';
+import { analyzeImage } from '@/lib/capture/analyzeImage';
 import { assessCapture, distanceSource, estimateAreaCm2, HIT_SOURCE_LABEL, type ARCaptureData, type ARSessionError, type ARTone, type ARTrackingEvent, type LiveCheck } from '@/lib/capture/ar';
 import { inspectCapabilities } from '@/lib/capture/capabilities';
 import { DEFAULT_ROI, unknownQuality } from '@/lib/capture/quality';
 import type { CaptureMetadata, CaptureQuality, DeviceCapabilities, Roi } from '@/lib/capture/types';
 import { useWoundTracker } from '@/lib/capture/useWoundTracker';
 import { waitForFrame } from '@/lib/capture/waitForFrame';
-import { coverMap, DETECTOR_ID, type WoundDetection } from '@/lib/capture/woundDetect';
+import { coverMap } from '@/lib/capture/woundDetect';
 import { parseArea } from '@/lib/naming';
 import { pickPhoto, type PickedPhoto } from '@/lib/photos';
 import { useLookups, useStore } from '@/lib/store';
@@ -31,16 +32,16 @@ const TONE_COLOR: Record<ARTone, string> = { green: C.green, amber: C.amber, red
 const METHOD_AR = 'Ước lượng AR, bác sĩ đã xem lại';
 const METHODS = ['Thước đo trên vết thương', 'Phần mềm đo trên ảnh'];
 
-function roiFrom(detection: WoundDetection | null): Roi {
+function roiFrom(detection: RecognitionResult | null): Roi {
   if (!detection?.found || !detection.box) return DEFAULT_ROI;
   const b = detection.box, pad = 0.15;
   const x = Math.max(0, b.x - b.width * pad), y = Math.max(0, b.y - b.height * pad);
   return { x, y, width: Math.min(1 - x, b.width * (1 + 2 * pad)), height: Math.min(1 - y, b.height * (1 + 2 * pad)) };
 }
 
-function estimateFor(photo: Photo | null, found: WoundDetection | null) {
+function estimateFor(photo: Photo | null, found: RecognitionResult | null) {
   const hit = photo?.ar?.centerHit;
-  if (!photo?.ar || !hit || !found?.found || !found.center) return null;
+  if (!photo?.ar || !hit || !found?.found || !found.center || found.areaFraction === null) return null;
   return estimateAreaCm2({
     areaFraction: found.areaFraction, imageWidth: photo.width, imageHeight: photo.height,
     intrinsics: photo.ar.intrinsics, distanceM: hit.centerDistanceM, point: found.center,
@@ -83,7 +84,7 @@ export default function GuidedCapture() {
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [capabilities, setCapabilities] = useState<DeviceCapabilities | null>(null);
   const [quality, setQuality] = useState<CaptureQuality>(unknownQuality());
-  const [photoWound, setPhotoWound] = useState<WoundDetection | null>(null);
+  const [photoWound, setPhotoWound] = useState<RecognitionResult | null>(null);
   const [reviewed, setReviewed] = useState(false);
   const [areaText, setAreaText] = useState('');
   const [method, setMethod] = useState(METHODS[0]);
@@ -144,7 +145,7 @@ export default function GuidedCapture() {
     if (!photo) return;
     let cancelled = false;
     void (async () => {
-      const found = await detectInPhoto(photo.uri);
+      const found = await getRecognizer().recognize(photo.uri);
       if (cancelled) return;
       setPhotoWound(found);
       const est = estimateFor(photo, found);
@@ -229,7 +230,9 @@ export default function GuidedCapture() {
           : { areaCm2: null, status: 'unavailable', method: null, reasonCodes: [...(photo.ar ? [] : ['GEOMETRY_UNAVAILABLE']), ...(photoWound?.found ? [] : ['WOUND_NOT_DETECTED'])] },
         // Diện tích bác sĩ xác nhận là số đo tham chiếu; ước lượng AR được giữ riêng.
         manualReference: { areaCm2: null, method: null, confirmedBy: null, confirmedAt: null }, geometry: null,
-        ...(photoWound?.found && photoWound.box ? { wound: { detector: DETECTOR_ID, box: photoWound.box, hull: photoWound.hull, areaFraction: photoWound.areaFraction, contrast: photoWound.contrast } } : {}),
+        ...(photoWound?.found && photoWound.box && photoWound.areaFraction !== null
+          ? { wound: { detector: photoWound.modelId, box: photoWound.box, hull: photoWound.hull, areaFraction: photoWound.areaFraction, ...(photoWound.contrast !== null ? { contrast: photoWound.contrast } : {}) } }
+          : {}),
         ...(photo.ar ? { ar: photo.ar } : {}),
       };
       const image = await addImage({ woundId: w.id, ...photo, source: 'doctor', capture: metadata });
