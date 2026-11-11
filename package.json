@@ -54,7 +54,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node src/lib/localDay.test.ts && node src/theme.contrast.test.ts && node src/lib/plausibility.test.ts && node src/lib/adherence.test.ts && node src/lib/course.test.ts && node src/lib/maintenance.test.ts && node src/lib/assessment.test.ts && node src/lib/devices.test.ts && node src/lib/naming.test.ts && node src/lib/capture/ar.test.cjs && node src/lib/capture/quality.test.cjs && node src/lib/capture/woundDetect.test.cjs && node src/lib/capture/steady.test.cjs && node src/lib/capture/motion-adapter.test.cjs && node src/lib/workflow.test.cjs"
+    "test": "node src/lib/localDay.test.ts && node src/theme.contrast.test.ts && node src/lib/plausibility.test.ts && node src/lib/adherence.test.ts && node src/lib/course.test.ts && node src/lib/maintenance.test.ts && node src/lib/assessment.test.ts && node src/lib/devices.test.ts && node src/lib/naming.test.ts && node src/lib/capture/ar.test.cjs && node src/lib/capture/quality.test.cjs && node src/lib/capture/woundDetect.test.cjs && node src/lib/capture/steady.test.cjs && node src/lib/capture/motion-adapter.test.cjs && node src/lib/workflow.test.cjs && node src/lib/device/checksum.test.cjs && node src/lib/device/spec.test.cjs && node src/lib/device/protocol.test.cjs && node src/lib/device/vectors.test.cjs"
   },
   "private": true
 }
