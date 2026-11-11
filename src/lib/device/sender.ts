@@ -12,8 +12,12 @@ export type SendResult =
   | { kind: 'acked'; attempts: number }
   | { kind: 'nacked'; code: string; attempts: number }
   | { kind: 'timeout'; attempts: number }
+  /** Hết lượt gửi lại, trong thời gian chờ có nhận khung sai checksum hoặc sai cấu trúc từ máy. */
+  | { kind: 'corrupted'; attempts: number }
   | { kind: 'disconnected'; attempts: number }
   | { kind: 'incompatible'; deviceVersion: number; appVersion: number }
+  /** Máy không trả lời lệnh hỏi thông tin nên chưa kiểm được phiên bản giao thức (RK3). */
+  | { kind: 'unidentified' }
   | { kind: 'invalid'; errors: ConfigError[] };
 
 export interface Timer {
@@ -26,13 +30,17 @@ export const realTimer: Timer = {
   clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
 };
 
-export type RequestResult = { kind: 'reply'; message: DeviceMessage; attempts: number } | { kind: 'timeout' | 'disconnected'; attempts: number };
+export type RequestResult = { kind: 'reply'; message: DeviceMessage; attempts: number } | { kind: 'timeout' | 'corrupted' | 'disconnected'; attempts: number };
 
-/** Gửi một khung, chờ bản tin mà `accept` nhận; hết giờ thì gửi lại tối đa spec.maxRetries lần. */
-export function request(t: DeviceTransport, frame: Uint8Array, accept: (m: DeviceMessage) => boolean, spec: ProtocolSpec, timer: Timer = realTimer): Promise<RequestResult> {
+/**
+ * Gửi một khung, chờ bản tin mà `accept` nhận; hết giờ thì gửi lại tối đa spec.maxRetries lần.
+ * `frame` là hàm thì được gọi lại ở mỗi lần gửi, để khung mang dữ liệu mới (ví dụ đồng hồ) ở từng lần.
+ */
+export function request(t: DeviceTransport, frame: Uint8Array | (() => Uint8Array), accept: (m: DeviceMessage) => boolean, spec: ProtocolSpec, timer: Timer = realTimer): Promise<RequestResult> {
   return new Promise((resolve) => {
     const reader = createCodec(spec).createReader('device_to_app');
     let attempts = 0;
+    let corrupted = false;
     let done = false;
     let handle: unknown = null;
     const offs: (() => void)[] = [];
@@ -48,7 +56,11 @@ export function request(t: DeviceTransport, frame: Uint8Array, accept: (m: Devic
       t.onData((chunk) => {
         if (done) return;
         for (const f of reader.push(chunk)) {
-          if (f.kind !== 'frame') continue;
+          if (f.kind !== 'frame') {
+            // Khung hỏng không trả lời được lệnh, nhưng phải ghi nhận để không báo nhầm là máy im lặng.
+            corrupted = true;
+            continue;
+          }
           const m = toDeviceMessage(f, spec);
           if (accept(m)) return finish({ kind: 'reply', message: m, attempts });
         }
@@ -63,12 +75,18 @@ export function request(t: DeviceTransport, frame: Uint8Array, accept: (m: Devic
       handle = null;
       if (done) return;
       if (attempts <= spec.maxRetries) send();
-      else finish({ kind: 'timeout', attempts });
+      else finish({ kind: corrupted ? 'corrupted' : 'timeout', attempts });
     };
     const send = () => {
       attempts++;
       handle = timer.set(onTimeout, spec.ackTimeoutMs);
-      t.write(frame).catch(() => finish({ kind: 'disconnected', attempts }));
+      let bytes: Uint8Array;
+      try {
+        bytes = typeof frame === 'function' ? frame() : frame;
+      } catch {
+        return finish({ kind: 'disconnected', attempts });
+      }
+      t.write(bytes).catch(() => finish({ kind: 'disconnected', attempts }));
     };
     send();
   });
@@ -81,7 +99,7 @@ export async function identifyDevice(t: DeviceTransport, spec: ProtocolSpec, tim
   const q = encodeQuery('query_info', spec);
   if (!q) return { kind: 'known', info: null, caps: null };
   const r = await request(t, q, (m) => m.kind === 'info', spec, timer);
-  if (r.kind === 'timeout') return { kind: 'no_reply' };
+  if (r.kind === 'timeout' || r.kind === 'corrupted') return { kind: 'no_reply' };
   if (r.kind !== 'reply' || r.message.kind !== 'info') return { kind: 'disconnected' };
   const info = r.message;
   let caps: DeviceCapabilities | null = null;
@@ -94,12 +112,26 @@ export async function identifyDevice(t: DeviceTransport, spec: ProtocolSpec, tim
   return { kind: 'known', info, caps };
 }
 
-export async function sendConfig(t: DeviceTransport, cfg: TreatmentConfig, caps: DeviceCapabilities | null, spec: ProtocolSpec, opts: { timer?: Timer; deviceVersion?: number | null } = {}): Promise<SendResult> {
+export interface SendOptions {
+  timer?: Timer;
+  /**
+   * Phiên bản giao thức máy báo qua INF. `null`: đặc tả có lệnh hỏi nhưng máy chưa trả lời, chặn gửi (RK3).
+   * Bỏ trống: không kiểm, dùng khi đặc tả không có lệnh hỏi thông tin.
+   */
+  deviceVersion?: number | null;
+  /** Đồng hồ điện thoại; gọi lại ở mỗi lần gửi để ngày giờ trong khung là lúc gửi thật (FR2). */
+  now?: () => Date;
+}
+
+export async function sendConfig(t: DeviceTransport, cfg: TreatmentConfig, caps: DeviceCapabilities | null, spec: ProtocolSpec, opts: SendOptions = {}): Promise<SendResult> {
   const errors = validateConfig(cfg, caps, spec);
   if (errors.length) return { kind: 'invalid', errors };
   const dv = opts.deviceVersion;
+  if (dv === null && spec.messages.query_info) return { kind: 'unidentified' };
   if (dv !== null && dv !== undefined && dv !== spec.protocolVersion) return { kind: 'incompatible', deviceVersion: dv, appVersion: spec.protocolVersion };
-  const r = await request(t, encodeConfig(cfg, spec), (m) => (m.kind === 'ack' || m.kind === 'nak') && m.command === 'config', spec, opts.timer);
+  const now = opts.now;
+  const frame = now ? () => encodeConfig({ ...cfg, at: now() }, spec) : encodeConfig(cfg, spec);
+  const r = await request(t, frame, (m) => (m.kind === 'ack' || m.kind === 'nak') && m.command === 'config', spec, opts.timer);
   if (r.kind !== 'reply') return { kind: r.kind, attempts: r.attempts };
   if (r.message.kind === 'nak') return { kind: 'nacked', code: r.message.code, attempts: r.attempts };
   return { kind: 'acked', attempts: r.attempts };

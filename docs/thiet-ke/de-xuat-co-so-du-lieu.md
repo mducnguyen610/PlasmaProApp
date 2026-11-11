@@ -7,7 +7,7 @@ Ngày lập: 11/11/2026. Mô hình viết cho cơ sở dữ liệu quan hệ (đ
 ## 1. Nguyên tắc
 
 1. Mỗi bảng có khóa chính `id` dạng UUID do ứng dụng sinh, để bản ghi tạo ngoại tuyến không trùng khi đồng bộ (TR5).
-2. Dữ liệu lâm sàng chỉ ghi thêm: liệu trình có phiên bản, nhãn có lịch sử, phiên không sửa. Sửa là thêm bản ghi mới.
+2. Dữ liệu lâm sàng chỉ ghi thêm: liệu trình có phiên bản, nhãn có lịch sử, phiên không sửa. Sửa là thêm bản ghi mới. Ngoại lệ là yêu cầu xóa của chủ thể dữ liệu (Luật 91/2025/QH15, Nghị định 356/2025/NĐ-CP, xem [de-xuat-backend.md](de-xuat-backend.md) mục bảo mật): khi đó xóa hoặc ẩn danh dòng `patient` và ảnh gốc, giữ bản ghi lâm sàng đã giả danh hóa nếu căn cứ lưu trữ hồ sơ y tế cho phép, và ghi lại việc xóa vào nhật ký kiểm toán. Thời hạn lưu và phạm vi được xóa cần pháp chế bệnh viện xác nhận.
 3. Mọi bảng có `created_at`, `created_by`; bảng sửa được có thêm `updated_at`, `updated_by`.
 4. Họ tên, số điện thoại chỉ nằm ở `patient`; bảng nghiên cứu dùng `research_code` (FR12).
 5. Thời điểm lưu dạng `timestamptz`; mốc "ngày điều trị" lưu dạng `date` theo UTC+7 (NFR5).
@@ -48,8 +48,8 @@ Ký hiệu: PK khóa chính, FK khóa ngoại, `?` cho phép rỗng.
 
 | Bảng | Trường chính | Ràng buộc | Kiểu trong ứng dụng |
 |---|---|---|---|
-| `user` | `id` PK, `role` (`doctor`, `patient`, `admin`), `username` duy nhất, `name`, `title?`, `password_hash`, `locked`, `research_access`, `terms_version?`, `terms_accepted_at?` | `role` thuộc 3 giá trị; người bệnh phải có `patient_id` | `Account` |
-| `patient` | `id` PK, `code` duy nhất (BN001), `research_code?` duy nhất, `name`, `birth_year`, `sex`, `phone`, `doctor_id` FK `user`, `user_id?` FK `user` | `doctor_id` phải là người dùng vai trò `doctor` | `Patient` |
+| `user` | `id` PK, `role` (`doctor`, `patient`, `admin`), `username` duy nhất, `name`, `title?`, `password_hash`, `locked`, `research_access`, `terms_version?`, `terms_accepted_at?` | `role` thuộc 3 giá trị | `Account` |
+| `patient` | `id` PK, `code` duy nhất (BN001), `research_code?` duy nhất, `name`, `birth_year`, `sex`, `phone`, `doctor_id` FK `user`, `user_id?` FK `user` | `doctor_id` phải là người dùng vai trò `doctor`; `user_id` (khi có) phải là người dùng vai trò `patient` và duy nhất; tài khoản vai trò `patient` phải có đúng một dòng `patient` trỏ tới (kiểm bằng trigger hoặc ở tầng ứng dụng) | `Patient` |
 | `consent` | `id` PK, `patient_id` FK, `kind` (`research_images`, ...), `granted`, `at`, `recorded_by` FK `user`, `document_ref?` | Chỉ ghi thêm; đồng ý hiện hành là bản mới nhất theo `kind` | `Patient.researchConsent`, `consentDate` (tách thành bảng để giữ lịch sử rút đồng ý) |
 
 ### 3.2. Vết thương, liệu trình, đánh giá
@@ -69,7 +69,7 @@ Ký hiệu: PK khóa chính, FK khóa ngoại, `?` cho phép rỗng.
 | `device` | `id` PK, `code` duy nhất (TB-001), `model`, `firmware_version?`, `protocol_version?`, `lifecycle` | | `Device` |
 | `device_assignment` | `id` PK, `device_id` FK, `patient_id` FK, `tip_code?`, `assigned_at`, `returned_at?` | Mỗi `device_id` có tối đa một dòng `returned_at` rỗng (FR13) | `Device.patientId`, `Device.tip` |
 | `device_link_log` | `id` PK, `device_id?` FK, `patient_id` FK, `plan_id` FK `treatment_plan`, `at`, `by` FK `user`, `transport`, `result`, `attempts`, `nak_code?`, `protocol_version`, `caps_source` | Chỉ ghi thêm | `DeviceLinkLog` |
-| `treatment_session` | `id` PK, `device_session_id?` (mã thiết bị sinh), `device_id` FK, `wound_id?` FK, `plan_id` FK `treatment_plan`, `start`, `duration_sec`, `energy_level?`, `treatment_mode?`, `status`, `source` | (`device_id`, `device_session_id`) duy nhất để loại bản ghi trùng; `plan_id` bắt buộc (TR8) | `DeviceSession` (hiện thiếu `plan_id`, xem mục 4) |
+| `treatment_session` | `id` PK, `device_session_id` (mã thiết bị sinh; khi máy chưa có mã phiên, ứng dụng ghép mã máy với mốc bắt đầu), `device_id` FK, `wound_id?` FK, `plan_id` FK `treatment_plan`, `start`, `duration_sec`, `energy_level?`, `treatment_mode?`, `dose_j_cm2?` (FR3, khi có mật độ công suất), `status`, `source` | `device_session_id` NOT NULL và (`device_id`, `device_session_id`) duy nhất để loại bản ghi trùng; nếu giữ cột cho phép rỗng thì khóa duy nhất không chặn được các dòng rỗng, vì PostgreSQL mặc định coi các giá trị NULL là khác nhau [3]; `plan_id` bắt buộc (TR8) | `DeviceSession` (hiện thiếu `plan_id`, xem mục 4) |
 | `session_note` | `session_id` PK FK, `pain_before?`, `pain_after?`, `burning?`, `stinging?`, `redness_next_day?`, `swelling_next_day?`, `at` | | `SessionNote` |
 | `symptom_report` | `id` PK, `patient_id` FK, `date`, `kind`, `content`, `pain_level?`, `handled`, `handled_by?`, `handled_at?` | `pain_level` 0 đến 10 (VAS, FR6) | `SymptomReport` |
 
@@ -77,7 +77,7 @@ Ký hiệu: PK khóa chính, FK khóa ngoại, `?` cho phép rỗng.
 
 | Bảng | Trường chính | Ràng buộc | Kiểu trong ứng dụng |
 |---|---|---|---|
-| `image` | `id` PK (IMG0001 hoặc UUID), `wound_id` FK, `patient_id` FK, `object_key` (vị trí trong kho đối tượng), `sha256`, `ext`, `filename`, `capture_date`, `upload_date`, `uploaded_by` FK, `source` (`doctor`, `patient`), `capture_meta` (JSON: khung hướng dẫn, chất lượng, cảm biến), `exclude_reason?`, `retake_requested?` | `sha256` duy nhất theo `patient_id` để chặn ảnh trùng (FR5); `capture_date`, `wound_id` bắt buộc | `WoundImage`, `CaptureMetadata` |
+| `image` | `id` PK (IMG0001 hoặc UUID), `wound_id` FK, `patient_id` FK, `object_key` (vị trí trong kho đối tượng), `sha256`, `ext`, `filename`, `capture_date`, `upload_date`, `uploaded_by` FK, `source` (`doctor`; ảnh do bác sĩ chụp theo UR3), `capture_meta` (JSON: khung hướng dẫn, chất lượng, cảm biến), `exclude_reason?`, `retake_requested?` | `sha256` duy nhất theo `patient_id` để chặn ảnh trùng (FR5); `capture_date`, `wound_id` bắt buộc | `WoundImage`, `CaptureMetadata` |
 | `ai_result` | `id` PK, `image_id` FK, `model_name`, `model_version`, `region` (JSON: đa giác hoặc mặt nạ), `area_cm2?`, `confidence?`, `ran_at`, `ran_on` (`device`, `server`) | Chỉ ghi thêm; giữ cả kết quả cũ khi đổi mô hình | Chưa có (TR10, FR11) |
 | `annotation` | `id` PK, `image_id` FK, `method` (`classification`, `bbox`, `segmentation`), `label_set_version`, `label`, `region?` (JSON), `area_cm2?`, `based_on_ai_result_id?` FK, `annotated_by` FK, `annotated_at`, `supersedes_id?` FK `annotation`, `note?` | Chỉ ghi thêm; nhãn hiện hành là bản không bị bản nào `supersedes`; `method` chờ bác sĩ chốt (FR15) | `LabelChange`, `WoundImage.status`, `history` |
 | `dataset_version` | `id` PK, `name`, `version`, `created_by` FK, `created_at`, `label_set_version`, `export_object_key?`, `note` | (`name`, `version`) duy nhất; đóng băng sau khi tạo | Chưa có (FR12) |

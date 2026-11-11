@@ -51,9 +51,9 @@ Lệnh này tự sinh thư mục `android/` (không sửa tay, không đưa vào
 | "Chưa được cho phép truy cập USB" | Đã bấm Từ chối | Rút cáp, cắm lại, bấm Kết nối, chọn Cho phép |
 | "Chỉ hỗ trợ cầu CP210x" | Mã VID khớp danh sách nhưng không phải Silicon Labs | Cần thêm trình điều khiển cho chip đó |
 
-5. Bấm **Gửi cấu hình thử (TEST01)**. Mong đợi: dòng Gửi bắt đầu bằng `$CFG,TEST01,60,1,0,...` và dòng Nhận `$ACK,CFG*27`. So từng byte với cổng gỡ lỗi của firmware.
+5. Màn chẩn đoán không nạp cấu hình xuống máy thật (nút gửi cấu hình thử chỉ có khi dùng thiết bị giả lập). Lý do: giá trị điều trị chỉ được lấy từ liệu trình bác sĩ đã xác nhận, và mỗi lần nạp phải có nhật ký. Để thử khung `CFG` trên mạch, làm bước 7, rồi quay lại màn chẩn đoán xem bản ghi byte: dòng Gửi bắt đầu bằng `$CFG,` theo sau là mã hồ sơ, và dòng Nhận `$ACK,CFG*27`. So từng byte với cổng gỡ lỗi của firmware.
 6. Rút cáp khi đang kết nối: trạng thái phải về "Chưa kết nối", chi tiết "Đã rút cáp USB".
-7. Thử luồng thật: đăng nhập `benhnhan`, vào Thiết bị, "Kết nối máy và nạp liệu trình", gửi cấu hình, rồi "Theo dõi phiên" khi bấm nút trên máy.
+7. Thử luồng thật: đăng nhập `benhnhan` (hồ sơ phải đã được bác sĩ giao máy), vào Thiết bị, "Kết nối máy và nạp liệu trình", gửi cấu hình, rồi "Theo dõi phiên" khi bấm nút trên máy. Giữ màn theo dõi mở tới khi máy báo xong; ứng dụng ghi phiên vào nhật ký và tổng quan bác sĩ hiện "Đã chiếu".
 
 Lưu ảnh màn chẩn đoán (bản ghi hex) làm bằng chứng cho Chương 4 và cho nhóm firmware.
 

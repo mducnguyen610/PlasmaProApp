@@ -13,11 +13,11 @@ Vòng thiết kế này bắt đầu ngày 10/11/2026. Kết quả vòng cũ (10
 | 0 | Tên đề tài, phạm vi, giả định phần cứng | [00-pham-vi-va-gia-dinh.md](00-pham-vi-va-gia-dinh.md) | Phạm vi đã chốt; giả định chờ nhóm phần cứng |
 | 1 | Initial Idea | [01-y-tuong-ban-dau.md](01-y-tuong-ban-dau.md) | Bản nháp |
 | 2 | Research | [02-nghien-cuu.md](02-nghien-cuu.md) | Bản nháp, thiếu thông số phần cứng |
-| 3 | User requirements | [03-nhu-cau-nguoi-dung.md](03-nhu-cau-nguoi-dung.md) | 16 UR, chưa hỏi người dùng thật |
+| 3 | User requirements | [03-nhu-cau-nguoi-dung.md](03-nhu-cau-nguoi-dung.md) | 17 UR, chưa hỏi người dùng thật |
 | 4 | Analyse | [04-phan-tich.md](04-phan-tich.md) | 5 mâu thuẫn, phương án là đề xuất |
 | 5 | Functional requirements | [05-nhu-cau-tinh-nang.md](05-nhu-cau-tinh-nang.md) | 18 FR, 7 NFR, nhiều ngưỡng chờ chốt |
 | 6 | Solutions generation | [06-tim-giai-phap.md](06-tim-giai-phap.md) | S1 đã chốt; C1 hay C2 chờ dạng mô-đun AI; nền tảng chờ quyết định |
-| 7 | Conceptual design | [07-thiet-ke-cau-truc.md](07-thiet-ke-cau-truc.md) | 12 TR |
+| 7 | Conceptual design | [07-thiet-ke-cau-truc.md](07-thiet-ke-cau-truc.md) | 15 TR |
 | 8 | Verif/validation | [08-kiem-chung-thiet-ke.md](08-kiem-chung-thiet-ke.md) | Verification trên giấy đạt; kịch bản validation V1 đến V7 có, chưa thử |
 | 9 | Design requirements | [09-yeu-cau-thiet-ke.md](09-yeu-cau-thiet-ke.md) | 15 DR, bản nháp chờ validation |
 | 10 | Detailed design | [10-kien-truc-tong-the.md](10-kien-truc-tong-the.md), [10-thiet-ke-chi-tiet.md](10-thiet-ke-chi-tiet.md) | Bản nháp |
@@ -31,12 +31,12 @@ Tài liệu đi kèm:
 
 - [doi-chieu-ma-nguon.md](doi-chieu-ma-nguon.md): gắn từng FR, NFR với tệp mã hiện có, liệt kê phần thiếu và phần thừa.
 - [doi-chieu-quy-trinh-8-buoc.md](doi-chieu-quy-trinh-8-buoc.md): xếp quy trình 8 bước của chủ đồ án vào khung 15 bước, kèm chỗ khớp và chỗ lệch.
-- [cau-hoi-mo-va-tai-lieu.md](cau-hoi-mo-va-tai-lieu.md): 9 câu hỏi đang chặn và danh mục tài liệu tham khảo [1] đến [5].
+- [cau-hoi-mo-va-tai-lieu.md](cau-hoi-mo-va-tai-lieu.md): 12 câu hỏi (một số đã có câu trả lời) và danh mục tài liệu tham khảo [1] đến [7].
 - [10-kien-truc-tong-the.md](10-kien-truc-tong-the.md): bản nháp kiến trúc tổng thể ứng dụng (tầng, quyết định kiến trúc, mô-đun, luồng dữ liệu).
 - [de-xuat-backend.md](de-xuat-backend.md): đề xuất backend (kiến trúc, bảng FR sang API, phương án đồng bộ, bảo mật); chỉ thiết kế, không lập trình.
 - [de-xuat-co-so-du-lieu.md](de-xuat-co-so-du-lieu.md): đề xuất mô hình dữ liệu (sơ đồ ER, bảng, đối chiếu với `src/lib/types.ts`).
 - [../huong-dan/chay-usb-android.md](../huong-dan/chay-usb-android.md): cách dựng bản Android có USB thật và thử với mạch.
-- Giai đoạn 5, thiết kế giao diện: [giao-dien-01-danh-sach-man.md](giao-dien-01-danh-sach-man.md) (33 màn theo vai trò và FR), [giao-dien-02-luong-man.md](giao-dien-02-luong-man.md) (sơ đồ luồng từng vai trò, luồng demo một máy), [giao-dien-03-wireframe.md](giao-dien-03-wireframe.md) (wireframe từng màn, trạng thái lỗi USB/UART, danh sách đề xuất đổi mã).
+- Giai đoạn 5, thiết kế giao diện: [giao-dien-01-danh-sach-man.md](giao-dien-01-danh-sach-man.md) (35 màn theo vai trò và FR), [giao-dien-02-luong-man.md](giao-dien-02-luong-man.md) (sơ đồ luồng từng vai trò, luồng demo một máy), [giao-dien-03-wireframe.md](giao-dien-03-wireframe.md) (wireframe từng màn, trạng thái lỗi USB/UART, danh sách đề xuất đổi mã).
 - [icd-usb-uart.md](icd-usb-uart.md): bản nháp tài liệu giao tiếp USB/UART (khung, bản tin, 10 trường, ví dụ đối chiếu) gửi nhóm firmware điền và xác nhận.
 
 ## Quy ước

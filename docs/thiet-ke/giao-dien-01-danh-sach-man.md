@@ -39,7 +39,7 @@ Trạng thái: **bản nháp** (11/11/2026). Lập từ mã nhánh `trien-khai/g
 | N05 | Chi tiết vết thương (chế độ xem của người bệnh): biểu đồ diện tích, đánh giá đã công bố | `wounds/[id].tsx` | FR7 | Có |
 | N06 | Đợt điều trị của tôi (chỉ xem) | `plan/[patientId].tsx` | FR1, FR9 | Có, nhưng chưa màn nào của người bệnh dẫn tới (xem sơ đồ luồng mục 2) |
 | N07 | Thiết bị của tôi: tiến độ, phiên sử dụng, chăm sóc thiết bị, lối vào T01, T02 | `patient/device.tsx`, `DeviceView.tsx` | FR4, FR13 | Có |
-| N08 | Báo triệu chứng hoặc sự cố | `report.tsx` | FR6 | Một phần: chưa có thang VAS 0 đến 10 trong màn này |
+| N08 | Báo triệu chứng hoặc sự cố | `report.tsx` | FR6 | Một phần: có thang VAS 0 đến 10 và cảnh báo từ mức 7 (`report.tsx`); ngưỡng chưa do bác sĩ đặt |
 
 `patient/send.tsx` chỉ chuyển hướng sang N04 (luồng người bệnh tự gửi ảnh đã bỏ, vì FR5 giao việc chụp cho bác sĩ). Không tính là màn.
 
@@ -50,7 +50,7 @@ Trạng thái: **bản nháp** (11/11/2026). Lập từ mã nhánh `trien-khai/g
 | B01 | Trang chủ: ô việc cần làm, danh sách người bệnh xếp theo mức cần chú ý, 3 trạng thái hôm nay | `doctor/index.tsx` | FR10 | Có |
 | B02 | Danh sách người bệnh, tìm kiếm | `doctor/patients.tsx` | FR18 | Có |
 | B03 | Thêm người bệnh, cấp mã hồ sơ, mã kích hoạt | `patients/new.tsx` | FR18 | Có |
-| B04 | Hồ sơ người bệnh: thông tin, vết thương, thiết bị, báo cáo người bệnh gửi | `patients/[id].tsx` | FR18, FR6, FR13 | Một phần: chưa sửa được họ tên, năm sinh, số điện thoại (FR18) |
+| B04 | Hồ sơ người bệnh: thông tin, vết thương, thiết bị, báo cáo người bệnh gửi | `patients/[id].tsx` | FR18, FR6, FR13 | Một phần: có mục Giao máy (giao, thu hồi); chưa sửa được họ tên, năm sinh, số điện thoại (FR18) |
 | B05 | Thông tin vết thương: diện tích theo thời gian, album ảnh, đợt điều trị, đánh giá | `wounds/[id].tsx` | FR7, FR17 | Có |
 | B06 | Thiết lập thông tin điều trị (đợt điều trị có phiên bản, lý do thay đổi) | `plan/[patientId].tsx` | FR9, FR2 (nguồn cấu hình), FR3 | Một phần: chưa giới hạn an toàn theo năng lực máy (FR9), chưa tính J/cm² (FR3) |
 | B07 | Đánh giá tình trạng vết thương | `evaluate/[woundId].tsx` | Không có FR (mục "thừa" ở doi-chieu-ma-nguon) | Có |
@@ -65,8 +65,8 @@ Trạng thái: **bản nháp** (11/11/2026). Lập từ mã nhánh `trien-khai/g
 
 | Mã | Màn | Tệp | Vai trò | FR | Hiện trạng |
 |---|---|---|---|---|---|
-| T01 | Kết nối thiết bị Plasma Pro và nạp liệu trình | `connect-device.tsx` | Người bệnh (tại nhà), bác sĩ (tại phòng khám) | FR2 | Một phần: chưa thử với mạch; mã NAK hiện dạng thô; khung sai checksum từ máy không được báo riêng (xem wireframe) |
-| T02 | Theo dõi phiên điều trị và trạng thái kết nối | `session-monitor.tsx` | Người bệnh, bác sĩ | FR2, FR4 | Một phần: chưa đọc nhật ký phiên từ máy (FR4, chờ F11 của ICD); không báo khi bản tin trạng thái ngừng đến |
+| T01 | Kết nối thiết bị Plasma Pro và nạp liệu trình | `connect-device.tsx` | Người bệnh (tại nhà), bác sĩ (tại phòng khám) | FR2 | Một phần: chưa thử với mạch; mã NAK hiện dạng thô; khung hỏng từ máy đã được báo riêng (`corrupted`); chặn gửi khi hồ sơ chưa được giao máy hoặc máy chưa trả `INF` |
+| T02 | Theo dõi phiên điều trị và trạng thái kết nối | `session-monitor.tsx` | Người bệnh, bác sĩ | FR2, FR4 | Một phần: ghi phiên khi `STA` báo kết thúc; chưa đọc nhật ký phiên từ máy (FR4, chờ F11 của ICD); không báo khi bản tin trạng thái ngừng đến |
 
 ### Quản trị viên
 
@@ -74,12 +74,12 @@ Trạng thái: **bản nháp** (11/11/2026). Lập từ mã nhánh `trien-khai/g
 |---|---|---|---|---|
 | Q01 | Quản lý tài khoản: duyệt, khóa, quyền xuất dữ liệu, phân công bác sĩ | `admin/index.tsx` | NFR1 | Có |
 | Q02 | Kho dữ liệu kỹ thuật, xuất ZIP ảnh có nhãn | `admin/dataset.tsx` | FR12 | Một phần: chưa có số phiên bản bộ dữ liệu |
-| Q03 | Thiết bị: đăng ký, gán cho người bệnh, lối vào Q05 | `admin/devices.tsx` | FR13, FR14 | Một phần: chưa gán bằng quét mã (FR13) |
+| Q03 | Thiết bị: đăng ký, xem máy đang giao cho ai, lối vào Q05 (giao máy do bác sĩ làm ở B04) | `admin/devices.tsx` | FR14 | Có |
 | Q04 | Lỗi đồng bộ thiết bị và máy chủ | `admin/logs.tsx` | FR8 | Có (dữ liệu mẫu, chưa có máy chủ) |
-| Q05 | Chẩn đoán kết nối USB/UART: đặc tả, hỏi máy, gửi cấu hình thử, byte gửi và nhận | `device-diagnostics.tsx` | FR2, TR3 | Có |
+| Q05 | Chẩn đoán kết nối USB/UART: đặc tả, hỏi máy, byte gửi và nhận; cấu hình thử chỉ gửi tới thiết bị giả lập | `device-diagnostics.tsx` | FR2, TR3 | Có |
 | Q06 | Thiết bị và nhật ký (mức kỹ thuật) | `devices/[id].tsx` | FR14 | Có, dùng chung tệp với B13 |
 
-Tổng cộng 33 màn: 6 chung, 8 người bệnh, 13 bác sĩ, 2 thiết bị dùng chung, 6 quản trị (Q06 và B13 cùng một tệp, khác mức hiển thị).
+Tổng cộng 35 màn: 6 chung, 8 người bệnh, 13 bác sĩ, 2 thiết bị dùng chung, 6 quản trị (34 tệp màn, vì Q06 và B13 cùng một tệp, khác mức hiển thị).
 
 ## Đối chiếu với 12 nhóm màn của giai đoạn 5
 

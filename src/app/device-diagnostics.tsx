@@ -13,7 +13,11 @@ import { fmtDateTime } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import { C } from '@/theme';
 
-/** Màn chẩn đoán kết nối cho quản trị viên: đặc tả đang dùng, hỏi máy, gửi cấu hình thử, bản ghi byte. */
+/**
+ * Màn chẩn đoán kết nối cho quản trị viên: đặc tả đang dùng, hỏi máy, bản ghi byte.
+ * Với máy thật, màn này chỉ hỏi (INF, CAP), không nạp cấu hình điều trị: giá trị điều trị chỉ đến từ liệu trình
+ * bác sĩ đã xác nhận (FR2, KT5) và mỗi lần nạp phải có nhật ký (DR15). Cấu hình thử chỉ gửi được tới thiết bị giả lập.
+ */
 export default function DeviceDiagnostics() {
   const { me } = useStore();
   const link = useDeviceLink();
@@ -33,7 +37,9 @@ export default function DeviceDiagnostics() {
   const fr = PROTOCOL.framing;
   const idInfo = link.identity?.kind === 'known' ? link.identity.info : null;
 
+  const simulated = link.kind === 'simulated';
   const sendTest = async () => {
+    if (!simulated) return;
     const r = await link.send({ patientId: 'TEST01', minTreatmentTimeSec: 60, energyLevel: 1, treatmentMode: 'cold', at: new Date() });
     setNote(sendResultLabel(r));
   };
@@ -80,7 +86,11 @@ export default function DeviceDiagnostics() {
           {idInfo && <InfoRow label="Mã mẫu" value={idInfo.model} />}
           <InfoRow label="Năng lực" value={link.caps ? `Mức ${link.caps.energyLevels.join(', ')}; chế độ ${link.caps.treatmentModes.map((m) => m.label).join(', ')} (${link.capsSource === 'device' ? 'từ máy' : 'bảng dự phòng'})` : 'Chưa có'} stack />
           <Button label="Hỏi thông tin máy" variant="secondary" icon="help-circle-outline" onPress={link.identify} />
-          <Button label="Gửi cấu hình thử (TEST01)" variant="secondary" icon="send-outline" onPress={sendTest} />
+          {simulated ? (
+            <Button label="Gửi cấu hình thử tới thiết bị giả lập (TEST01)" variant="secondary" icon="send-outline" onPress={sendTest} />
+          ) : (
+            <Muted>Với máy thật, thử nạp cấu hình bằng luồng của người bệnh (Thiết bị, Kết nối máy và nạp liệu trình) để lần nạp có nhật ký.</Muted>
+          )}
           {note && <Notice tone="blue" icon="information-circle-outline">{note}</Notice>}
         </Card>
       )}

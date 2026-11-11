@@ -5,7 +5,7 @@ import { Text } from '@/components/Text';
 
 import { patientSeverity, SEVERITY } from '@/lib/access';
 import { Chip, IconBadge, WoundPhoto, type IconName } from '@/components/ui';
-import { fmtDate, LABEL_STATUS } from '@/lib/format';
+import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, WoundImage } from '@/lib/types';
@@ -39,7 +39,7 @@ export function AppointmentRow({ date, title, body, today }: { date: string; tit
   );
 }
 
-const TODAY_TONE: Record<TodayState, 'green' | 'amber' | 'gray' | 'blue'> = { treated: 'green', due: 'amber', no_data: 'gray', rest: 'blue', no_plan: 'gray' };
+const TODAY_TONE: Record<TodayState, 'green' | 'amber' | 'gray' | 'blue' | 'red'> = { treated: 'green', missed: 'red', due: 'amber', no_data: 'gray', rest: 'blue', no_plan: 'gray' };
 
 export function PatientCard({ patient, attention }: { patient: Patient; attention?: Attention }) {
   const { device, woundsOf } = useLookups();
@@ -64,6 +64,8 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
       {attention && (
         <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingLeft: 52 }}>
           <Chip label={TODAY_LABEL[attention.state]} tone={TODAY_TONE[attention.state]} />
+          {/* FR10: "chưa có dữ liệu" luôn kèm lần đồng bộ cuối, để bác sĩ phân biệt máy chưa gửi với người bệnh không chiếu. */}
+          {attention.state === 'no_data' && <Text style={{ color: C.textSoft, fontSize: 13 }}>{dev?.lastSync ? `đồng bộ lần cuối ${fmtDateTime(dev.lastSync)}` : 'chưa từng đồng bộ'}</Text>}
           {attention.reasons[0] ? <Text style={{ color: C.textSoft, fontSize: 13, flexShrink: 1 }}>{attention.reasons[0]}</Text> : null}
         </View>
       )}

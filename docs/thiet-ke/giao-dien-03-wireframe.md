@@ -163,12 +163,14 @@ Bảng các kết quả lỗi:
 | G2 | `nacked`, mã `BAD_FIELDS` | "Máy từ chối cấu hình, mã BAD_FIELDS." | "Máy không nhận giá trị của đợt điều trị. Hãy báo bác sĩ." kèm nút sang N08 **(đề xuất)** | Không gửi lại; gửi lại vẫn lỗi |
 | G3 | `nacked`, mã `BUSY` | "Máy từ chối cấu hình, mã BUSY." | "Máy đang chiếu hoặc đang bận. Chờ máy xong rồi gửi lại." **(đề xuất)** | Gửi lại sau |
 | G4 | `nacked`, mã khác | "Máy từ chối cấu hình, mã <mã>." | Giữ, thêm "Hãy báo bác sĩ." | Báo sự cố |
-| G5 | `timeout` | "Máy không trả lời sau 3 lần gửi." | Thêm "Kiểm tra máy đã bật." Nếu trong lúc chờ có khung trả về sai checksum: "Máy có trả lời nhưng dữ liệu bị hỏng (sai checksum). Kiểm tra cáp." **(đề xuất)** | Gửi lại |
+| G5 | `timeout` | "Máy không trả lời sau 3 lần gửi." | Thêm "Kiểm tra máy đã bật." **(đề xuất)** | Gửi lại |
+| G5b | `corrupted` (có khung sai checksum hoặc sai cấu trúc trong lúc chờ) | "Máy trả về dữ liệu hỏng (sai checksum hoặc sai cấu trúc) sau 3 lần gửi. Hãy kiểm tra cáp rồi gửi lại." | Giữ | Gửi lại |
+| G5c | `unidentified` (máy chưa trả `INF`) | "Máy chưa trả lời lệnh hỏi thông tin nên chưa kiểm được phiên bản giao thức. Hãy ngắt rồi kết nối lại." | Giữ | Kết nối lại |
 | G6 | `disconnected` (rút cáp lúc gửi) | "Mất kết nối, hãy cắm lại cáp và gửi lại." | Giữ. Thêm nút "Kết nối lại" ngay dưới thông báo **(đề xuất)**, vì nút Gửi lại ẩn khi chưa kết nối | Kết nối lại, rồi Gửi lại |
 | G7 | `incompatible` | Như T01-e | Giữ | Không gửi |
 | G8 | `invalid` | "Cấu hình không hợp lệ: ..." | Giữ | Bác sĩ sửa đợt |
 
-Khoảng trống trong mã (độ tin cậy cao, đã đọc `useDeviceLink.ts`, `sender.ts`, `codec-text.ts`, `codec-binary.ts`): bộ đọc khung trả về `bad_checksum` và `malformed`, nhưng `request()` trong `sender.ts` bỏ qua mọi kết quả khác `frame`. Vì vậy khung máy gửi về bị sai checksum hiện ra như hết giờ (G5), người dùng không phân biệt được "máy không trả lời" với "dây lỗi". Đề xuất G5 cần đổi `request()` để đếm số khung sai và trả kèm trong kết quả `timeout`.
+Khoảng trống này đã được sửa ngày 11/11/2026: `request()` trong `sender.ts` ghi nhận khung `bad_checksum`, `malformed` và trả `corrupted` (G5b) thay cho `timeout` khi hết lượt gửi lại.
 
 ### T02. Theo dõi phiên điều trị và trạng thái kết nối
 
@@ -249,7 +251,9 @@ Khoảng trống trong mã (độ tin cậy cao, đã đọc `useDeviceLink.ts`,
 │ │ Giao thức của máy, Firmware, Mã  │ │
 │ │ mẫu, Năng lực                    │ │
 │ │ [ Hỏi thông tin máy ]            │ │
-│ │ [ Gửi cấu hình thử (TEST01) ]    │ │
+│ │ Máy thật: "Thử nạp cấu hình bằng │ │  không nạp cấu hình xuống máy thật
+│ │ luồng của người bệnh"            │ │  (FR2, KT5, DR15)
+│ │ Giả lập: [ Gửi cấu hình thử ]    │ │
 │ │ i <kết quả gửi thử>              │ │
 │ └──────────────────────────────────┘ │
 │ Byte gửi và nhận        Xóa bản ghi  │
@@ -392,7 +396,7 @@ Dùng chung bố cục với B05 nhưng ẩn mọi nút sửa; chỉ hiện đá
 └──────────────────────────────────────┘
 ```
 
-Chưa gán thiết bị: thẻ rỗng "Chưa được gán thiết bị." Hai nút T01, T02 vẫn hiện để demo với thiết bị giả lập.
+Chưa gán thiết bị: thẻ rỗng "Chưa được gán thiết bị." Hai nút T01, T02 ẩn, vì phiên và nhật ký nạp phải gắn với một máy (FR13); bác sĩ giao máy ở B04.
 
 ### N08. Báo triệu chứng hoặc sự cố
 
@@ -401,6 +405,8 @@ Chưa gán thiết bị: thẻ rỗng "Chưa được gán thiết bị." Hai n�
 │ < Báo triệu chứng / sự cố            │
 ├──────────────────────────────────────┤
 │ ( Triệu chứng ) ( Sự cố thiết bị )   │
+│ Mức đau (VAS)                        │
+│ (0)(1)(2)(3)(4)(5)(6)(7)(8)(9)(10)   │  từ 7: hiện hướng dẫn liên hệ bác sĩ
 │ Mô tả                                │
 │ ____________________________________ │
 │ ____________________________________ │
@@ -435,9 +441,10 @@ Lỗi: mô tả trống thì nút Gửi mờ. Gửi xong: hộp thoại xác nh�
 │ │ VT1 · bỏ lỡ 2/7 ngày · 1 báo cáo │ │
 │ ├──────────────────────────────────┤ │
 │ │ BN002 Trần Thị B  (Chưa có dữ    │ │  3 trạng thái: Đã điều trị,
-│ │ liệu) · đồng bộ lần cuối 09/11   │ │  Bỏ lỡ, Chưa có dữ liệu
+│ │ liệu) · đồng bộ lần cuối 09/11   │ │  Bỏ lỡ, Chưa có dữ liệu (nhãn trong mã:
+│ │                                  │ │  Đã chiếu, Bỏ lỡ, Chưa có dữ liệu)
 │ ├──────────────────────────────────┤ │
-│ │ BN001 Lê Văn C   (Đã điều trị)   │ │
+│ │ BN001 Lê Văn C   (Đã chiếu)      │ │
 │ └──────────────────────────────────┘ │
 ├──────────────────────────────────────┤
 │ Trang chủ  Bệnh nhân (📷) Ảnh   TK   │
@@ -487,6 +494,8 @@ Không có kết quả: "Không tìm thấy bệnh nhân phù hợp."
 │  VT1 · Cẳng chân trái  (Đang điều trị) >│
 │ Đợt điều trị                      >  │  sang B06
 │ Thiết bị PP-0007                  >  │  sang B13
+│ Giao máy: [Thu hồi PP-0007]          │  chưa giữ máy: [Giao TB-xxx] cho từng
+│                                      │  máy đã khử khuẩn, kiểm tra (FR13)
 │ Triệu chứng và sự cố bệnh nhân báo   │
 │  10/11 "Đau rát sau khi chiếu"       │
 │  [Đã xử lý]                          │
@@ -699,7 +708,7 @@ Q06 thêm phần "Vòng đời thiết bị cho thuê", "Tổng thời gian", "T
 │  Mã thiết bị ____  [ Đăng ký ]       │
 │ [ Chẩn đoán kết nối USB/UART ]       │  sang Q05
 │ PP-0007 · Firmware 0.3.1             │
-│  Gán cho ( BN004 )  [ Xem nhật ký ]  │  sang Q06
+│  Đang giao cho: BN004 [ Xem nhật ký ]│  sang Q06; quản trị chỉ xem, bác sĩ giao ở B04
 ```
 
 ### Q04. Lỗi hệ thống
@@ -776,20 +785,20 @@ C04 và C05 là trang văn bản cuộn, có nút quay lại.
 
 ## F. Tổng hợp đề xuất đổi mã từ wireframe
 
-Các mục dưới chưa làm. Mỗi mục cần cập nhật [doi-chieu-ma-nguon.md](doi-chieu-ma-nguon.md) khi làm.
+Các mục dưới chưa làm, trừ mục ghi "Đã làm". Mỗi mục cần cập nhật [doi-chieu-ma-nguon.md](doi-chieu-ma-nguon.md) khi làm.
 
 | # | Màn | Đề xuất | FR | Độ ưu tiên (đề xuất) |
 |---|---|---|---|---|
-| 1 | T01 | Đếm khung sai checksum, sai cấu trúc trong `request()` và báo riêng ở kết quả hết giờ (G5) | FR2 | Cao: cần khi thử với mạch |
+| 1 | T01 | Đếm khung sai checksum, sai cấu trúc trong `request()` và báo riêng ở kết quả hết giờ (G5) | FR2 | Đã làm ngày 11/11/2026 (G5b) |
 | 2 | T01 | Nhãn dễ hiểu cho mã NAK `BAD_CHECKSUM`, `BAD_FIELDS`, `BUSY` (G1 đến G3) | FR2 | Cao |
 | 3 | T01 | Nút "Kết nối lại" sau G6; hiện lần gửi đang chạy (T01-f) | FR2 | Trung bình |
 | 4 | T01 | Trạng thái riêng cho iOS chưa có USB thật (K5) | FR2 | Trung bình, chờ quyết định nền tảng |
 | 5 | T02 | Thông báo và nút tiếp theo cho `done`, `stopped`, `error`; cảnh báo khi `STA` ngừng đến (P1 đến P5) | FR4, FR6 | Trung bình |
 | 6 | Q05 | Đánh dấu khung nhận lỗi trong bản ghi byte | TR3 | Trung bình |
-| 7 | N02 | Hiện chế độ điều trị | FR1 | Trung bình |
-| 8 | N03, N08 | Thang VAS 0 đến 10, ngưỡng do bác sĩ đặt | FR6 | Chờ bác sĩ chốt ngưỡng |
+| 7 | N02 | Hiện chế độ điều trị | FR1 | Đã có trong mã (`CourseCard.tsx`) |
+| 8 | N03, N08 | Ngưỡng VAS do bác sĩ đặt (thang 0 đến 10 đã có ở N08) | FR6 | Chờ bác sĩ chốt ngưỡng |
 | 9 | B06 | Liều J/cm² ước tính | FR3 | Chờ WCMD |
-| 10 | B10 | Tên, phiên bản mô hình AI; sửa vùng; xử lý lỗi mô-đun | FR11 | Chờ dạng mô-đun AI |
+| 10 | B10 | Hiện tên, phiên bản mô hình AI (đã lưu trong `capture.wound`); sửa vùng; xử lý lỗi mô-đun | FR11 | Chờ dạng mô-đun AI |
 | 11 | B12 | Tìm theo mã người bệnh | FR17 | Thấp |
 | 12 | Q02 | Số phiên bản bộ dữ liệu | FR12 | Thấp |
 | 13 | N05, N06 | Lối vào N06 cho người bệnh, hoặc bỏ chế độ xem người bệnh | FR1 | Thấp |

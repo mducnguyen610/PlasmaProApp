@@ -47,6 +47,10 @@ export default function DoctorHome() {
           lastSyncDay,
           today,
           missedLast7,
+          missedYesterday: (() => {
+            const y = addDays(today, -1);
+            return plans.some((pl) => isScheduled(pl, y)) && !doneOn(y) && lastSyncDay !== null && y <= lastSyncDay;
+          })(),
           openReports: data.reports.filter((r) => r.patientId === p.id && !r.handled).length,
           severity: patientSeverity(data, p.id),
         };

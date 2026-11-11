@@ -18,7 +18,7 @@ import { courseProgress, localDay } from '@/lib/course';
 // BS03 – Hồ sơ bệnh nhân: thông tin, bác sĩ phụ trách, thiết bị, liệu trình, vết thương.
 export default function PatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, me, updatePatient, addWound, setReportHandled, issueActivation } = useStore();
+  const { data, me, updatePatient, addWound, setReportHandled, issueActivation, assignDevice, setLifecycle } = useStore();
   const { patient, account, device, woundsOf, imagesOf, activePlan, sessionsOf } = useLookups();
   const p = patient(id);
   const canView = useCanView(p);
@@ -37,6 +37,24 @@ export default function PatientDetail() {
   const login = data.accounts.find((a) => a.patientId === p.id);
   const pending = !login || isPendingActivation(login);
   const codeLive = !!login?.activationHash && !!login.activationExpiresAt && login.activationExpiresAt > new Date().toISOString();
+  // Máy rảnh để giao: chưa gán ai và đã qua khử khuẩn, kiểm tra (vòng đời sẵn sàng).
+  const freeDevices = data.devices.filter((d) => !d.patientId && (d.lifecycle ?? 'ready') === 'ready');
+  const giveDevice = (deviceId: string) => {
+    try {
+      assignDevice(deviceId, p.id);
+    } catch (e) {
+      notify('Chưa giao được máy', e instanceof Error ? e.message : String(e));
+    }
+  };
+  const takeBack = () =>
+    confirm('Thu hồi máy', 'Gỡ máy khỏi bệnh nhân và bỏ đầu phát đang dùng. Máy chuyển sang chờ khử khuẩn.', () => {
+      try {
+        if (dev?.lifecycle === 'in_use') setLifecycle(dev.id, 'returned');
+        else if (dev) assignDevice(dev.id, null);
+      } catch (e) {
+        notify('Chưa thu hồi được', e instanceof Error ? e.message : String(e));
+      }
+    }, 'Thu hồi');
   const issue = async () => {
     setIssuing(true);
     try {
@@ -90,6 +108,18 @@ export default function PatientDetail() {
           <NumberTile icon={dev?.online ? 'wifi' : 'cloud-offline-outline'} tone={dev ? (dev.online ? 'green' : 'gray') : 'amber'} value={dev?.code ?? '—'} label={dev ? (dev.online ? 'Đang kết nối' : 'Mất kết nối') : 'Chưa gán thiết bị'}
             onPress={dev ? () => router.push({ pathname: '/devices/[id]', params: { id: dev.id } }) : undefined} />
         </View>
+        {/* Giao máy, thu hồi thuộc bác sĩ phụ trách (UR11). */}
+        {isDoctor && (
+          <Disclosure icon="hardware-chip-outline" title="Giao máy" summary={dev ? `Đang giữ ${dev.code}` : freeDevices.length ? `${freeDevices.length} máy sẵn sàng` : 'Không có máy sẵn sàng'}>
+            {dev ? (
+              <Button label={`Thu hồi ${dev.code}`} variant="secondary" icon="return-down-back-outline" onPress={takeBack} />
+            ) : freeDevices.length === 0 ? (
+              <Muted>Chưa có máy nào đã khử khuẩn và kiểm tra xong. Quản trị kỹ thuật cập nhật vòng đời máy.</Muted>
+            ) : (
+              freeDevices.map((d) => <Button key={d.id} label={`Giao ${d.code}`} variant="secondary" icon="arrow-forward-circle-outline" onPress={() => giveDevice(d.id)} />)
+            )}
+          </Disclosure>
+        )}
         <Divider />
         <Disclosure title="Thông tin hồ sơ" summary={`${account(p.doctorId)?.name ?? 'Chưa có bác sĩ'} · ${p.researchConsent ? 'đồng ý nghiên cứu' : 'chưa đồng ý nghiên cứu'}`}>
           <InfoRow label="SĐT" value={p.phone || '—'} />

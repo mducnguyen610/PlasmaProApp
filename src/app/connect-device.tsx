@@ -44,16 +44,19 @@ export default function ConnectDevice() {
   const wire = cfg && errors.length === 0 ? configToWire(cfg, PROTOCOL) : null;
   const idInfo = link.identity?.kind === 'known' ? link.identity.info : null;
   const versionMismatch = !!idInfo && idInfo.protocolVersion !== PROTOCOL.protocolVersion;
-  const canSend = link.state === 'connected' && !!cfg && errors.length === 0 && !versionMismatch && !sending;
+  const noDevice = !p.deviceId;
+  // Máy chưa trả lời lệnh hỏi thông tin: chưa kiểm được phiên bản, không gửi (RK3).
+  const unidentified = link.state === 'connected' && !!PROTOCOL.messages.query_info && link.identity?.kind !== 'known';
+  const canSend = link.state === 'connected' && !!cfg && errors.length === 0 && !versionMismatch && !unidentified && !noDevice && !sending;
 
   const send = async () => {
-    if (!cfg || !plan) return;
+    if (!cfg || !plan || !p.deviceId) return;
     setSending(true);
     try {
       const r = await link.send(cfg);
       setResult(r);
       recordDeviceLink({
-        deviceId: p.deviceId ?? null,
+        deviceId: p.deviceId!,
         patientId: p.id,
         planId: plan.id,
         planVersion: plan.version,
@@ -97,6 +100,8 @@ export default function ConnectDevice() {
           )}
         </View>
       </Card>
+      {noDevice && <Notice tone="red">Hồ sơ chưa được giao máy. Bác sĩ phụ trách cần giao máy trên hồ sơ người bệnh trước khi nạp liệu trình.</Notice>}
+      {unidentified && <Notice tone="red">Máy chưa trả lời lệnh hỏi thông tin nên chưa kiểm được phiên bản giao thức. Hãy ngắt rồi kết nối lại.</Notice>}
       {versionMismatch && idInfo && (
         <Notice tone="red">{`Máy dùng giao thức phiên bản ${idInfo.protocolVersion}, ứng dụng dùng phiên bản ${PROTOCOL.protocolVersion}, cần cập nhật ứng dụng hoặc firmware.`}</Notice>
       )}
@@ -139,7 +144,7 @@ export default function ConnectDevice() {
       )}
       {result && result.kind !== 'acked' && canSend && <Button label="Gửi lại" variant="secondary" icon="refresh-outline" onPress={send} />}
       {result?.kind === 'acked' && (
-        <Button label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={() => router.push({ pathname: '/session-monitor', params: { patientId: p.id } })} />
+        <Button label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={() => router.push({ pathname: '/session-monitor', params: { patientId: p.id, woundId: selected?.wound.id } })} />
       )}
     </Screen>
   );

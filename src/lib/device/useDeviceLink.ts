@@ -1,6 +1,6 @@
 // Hook React bọc đường truyền dùng chung: trạng thái kết nối, thông tin máy, gửi cấu hình, trạng thái phiên.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { capabilitiesFor } from './capabilities';
 import type { DeviceCapabilities } from './capabilities';
@@ -9,6 +9,8 @@ import { getTransport, onTransportChange, PROTOCOL } from './index';
 import { toDeviceMessage } from './protocol';
 import type { DeviceMessage, TreatmentConfig } from './protocol';
 import { identifyDevice, sendConfig } from './sender';
+import { createSessionTracker } from './session-tracker';
+import type { FinishedSession } from './session-tracker';
 import type { DeviceIdentity, SendResult } from './sender';
 import type { LinkState } from './transport';
 
@@ -18,8 +20,17 @@ export type StatusMessage = Extract<DeviceMessage, { kind: 'status' }>;
 let lastState: LinkState = 'disconnected';
 let lastIdentity: DeviceIdentity | null = null;
 
-export function useDeviceLink() {
+export interface DeviceLinkOptions {
+  /** Gọi khi chuỗi STA cho thấy một phiên vừa kết thúc (running rồi done, stopped hoặc error). */
+  onSessionEnd?: (s: FinishedSession) => void;
+}
+
+export function useDeviceLink(opts: DeviceLinkOptions = {}) {
   const [, setGen] = useState(0);
+  const onSessionEnd = useRef(opts.onSessionEnd);
+  useEffect(() => {
+    onSessionEnd.current = opts.onSessionEnd;
+  });
   const transport = getTransport();
   const [state, setState] = useState<LinkState>(lastState);
   const [detail, setDetail] = useState<string | undefined>();
@@ -45,8 +56,11 @@ export function useDeviceLink() {
 
   useEffect(() => {
     const reader = createCodec(PROTOCOL).createReader('device_to_app');
+    const tracker = createSessionTracker();
     const offState = transport.onState((s, d) => {
       lastState = s;
+      // Mất kết nối giữa phiên: bỏ phiên dở, không ghi.
+      if (s !== 'connected') tracker.reset();
       setState(s);
       setDetail(d);
       if (s !== 'connected') {
@@ -59,8 +73,11 @@ export function useDeviceLink() {
         if (f.kind !== 'frame') continue;
         const m = toDeviceMessage(f, PROTOCOL);
         if (m.kind === 'status') {
+          const now = new Date();
           setLastStatus(m);
-          setLastStatusAt(new Date().toISOString());
+          setLastStatusAt(now.toISOString());
+          const done = tracker.push(m, now);
+          if (done) onSessionEnd.current?.(done);
         }
       }
     });
@@ -99,7 +116,13 @@ export function useDeviceLink() {
   }, [transport]);
 
   const send = useCallback(
-    (cfg: TreatmentConfig): Promise<SendResult> => sendConfig(transport, cfg, caps, PROTOCOL, { deviceVersion: identity?.kind === 'known' ? (identity.info?.protocolVersion ?? null) : null }),
+    (cfg: TreatmentConfig): Promise<SendResult> =>
+      sendConfig(transport, cfg, caps, PROTOCOL, {
+        // Máy đã trả INF: kiểm phiên bản. Đặc tả không có lệnh hỏi: bỏ qua. Còn lại (chưa hỏi, không trả lời): chặn gửi.
+        deviceVersion: identity?.kind === 'known' ? (identity.info ? identity.info.protocolVersion : undefined) : null,
+        // Ngày giờ lấy lại ở mỗi lần gửi, không dùng lúc vẽ màn.
+        now: () => new Date(),
+      }),
     [transport, caps, identity],
   );
 

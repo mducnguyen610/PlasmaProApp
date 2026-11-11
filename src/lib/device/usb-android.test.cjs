@@ -145,6 +145,20 @@ function fakeNative(devices, opts = {}) {
     await t.close();
     assert.equal(n.closed, 1);
   }
+  // Gọi open() hai lần khi lần đầu chưa xong: chỉ một bộ listener, mỗi khối dữ liệu tới một lần, đóng thì gỡ hết.
+  {
+    const n = fakeNative([CP]);
+    const t = createUsbAndroidTransport(n, PROTOCOL, SIM_MODEL);
+    const got = [];
+    t.onData((b) => got.push(b.length));
+    await Promise.all([t.open(), t.open()]);
+    assert.equal(n.count('onData'), 1);
+    n.emit('onData', { bytes: [1, 2, 3] });
+    assert.deepEqual(got, [3]);
+    await t.close();
+    assert.equal(n.count('onData'), 0);
+    assert.equal(n.count('onDetached'), 0);
+  }
   console.log('usb-android.test: ok');
 })().catch((e) => {
   console.error(e);

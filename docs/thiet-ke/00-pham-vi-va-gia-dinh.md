@@ -8,7 +8,7 @@
 
 | Thành phần | Phạm vi thực hiện | Mức trong hồ sơ này | Khối, TR liên quan |
 |---|---|---|---|
-| Ứng dụng điện thoại | Phân tích, thiết kế và lập trình | Làm đủ 15 bước | Ứng dụng người bệnh, ứng dụng bác sĩ; TR4 đến TR6, TR11, TR12 |
+| Ứng dụng điện thoại | Phân tích, thiết kế và lập trình | Làm đủ 15 bước | Ứng dụng người bệnh, ứng dụng bác sĩ; TR4 đến TR6, TR11 đến TR15 |
 | Giao tiếp USB/UART | Phát triển chức năng gửi và nhận dữ liệu với firmware | Lập trình phía ứng dụng | TR3 (phía ứng dụng), TR4 |
 | Backend | Đề xuất kiến trúc, chức năng và phương án kết nối | Chỉ đề xuất, không lập trình | Máy chủ IoMT; TR7, TR9 |
 | Database | Đề xuất mô hình dữ liệu, bảng và quan hệ | Chỉ đề xuất, không lập trình | TR8 |
@@ -22,7 +22,7 @@ Mọi UR, FR, TR trong hồ sơ phải truy được về một dòng của bả
 
 ## Cách đọc
 
-Tài liệu này đi lại 15 bước ở slide 12 của bài giảng [1] cho **ứng dụng điện thoại** Plasma Pro, cùng phần đề xuất backend, database và phần tích hợp mô-đun AI. Bước 1 đến 8 viết đầy đủ đến mức có thể đem đi hỏi người dùng. Bước 9 đến 15 phụ thuộc vào kết quả validation ở bước 8, nên chỉ ghi kế hoạch.
+Tài liệu này đi lại 15 bước ở slide 12 của bài giảng [1] cho **ứng dụng điện thoại** Plasma Pro, cùng phần đề xuất backend, database và phần tích hợp mô-đun AI. Bước 1 đến 8 viết đầy đủ đến mức có thể đem đi hỏi người dùng. Bước 9 đến 15 có bản nháp ở các tệp 09 đến 15, chờ kết quả validation ở bước 8 (mục 8.3).
 
 Cách đọc: mỗi bước ghi đầu vào lấy từ vòng cũ [5], phần làm mới, và sản phẩm đầu ra. Kết quả vòng cũ là giả thuyết, chưa phải quyết định.
 
@@ -41,4 +41,3 @@ GA-2 vênh với đề cương: đề cương cần IoMT tự ghi nhận và đ�
 
 **Rủi ro nền tảng:** iOS chỉ cho ứng dụng kết nối phụ kiện có chứng nhận MFi qua External Accessory framework [6]; chip CP2102N không thuộc loại này. Android có USB Host API [7]. Chủ đồ án yêu cầu điện thoại người bệnh kết nối USB/UART với máy tại nhà trên **cả Android và iOS** (11/11/2026). Phần iOS phụ thuộc vào phần cứng: cần đồ án phần cứng xác nhận bộ chuyển đổi dùng được với iOS (phụ kiện MFi, hoặc chip có trình điều khiển cho iOS). Ứng dụng tách lớp truyền dẫn để thêm bản iOS khi phần cứng sẵn sàng.
 
-**Bước 1 đến 8** viết đầy đủ đến mức có thể đem đi hỏi người dùng. **Bước 9 đến 15** phụ thuộc vào kết quả validation ở bước 8, nên chỉ ghi kế hoạch.
