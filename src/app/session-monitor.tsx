@@ -70,7 +70,7 @@ export default function SessionMonitor() {
         {st && st.state !== 'stopped' && st.state !== 'error' && st.remainingSec != null ? (
           <View accessible accessibilityLabel={`${SESSION_LABEL[st.state]}, còn ${fmtRemaining(st.remainingSec)}`} style={{ alignItems: 'center', gap: 2, paddingVertical: 8 }}>
             <Text style={{ fontSize: 44, fontWeight: '700', color: st.state === 'running' ? C.primary : C.text, fontVariant: ['tabular-nums'] }}>{fmtRemaining(st.remainingSec)}</Text>
-            <Text style={{ color: C.textSoft }}>{`${SESSION_LABEL[st.state]} · thời gian còn lại`}</Text>
+            <Text style={{ color: C.textSoft }}>{`${SESSION_LABEL[st.state]}, còn lại`}</Text>
           </View>
         ) : (
           // Chưa nhận STA, hoặc phiên đã dừng, lỗi: không hiện số giây cũ dễ gây hiểu nhầm.

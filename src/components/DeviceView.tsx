@@ -171,7 +171,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
                 <View style={{ width: `${pct * 100}%`, height: '100%', backgroundColor: color }} />
               </View>
               <Text style={{ fontSize: 13, color: C.textFaint }}>
-                {c.item.everySessions === 1 ? 'Sau mỗi phiên' : `Chu kỳ ${c.item.everySessions} phiên`} · {c.item.doneBy === 'patient' ? 'bệnh nhân tự làm' : 'kỹ thuật làm'} · lần gần nhất {c.lastDone ? fmtDate(c.lastDone) : 'chưa ghi nhận'}
+                {c.item.everySessions === 1 ? 'Sau mỗi phiên' : `Chu kỳ ${c.item.everySessions} phiên`}, {c.item.doneBy === 'patient' ? 'bệnh nhân tự làm' : 'kỹ thuật làm'}.{'\n'}Lần gần nhất: {c.lastDone ? fmtDate(c.lastDone) : 'chưa ghi nhận'}
               </Text>
               <Button label="Đánh dấu đã làm" variant="ghost" icon="checkmark-done-outline" onPress={() => doCare(c.item.id, c.item.label)} />
             </View>

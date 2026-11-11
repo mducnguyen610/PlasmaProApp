@@ -14,14 +14,14 @@ export function CheckRow({ checked, onChange, label }: { checked: boolean; onCha
 /** Dùng ở màn đăng nhập khi tài khoản đã đồng ý đúng phiên bản điều khoản hiện hành: chỉ còn đường dẫn để đọc lại. */
 export function TermsLink() {
   return <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push('/terms')} style={{ minHeight: 44, justifyContent: 'center' }}>
-    <Text style={{ color: C.primary, fontWeight: '500' }}>Điều khoản sử dụng và Chính sách quyền riêng tư →</Text>
+    <Text style={{ color: C.primary, fontWeight: '500' }}>Điều khoản sử dụng và Chính sách quyền riêng tư</Text>
   </Pressable>;
 }
 export function Consent({ agreed, onChange }: { agreed: boolean; onChange: (value: boolean) => void }) {
   return <View style={{ gap: 4 }}>
     <CheckRow checked={agreed} onChange={onChange} label="Tôi đồng ý Điều khoản sử dụng và Chính sách quyền riêng tư" />
     <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push('/terms')} style={{ minHeight: 44, justifyContent: 'center' }}>
-      <Text style={{ color: C.primary, fontWeight: '500' }}>Đọc điều khoản và chính sách →</Text>
+      <Text style={{ color: C.primary, fontWeight: '500' }}>Đọc điều khoản và chính sách</Text>
     </Pressable>
     <Muted>Việc dùng ảnh để nghiên cứu cần sự đồng ý riêng, không bắt buộc để sử dụng ứng dụng.</Muted>
   </View>;

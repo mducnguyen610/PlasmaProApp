@@ -1,8 +1,8 @@
 import * as WebBrowser from 'expo-web-browser';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Card, Chip, Header, Muted, Screen, SectionTitle } from '@/components/ui';
+import { Card, Chip, Header, Muted, Screen, SectionTitle, TextLink } from '@/components/ui';
 import { HARDWARE_STANDARDS, LEGAL_GROUPS } from '@/lib/compliance';
 import { C } from '@/theme';
 
@@ -27,9 +27,7 @@ export default function Compliance() {
               <Muted><Text style={{ fontWeight: '700' }}>Áp dụng: </Text>{it.appliesTo}</Muted>
               <Muted><Text style={{ fontWeight: '700' }}>Trong app: </Text>{it.inApp}</Muted>
               {it.note ? <Muted style={{ color: C.amber }}>{it.note}</Muted> : null}
-              <Pressable onPress={() => WebBrowser.openBrowserAsync(it.source)}>
-                <Text style={{ color: C.primary, fontWeight: '600' }} numberOfLines={1}>Nguồn ›</Text>
-              </Pressable>
+              <TextLink label="Mở nguồn" onPress={() => WebBrowser.openBrowserAsync(it.source)} />
             </Card>
           ))}
         </View>

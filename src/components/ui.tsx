@@ -111,8 +111,12 @@ export function Screen({ children, header, padded = true }: { children: ReactNod
   );
 }
 
-export function Card({ children, style, onPress, accessibilityLabel }: { children: ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void; hero?: boolean; accessibilityLabel?: string }) {
-  const shape = cardShape();
+/**
+ * Thẻ. Thứ bậc (rà soát thiết kế 12/11/2026): chỉ thẻ chính của màn (`hero`) có bóng; thẻ phụ phẳng, viền mảnh,
+ * để thẻ quan trọng nhất nổi lên thay vì mọi khối trông ngang nhau.
+ */
+export function Card({ children, style, onPress, hero, accessibilityLabel }: { children: ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void; hero?: boolean; accessibilityLabel?: string }) {
+  const shape = [cardShape(), hero ? shadow : s.cardFlat];
   if (onPress) {
     return (
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={({ pressed }) => [s.card, shape, style, pressed && { opacity: 0.85 }]}>
@@ -188,8 +192,7 @@ export function SectionTitle({ children, right, action, onAction }: { icon?: Ico
       {right}
       {action && (
         <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button" accessibilityLabel={action} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44, paddingHorizontal: 4 }}>
-          <Text style={{ color: C.primary, fontSize: T.label }}>{action}</Text>
-          <Ionicons name="arrow-forward" size={16} color={C.primary} />
+          <Text style={{ color: C.primary, fontSize: T.label, fontWeight: '600' }}>{action}</Text>
         </Pressable>
       )}
     </View>
@@ -500,7 +503,8 @@ export const s = StyleSheet.create({
   headerSub: { color: C.textSoft, fontSize: T.small, marginTop: 2 },
   headerBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.primarySoft, paddingHorizontal: 12, paddingVertical: 8, minHeight: 44, borderRadius: 22 },
   headerBtnText: { color: C.primary, fontWeight: '500', fontSize: T.small },
-  card: { backgroundColor: C.card, padding: 16, gap: 10, ...shadow },
+  card: { backgroundColor: C.card, padding: 16, gap: 10 },
+  cardFlat: { borderWidth: 1, borderColor: C.border },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginTop: 4 },
   sectionTitle: { color: C.text, fontSize: T.cardTitle, fontWeight: '700', letterSpacing: 0.2, flexShrink: 1 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, alignSelf: 'flex-start' },

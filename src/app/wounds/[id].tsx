@@ -80,7 +80,7 @@ export default function WoundDetail() {
             </Pressable>
           )}
         </View>
-        <Text style={{ color: C.textSoft }}>Từ {fmtDate(w.startDate)} · {images.length} ảnh</Text>
+        <Text style={{ color: C.textSoft }}>Theo dõi từ {fmtDate(w.startDate)}, {images.length} ảnh</Text>
         <Divider />
         <SectionTitle icon="stats-chart-outline" right={images.length >= 2 ? <TextLink label="So sánh" onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} /> : null}>Diện tích</SectionTitle>
         {latest ? (
@@ -113,8 +113,9 @@ export default function WoundDetail() {
         </SectionTitle>
         {plan ? (
           <Disclosure
-            title={currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1}/${pr!.phaseCount} · mức ${plan.doseLevel ?? '—'}${plan.treatmentMode ? ` · ${modeLabel(plan.treatmentMode)}` : ''} · ${fmtDuration(plan.durationSec)}` : `${phasesOf(plan).length} giai đoạn · mức ${plan.doseLevel ?? '—'}`}
-            summary={pr ? `${pr.done}/${pr.total} buổi${isDoctor && pr.missed > 0 ? ` · bỏ lỡ ${pr.missed}` : ''}${isDoctor && pr.extra > 0 ? ` · ngoài lịch ${pr.extra}` : ''} · ${PLAN_STATUS[plan.status].label}` : PLAN_STATUS[plan.status].label}
+            // Bác sĩ đọc nhanh một dòng nén; bệnh nhân thấy câu ngắn, liều nằm thành dòng có nhãn khi mở (rà soát thiết kế 12/11/2026).
+            title={!isDoctor ? (currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1} trên ${pr!.phaseCount}` : `${phasesOf(plan).length} giai đoạn`) : currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1}/${pr!.phaseCount} · mức ${plan.doseLevel ?? '—'}${plan.treatmentMode ? ` · ${modeLabel(plan.treatmentMode)}` : ''} · ${fmtDuration(plan.durationSec)}` : `${phasesOf(plan).length} giai đoạn · mức ${plan.doseLevel ?? '—'}`}
+            summary={!isDoctor ? (pr ? `Đã xong ${pr.done}/${pr.total} buổi, ${PLAN_STATUS[plan.status].label.toLowerCase()}` : PLAN_STATUS[plan.status].label) : pr ? `${pr.done}/${pr.total} buổi${isDoctor && pr.missed > 0 ? ` · bỏ lỡ ${pr.missed}` : ''}${isDoctor && pr.extra > 0 ? ` · ngoài lịch ${pr.extra}` : ''} · ${PLAN_STATUS[plan.status].label}` : PLAN_STATUS[plan.status].label}
             summaryTone={pr && isDoctor && pr.missed + pr.extra > 0 ? C.amber : undefined}>
             <Muted>Phiên bản {plan.version}{plan.status === 'active' && pr?.next ? ` · buổi tiếp theo ${fmtDate(pr.next)}` : ''}</Muted>
             {review && <ReviewNote review={review} forPatient={!isDoctor} />}

@@ -123,7 +123,7 @@ export default function ConnectDevice() {
       ) : (
         <>
           {courses.length > 1 && (
-            <Choices<string> value={chosen} onChange={setChosen} options={courses.map((c) => ({ value: c.wound.id, label: `${c.wound.code} · ${c.wound.location}` }))} />
+            <Choices<string> value={chosen} onChange={setChosen} options={courses.map((c) => ({ value: c.wound.id, label: `${c.wound.code}: ${c.wound.location}` }))} />
           )}
           {!selected ? (
             <Muted>Chọn vết thương để xem cấu hình sẽ gửi.</Muted>
@@ -132,7 +132,7 @@ export default function ConnectDevice() {
           ) : (
             <Card>
               <Text style={{ fontWeight: '700', color: C.text }}>Liệu trình sẽ nạp xuống máy</Text>
-              {selected && <InfoRow label="Vết thương" value={`${selected.wound.code} · ${selected.wound.location}`} />}
+              {selected && <InfoRow label="Vết thương" value={`${selected.wound.code}: ${selected.wound.location}`} />}
               {cfg && <InfoRow label="Chế độ" value={modeLabel(cfg.treatmentMode)} />}
               {cfg && <InfoRow label="Mức năng lượng" value={`Mức ${cfg.energyLevel}`} />}
               {cfg && <InfoRow label="Thời gian chiếu" value={fmtDuration(cfg.minTreatmentTimeSec)} />}

@@ -189,7 +189,7 @@ export default function ImageDetail() {
                 error={error}
                 hint="Có thể dùng dấu phẩy hoặc dấu chấm."
               />
-              <Segmented<AreaUnit> value={unit} onChange={setUnit} options={[{ value: 'cm2', label: 'cm²' }, { value: 'mm2', label: 'mm² → quy đổi cm²' }]} />
+              <Segmented<AreaUnit> value={unit} onChange={setUnit} options={[{ value: 'cm2', label: 'cm²' }, { value: 'mm2', label: 'mm² (quy đổi sang cm²)' }]} />
             </>
           ) : (
             <Field label="Tên tệp đầy đủ" value={fullName} onChangeText={setFullName} autoCapitalize="none" autoCorrect={false} error={error} hint="Chỉ sửa phần số sau area_; mã và đuôi tệp phải giữ nguyên." />

@@ -228,7 +228,7 @@ export function noteText(n: SessionNote): string {
   if (t.length) parts.push(`Khi chiếu: ${t.join(', ')}`);
   const r = [n.rednessNextDay && 'đỏ da', n.swellingNextDay && 'sưng'].filter(Boolean);
   if (r.length) parts.push(`Hôm sau: ${r.join(', ')}`);
-  return parts.length ? parts.join(' · ') : 'Không ghi nhận khó chịu';
+  return parts.length ? parts.join('. ') : 'Không ghi nhận khó chịu';
 }
 
 function Toggle({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
