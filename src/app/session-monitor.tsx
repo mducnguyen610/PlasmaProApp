@@ -10,7 +10,7 @@ import { fmtRemaining, LINK_LABEL, SESSION_LABEL } from '@/lib/device/labels';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
 import { fmtDateTime } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { C, semantic } from '@/theme';
 
 /**
  * Theo dõi phiên điều trị qua bản tin trạng thái máy phát mỗi giây.
@@ -25,17 +25,20 @@ export default function SessionMonitor() {
   const { patient } = useLookups();
   const p = patient(me?.role === 'patient' ? me.patientId : params.patientId);
   const canView = useCanView(p);
-  const [saved, setSaved] = useState<{ ok: boolean; text: string } | null>(null);
+  // kind: 'done' buổi đủ thời gian, 'interrupted' buổi dừng giữa chừng hoặc lỗi, 'fail' chưa ghi được (V03: mỗi sự kiện một thông báo).
+  const [saved, setSaved] = useState<{ kind: 'done' | 'interrupted' | 'fail'; text: string } | null>(null);
   const link = useDeviceLink({
     onSessionEnd: (done) => {
       if (!p) return;
       try {
         const ok = recordDeviceSession({ patientId: p.id, woundId: params.woundId, startedAt: done.startedAt.toISOString(), durationSec: done.durationSec, outcome: done.outcome });
         setSaved(ok
-          ? { ok: true, text: done.outcome === 'done' ? `Đã ghi phiên điều trị ${Math.round(done.durationSec / 6) / 10} phút vào nhật ký.` : 'Phiên dừng giữa chừng, đã ghi vào nhật ký là phiên bị gián đoạn.' }
-          : { ok: false, text: 'Hồ sơ chưa được giao máy nên phiên chưa được ghi. Bác sĩ cần giao máy trên hồ sơ bệnh nhân.' });
+          ? done.outcome === 'done'
+            ? { kind: 'done', text: `Đã ghi phiên điều trị ${Math.round(done.durationSec / 6) / 10} phút vào nhật ký.` }
+            : { kind: 'interrupted', text: 'Đã ghi vào nhật ký là phiên bị gián đoạn.' }
+          : { kind: 'fail', text: 'Hồ sơ chưa được giao máy nên phiên chưa được ghi. Bác sĩ cần giao máy trên hồ sơ bệnh nhân.' });
       } catch (e) {
-        setSaved({ ok: false, text: e instanceof Error ? e.message : String(e) });
+        setSaved({ kind: 'fail', text: e instanceof Error ? e.message : String(e) });
       }
     },
   });
@@ -82,27 +85,30 @@ export default function SessionMonitor() {
         <InfoRow label="Nhận lần cuối" value={link.lastStatusAt ? fmtDateTime(link.lastStatusAt) : '–'} />
         {!st && <Muted>Bắt đầu phiên trên máy; trạng thái hiện ở đây khi máy gửi về. Giữ màn này mở tới khi phiên xong để phiên được ghi vào nhật ký.</Muted>}
       </Card>
-      {saved && (
-        <Notice tone={saved.ok ? 'green' : 'red'} icon={saved.ok ? 'checkmark-circle-outline' : 'alert-circle-outline'}>
-          {saved.text}
-        </Notice>
+      {/* Buổi đủ thời gian: một thông báo success. Buổi gián đoạn: gộp vào thông báo warning của trạng thái bên dưới. */}
+      {saved?.kind === 'fail' && <Notice tone={semantic.danger.tone} icon="alert-circle-outline">{saved.text}</Notice>}
+      {saved?.kind === 'done' && !(st?.state === 'done' && isPatient) && (
+        <Notice tone={semantic.success.tone} icon="checkmark-circle-outline">{saved.text}</Notice>
+      )}
+      {saved?.kind === 'interrupted' && st?.state !== 'stopped' && st?.state !== 'error' && (
+        <Notice tone={semantic.warning.tone} icon="stop-circle-outline">{`Buổi chiếu chưa đủ thời gian. ${saved.text}`}</Notice>
       )}
       {/* Việc tiếp theo sau khi phiên kết thúc (wireframe T02, P1 đến P3). */}
       {st?.state === 'done' && isPatient && (
         <>
-          <Notice tone="green" icon="checkmark-circle-outline">Đã xong buổi chiếu hôm nay.</Notice>
+          <Notice tone={semantic.success.tone} icon="checkmark-circle-outline">{saved?.kind === 'done' ? `Đã xong buổi chiếu hôm nay. ${saved.text}` : 'Đã xong buổi chiếu hôm nay.'}</Notice>
           <Button label="Ghi cảm giác sau khi chiếu" icon="create-outline" onPress={() => router.push('/schedule')} />
         </>
       )}
       {st?.state === 'stopped' && (
         <>
-          <Notice>Buổi chiếu dừng trước khi đủ thời gian. Nếu do đau hoặc khó chịu, hãy báo bác sĩ.</Notice>
+          <Notice tone={semantic.warning.tone} icon="stop-circle-outline">{`Buổi chiếu dừng trước khi đủ thời gian.${saved?.kind === 'interrupted' ? ` ${saved.text}` : ''} Nếu do đau hoặc khó chịu, hãy báo bác sĩ.`}</Notice>
           {isPatient && <Button label="Báo triệu chứng" variant="secondary" icon="chatbubble-ellipses-outline" onPress={() => router.push('/report')} />}
         </>
       )}
       {st?.state === 'error' && (
         <>
-          <Notice tone="red">Máy báo lỗi. Tắt máy, bật lại. Nếu vẫn lỗi, báo sự cố thiết bị.</Notice>
+          <Notice tone={semantic.danger.tone}>{`Máy báo lỗi.${saved?.kind === 'interrupted' ? ` ${saved.text}` : ''} Tắt máy, bật lại. Nếu vẫn lỗi, báo sự cố thiết bị.`}</Notice>
           {isPatient && <Button label="Báo sự cố thiết bị" variant="secondary" icon="construct-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'device' } })} />}
         </>
       )}

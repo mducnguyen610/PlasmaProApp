@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Choices, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle, TextLink, type IconName } from '@/components/ui';
 import { fmtDuration } from '@/lib/course';
 import { modeLabel } from '@/lib/device/capabilities';
 import { planToConfig, PROTOCOL } from '@/lib/device';
@@ -13,7 +13,8 @@ import { configToWire, validateConfig } from '@/lib/device/protocol';
 import type { SendResult } from '@/lib/device/sender';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { C, semantic } from '@/theme';
+import { SEND_RESULT } from '@/theme.status';
 
 /** Nạp liệu trình bác sĩ đã xác nhận xuống máy qua USB/UART (giai đoạn 1: thiết bị giả lập). */
 export default function ConnectDevice() {
@@ -153,9 +154,13 @@ export default function ConnectDevice() {
         </>
       )}
 
-      <Button label="Gửi cấu hình xuống máy" icon="arrow-down-circle-outline" onPress={send} disabled={!canSend} loading={sending} />
+      {/* Một nút chính mỗi bước (V04): trước khi máy nhận là "Nạp liệu trình vào máy"; sau ACK là "Theo dõi phiên điều trị",
+          còn nạp lại thành liên kết chữ. */}
+      {result?.kind !== 'acked' && (
+        <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={send} disabled={!canSend} loading={sending} />
+      )}
       {result && (
-        <Notice tone={result.kind === 'acked' ? 'green' : 'red'} icon={result.kind === 'acked' ? 'checkmark-circle-outline' : 'alert-circle-outline'}>
+        <Notice tone={semantic[SEND_RESULT[result.kind].role].tone} icon={SEND_RESULT[result.kind].icon as IconName}>
           {sendResultLabel(result)}
         </Notice>
       )}
@@ -163,7 +168,10 @@ export default function ConnectDevice() {
       {lostAfterSend && <Button label="Kết nối lại" variant="secondary" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />}
       {noRetry && isPatient && <Button label="Báo sự cố cho bác sĩ" variant="secondary" icon="chatbubble-ellipses-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'device' } })} />}
       {result?.kind === 'acked' && (
-        <Button label="Theo dõi phiên điều trị" icon="pulse-outline" onPress={() => router.push({ pathname: '/session-monitor', params: { patientId: p.id, woundId: selected?.wound.id } })} />
+        <>
+          <Button label="Theo dõi phiên điều trị" icon="pulse-outline" onPress={() => router.push({ pathname: '/session-monitor', params: { patientId: p.id, woundId: selected?.wound.id } })} />
+          {canSend && <View style={{ alignItems: 'center' }}><TextLink label="Nạp lại liệu trình" onPress={send} /></View>}
+        </>
       )}
     </Screen>
   );
