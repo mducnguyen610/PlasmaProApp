@@ -46,6 +46,15 @@ export interface ProtocolSpec {
   ackTimeoutMs: number;
   maxRetries: number;
   maxFrameBytes: number;
+  /** Cầu USB-UART trên mạch, để ứng dụng chọn đúng thiết bị khi cắm (bản 'usb-android'). */
+  usb?: UsbSpec;
+}
+
+export type UsbChip = 'cp210x';
+export interface UsbSpec {
+  devices: { vendorId: number; productId: number; chip: UsbChip; note?: string }[];
+  /** false cho đến khi nhóm phần cứng xác nhận chip và mã VID, PID. */
+  confirmed: boolean;
 }
 
 export type WireValue = number | string;

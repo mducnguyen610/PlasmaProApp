@@ -6,7 +6,7 @@ Có 5 mâu thuẫn cần thỏa hiệp trước khi viết FR; mâu thuẫn A1 l
 |---|---|---|
 | A1 | UR14 cần dữ liệu từng phiên tự động; GA-2 không có kết nối sau khi rút cáp | Mạch ghi nhật ký phiên vào bộ nhớ; ứng dụng đọc lại mỗi lần cắm cáp. Hoặc bổ sung BLE. Cần WCMD trả lời |
 | A2 | UR7 đổi liệu trình từ xa; GA-2 chỉ nạp liệu trình qua cáp | Liệu trình mới về điện thoại qua máy chủ; ứng dụng nhắc người bệnh cắm cáp để nạp trước phiên kế |
-| A3 | UR1, UR3 cần đơn giản cho người cao tuổi; UR10, UR14 cần nhiều dữ liệu | Lấy tự động từ máy mọi thứ có thể; người bệnh chỉ làm 3 việc: chiếu, chụp ảnh, báo đau |
+| A3 | UR1 cần đơn giản cho người cao tuổi; UR10, UR14 cần nhiều dữ liệu | Lấy tự động từ máy mọi thứ có thể; người bệnh chỉ làm 2 việc: chiếu, báo đau. Ảnh do bác sĩ chụp khi tái khám (UR3) |
 | A4 | UR9 cần AI xử lý ảnh; UR13 hạn chế đưa ảnh ra ngoài | AI chạy trên máy chủ trong nước hoặc trên điện thoại; chờ bệnh viện xác nhận |
 | A5 | UR6 dùng khi mất mạng; UR8 bác sĩ cần dữ liệu mới | Ứng dụng lưu trước, đồng bộ sau; màn bác sĩ ghi rõ thời điểm đồng bộ cuối, phân biệt “chưa có dữ liệu” |
 

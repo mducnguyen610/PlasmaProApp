@@ -12,13 +12,13 @@ Tệp "Quy trình thiết kế hệ thống phần mềm Plasma Pro" (chủ đ�
 | 6. Solutions generation | Bước 3 | 06 | 3 |
 | 7. Conceptual design | Bước 3, 4 | 07 | 3 |
 | 8. Verif/validation thiết kế cấu trúc | Không có | 08 | 3 |
-| 9. Design requirements | Bước 4, 6 (giao thức USB/UART) | chưa có | 3 |
-| 10. Detailed design | Bước 4, 5, 6 | chưa có | 3 |
-| 11. Product technical docs | Không có | chưa có | Phụ lục |
-| 12. Product verif/validation | Bước 8 | chưa có | 5 |
+| 9. Design requirements | Bước 4, 6 (giao thức USB/UART) | 09 (bản nháp) | 3 |
+| 10. Detailed design | Bước 4, 5, 6 | 10-kien-truc-tong-the, 10-thiet-ke-chi-tiet, giao-dien-01 đến 03 (bản nháp) | 3 |
+| 11. Product technical docs | Không có | 11 (bản nháp) | Phụ lục |
+| 12. Product verif/validation | Bước 8 | 12 (bản nháp) | 5 |
 | 13. Prototypes | Bước 7 | mã nguồn | 4 |
-| 14. Tests | Bước 8 | chưa có | 5 |
-| 15. Industrialisation | Không có, ngoài phạm vi | 09-15 | 5 (hướng phát triển) |
+| 14. Tests | Bước 8 | 14 (bản nháp) | 5 |
+| 15. Industrialisation | Không có, ngoài phạm vi | 15 | 5 (hướng phát triển) |
 
 ## Chỗ khớp
 
@@ -49,7 +49,7 @@ Bản cập nhật thêm giai đoạn 7 "Thiết kế quy trình thu thập và 
 | 4. Thiếu mức năng lượng, chế độ | Đã thêm energy_level, treatment_mode |
 | 5. Nghĩa của min_treatment_time | Vẫn mở (câu hỏi 12) |
 | 6. Thực thể còn thiếu | Đã thêm Image, Annotation. Còn thiếu: phiên bản liệu trình, báo cáo triệu chứng, đồng ý của người bệnh (đã ghi vào TR8) |
-| 7. Màn hình còn thiếu trong mã | Vẫn thiếu màn kết nối USB và màn theo dõi phiên |
+| 7. Màn hình còn thiếu trong mã | Đã có màn kết nối USB (`connect-device.tsx`) và màn theo dõi phiên (`session-monitor.tsx`) từ PR 11 |
 | 8. Tên đề tài | Đã thống nhất, giữ tên đã chốt |
 
 Chỗ còn lệch với bài giảng, nên bổ sung vào chương 3 của báo cáo:

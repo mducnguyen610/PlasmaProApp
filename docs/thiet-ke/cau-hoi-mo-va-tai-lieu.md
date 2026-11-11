@@ -13,7 +13,7 @@ Bốn câu hỏi đầu chặn bước 6; các câu còn lại chặn việc ch�
 | 7 | Bệnh viện | Đã trả lời 11/11/2026: chỉ có bác sĩ và người bệnh | Không còn chặn |
 | 8 | Người giao mô-đun AI | Mô-đun nhận diện có sẵn ở dạng nào (mô hình chạy trên điện thoại hay dịch vụ máy chủ); đầu vào, đầu ra; đã đo sai số chưa? | C1 hay C2, TR10 |
 | 10 | Bác sĩ chuyên môn | Phương pháp gán nhãn (phân loại, khung, phân vùng) và bộ nhãn chính thức. Đã trả lời phần duyệt nhãn: nằm ngoài phạm vi đề tài | FR15 |
-| 11 | Chủ đồ án | Đã trả lời: người bệnh dùng ứng dụng để sử dụng Plasma Pro trị liệu tại nhà. Còn hỏi: điện thoại người bệnh có cắm USB/UART vào máy để nạp cấu hình bác sĩ đặt và nhận phản hồi không (giả định tạm: có) | UR1, UR2, FR2 |
+| 11 | Chủ đồ án | Đã trả lời: người bệnh dùng ứng dụng để sử dụng Plasma Pro trị liệu tại nhà. Đã chốt thêm ngày 11/11/2026: người bệnh cắm USB vào máy tại nhà để nạp cấu hình bác sĩ đặt và nhận phản hồi, trên cả Android và iOS ([03-nhu-cau-nguoi-dung.md](03-nhu-cau-nguoi-dung.md)) | Không còn chặn |
 | 12 | Đồ án phần cứng | Đơn vị, miền giá trị của min_treatment_time, energy_level, treatment_mode; định dạng ngày giờ, múi giờ; trường phản hồi | FR2, TR3 |
 | 9 | Đồ án phần cứng | Đã chốt cần cả Android và iOS. Còn hỏi: bộ chuyển USB/UART nào dùng được với iPhone (CP2102N không có trình điều khiển cho iOS) | Lớp truyền dẫn iOS |
 

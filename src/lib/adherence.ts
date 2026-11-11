@@ -1,10 +1,7 @@
 import type { DeviceSession, TreatmentPlan } from './types';
 
-// Giống localDay trong course.ts (tệp này chạy bằng node trong kiểm thử nên không import giá trị).
-const dayOf = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+// Giống localDay trong course.ts: ngày theo giờ Việt Nam (UTC+7). Tệp này chạy bằng node trong kiểm thử nên không import giá trị.
+const dayOf = (iso: string) => new Date(new Date(iso).getTime() + 420 * 60000).toISOString().slice(0, 10);
 
 export interface Adherence {
   /** Ngày có dữ liệu đồng bộ trong khoảng xét (không tính ngày chưa đồng bộ). */

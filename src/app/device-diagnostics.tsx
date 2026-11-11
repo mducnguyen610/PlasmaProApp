@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
-import { PROTOCOL } from '@/lib/device';
+import { PROTOCOL, setTransportPreference, transportPreference, usbAndroidAvailable } from '@/lib/device';
 import { LINK_LABEL, sendResultLabel } from '@/lib/device/labels';
 import { checkSpec } from '@/lib/device/spec-check';
 import type { TraceEntry } from '@/lib/device/trace';
@@ -13,7 +13,11 @@ import { fmtDateTime } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import { C } from '@/theme';
 
-/** Màn chẩn đoán kết nối cho quản trị viên: đặc tả đang dùng, hỏi máy, gửi cấu hình thử, bản ghi byte. */
+/**
+ * Màn chẩn đoán kết nối cho quản trị viên: đặc tả đang dùng, hỏi máy, bản ghi byte.
+ * Với máy thật, màn này chỉ hỏi (INF, CAP), không nạp cấu hình điều trị: giá trị điều trị chỉ đến từ liệu trình
+ * bác sĩ đã xác nhận (FR2, KT5) và mỗi lần nạp phải có nhật ký (DR15). Cấu hình thử chỉ gửi được tới thiết bị giả lập.
+ */
 export default function DeviceDiagnostics() {
   const { me } = useStore();
   const link = useDeviceLink();
@@ -33,7 +37,9 @@ export default function DeviceDiagnostics() {
   const fr = PROTOCOL.framing;
   const idInfo = link.identity?.kind === 'known' ? link.identity.info : null;
 
+  const simulated = link.kind === 'simulated';
   const sendTest = async () => {
+    if (!simulated) return;
     const r = await link.send({ patientId: 'TEST01', minTreatmentTimeSec: 60, energyLevel: 1, treatmentMode: 'cold', at: new Date() });
     setNote(sendResultLabel(r));
   };
@@ -51,6 +57,21 @@ export default function DeviceDiagnostics() {
         {problems.length === 0 ? <Muted>Đặc tả hợp lệ.</Muted> : problems.map((x) => <Text key={x} style={{ color: C.red }}>{x}</Text>)}
       </Card>
 
+      <Card>
+        <Text style={{ fontWeight: '700', color: C.text }}>Đường truyền</Text>
+        <InfoRow label="Đang dùng" value={link.kind === 'usb-android' ? 'USB thật (Android)' : link.kind === 'simulated' ? 'Thiết bị giả lập' : link.kind} />
+        {link.detail ? <Muted>{link.detail}</Muted> : null}
+        {usbAndroidAvailable() ? (
+          transportPreference() === 'auto' ? (
+            <Button label="Chuyển sang thiết bị giả lập" variant="secondary" icon="flask-outline" onPress={() => void setTransportPreference('simulated')} />
+          ) : (
+            <Button label="Dùng USB thật" variant="secondary" icon="hardware-chip-outline" onPress={() => void setTransportPreference('auto')} />
+          )
+        ) : (
+          <Muted>USB thật chỉ có trong bản dựng Android (không có trong Expo Go hay bản web).</Muted>
+        )}
+      </Card>
+
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {link.state === 'connected' ? (
           <Button label="Ngắt" variant="secondary" icon="close-circle-outline" onPress={link.disconnect} style={{ flex: 1 }} />
@@ -65,7 +86,11 @@ export default function DeviceDiagnostics() {
           {idInfo && <InfoRow label="Mã mẫu" value={idInfo.model} />}
           <InfoRow label="Năng lực" value={link.caps ? `Mức ${link.caps.energyLevels.join(', ')}; chế độ ${link.caps.treatmentModes.map((m) => m.label).join(', ')} (${link.capsSource === 'device' ? 'từ máy' : 'bảng dự phòng'})` : 'Chưa có'} stack />
           <Button label="Hỏi thông tin máy" variant="secondary" icon="help-circle-outline" onPress={link.identify} />
-          <Button label="Gửi cấu hình thử (TEST01)" variant="secondary" icon="send-outline" onPress={sendTest} />
+          {simulated ? (
+            <Button label="Gửi cấu hình thử tới thiết bị giả lập (TEST01)" variant="secondary" icon="send-outline" onPress={sendTest} />
+          ) : (
+            <Muted>Với máy thật, thử nạp cấu hình bằng luồng của người bệnh (Thiết bị, Kết nối máy và nạp liệu trình) để lần nạp có nhật ký.</Muted>
+          )}
           {note && <Notice tone="blue" icon="information-circle-outline">{note}</Notice>}
         </Card>
       )}
