@@ -11,6 +11,12 @@ export function CheckRow({ checked, onChange, label }: { checked: boolean; onCha
     <Text style={{ flex: 1, lineHeight: 21 }}>{label}</Text>
   </Pressable>;
 }
+/** Dùng ở màn đăng nhập khi tài khoản đã đồng ý đúng phiên bản điều khoản hiện hành: chỉ còn đường dẫn để đọc lại. */
+export function TermsLink() {
+  return <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push('/terms')} style={{ minHeight: 44, justifyContent: 'center' }}>
+    <Text style={{ color: C.primary, fontWeight: '500' }}>Điều khoản sử dụng và Chính sách quyền riêng tư →</Text>
+  </Pressable>;
+}
 export function Consent({ agreed, onChange }: { agreed: boolean; onChange: (value: boolean) => void }) {
   return <View style={{ gap: 4 }}>
     <CheckRow checked={agreed} onChange={onChange} label="Tôi đồng ý Điều khoản sử dụng và Chính sách quyền riêng tư" />

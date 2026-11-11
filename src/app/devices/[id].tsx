@@ -1,8 +1,8 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { DeviceView } from '@/components/DeviceView';
 import { NoAccess } from '@/components/Guard';
-import { Header, Screen } from '@/components/ui';
+import { Button, Header, Screen } from '@/components/ui';
 import { useLookups, useStore } from '@/lib/store';
 
 // BS07 – Lịch sử thiết bị: phiên sử dụng, thời gian, thông số thiết bị cung cấp.
@@ -19,6 +19,12 @@ export default function DeviceScreen() {
   return (
     <Screen header={<Header back title="Thiết bị và nhật ký" subtitle={d.code} />}>
       <DeviceView device={d} level={me!.role === 'admin' ? 'tech' : me!.role === 'doctor' ? 'doctor' : 'patient'} />
+      {me!.role === 'doctor' && owner && owner.doctorId === me!.id && (
+        <>
+          <Button label="Kết nối máy và nạp liệu trình" icon="arrow-down-circle-outline" onPress={() => router.push({ pathname: '/connect-device', params: { patientId: owner.id } })} />
+          <Button label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={() => router.push({ pathname: '/session-monitor', params: { patientId: owner.id } })} />
+        </>
+      )}
     </Screen>
   );
 }

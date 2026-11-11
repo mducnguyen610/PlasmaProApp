@@ -2,7 +2,9 @@
 
 Ứng dụng di động cho hệ thống IoMT của thiết bị Plasma Pro điều trị tại nhà, dựng theo
 `Plasma_Pro_Dac_ta_chuc_nang_app (1).md` (v1.1, 12/10/2026) và slide `IoT_Plasma_Pro_System V2.pptx`.
-Viết bằng Expo SDK 57 (React Native, TypeScript, Expo Router) để chạy thử trên iPhone qua Expo Go từ máy Windows.
+
+> **Hồ sơ thiết kế:** từ ngày 10/11/2026, đồ án đi lại quy trình thiết kế 15 bước của bài giảng *Phương pháp luận thiết kế*. Bộ UR, FR, TR và bảng đối chiếu với mã nguồn nằm ở [`docs/thiet-ke/`](docs/thiet-ke/README.md). Mã nguồn và đặc tả mô tả bên dưới thuộc vòng cũ, dùng làm sản phẩm tham khảo cho đến khi bước 8 (validation) đạt.
+Viết bằng Expo SDK 58 (React Native, TypeScript, Expo Router) để chạy thử trên iPhone qua Expo Go từ máy Windows.
 
 Toàn bộ dữ liệu trong bản demo là **dữ liệu mô phỏng**, lưu cục bộ trên máy; ảnh mẫu trong `assets/demo` là hình vẽ trừu tượng, không phải ảnh bệnh nhân.
 
@@ -21,7 +23,7 @@ Toàn bộ dữ liệu trong bản demo là **dữ liệu mô phỏng**, lưu c�
 
 ## Chạy trên iPhone (Expo Go)
 
-1. Cài **Expo Go** từ App Store trên iPhone.
+1. Cài **Expo Go** bản mới nhất (58.x, hỗ trợ SDK 58) từ App Store trên iPhone. Laptop cần Node.js 22.13 trở lên (hoặc 24.3 trở lên).
 2. iPhone và laptop dùng chung một mạng Wi-Fi.
 3. Trên laptop:
 
@@ -77,6 +79,15 @@ Quy tắc đặt tên (mục 4.3, 4.4) nằm trong `src/lib/naming.ts`, có ki�
 - Ảnh chưa có diện tích tách riêng: bộ lọc "Chưa có", không bao giờ mặc định 0; nhập 0 phải xác nhận lại.
 - ZIP chứa bản ảnh nghiên cứu dùng mã RS, diện tích khớp CSV; kèm `labels.csv` + `README.txt`).
 - Quyền sửa nhãn và xuất dữ liệu theo tài khoản: chỉ bác sĩ phụ trách sửa nhãn; chỉ bác sĩ có quyền nghiên cứu xuất; chỉ ảnh của bệnh nhân đã đồng ý.
+
+## Tệp APK Android
+
+Hai tệp APK không còn nằm trong repo để bản tải ZIP nhẹ hơn khoảng 110 MB. Cả hai được dựng từ mã gốc commit `10e9f40` (18/10/2026, Expo SDK 57), chưa gồm các thay đổi về sau, chỉ dùng để tham khảo:
+
+- Bản thường: https://github.com/mducnguyen610/PlasmaProApp/raw/10e9f40/dist-apk/PlasmaPro-1.0.0.apk
+- Bản có AR (ARCore): https://github.com/mducnguyen610/PlasmaProApp/raw/10e9f40/dist-apk/PlasmaPro-AR.apk
+
+Khi dựng APK mới, đăng lên mục Releases của GitHub thay vì đưa vào repo.
 
 ## Căn cứ pháp lý
 

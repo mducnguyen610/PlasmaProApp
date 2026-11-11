@@ -1,9 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Card, Chip, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
+import { Card, Chip, Header, ListCard, IconBadge, InfoRow, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
 import { fmtDate, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
@@ -24,11 +24,12 @@ export default function PatientHistory() {
         <Muted>Muốn thay đổi sự đồng ý, hãy báo bác sĩ phụ trách.</Muted>
       </Card>
       <SectionTitle icon="bandage-outline">Vết thương đang theo dõi</SectionTitle>
+      <ListCard>
       {woundsOf(p.id).map((w) => {
         const imgs = imagesOf(w.id);
         const last = imgs[imgs.length - 1];
         return (
-          <Card key={w.id} onPress={() => router.push({ pathname: '/wounds/[id]', params: { id: w.id } })}>
+          <Pressable key={w.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/wounds/[id]', params: { id: w.id } })} style={({ pressed }) => ({ paddingVertical: 12, opacity: pressed ? 0.7 : 1 })}>
             <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
               {last ? <WoundPhoto image={last} style={{ width: 64, height: 64, borderRadius: 12 }} /> : <IconBadge icon="image-outline" size={64} tone="gray" />}
               <View style={{ flex: 1, gap: 4 }}>
@@ -38,9 +39,10 @@ export default function PatientHistory() {
               </View>
               <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
             </View>
-          </Card>
+          </Pressable>
         );
       })}
+      </ListCard>
     </Screen>
   );
 }

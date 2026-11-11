@@ -5,6 +5,7 @@ import { ImageTile } from '@/components/items';
 import { Card, Choices, Empty, Header, Muted, Screen, Segmented } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import type { LabelStatus } from '@/lib/types';
+import { localDay } from '@/lib/course';
 
 // BS08 – Ảnh vết thương: lọc ảnh đã/chưa có diện tích để bác sĩ ghi nhãn.
 // Xuất ZIP và xem trước labels.csv chuyển sang màn hình Dữ liệu của quản trị kỹ thuật.
@@ -54,7 +55,7 @@ export default function Dataset() {
           value={range}
           onChange={(v) => {
             setRange(v);
-            setSince(v === 'all' ? '' : new Date(Date.now() - Number(v) * 86400000).toISOString().slice(0, 10));
+            setSince(v === 'all' ? '' : localDay(Date.now() - Number(v) * 86400000));
           }}
           options={[{ value: 'all', label: 'Mọi ngày' }, { value: '7', label: '7 ngày' }, { value: '30', label: '30 ngày' }]} />
       </Card>
