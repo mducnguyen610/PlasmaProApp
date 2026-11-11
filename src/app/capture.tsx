@@ -52,7 +52,7 @@ export default function Capture() {
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={{ color: C.textSoft, fontWeight: '500' }}>Ảnh gần nhất</Text>
               <Text style={{ color: C.text, fontWeight: '700', fontSize: 16 }}>{last.id}</Text>
-              <Text style={{ color: C.textSoft, fontSize: 12 }}>{last.capture?.sourceDateKnown === false ? 'Thêm' : 'Chụp'} {fmtDate(last.captureDate)} · giữ góc và khoảng cách tương tự</Text>
+              <Text style={{ color: C.textSoft, fontSize: 13 }}>{last.capture?.sourceDateKnown === false ? 'Thêm' : 'Chụp'} {fmtDate(last.captureDate)} · giữ góc và khoảng cách tương tự</Text>
             </View>
           </View>
         </Card>

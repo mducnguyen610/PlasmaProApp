@@ -37,7 +37,7 @@ export default function Report() {
         <Segmented value={kind} onChange={setKind} options={[{ value: 'symptom', label: 'Triệu chứng' }, { value: 'device', label: 'Sự cố thiết bị' }]} />
         {kind === 'symptom' && (
           <>
-            <Text style={{ color: C.text, fontSize: 13, fontWeight: '600' }}>Mức đau (0 = không đau, 10 = đau nhất)</Text>
+            <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Mức đau (0 = không đau, 10 = đau nhất)</Text>
             <View accessibilityRole="radiogroup" accessibilityLabel="Mức đau" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {Array.from({ length: 11 }, (_, i) => (
                 <Pressable key={i} onPress={() => setPain(i)} accessibilityRole="radio" accessibilityLabel={`Mức đau ${i}`} accessibilityState={{ checked: pain === i, selected: pain === i }} style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: pain === i ? C.primary : C.surfaceMuted }}>
