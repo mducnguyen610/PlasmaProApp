@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
+import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { Button, Card, Choices, Header, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
 import { fmtDate } from '@/lib/format';
@@ -13,13 +14,14 @@ export default function Capture() {
   const { data, me } = useStore();
   const { woundsOf, imagesOf } = useLookups();
   const patients = data.patients.filter((p) => p.doctorId === me?.id);
-  const [pid, setPid] = useState(patients[0]?.id ?? '');
+  // Không chọn sẵn bệnh nhân khi có từ 2 hồ sơ trở lên, để tránh chụp nhầm vào hồ sơ đứng đầu danh sách.
+  const [pid, setPid] = useState(patients.length === 1 ? patients[0].id : '');
   const wounds = pid ? woundsOf(pid).filter((w) => w.status !== 'closed') : [];
   const [wid, setWid] = useState(wounds[0]?.id ?? '');
   const woundId = wounds.some((w) => w.id === wid) ? wid : (wounds[0]?.id ?? '');
   const last = woundId ? imagesOf(woundId).at(-1) : undefined;
 
-  if (me?.role !== 'doctor') return null;
+  if (me?.role !== 'doctor') return <NoAccess />;
 
   const go = () => router.push({ pathname: '/guided-capture', params: { woundId } });
 
@@ -34,8 +36,11 @@ export default function Capture() {
         }}
         options={patients.map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` }))}
       />
+      {patients.length === 0 && <Muted>Chưa có bệnh nhân được phân công. Thêm bệnh nhân ở tab Bệnh nhân.</Muted>}
       <SectionTitle>Vết thương</SectionTitle>
-      {wounds.length ? (
+      {!pid ? (
+        <Muted>Chọn bệnh nhân trước.</Muted>
+      ) : wounds.length ? (
         <Choices value={woundId} onChange={setWid} options={wounds.map((w) => ({ value: w.id, label: `${w.code} · ${w.location}` }))} />
       ) : (
         <Muted>Bệnh nhân chưa có vết thương đang theo dõi; thêm trong hồ sơ bệnh nhân.</Muted>
@@ -47,7 +52,7 @@ export default function Capture() {
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={{ color: C.textSoft, fontWeight: '500' }}>Ảnh gần nhất</Text>
               <Text style={{ color: C.text, fontWeight: '700', fontSize: 16 }}>{last.id}</Text>
-              <Text style={{ color: C.textSoft, fontSize: 12 }}>{last.capture?.sourceDateKnown === false ? 'Thêm' : 'Chụp'} {fmtDate(last.captureDate)} · giữ góc và khoảng cách tương tự</Text>
+              <Text style={{ color: C.textSoft, fontSize: 13 }}>{last.capture?.sourceDateKnown === false ? 'Thêm' : 'Chụp'} {fmtDate(last.captureDate)} · giữ góc và khoảng cách tương tự</Text>
             </View>
           </View>
         </Card>

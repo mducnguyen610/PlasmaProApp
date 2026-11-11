@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { NoAccess } from '@/components/Guard';
-import { Text } from '@/components/Text';
+import { MONO, Text } from '@/components/Text';
 import { Button, Card, Chip, Choices, Empty, Header, InfoRow, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
 import { researchImages } from '@/lib/access';
 import { notify } from '@/lib/dialog';
-import { exportDataset } from '@/lib/export';
+import { buildCsv, exportDataset } from '@/lib/export';
 import { formatAreaDisplay } from '@/lib/naming';
 import { researchFilename, researchPhoto } from '@/lib/research';
 import { useStore } from '@/lib/store';
+import { C } from '@/theme';
 
 export default function TechnicalDataset() {
   const { me, data } = useStore();
@@ -33,12 +34,14 @@ export default function TechnicalDataset() {
         <WoundPhoto image={researchPhoto(im)} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 12 }} />
         <InfoRow label="Mã nghiên cứu" value={data.patients.find(p => p.id === im.patientId)!.researchCode!} />
         <InfoRow label="Diện tích" value={formatAreaDisplay(im.areaCm2)} />
-        <Text selectable style={{ fontSize: 12 }}>{researchFilename(data, im)}</Text>
+        <Text selectable style={{ fontSize: 13 }}>{researchFilename(data, im)}</Text>
       </Card>)}
     </View>
     <Card>
       <Text style={{ fontWeight: '700' }}>Tải dữ liệu theo bộ lọc</Text>
       <Muted>ZIP gồm {shown.length} ảnh PNG và labels.csv. Ảnh cùng một người được giữ trong cùng tập train/validation/test.</Muted>
+      <Text style={{ color: C.textSoft, fontSize: 13 }}>Xem trước labels.csv (4 dòng đầu)</Text>
+      <Text selectable style={{ fontFamily: MONO, fontSize: 13, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{buildCsv(data, shown).split('\n').slice(0, 4).join('\n')}</Text>
       <Button label={'Tải bộ dữ liệu (' + shown.length + ' ảnh)'} icon="download-outline" disabled={!shown.length || !me.researchAccess} loading={busy} onPress={async () => {
         setBusy(true);
         try { const result = await exportDataset(data, shown, me.id); notify('Đã xuất dữ liệu', result.count + ' ảnh · ' + result.location); }

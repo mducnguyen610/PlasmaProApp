@@ -12,6 +12,7 @@ import { Button, Card, Chip, Field, Header, InfoRow, Muted, Screen, SectionTitle
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { buildFilename, checkFullFilename, formatAreaDisplay, formatAreaForName, parseArea, type AreaUnit } from '@/lib/naming';
+import { areaWarning, previousArea } from '@/lib/plausibility';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
@@ -69,6 +70,9 @@ export default function ImageDetail() {
     }
   }
 
+  // Cảnh báo khi diện tích mới bất thường so với ngưỡng hoặc lần đo trước của cùng vết thương.
+  const warning = editing && newArea !== null ? areaWarning(newArea, previousArea(data.images, im)) : null;
+
   const startEdit = () => {
     setEditing(true);
     setMode('area');
@@ -90,6 +94,10 @@ export default function ImageDetail() {
       confirm('Diện tích bằng 0', 'Giá trị 0 là số đo có chủ ý, không dùng thay cho dữ liệu thiếu. Bác sĩ đã kiểm tra lại?', doSave, 'Lưu giá trị 0');
       return;
     }
+    if (warning) {
+      confirm('Kiểm tra lại diện tích', warning, doSave, 'Vẫn lưu');
+      return;
+    }
     doSave();
   };
 
@@ -101,7 +109,7 @@ export default function ImageDetail() {
         <WoundPhoto image={im} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 20 }} />
         <View style={{ position: 'absolute', right: 10, bottom: 10, backgroundColor: C.scrim, borderRadius: 10, padding: 6, flexDirection: 'row', gap: 4, alignItems: 'center' }}>
           <Ionicons name="expand" size={14} color={C.onPrimary} />
-          <Text style={{ color: C.onPrimary, fontSize: 12 }}>Phóng to</Text>
+          <Text style={{ color: C.onPrimary, fontSize: 13 }}>Phóng to</Text>
         </View>
         {im.source === 'demo' && (
           <View style={{ position: 'absolute', left: 10, bottom: 10 }}>
@@ -115,8 +123,8 @@ export default function ImageDetail() {
           <Chip label={LABEL_STATUS[im.status].label} tone={LABEL_STATUS[im.status].tone} />
           {im.retakeRequested && <Chip label="Đã yêu cầu chụp lại" tone="red" icon="refresh" />}
         </View>
-        <Text style={{ color: C.textSoft, fontSize: 12 }}>Tên hiện tại</Text>
-        <Text selectable style={{ fontFamily: MONO, fontSize: 13, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{im.filename}</Text>
+        <Text style={{ color: C.textSoft, fontSize: 13 }}>Tên hiện tại</Text>
+        <Text selectable style={{ fontFamily: MONO, fontSize: 14, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{im.filename}</Text>
         <InfoRow label="Diện tích bác sĩ đã đo" value={formatAreaDisplay(im.areaCm2)} />
         {im.measureMethod ? <InfoRow label="Phương pháp đo" value={im.measureMethod} /> : null}
         <InfoRow label="Mã bệnh nhân" value={p.code} />
@@ -187,11 +195,12 @@ export default function ImageDetail() {
           )}
           <Field label={im.capture ? "Phương pháp đo (bắt buộc)" : "Phương pháp đo (khuyến nghị)"} value={method} onChangeText={setMethod} placeholder="Ví dụ: thước giấy kẻ ô, phần mềm đo trên máy tính…" />
           <View style={{ gap: 4 }}>
-            <Text style={{ color: C.textSoft, fontSize: 12 }}>Xem trước tên sẽ lưu</Text>
-            <Text style={{ fontFamily: MONO, fontSize: 13, color: preview ? C.green : C.textFaint, backgroundColor: preview ? C.greenSoft : C.surfaceMuted, padding: 10, borderRadius: 10 }}>
+            <Text style={{ color: C.textSoft, fontSize: 13 }}>Xem trước tên sẽ lưu</Text>
+            <Text style={{ fontFamily: MONO, fontSize: 14, color: preview ? C.green : C.textFaint, backgroundColor: preview ? C.greenSoft : C.surfaceMuted, padding: 10, borderRadius: 10 }}>
               {preview ?? '—'}
             </Text>
             {preview && newArea !== null && <Muted>Diện tích lưu trong hồ sơ: {formatAreaDisplay(newArea)}</Muted>}
+            {warning && <Text accessibilityLiveRegion="polite" style={{ color: C.amber, fontSize: 14, fontWeight: '600' }}>{warning}</Text>}
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Button style={{ flex: 1 }} label="Hủy" variant="secondary" onPress={() => setEditing(false)} />
@@ -264,11 +273,11 @@ export default function ImageDetail() {
           {im.history.length === 0 && <Muted>Chưa có thay đổi.</Muted>}
           {[...im.history].reverse().map((h, i) => (
             <View key={i} style={{ gap: 2, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border }}>
-              <Text style={{ color: C.text, fontWeight: '600', fontSize: 13 }}>
+              <Text style={{ color: C.text, fontWeight: '600', fontSize: 14 }}>
                 {fmtDateTime(h.at)} · {account(h.by)?.name ?? 'Dữ liệu mô phỏng'}
               </Text>
               <Muted>{formatAreaDisplay(h.fromArea)} → {formatAreaDisplay(h.toArea)}</Muted>
-              <Text style={{ fontFamily: MONO, fontSize: 12, color: C.textFaint }}>{h.toName}</Text>
+              <Text style={{ fontFamily: MONO, fontSize: 13, color: C.textFaint }}>{h.toName}</Text>
               {h.note ? <Muted>{h.note}</Muted> : null}
             </View>
           ))}
@@ -287,7 +296,7 @@ export default function ImageDetail() {
           <Pressable onPress={() => setZoom(false)} style={{ position: 'absolute', top: insets.top + 12, right: 16, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: 8 }} accessibilityLabel="Đóng">
             <Ionicons name="close" size={24} color={C.onPrimary} />
           </Pressable>
-          <Text style={{ position: 'absolute', bottom: insets.bottom + 16, alignSelf: 'center', color: C.onDarkSoft, fontSize: 12 }}>Chụm hai ngón để phóng to</Text>
+          <Text style={{ position: 'absolute', bottom: insets.bottom + 16, alignSelf: 'center', color: C.onDarkSoft, fontSize: 13 }}>Chụm hai ngón để phóng to</Text>
         </View>
       </Modal>
     </Screen>

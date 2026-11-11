@@ -10,11 +10,11 @@ export default function DoctorTabs() {
   return (
     <RoleTabs
       role="doctor"
-      fab={{ icon: 'camera', label: 'Chụp ảnh vết thương', onPress: () => router.push('/capture') }}
+      fab={{ icon: 'camera', label: 'Chụp ảnh vết thương', title: 'Chụp ảnh', onPress: () => router.push('/capture') }}
       tabs={[
         { name: 'index', title: 'Trang chủ', icon: 'home-outline', iconOn: 'home' },
         { name: 'patients', title: 'Bệnh nhân', icon: 'people-outline', iconOn: 'people' },
-        { name: 'dataset', title: 'Dữ liệu', icon: 'images-outline', iconOn: 'images', badge: unlabeled },
+        { name: 'dataset', title: 'Ảnh', icon: 'images-outline', iconOn: 'images', badge: unlabeled },
         { name: 'account', title: 'Tài khoản', icon: 'person-circle-outline', iconOn: 'person-circle' },
       ]}
     />
