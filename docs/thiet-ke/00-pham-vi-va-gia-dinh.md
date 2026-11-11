@@ -13,7 +13,10 @@
 | Backend | Đề xuất kiến trúc, chức năng và phương án kết nối | Chỉ đề xuất, không lập trình | Máy chủ IoMT; TR7, TR9 |
 | Database | Đề xuất mô hình dữ liệu, bảng và quan hệ | Chỉ đề xuất, không lập trình | TR8 |
 | Mô-đun AI nhận diện vết thương | Tích hợp mô-đun có sẵn | Tích hợp, không huấn luyện mô hình | TR10 |
+| Thu thập và gán nhãn hình ảnh | Phát triển chức năng hỗ trợ bác sĩ tạo dữ liệu phục vụ huấn luyện AI về sau | Lập trình | Ứng dụng bác sĩ; TR8, TR13 |
 | Phần cứng Plasma Pro | Sử dụng thiết bị và firmware từ đồ án phần cứng | Ngoài phạm vi; chỉ nêu yêu cầu với firmware | Mạch IoT; TR1, TR2, phía firmware của TR3 |
+
+Dòng "Thu thập và gán nhãn hình ảnh" được thêm theo bản quy trình 9 giai đoạn của chủ đồ án (11/11/2026); tên đề tài giữ nguyên. Theo bản này, **bác sĩ là người dùng chính** của mọi màn hình; người bệnh là vai trò thứ hai.
 
 Mọi UR, FR, TR trong hồ sơ phải truy được về một dòng của bảng trên. Phần không thuộc dòng nào được hạ xuống nice to have hoặc chuyển sang hướng phát triển.
 

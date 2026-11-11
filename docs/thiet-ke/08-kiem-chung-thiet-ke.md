@@ -8,19 +8,20 @@ Verification trên giấy đạt: 16 UR đều có FR, và mọi FR đều phụ
 |---|---|---|---|
 | UR1 | FR1, NFR4, NFR5 | Người bệnh mẫu trên 60 tuổi nói đúng việc hôm nay sau 10 giây nhìn màn | Chưa |
 | UR2 | FR2, FR3, NFR2 | Thử phát khi không có liệu trình, khi hết phiên, khi gói lỗi | Chưa |
-| UR3 | FR5, NFR4 | Bác sĩ chấm ảnh do người bệnh mẫu chụp | Chưa |
+| UR3 | FR5 | Bác sĩ chụp 10 ảnh mẫu, chấm ảnh đủ để đo và gán nhãn | Chưa |
 | UR4 | FR6 | Bác sĩ duyệt nội dung hướng dẫn và ngưỡng | Chưa |
 | UR5 | FR7 | Hỏi người bệnh mẫu | Chưa |
 | UR6 | FR8 | Thử tắt mạng 7 ngày rồi bật lại | Chưa |
 | UR7 | FR3, FR9 | Bác sĩ lập một liệu trình thật trên bản mẫu | Chưa |
 | UR8 | FR10, NFR5 | Thử tác vụ với bác sĩ trên dữ liệu 30 người giả lập | Chưa |
 | UR9 | FR5, FR11 | So diện tích AI với bác sĩ trên bộ ảnh thử | Chưa |
-| UR10 | FR12 | Bác sĩ đối chiếu với phiếu | Chưa |
+| UR10 | FR12 | Kiểm bản xuất: không còn trường định danh, nhãn khớp ảnh | Chưa |
 | UR11 | FR2, FR13 | Bác sĩ giao, nạp liệu trình qua USB và thu hồi một máy | Chưa |
 | UR12 | FR14 | Ngoài phạm vi ứng dụng | Không làm |
 | UR13 | NFR1, NFR2, NFR6 | Pháp chế bệnh viện rà soát | Chưa |
 | UR14 | FR4, FR11 | Nhóm nghiên cứu truy một phiên từ ảnh về liệu trình | Chưa |
 | UR15 | NFR3 | Chạy ứng dụng với thiết bị giả lập và mạch thật | Chưa |
+| UR17 | FR15, FR16, FR17 | Bác sĩ gán nhãn và duyệt 20 ảnh mẫu theo bộ quy tắc | Chưa |
 | UR16 | NFR7 | Giảng viên, WCMD đánh giá | Chưa |
 
 **8.2. FMEA sơ bộ cho thiết kế cấu trúc.** Mức nghiêm trọng là ước lượng của hệ thống; khả năng xảy ra và khả năng phát hiện cần dữ liệu thử, nên chưa tính RPN.
