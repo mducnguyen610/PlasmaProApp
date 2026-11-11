@@ -14,6 +14,7 @@ export const C = {
   textFaint: '#52626E', // tối hơn #5F707D: bản cũ chỉ đạt 4,32:1 trên primarySoft; nay tối thiểu 5,3:1 trên mọi nền sáng
   grey: '#3A5157',
   border: '#E1E7E6',
+  cardBorder: '#BFCAC8', // viền thẻ phụ (thẻ không bóng): 1,53:1 trên nền bg, 1,68:1 trên trắng; border cũ chỉ 1,14:1 nên thẻ hòa vào nền
   green: '#2E7031', // xanh lá ngả vàng để khác hẳn màu chính,
   greenSoft: '#E8F4E5',
   amber: '#A5590F',

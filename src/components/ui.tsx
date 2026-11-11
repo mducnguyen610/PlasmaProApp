@@ -504,7 +504,7 @@ export const s = StyleSheet.create({
   headerBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.primarySoft, paddingHorizontal: 12, paddingVertical: 8, minHeight: 44, borderRadius: 22 },
   headerBtnText: { color: C.primary, fontWeight: '500', fontSize: T.small },
   card: { backgroundColor: C.card, padding: 16, gap: 10 },
-  cardFlat: { borderWidth: 1, borderColor: C.border },
+  cardFlat: { borderWidth: 1, borderColor: C.cardBorder },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginTop: 4 },
   sectionTitle: { color: C.text, fontSize: T.cardTitle, fontWeight: '700', letterSpacing: 0.2, flexShrink: 1 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, alignSelf: 'flex-start' },

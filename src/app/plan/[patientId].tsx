@@ -159,7 +159,7 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         {step === 0 && (
           <>
         <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Lịch theo giai đoạn</Text>
-        <Muted>Ví dụ: mỗi ngày trong 2 tuần đầu, sau đó 3 buổi mỗi tuần (dạng liệu trình ở slide 39, 40).</Muted>
+        <Muted>Ví dụ: mỗi ngày trong 2 tuần đầu, sau đó 3 buổi mỗi tuần.</Muted>
         {phases.map((ph, i) => (
           <View key={i} style={{ gap: 8, padding: 10, borderRadius: 10, backgroundColor: C.surfaceMuted }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -196,7 +196,7 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         {step === 1 && (
           <>
         <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Liều mỗi lần chiếu</Text>
-        <Muted>Thiết bị tại nhà bị khóa ở mức và thời gian này; bệnh nhân không đổi được (slide 24).</Muted>
+        <Muted>Thiết bị tại nhà bị khóa ở mức và thời gian này; bệnh nhân không đổi được.</Muted>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {!caps && <View style={{ flex: 1 }}><Field label="Mức năng lượng" value={level} onChangeText={setLevel} keyboardType="number-pad" placeholder="Ví dụ 8" /></View>}
           <View style={{ flex: 1 }}><Field label="Thời gian (giây)" value={duration} onChangeText={setDuration} keyboardType="number-pad" hint={numOrNull(duration) != null ? fmtDuration(numOrNull(duration)) : undefined} /></View>

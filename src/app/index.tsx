@@ -55,6 +55,7 @@ export default function Login() {
       )}
       {error ? <Text accessibilityRole="alert" style={{ color: C.red }}>{error}</Text> : null}
       <Button label="Đăng nhập" icon="log-in-outline" loading={busy} disabled={!username.trim() || !password || (!!termsNotice && !agreed)} onPress={submit} />
+      {(!username.trim() || !password) ? <Muted>Nhập tên đăng nhập và mật khẩu để đăng nhập.</Muted> : termsNotice && !agreed ? <Muted>Đánh dấu đồng ý điều khoản để tiếp tục.</Muted> : null}
       <Button label="Có mã kích hoạt từ bác sĩ? Kích hoạt tài khoản" variant="ghost" onPress={() => router.push('/activate')} />
       <Button label="Chưa có tài khoản? Đăng ký" variant="ghost" onPress={() => router.push('/register')} />
     </Card>
