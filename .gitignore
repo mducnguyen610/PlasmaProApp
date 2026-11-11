@@ -48,3 +48,4 @@ dist-apk/
 
 # Ảnh lỗi do scripts/kiem-thu-giao-dien.cjs tạo ra
 /tc*.png
+.cache/

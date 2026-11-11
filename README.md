@@ -2,6 +2,8 @@
 
 Ứng dụng di động cho hệ thống IoMT của thiết bị Plasma Pro điều trị tại nhà, dựng theo
 `Plasma_Pro_Dac_ta_chuc_nang_app (1).md` (v1.1, 12/10/2026) và slide `IoT_Plasma_Pro_System V2.pptx`.
+
+> **Hồ sơ thiết kế:** từ ngày 10/11/2026, đồ án đi lại quy trình thiết kế 15 bước của bài giảng *Phương pháp luận thiết kế*. Bộ UR, FR, TR và bảng đối chiếu với mã nguồn nằm ở [`docs/thiet-ke/`](docs/thiet-ke/README.md). Mã nguồn và đặc tả mô tả bên dưới thuộc vòng cũ, dùng làm sản phẩm tham khảo cho đến khi bước 8 (validation) đạt.
 Viết bằng Expo SDK 58 (React Native, TypeScript, Expo Router) để chạy thử trên iPhone qua Expo Go từ máy Windows.
 
 Toàn bộ dữ liệu trong bản demo là **dữ liệu mô phỏng**, lưu cục bộ trên máy; ảnh mẫu trong `assets/demo` là hình vẽ trừu tượng, không phải ảnh bệnh nhân.

@@ -38,7 +38,8 @@ const shiftMonth = (month: string, by: number) => {
   const d = new Date(Date.UTC(y, m - 1 + by, 1));
   return d.toISOString().slice(0, 7);
 };
-const time = (iso: string) => new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+// Giờ Việt Nam (UTC+7), cùng mốc với localDay; không theo múi giờ điện thoại.
+const time = (iso: string) => new Date(new Date(iso).getTime() + 420 * 60000).toISOString().slice(11, 16);
 
 function cellText(c: DayCell, target: number | null | undefined) {
   if (c.kind === 'unsynced') return '?';

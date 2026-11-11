@@ -7,6 +7,7 @@ import { type AreaReview, type CourseProgress, fmtDuration, phaseLabel, phasesOf
 import { fmtDate } from '@/lib/format';
 import type { TreatmentPlan } from '@/lib/types';
 import { C, radius } from '@/theme';
+import { modeLabel } from '@/lib/device/capabilities';
 
 /** Các giai đoạn của đợt, giai đoạn hiện tại được tô đậm. */
 export function PhaseList({ plan, current }: { plan: TreatmentPlan; current?: number }) {
@@ -35,6 +36,7 @@ export function DoseRows({ plan }: { plan: TreatmentPlan }) {
   return (
     <>
       <InfoRow label="Mức năng lượng" value={plan.doseLevel != null ? `Mức ${plan.doseLevel}` : 'Chưa đặt'} />
+      {plan.treatmentMode ? <InfoRow label="Chế độ điều trị" value={modeLabel(plan.treatmentMode)} /> : null}
       <InfoRow label="Thời gian mỗi lần chiếu" value={fmtDuration(plan.durationSec)} />
       <InfoRow label="Số lần mỗi buổi" value={String(plan.sessionsPerDay ?? 1)} />
     </>

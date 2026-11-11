@@ -170,7 +170,7 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     await p.getByText('3. Xác nhận').click(); await p.waitForTimeout(300);
     await p.getByText('Lưu phiên bản mới').click(); await p.waitForTimeout(400);
     const e1 = await visible(p, 'Nhập lý do thay đổi để lưu vết phiên bản.');
-    const sumOk = (await p.getByText(/^Giai đoạn 1: mỗi ngày .*Mức 8, 3 phút, 1 lần mỗi buổi\.$/).count()) > 0;
+    const sumOk = (await p.getByText(/^Giai đoạn 1: mỗi ngày .*Mức 4, chế độ Cold, 3 phút, 1 lần mỗi buổi\.$/).count()) > 0;
     // Xóa ngày của giai đoạn 1 rồi lưu từ bước 3: phải quay về bước 1 và báo lỗi.
     await p.getByText('1. Lịch').click(); await p.waitForTimeout(300);
     await p.getByPlaceholder('dd/mm/yyyy').first().fill('');
@@ -192,10 +192,17 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     await login(p, 'quantri'); await go(p, '/devices/d-1');
     // Chi tiết thiết bị chia thẻ (bản rút gọn 08/11/2026): nút giả lập nằm ở thẻ Nhật ký.
     await p.getByText('Nhật ký', { exact: true }).first().click(); await p.waitForTimeout(300);
-    await p.getByText('Giả lập một phiên điều trị').click(); await p.waitForTimeout(600);
-    const msg = p.dialogs.join(' | ');
-    const blocked = /nghỉ|không có buổi|không phát/i.test(msg);
-    rec('TC10', 'Giả lập phiên ngày nghỉ bị thiết bị chặn', blocked, msg.slice(0, 120));
+    // Giả lập phiên kiểu IoMT chỉ còn trong bản phát triển (__DEV__), vì trái phương án nạp qua USB (S1).
+    // Bản web xuất bằng expo export là bản phát hành: nút phải ẩn.
+    const sim = p.getByText('Giả lập một phiên điều trị');
+    if (await sim.count() === 0) {
+      rec('TC10', 'Bản phát hành ẩn nút giả lập phiên IoMT', true, 'nút chỉ có trong bản phát triển');
+    } else {
+      await sim.click(); await p.waitForTimeout(600);
+      const msg = p.dialogs.join(' | ');
+      const blocked = /nghỉ|không có buổi|không phát/i.test(msg);
+      rec('TC10', 'Giả lập phiên ngày nghỉ bị thiết bị chặn', blocked, msg.slice(0, 120));
+    }
     await p.context().close();
   }
 

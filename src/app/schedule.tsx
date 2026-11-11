@@ -10,6 +10,7 @@ import { fmtDate, PLAN_STATUS } from '@/lib/format';
 import { computeReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
+import { modeLabel } from '@/lib/device/capabilities';
 
 export default function Schedule() {
   const { data, me } = useStore();
@@ -43,7 +44,7 @@ export default function Schedule() {
             </> : <Muted>Lịch dưới đây để xem lại.</Muted>}
           </View>
         </View>
-        <Disclosure icon="options-outline" title="Liệu trình" summary={[ph ? `Giai đoạn ${pr!.phaseIndex + 1}/${phases.length}` : `${phases.length} giai đoạn`, plan.doseLevel != null ? `mức ${plan.doseLevel}` : null, fmtDuration(plan.durationSec)].filter(Boolean).join(' · ')}>
+        <Disclosure icon="options-outline" title="Liệu trình" summary={[ph ? `Giai đoạn ${pr!.phaseIndex + 1}/${phases.length}` : `${phases.length} giai đoạn`, plan.doseLevel != null ? `mức ${plan.doseLevel}` : null, plan.treatmentMode ? modeLabel(plan.treatmentMode) : null, fmtDuration(plan.durationSec)].filter(Boolean).join(' · ')}>
           <PhaseList plan={plan} current={pr?.phaseIndex} />
           <DoseRows plan={plan} />
           {plan.notes ? <Notice icon="information-circle-outline">{plan.notes}</Notice> : null}
