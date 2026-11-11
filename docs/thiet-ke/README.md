@@ -27,6 +27,8 @@ Tài liệu đi kèm:
 - [doi-chieu-quy-trinh-8-buoc.md](doi-chieu-quy-trinh-8-buoc.md): xếp quy trình 8 bước của chủ đồ án vào khung 15 bước, kèm chỗ khớp và chỗ lệch.
 - [cau-hoi-mo-va-tai-lieu.md](cau-hoi-mo-va-tai-lieu.md): 9 câu hỏi đang chặn và danh mục tài liệu tham khảo [1] đến [5].
 - [10-kien-truc-tong-the.md](10-kien-truc-tong-the.md): bản nháp kiến trúc tổng thể ứng dụng (tầng, quyết định kiến trúc, mô-đun, luồng dữ liệu).
+- [11-de-xuat-backend.md](11-de-xuat-backend.md): đề xuất backend (kiến trúc, bảng FR sang API, phương án đồng bộ, bảo mật); chỉ thiết kế, không lập trình.
+- [12-de-xuat-co-so-du-lieu.md](12-de-xuat-co-so-du-lieu.md): đề xuất mô hình dữ liệu (sơ đồ ER, bảng, đối chiếu với `src/lib/types.ts`).
 - [icd-usb-uart.md](icd-usb-uart.md): bản nháp tài liệu giao tiếp USB/UART (khung, bản tin, 10 trường, ví dụ đối chiếu) gửi nhóm firmware điền và xác nhận.
 
 ## Quy ước

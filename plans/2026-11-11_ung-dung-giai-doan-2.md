@@ -60,7 +60,7 @@ Chỉ thiết kế, không lập trình.
 2. Kiến trúc: API REST, xác thực theo vai trò (bác sĩ, người bệnh, quản trị), lưu ảnh dạng đối tượng, hàng đợi đồng bộ.
 3. Danh sách chức năng và điểm cuối API theo từng FR (bảng FR sang endpoint).
 4. Phương án kết nối với ứng dụng: lớp kho dữ liệu sau này thay AsyncStorage; đẩy hàng đợi thay đổi có khóa chống trùng; kéo thay đổi theo mốc thời gian; xử lý xung đột liệu trình theo phiên bản.
-5. Bảo mật và pháp lý: dữ liệu sức khỏe là dữ liệu cá nhân nhạy cảm theo Nghị định 13/2023/NĐ-CP [4]; mã hóa đường truyền, nhật ký truy cập.
+5. Bảo mật và pháp lý: dữ liệu sức khỏe là dữ liệu cá nhân nhạy cảm theo Luật 91/2025/QH15 và Nghị định 13/2023/NĐ-CP [4]; mã hóa đường truyền, nhật ký truy cập.
 6. Những gì để ngỏ: chọn nền tảng cụ thể, nơi đặt máy chủ (bệnh viện hay đám mây).
 
 ## G2-C. Đề xuất database (`docs/thiet-ke/12-de-xuat-co-so-du-lieu.md`)
@@ -98,5 +98,5 @@ Giữ nguyên nội dung bước 6 và 7 của `plans/2026-11-11_ung-dung-giai-d
 1. Android Developers, "USB host overview". https://developer.android.com/develop/connectivity/usb/host (chưa kiểm lại trong phiên này).
 2. M. Wakefield (mik3y) và cộng sự, "usb-serial-for-android", GitHub, giấy phép MIT. https://github.com/mik3y/usb-serial-for-android (chưa kiểm lại phiên bản mới nhất).
 3. Silicon Labs, "AN571: CP210x Virtual COM Port Interface". https://www.silabs.com/documents/public/application-notes/AN571.pdf (chưa kiểm lại).
-4. Chính phủ Việt Nam, Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân, 17/04/2023.
+4. Quốc hội Việt Nam, Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15 (hiệu lực 01/01/2026), và Chính phủ Việt Nam, Nghị định 13/2023/NĐ-CP, 17/04/2023.
 5. ISO 14971:2019, *Medical devices: Application of risk management to medical devices*.
