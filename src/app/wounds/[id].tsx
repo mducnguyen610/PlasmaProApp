@@ -17,6 +17,7 @@ import { assessmentSummary } from '@/lib/assessment';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
+import { modeLabel } from '@/lib/device/capabilities';
 
 // BS04 – Chi tiết vết thương: vị trí, ngày bắt đầu, album ảnh theo ngày, diện tích đã nhập, lịch sử đánh giá.
 export default function WoundDetail() {
@@ -111,7 +112,7 @@ export default function WoundDetail() {
         </SectionTitle>
         {plan ? (
           <Disclosure
-            title={currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1}/${pr!.phaseCount} · mức ${plan.doseLevel ?? '—'} · ${fmtDuration(plan.durationSec)}` : `${phasesOf(plan).length} giai đoạn · mức ${plan.doseLevel ?? '—'}`}
+            title={currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1}/${pr!.phaseCount} · mức ${plan.doseLevel ?? '—'}${plan.treatmentMode ? ` · ${modeLabel(plan.treatmentMode)}` : ''} · ${fmtDuration(plan.durationSec)}` : `${phasesOf(plan).length} giai đoạn · mức ${plan.doseLevel ?? '—'}`}
             summary={pr ? `${pr.done}/${pr.total} buổi${isDoctor && pr.missed > 0 ? ` · bỏ lỡ ${pr.missed}` : ''}${isDoctor && pr.extra > 0 ? ` · ngoài lịch ${pr.extra}` : ''} · ${PLAN_STATUS[plan.status].label}` : PLAN_STATUS[plan.status].label}
             summaryTone={pr && isDoctor && pr.missed + pr.extra > 0 ? C.amber : undefined}>
             <Muted>Phiên bản {plan.version}{plan.status === 'active' && pr?.next ? ` · buổi tiếp theo ${fmtDate(pr.next)}` : ''}</Muted>

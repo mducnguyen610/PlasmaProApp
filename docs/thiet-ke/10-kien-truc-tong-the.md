@@ -34,7 +34,7 @@ Ba vai trò dùng chung một ứng dụng, phân màn theo vai trò: bác sĩ l
 | Lưu cục bộ | AsyncStorage, khóa `plasmapro.demo.v2`; ảnh lưu bằng `expo-file-system` | `src/lib/store.tsx` |
 | Camera, ảnh | `expo-camera`, `expo-image-picker`, `expo-image-manipulator` | `package.json` |
 | Thông báo nhắc lịch | `expo-notifications` | `package.json`, `src/lib/reminders.ts` |
-| USB trên Android | Mô-đun gốc dùng USB Host API, cần development build (Expo Go chỉ có mô-đun gốc đóng sẵn) | `AGENTS.md`; chưa tra tài liệu Expo SDK 58, độ tin cậy trung bình |
+| USB trên Android | Mô-đun gốc `modules/plasma-usb` dùng USB Host API với trình điều khiển CP210x tự viết theo AN571; cần bản dựng Android (Expo Go chỉ có mô-đun gốc đóng sẵn) | `AGENTS.md`; mã giai đoạn 2, chưa biên dịch và thử với mạch |
 | USB trên iOS | Chưa chọn; CP2102N không có trình điều khiển cho iOS [2] | Câu F4 trong [icd-usb-uart.md](icd-usb-uart.md) |
 
 ## 3. Các tầng của ứng dụng
@@ -83,7 +83,7 @@ Quy tắc phụ thuộc:
 | KT3 | Nhận diện vết thương qua `WoundRecognizer` | Chưa biết dạng mô-đun AI có sẵn | Đổi mô-đun không sửa màn chụp; giai đoạn 1 dùng bộ dò màu hiện có làm bản cài tạm | GĐ1 |
 | KT4 | Kiểm quyền ở store (ứng dụng); khi có máy chủ thì kiểm lại ở máy chủ | NFR1 đòi kiểm ở máy chủ, nhưng máy chủ chỉ đề xuất | Bản lập trình chỉ đáp ứng một phần NFR1; ghi rõ trong Chương 4 | Có sẵn (ứng dụng), Đề xuất (máy chủ) |
 | KT5 | Ứng dụng không tự đặt giá trị điều trị | An toàn người bệnh; giá trị do bác sĩ quyết định | Mức và chế độ chỉ chọn trong năng lực máy; không có mặc định | GĐ1 |
-| KT6 | Mọi mốc "hôm nay" và đồng hồ gửi máy tính theo UTC+7 | NFR5 | Dùng `localDay` và `deviceClock`, không dùng múi giờ của điện thoại | Có sẵn (`localDay`), GĐ1 (`deviceClock`) |
+| KT6 | Mọi mốc "hôm nay" và đồng hồ gửi máy tính theo UTC+7 | NFR5 | Dùng `localDay` (cộng 7 giờ rồi lấy ngày UTC), `fmtDateTime` và `deviceClock`, không dùng múi giờ của điện thoại | Có (`localDay.test.ts` thử với nhiều múi giờ) |
 | KT7 | Một ứng dụng cho ba vai trò, chia màn theo vai trò | Người dùng giữ vai trò admin; ít mã trùng | Quản trị viên không xem dữ liệu lâm sàng (`useCanView`) | Có sẵn |
 
 ## 5. Mô-đun và trách nhiệm
@@ -137,7 +137,7 @@ flowchart LR
 
 ### 6.3. Phiên điều trị đến tổng quan bác sĩ
 
-Phiên kết thúc trên máy, ứng dụng người bệnh nhận `STA` `done`, ghi phiên vào kho. Màn tổng quan bác sĩ đọc phiên, lịch và báo cáo triệu chứng, tính trạng thái hôm nay (đã chiếu, cần chiếu, chưa có dữ liệu, ngày nghỉ, chưa có đợt) và điểm cần chú ý. Khi chưa có máy chủ, luồng này chỉ chạy trọn vẹn trong bản demo một máy. Đọc nhật ký phiên từ chính thiết bị (FR4) chờ câu F11 của ICD.
+Phiên kết thúc trên máy, ứng dụng nhận `STA` `done` (hoặc `stopped`, `error`) trong lúc màn theo dõi phiên đang mở, ghi phiên vào kho (`session-tracker.ts`, `recordDeviceSession`). Màn tổng quan bác sĩ đọc phiên, lịch và báo cáo triệu chứng, tính trạng thái hôm nay (đã chiếu, bỏ lỡ, cần chiếu, chưa có dữ liệu kèm lần đồng bộ cuối, ngày nghỉ, chưa có đợt) và điểm cần chú ý. Khi chưa có máy chủ, luồng này chỉ chạy trọn vẹn trong bản demo một máy. Đọc nhật ký phiên từ chính thiết bị (FR4) chờ câu F11 của ICD.
 
 ## 7. Đối chiếu TR với mô-đun
 

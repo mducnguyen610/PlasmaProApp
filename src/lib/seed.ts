@@ -154,6 +154,7 @@ export function createSeed(): AppData {
     syncErrors: [
       { id: 's-1', at: at(D(-17), '08:15'), deviceId: 'd-2', message: 'TB-002 mất kết nối một ngày, đã đồng bộ lại (mô phỏng).', resolved: true },
     ],
+    deviceLinks: [],
     counters: { image: 6, patient: 3 },
   };
 }

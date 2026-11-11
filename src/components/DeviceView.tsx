@@ -38,7 +38,8 @@ export type DeviceViewLevel = 'patient' | 'doctor' | 'tech';
 export function DeviceView({ device, level }: { device: Device; level: DeviceViewLevel }) {
   const tech = level === 'tech';
   const patientView = level === 'patient';
-  const canControl = level === 'doctor';
+  // Bật tắt nguồn từ xa trái phương án S1 (nạp qua USB tại nhà); chỉ giữ trong bản phát triển để minh họa.
+  const canControl = level === 'doctor' && __DEV__;
   const { data, setDevicePower, simulateSession, markCareDone, setLifecycle } = useStore();
   const { sessionsOf, patient, woundsOf, coursePlan } = useLookups();
   const sessions = sessionsOf(device.id);
@@ -177,7 +178,11 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           );
         })}
         <Muted>Cách vệ sinh là giả định cho demo, theo hướng dẫn nhà sản xuất khi có.</Muted>
-        {LIFECYCLE[device.lifecycle ?? 'ready'].next && <>
+        {device.lifecycle === 'in_use' && <>
+        <Divider />
+        <Muted>Máy đang giao cho bệnh nhân. Bác sĩ phụ trách thu hồi trên hồ sơ người bệnh.</Muted>
+        </>}
+        {device.lifecycle !== 'in_use' && LIFECYCLE[device.lifecycle ?? 'ready'].next && <>
         <Divider />
         <SectionTitle icon="sync-outline">Vòng đời thiết bị cho thuê</SectionTitle>
         <Muted>Thu hồi, khử khuẩn, kiểm tra rồi mới cấp lại. Đầu phát cũ không cấp lại.</Muted>
@@ -192,8 +197,9 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         </>}
       </Card>}
 
-      {tech && tab === 'log' && <Card>
-        <SectionTitle icon="pulse-outline">Mô phỏng thiết bị IoMT</SectionTitle>
+      {/* Mô phỏng phiên kiểu IoMT cũ, trái phương án S1; chỉ hiện trong bản phát triển. */}
+      {__DEV__ && tech && tab === 'log' && <Card>
+        <SectionTitle icon="pulse-outline">Mô phỏng thiết bị IoMT (bản phát triển)</SectionTitle>
         <Muted>Chưa có ESP32 thật. Thiết bị không phát khi chưa có đợt, vào ngày nghỉ hoặc khi đã đủ số lần.</Muted>
         <Button
           label="Giả lập một phiên điều trị"

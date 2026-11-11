@@ -3,7 +3,9 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { Platform } from 'react-native';
 
 import { base64ToBytes, grabFrame, type SmallFrame } from './grabFrame';
-import { detectWound, smoothDetection, type WoundDetection } from './woundDetect';
+import { getRecognizer } from '@/lib/ai';
+
+import { smoothDetection, type WoundDetection } from './woundDetect';
 
 export interface TrackedWound { detection: WoundDetection; at: number }
 
@@ -18,7 +20,10 @@ export function useWoundTracker(active: boolean, mode: 'ar' | 'camera', camera: 
   const busy = useRef(false);
 
   const accept = useCallback((frame: SmallFrame) => {
-    const raw = detectWound(frame.data, frame.width, frame.height, frame.channels);
+    // Gọi bộ dò qua giao diện WoundRecognizer (TR10); mô-đun không có trackFrame thì không bám.
+    const track = getRecognizer().trackFrame;
+    if (!track) return;
+    const raw = track(frame.data, frame.width, frame.height, frame.channels);
     // Giữ vị trí cũ một nhịp khi lỡ mất dấu để khung không nhấp nháy.
     const next = smoothDetection(previous.current, raw, 0.75);
     previous.current = next.found ? next : null;

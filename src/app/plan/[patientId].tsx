@@ -6,6 +6,7 @@ import { Text } from '@/components/Text';
 import { DoseRows, PhaseList } from '@/components/CourseCard';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, Segmented, SwitchRow } from '@/components/ui';
+import { capabilitiesFor, modeLabel } from '@/lib/device/capabilities';
 import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, suggestDurationSec } from '@/lib/course';
 import { notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, PLAN_STATUS } from '@/lib/format';
@@ -62,8 +63,10 @@ export default function Plan() {
 
 function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; woundId: string; setWoundId: (v: string) => void }) {
   const { data, me, savePlan } = useStore();
-  const { patient, account, woundsOf, imagesOf } = useLookups();
+  const { patient, account, woundsOf, imagesOf, device } = useLookups();
   const p = patient(patientId);
+  // Mức và chế độ chọn trong năng lực của mẫu thiết bị gán cho người bệnh; ứng dụng không tự đặt giá trị.
+  const caps = capabilitiesFor(device(p?.deviceId)?.model);
   const canView = useCanView(p);
   const wounds = p ? woundsOf(p.id) : [];
   const first = wounds[0]?.id;
@@ -77,7 +80,10 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   );
   const [perVisit, setPerVisit] = useState(latest?.sessionsPerDay?.toString() ?? '1');
   const [gap, setGap] = useState(latest?.minIntervalMin?.toString() ?? '');
-  const [level, setLevel] = useState(latest?.doseLevel?.toString() ?? '');
+  const [level, setLevel] = useState(
+    latest?.doseLevel != null && (!caps || caps.energyLevels.includes(latest.doseLevel)) ? latest.doseLevel.toString() : '',
+  );
+  const [mode, setMode] = useState(latest?.treatmentMode && caps?.treatmentModes.some((m) => m.value === latest.treatmentMode) ? latest.treatmentMode : '');
   const [duration, setDuration] = useState(latest?.durationSec?.toString() ?? '');
   const [spc, setSpc] = useState(latest?.secondsPerCm2?.toString() ?? '');
   const [reviewDay, setReviewDay] = useState(String(latest?.reviewAtDay ?? DEFAULT_REVIEW_DAY));
@@ -120,16 +126,18 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
     const nums = [perVisit, gap, level, duration, spc, reviewDay].map(numOrNull);
     if (nums.some((n) => n !== null && (!Number.isFinite(n) || n < 0))) return fail(1, 'Thông số phải là số không âm.');
     if (status === 'active' && (nums[2] === null || nums[3] === null)) return fail(1, 'Đợt "Đang áp dụng" cần mức năng lượng và thời gian chiếu để khóa trên thiết bị.');
+    if (caps && nums[2] !== null && !caps.energyLevels.includes(nums[2])) return fail(1, 'Mức năng lượng phải thuộc danh sách của mẫu thiết bị.');
+    if (caps && status === 'active' && caps.treatmentModes.length > 0 && !mode) return fail(1, 'Đợt "Đang áp dụng" cần chọn chế độ điều trị.');
     if (!reason.trim()) return fail(2, 'Nhập lý do thay đổi để lưu vết phiên bản.');
     if (status === 'active' && !confirmed) return fail(2, 'Đợt "Đang áp dụng" cần bác sĩ xác nhận.');
     setErr(null);
     savePlan({
       patientId: p.id, woundId, status, phases: parsed, sessionsPerDay: nums[0] ?? 1, minIntervalMin: nums[1], targetEnergyWh: null,
-      doseLevel: nums[2], durationSec: nums[3], secondsPerCm2: nums[4], areaAtStart: lastArea?.areaCm2 ?? null, reviewAtDay: nums[5] ?? DEFAULT_REVIEW_DAY,
+      doseLevel: nums[2], treatmentMode: caps && mode ? mode : null, durationSec: nums[3], secondsPerCm2: nums[4], areaAtStart: lastArea?.areaCm2 ?? null, reviewAtDay: nums[5] ?? DEFAULT_REVIEW_DAY,
       startDate: parsed[0].from, endDate: parsed[parsed.length - 1].to, reviewSchedule: review.trim(), notes: notes.trim(), reason: reason.trim(), confirmed,
     });
     setReason('');
-    notify('Đã lưu phiên bản mới', 'Thiết bị nhận lịch và liều khi đồng bộ, rồi khóa ở các thông số này (bản demo: mô phỏng).');
+    notify('Đã lưu phiên bản mới', 'Người bệnh nạp mức, chế độ và thời gian xuống máy qua cáp USB ở màn Thiết bị (bản demo: thiết bị giả lập).');
   };
 
   return (
@@ -189,9 +197,24 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Liều mỗi lần chiếu</Text>
         <Muted>Thiết bị tại nhà bị khóa ở mức và thời gian này; bệnh nhân không đổi được (slide 24).</Muted>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}><Field label="Mức năng lượng" value={level} onChangeText={setLevel} keyboardType="number-pad" placeholder="Ví dụ 8" /></View>
+          {!caps && <View style={{ flex: 1 }}><Field label="Mức năng lượng" value={level} onChangeText={setLevel} keyboardType="number-pad" placeholder="Ví dụ 8" /></View>}
           <View style={{ flex: 1 }}><Field label="Thời gian (giây)" value={duration} onChangeText={setDuration} keyboardType="number-pad" hint={numOrNull(duration) != null ? fmtDuration(numOrNull(duration)) : undefined} /></View>
         </View>
+        {caps ? (
+          <>
+            <Text style={{ fontWeight: '700', color: C.text }}>Mức năng lượng</Text>
+            <Choices<string> value={level} onChange={setLevel} options={caps.energyLevels.map((e) => ({ value: String(e), label: String(e) }))} />
+            {caps.treatmentModes.length > 0 && (
+              <>
+                <Text style={{ fontWeight: '700', color: C.text }}>Chế độ điều trị</Text>
+                <Choices<string> value={mode} onChange={setMode} options={caps.treatmentModes} />
+              </>
+            )}
+            {!caps.confirmed && <Muted>Danh sách mức và chế độ chưa được firmware xác nhận.</Muted>}
+          </>
+        ) : (
+          <Muted>Chưa có danh sách mức và chế độ cho mẫu thiết bị này.</Muted>
+        )}
         <View style={{ gap: 8, padding: 10, borderRadius: 10, backgroundColor: C.primarySoft }}>
           <Text style={{ fontWeight: '700', color: C.text }}>Gợi ý thời gian theo diện tích</Text>
           <Field label="Hệ số (giây cho mỗi cm²)" value={spc} onChangeText={setSpc} keyboardType="decimal-pad" hint="Chờ nhóm phần cứng xác nhận theo mật độ công suất đầu phát. Tài liệu tham khảo dùng 30 đến 45 giây/cm² cho thiết bị khác." />
@@ -214,7 +237,7 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         {step === 2 && (
           <>
             <Text style={{ fontWeight: '700', color: C.text }}>Tóm tắt</Text>
-            <Muted>{phases.map((ph, i) => `Giai đoạn ${i + 1}: ${phaseLabel({ from: '', to: '', pattern: ph.pattern, n: Number(ph.n) || 1 }).toLowerCase()} (${ph.from || '?'} đến ${ph.to || '?'})`).join('; ')}. Mức {level || '?'}, {duration ? fmtDuration(numOrNull(duration)) : '? giây'}, {perVisit || 1} lần mỗi buổi.</Muted>
+            <Muted>{phases.map((ph, i) => `Giai đoạn ${i + 1}: ${phaseLabel({ from: '', to: '', pattern: ph.pattern, n: Number(ph.n) || 1 }).toLowerCase()} (${ph.from || '?'} đến ${ph.to || '?'})`).join('; ')}. Mức {level || '?'}{mode ? `, chế độ ${modeLabel(mode)}` : ''}, {duration ? fmtDuration(numOrNull(duration)) : '? giây'}, {perVisit || 1} lần mỗi buổi.</Muted>
             <Choices<PlanStatus> value={status} onChange={setStatus} options={(['draft', 'active', 'paused', 'ended'] as const).map((v) => ({ value: v, label: PLAN_STATUS[v].label }))} />
         <Field label="Lịch tái khám" value={review} onChangeText={setReview} placeholder="Ví dụ: tái đánh giá mỗi 7 ngày" />
         <Field label="Ghi chú" value={notes} onChangeText={setNotes} multiline />

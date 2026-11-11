@@ -8,11 +8,9 @@ export function fmtDate(iso?: string | null): string {
 
 export function fmtDateTime(iso?: string | null): string {
   if (!iso) return '—';
-  const dt = new Date(iso);
-  const hh = String(dt.getHours()).padStart(2, '0');
-  const mm = String(dt.getMinutes()).padStart(2, '0');
-  const day = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-  return `${hh}:${mm} ${fmtDate(day)}`;
+  // Giờ Việt Nam (UTC+7), cùng mốc với localDay và đồng hồ máy; không theo múi giờ điện thoại.
+  const vn = new Date(new Date(iso).getTime() + 420 * 60000).toISOString();
+  return `${vn.slice(11, 16)} ${fmtDate(vn.slice(0, 10))}`;
 }
 
 export const WOUND_STATUS: Record<WoundStatus, { label: string; tone: 'green' | 'amber' | 'gray' | 'blue' | 'violet' }> = {

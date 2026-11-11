@@ -13,7 +13,7 @@ import { CARE_ITEMS, LIFECYCLE } from './maintenance';
 import { buildFilename } from './naming';
 import { createSeed, DEMO_ASSETS } from './seed';
 import type {
-  Account, AppData, Device, DeviceLifecycle, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
+  Account, AppData, Device, DeviceLifecycle, DeviceLinkLog, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
 } from './types';
 
 // v2: dữ liệu demo theo đợt điều trị (ngày tính từ hôm nay); bản v1 cũ không được đọc lại.
@@ -83,6 +83,13 @@ interface Store {
   /** Quy trình kết thúc đợt khi liền thương (FDA 2006: xác nhận ở hai lần khám cách 2 tuần), rồi theo dõi. */
   recordClosure: (woundId: string, step: 'check1' | 'confirm' | 'not_healed' | 'reopen' | 'end_follow_up' | 'pause' | 'resume') => void;
   setLifecycle: (deviceId: string, next: DeviceLifecycle) => void;
+  /** Ghi một lần gửi cấu hình xuống máy; người bệnh của hồ sơ hoặc bác sĩ phụ trách. */
+  recordDeviceLink: (entry: Omit<DeviceLinkLog, 'id' | 'at' | 'by'>) => void;
+  /**
+   * Ghi một phiên điều trị nhận qua USB (STA running rồi done, stopped hoặc error); người bệnh của hồ sơ hoặc bác sĩ phụ trách.
+   * Trả false khi hồ sơ chưa được giao máy, vì phiên phải gắn với một thiết bị.
+   */
+  recordDeviceSession: (entry: { patientId: string; woundId?: string; startedAt: string; durationSec: number; outcome: 'done' | 'stopped' | 'error' }) => boolean;
 }
 
 /**
@@ -117,6 +124,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (raw) {
           const saved: AppData = JSON.parse(raw);
           saved.sessionNotes ??= [];
+          saved.deviceLinks ??= [];
           saved.patients = saved.patients.map(p => ({ ...p, researchCode: p.researchCode ?? 'RS-' + Crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase() }));
           setData(saved);
           dataRef.current = saved;
@@ -535,9 +543,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Mỗi bệnh nhân giữ tối đa một thiết bị: gán thiết bị mới thì thiết bị cũ của bệnh nhân đó được gỡ,
   // tránh hai thiết bị cùng trỏ vào một hồ sơ (nhật ký điều trị bị tách đôi).
+  // Giao máy thuộc bác sĩ phụ trách (UR11); bác sĩ không lấy được máy đang giao cho người bệnh của bác sĩ khác.
   const assignDevice: Store['assignDevice'] = (deviceId, patientId) => {
-    requireAdmin();
     const dev = dataRef.current.devices.find((x) => x.id === deviceId);
+    if (!dev) throw new Error('Không tìm thấy thiết bị.');
+    if (patientId) requireDoctor(patientId);
+    if (dev.patientId && dev.patientId !== patientId) requireDoctor(dev.patientId);
+    if (!patientId && !dev.patientId) return;
     if (patientId && (dev?.lifecycle === 'returned' || dev?.lifecycle === 'disinfected')) throw new Error('Thiết bị chưa khử khuẩn và kiểm tra xong, chưa cấp được cho bệnh nhân khác.');
     update((d) => {
       const linked = reassignDevice(d.devices, d.patients, deviceId, patientId);
@@ -551,9 +563,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const setLifecycle: Store['setLifecycle'] = (deviceId, next) => {
-    requireAdmin();
     const dev = dataRef.current.devices.find((x) => x.id === deviceId);
     if (!dev) throw new Error('Không tìm thấy thiết bị.');
+    // Thu hồi máy khỏi người bệnh thuộc bác sĩ phụ trách (UR11); khử khuẩn, kiểm tra là việc kỹ thuật của quản trị.
+    if (next === 'returned') {
+      if (!dev.patientId) throw new Error('Thiết bị chưa giao cho bệnh nhân nào.');
+      requireDoctor(dev.patientId);
+    } else requireAdmin();
     if (LIFECYCLE[dev.lifecycle ?? 'ready']?.next !== next) throw new Error('Bước này chưa làm được ở trạng thái hiện tại.');
     update((d) => {
       // Thu hồi: gỡ khỏi bệnh nhân, bỏ đầu phát cũ (đầu phát dùng riêng không cấp lại).
@@ -640,10 +656,50 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     update((d) => ({ ...d, devices: d.devices.map((x) => (x.id === deviceId ? { ...x, care: { ...x.care, [itemId]: nowIso() } } : x)) }));
   };
 
+  const recordDeviceLink: Store['recordDeviceLink'] = (entry) => {
+    const actor = meRef.current;
+    if (!actor || actor.locked) throw new Error('Chưa đăng nhập.');
+    if (actor.role === 'patient') {
+      if (actor.patientId !== entry.patientId) throw new Error('Chỉ ghi được nhật ký cho hồ sơ của mình.');
+    } else if (actor.role === 'doctor') requireDoctor(entry.patientId);
+    else throw new Error('Chỉ người bệnh hoặc bác sĩ phụ trách được nạp liệu trình xuống máy.');
+    const log: DeviceLinkLog = { ...entry, id: 'dl-' + Crypto.randomUUID(), at: nowIso(), by: actor.id };
+    update((d) => ({ ...d, deviceLinks: [...(d.deviceLinks ?? []), log] }));
+  };
+
+  const recordDeviceSession: Store['recordDeviceSession'] = (entry) => {
+    const actor = meRef.current;
+    if (!actor || actor.locked) throw new Error('Chưa đăng nhập.');
+    if (actor.role === 'patient') {
+      if (actor.patientId !== entry.patientId) throw new Error('Chỉ ghi được phiên cho hồ sơ của mình.');
+    } else if (actor.role === 'doctor') requireDoctor(entry.patientId);
+    else throw new Error('Chỉ người bệnh hoặc bác sĩ phụ trách được ghi phiên điều trị.');
+    const d0 = dataRef.current;
+    const dev = d0.devices.find((x) => x.id === d0.patients.find((p) => p.id === entry.patientId)?.deviceId);
+    if (!dev) return false;
+    // ICD chưa có mã phiên của máy: ghép mã thiết bị với mốc bắt đầu, sessionsOf bỏ bản ghi trùng theo mã này.
+    const session: DeviceSession = {
+      sessionId: `${dev.code}-${new Date(entry.startedAt).getTime()}`,
+      deviceId: dev.id,
+      start: entry.startedAt,
+      durationMin: Math.round(entry.durationSec / 6) / 10,
+      energyWh: null,
+      status: entry.outcome === 'done' ? 'completed' : 'interrupted',
+      source: 'device',
+      woundId: entry.woundId,
+    };
+    update((d) => ({
+      ...d,
+      sessions: d.sessions.some((x) => x.sessionId === session.sessionId) ? d.sessions : [...d.sessions, session],
+      devices: d.devices.map((x) => (x.id === dev.id ? { ...x, lastSync: nowIso() } : x)),
+    }));
+    return true;
+  };
+
   const value: Store = {
     ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, addWound, updateWound, addImage, labelImage,
     setExcluded, requestRetake, addEvaluation, savePlan, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
-    setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle,
+    setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle, recordDeviceLink, recordDeviceSession,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
