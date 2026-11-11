@@ -10,7 +10,7 @@ Chạy lại ngày 11/11/2026 trên nhánh `sua-loi/ra-soat-pr-10-13` (gốc là
 |---|---|
 | `npm test` (26 tệp kiểm thử, thêm `session-tracker`) | Tất cả đạt |
 | `npx expo lint` | Không lỗi |
-| Biên dịch mô-đun gốc Kotlin | **Chưa chạy**: môi trường dựng mã không có Android SDK |
+| Biên dịch mô-đun gốc Kotlin (`bash scripts/kiem-tra-kotlin.sh`) | Đạt kiểm kiểu, không cảnh báo (`-Werror`), với Android API 35 (android-all của Robolectric) và bản giả API Expo. Chưa dựng APK bằng Gradle vì môi trường không có Android SDK |
 | `npx tsc --noEmit` | Không lỗi |
 
 Tệp này cập nhật lại sau mỗi pull request mã của giai đoạn 2.
