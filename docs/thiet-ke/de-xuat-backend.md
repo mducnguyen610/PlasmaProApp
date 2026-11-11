@@ -1,6 +1,6 @@
 # Đề xuất backend (máy chủ IoMT)
 
-Trạng thái: **chỉ đề xuất**, không lập trình trong đề tài (bảng phạm vi ở [00-pham-vi-va-gia-dinh.md](00-pham-vi-va-gia-dinh.md)). Tài liệu này đáp ứng phần "đề xuất kiến trúc, chức năng, phương án kết nối" và truy về TR7, TR9, phía máy chủ của TR5 ([07-thiet-ke-cau-truc.md](07-thiet-ke-cau-truc.md)). Mô hình dữ liệu nằm ở [12-de-xuat-co-so-du-lieu.md](12-de-xuat-co-so-du-lieu.md).
+Trạng thái: **chỉ đề xuất**, không lập trình trong đề tài (bảng phạm vi ở [00-pham-vi-va-gia-dinh.md](00-pham-vi-va-gia-dinh.md)). Tài liệu này đáp ứng phần "đề xuất kiến trúc, chức năng, phương án kết nối" và truy về TR7, TR9, phía máy chủ của TR5 ([07-thiet-ke-cau-truc.md](07-thiet-ke-cau-truc.md)). Mô hình dữ liệu nằm ở [de-xuat-co-so-du-lieu.md](de-xuat-co-so-du-lieu.md).
 
 Ngày lập: 11/11/2026. Mọi lựa chọn công nghệ dưới đây là đề xuất của người thiết kế, chưa bàn với bệnh viện hay giảng viên.
 

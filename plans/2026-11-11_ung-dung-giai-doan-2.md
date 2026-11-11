@@ -52,7 +52,7 @@ Chọn cách 1. Nếu bản dựng không tải được JitPack thì chuyển s
 - `npm test`, `npx tsc --noEmit`, `npx expo lint` trên máy dựng mã.
 - Môi trường dựng mã của hệ thống không có Android SDK và không tải được kho Google, JitPack, nên **phần Kotlin không biên dịch được ở đây**. Bản dựng và thử với máy thật phải chạy trên máy chủ đồ án hoặc EAS Build. Kịch bản thử tay nằm trong tệp hướng dẫn: cắm máy, cho phép quyền, INF và CAP, gửi cấu hình, nhận ACK, rút cáp giữa phiên.
 
-## G2-B. Đề xuất backend (`docs/thiet-ke/11-de-xuat-backend.md`)
+## G2-B. Đề xuất backend (`docs/thiet-ke/de-xuat-backend.md`)
 
 Chỉ thiết kế, không lập trình.
 
@@ -63,21 +63,21 @@ Chỉ thiết kế, không lập trình.
 5. Bảo mật và pháp lý: dữ liệu sức khỏe là dữ liệu cá nhân nhạy cảm theo Luật 91/2025/QH15 và Nghị định 13/2023/NĐ-CP [4]; mã hóa đường truyền, nhật ký truy cập.
 6. Những gì để ngỏ: chọn nền tảng cụ thể, nơi đặt máy chủ (bệnh viện hay đám mây).
 
-## G2-C. Đề xuất database (`docs/thiet-ke/12-de-xuat-co-so-du-lieu.md`)
+## G2-C. Đề xuất database (`docs/thiet-ke/de-xuat-co-so-du-lieu.md`)
 
 Chỉ mô hình dữ liệu. Sơ đồ ER (Mermaid) và bảng từng thực thể: User, Patient, Wound, Image, Annotation, TreatmentPlan (có phiên bản), TreatmentSession, Device, DeviceLinkLog, AIResult, SymptomReport, Consent, DatasetVersion. Mỗi bảng ghi khóa, quan hệ, trường bắt buộc, và đối chiếu với kiểu tương ứng trong `src/lib/types.ts` (ví dụ `WoundImage` sang Image, `LabelChange` sang Annotation). Truy vết về TR8.
 
 ## G2-D. Hồ sơ bước 8 đến 15
 
-Viết lại `docs/thiet-ke/09-15-ke-hoach.md` thành các tệp riêng, đúng mức đồ án làm được:
+Thay `docs/thiet-ke/09-15-ke-hoach.md` (đã xóa) bằng các tệp riêng, đúng mức đồ án làm được:
 
 | Bước | Tệp | Nội dung trong phạm vi đề tài |
 |---|---|---|
 | 8 | `08-kiem-chung-thiet-ke.md` (bổ sung) | Kịch bản validation và phiếu hỏi cho bác sĩ, người bệnh; kết quả để trống đến khi thử |
 | 9 | `09-yeu-cau-thiet-ke.md` | Yêu cầu thiết kế từng mô-đun mã, truy về TR |
-| 10 | `10b-thiet-ke-chi-tiet.md` | Máy trạng thái phiên và gửi cấu hình, danh sách màn theo vai trò, trỏ tới ICD và G2-C |
-| 11 | `11b-ho-so-ky-thuat.md` | Bảng rủi ro phần mềm theo ISO 14971 [5], hướng dẫn sử dụng rút gọn |
-| 12 | `12b-kiem-chung-san-pham.md` | Ma trận truy vết FR sang tệp kiểm thử, kết quả `npm test` |
+| 10 | `10-thiet-ke-chi-tiet.md` | Máy trạng thái phiên và gửi cấu hình, danh sách màn theo vai trò, trỏ tới ICD và G2-C |
+| 11 | `11-ho-so-ky-thuat.md` | Bảng rủi ro phần mềm theo ISO 14971 [5], hướng dẫn sử dụng rút gọn |
+| 12 | `12-kiem-chung-san-pham.md` | Ma trận truy vết FR sang tệp kiểm thử, kết quả `npm test` |
 | 13 | `13-nguyen-mau.md` | Bản demo một máy, development build Android, ảnh chụp màn |
 | 14 | `14-thu-nghiem.md` | Kịch bản thử trên dữ liệu giả lập; thử nghiệm 30 người bệnh năm 2027 nằm ngoài đề tài |
 | 15 | `15-cong-nghiep-hoa.md` | Ngắn: ngoài phạm vi, nêu điều kiện chuyển giao |

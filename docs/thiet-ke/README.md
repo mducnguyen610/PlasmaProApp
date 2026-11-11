@@ -18,8 +18,14 @@ Vòng thiết kế này bắt đầu ngày 10/11/2026. Kết quả vòng cũ (10
 | 5 | Functional requirements | [05-nhu-cau-tinh-nang.md](05-nhu-cau-tinh-nang.md) | 14 FR, 7 NFR, nhiều ngưỡng chờ chốt |
 | 6 | Solutions generation | [06-tim-giai-phap.md](06-tim-giai-phap.md) | S1 đã chốt; C1 hay C2 chờ dạng mô-đun AI; nền tảng chờ quyết định |
 | 7 | Conceptual design | [07-thiet-ke-cau-truc.md](07-thiet-ke-cau-truc.md) | 12 TR |
-| 8 | Verif/validation | [08-kiem-chung-thiet-ke.md](08-kiem-chung-thiet-ke.md) | Verification trên giấy đạt; validation chưa làm |
-| 9 đến 15 | Design requirements đến Industrialisation | [09-15-ke-hoach.md](09-15-ke-hoach.md) | Chỉ có kế hoạch |
+| 8 | Verif/validation | [08-kiem-chung-thiet-ke.md](08-kiem-chung-thiet-ke.md) | Verification trên giấy đạt; kịch bản validation V1 đến V7 có, chưa thử |
+| 9 | Design requirements | [09-yeu-cau-thiet-ke.md](09-yeu-cau-thiet-ke.md) | 15 DR, bản nháp chờ validation |
+| 10 | Detailed design | [10-kien-truc-tong-the.md](10-kien-truc-tong-the.md), [10-thiet-ke-chi-tiet.md](10-thiet-ke-chi-tiet.md) | Bản nháp |
+| 11 | Product technical docs | [11-ho-so-ky-thuat.md](11-ho-so-ky-thuat.md) | Bảng mối nguy, dàn ý hướng dẫn |
+| 12 | Product verif/validation | [12-kiem-chung-san-pham.md](12-kiem-chung-san-pham.md) | Kiểm thử tự động đạt; validation chưa làm |
+| 13 | Prototypes | [13-nguyen-mau.md](13-nguyen-mau.md) | Demo web có; bản Android USB giai đoạn 2 |
+| 14 | Tests | [14-thu-nghiem.md](14-thu-nghiem.md) | Kịch bản trên dữ liệu giả lập |
+| 15 | Industrialisation | [15-cong-nghiep-hoa.md](15-cong-nghiep-hoa.md) | Ngoài phạm vi |
 
 Tài liệu đi kèm:
 
@@ -27,8 +33,8 @@ Tài liệu đi kèm:
 - [doi-chieu-quy-trinh-8-buoc.md](doi-chieu-quy-trinh-8-buoc.md): xếp quy trình 8 bước của chủ đồ án vào khung 15 bước, kèm chỗ khớp và chỗ lệch.
 - [cau-hoi-mo-va-tai-lieu.md](cau-hoi-mo-va-tai-lieu.md): 9 câu hỏi đang chặn và danh mục tài liệu tham khảo [1] đến [5].
 - [10-kien-truc-tong-the.md](10-kien-truc-tong-the.md): bản nháp kiến trúc tổng thể ứng dụng (tầng, quyết định kiến trúc, mô-đun, luồng dữ liệu).
-- [11-de-xuat-backend.md](11-de-xuat-backend.md): đề xuất backend (kiến trúc, bảng FR sang API, phương án đồng bộ, bảo mật); chỉ thiết kế, không lập trình.
-- [12-de-xuat-co-so-du-lieu.md](12-de-xuat-co-so-du-lieu.md): đề xuất mô hình dữ liệu (sơ đồ ER, bảng, đối chiếu với `src/lib/types.ts`).
+- [de-xuat-backend.md](de-xuat-backend.md): đề xuất backend (kiến trúc, bảng FR sang API, phương án đồng bộ, bảo mật); chỉ thiết kế, không lập trình.
+- [de-xuat-co-so-du-lieu.md](de-xuat-co-so-du-lieu.md): đề xuất mô hình dữ liệu (sơ đồ ER, bảng, đối chiếu với `src/lib/types.ts`).
 - [icd-usb-uart.md](icd-usb-uart.md): bản nháp tài liệu giao tiếp USB/UART (khung, bản tin, 10 trường, ví dụ đối chiếu) gửi nhóm firmware điền và xác nhận.
 
 ## Quy ước

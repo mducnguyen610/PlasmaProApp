@@ -37,3 +37,27 @@ Verification trên giấy đạt: 16 UR đều có FR, và mọi FR đều phụ
 | Mô-đun AI | Đo sai diện tích | Quyết định điều trị sai | Trung bình | Bác sĩ xác nhận mọi kết quả; hiện độ tin cậy |
 
 Nếu validation không đạt, sơ đồ slide 27 cho quay lại UR hoặc FR, không đi tiếp sang Design requirements.
+
+## 8.3. Kế hoạch validation với người dùng (bổ sung 11/11/2026)
+
+Validation cần bác sĩ và người bệnh thật nên đề tài chỉ chuẩn bị kịch bản và phiếu; kết quả để trống đến khi thử. Thử trên bản demo một máy (KT1), dữ liệu giả lập, thiết bị giả lập hoặc mạch thật nếu có.
+
+| Phiên | Người tham gia | Tác vụ | UR được kiểm | Tiêu chí đạt | Kết quả |
+|---|---|---|---|---|---|
+| V1 | 1 đến 2 bác sĩ | Tạo hồ sơ người bệnh, soạn liệu trình (mức, chế độ, thời gian), lưu bản "Đang áp dụng" | UR7, UR11 | Hoàn thành không cần hỗ trợ; bác sĩ đồng ý các trường đủ để ra y lệnh | |
+| V2 | 1 đến 2 bác sĩ | Mở tổng quan, tìm người bệnh cần chú ý nhất trên 30 hồ sơ giả lập | UR8 | ≤ 30 giây (đx) | |
+| V3 | 1 đến 2 bác sĩ | Chụp 10 ảnh mẫu bằng khung hướng dẫn, chấm ảnh đủ dùng | UR3, UR9 | ≥ 8 trên 10 ảnh đạt (đx) | |
+| V4 | 3 đến 5 người bệnh mẫu (có ít nhất 1 người trên 60 tuổi) | Nhìn màn chính 10 giây rồi nói việc hôm nay | UR1 | Nói đúng vị trí, thời gian | |
+| V5 | Như V4 | Cắm máy, nạp liệu trình, theo dõi phiên đến khi xong | UR2, UR11 | Hoàn thành; hiểu thông báo lỗi khi rút cáp | |
+| V6 | Như V4 | Báo đau sau phiên | UR4 | Hoàn thành ≤ 3 thao tác (đx) | |
+| V7 | Nhóm nghiên cứu | Từ một ảnh, truy về phiên và liệu trình | UR14 | Truy được trên bản demo | |
+
+Tài liệu [1] đến [7] ở `cau-hoi-mo-va-tai-lieu.md`; [8], [9] liệt kê cuối mục này.
+
+Phiếu sau mỗi phiên: thang SUS 10 câu [8] và 3 câu mở ("chỗ nào khó", "thiếu gì", "thừa gì"). Số người tham gia nhỏ phù hợp mục tiêu tìm lỗi khả dụng, không phải đo thống kê; Nielsen và Landauer (1993) cho thấy khoảng 5 người phát hiện phần lớn lỗi khả dụng [9]. Đây là căn cứ cho cỡ mẫu, không phải tiêu chí nghiệm thu.
+
+Điều kiện chuyển sang bước 9 chính thức: V1, V4, V5 đạt. Nếu không đạt, quay lại UR hoặc FR theo slide 27 [1]. Các tệp bước 9 đến 15 hiện là **bản nháp chờ validation**.
+
+[8] J. Brooke, "SUS: A 'quick and dirty' usability scale", trong *Usability Evaluation in Industry*, Taylor & Francis, 1996, tr. 189 đến 194.
+
+[9] J. Nielsen, T. K. Landauer, "A mathematical model of the finding of usability problems", *Proc. INTERACT '93 and CHI '93*, ACM, 1993, tr. 206 đến 213. https://doi.org/10.1145/169059.169166

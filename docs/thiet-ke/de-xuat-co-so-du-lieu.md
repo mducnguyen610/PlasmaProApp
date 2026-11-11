@@ -1,6 +1,6 @@
 # Đề xuất mô hình dữ liệu (database)
 
-Trạng thái: **chỉ đề xuất mô hình dữ liệu**, không lập trình (bảng phạm vi ở [00-pham-vi-va-gia-dinh.md](00-pham-vi-va-gia-dinh.md)). Truy về TR8 ([07-thiet-ke-cau-truc.md](07-thiet-ke-cau-truc.md)): "mọi phiên truy ngược được về liệu trình đã dùng". Kiến trúc máy chủ nằm ở [11-de-xuat-backend.md](11-de-xuat-backend.md).
+Trạng thái: **chỉ đề xuất mô hình dữ liệu**, không lập trình (bảng phạm vi ở [00-pham-vi-va-gia-dinh.md](00-pham-vi-va-gia-dinh.md)). Truy về TR8 ([07-thiet-ke-cau-truc.md](07-thiet-ke-cau-truc.md)): "mọi phiên truy ngược được về liệu trình đã dùng". Kiến trúc máy chủ nằm ở [de-xuat-backend.md](de-xuat-backend.md).
 
 Ngày lập: 11/11/2026. Mô hình viết cho cơ sở dữ liệu quan hệ (đề xuất PostgreSQL); tên bảng tiếng Anh để khớp mã nguồn.
 
@@ -90,7 +90,7 @@ FR16 (lưu vết nhãn) được đáp ứng bằng chuỗi `supersedes_id`: m�
 | Bảng | Trường chính | Ghi chú |
 |---|---|---|
 | `audit_log` | `id` PK, `at`, `user_id` FK, `action`, `entity`, `entity_id`, `diff` (JSON), `ip?` | Chỉ ghi thêm, quản trị viên đọc (TR9, NFR1) |
-| `sync_change` | `change_id` PK (UUID từ ứng dụng), `user_id` FK, `entity`, `entity_id`, `op`, `received_at`, `seq` (tăng dần) | Chống ghi đôi khi gửi lại; `seq` là mốc kéo thay đổi ([11-de-xuat-backend.md](11-de-xuat-backend.md) mục 4.2) |
+| `sync_change` | `change_id` PK (UUID từ ứng dụng), `user_id` FK, `entity`, `entity_id`, `op`, `received_at`, `seq` (tăng dần) | Chống ghi đôi khi gửi lại; `seq` là mốc kéo thay đổi ([de-xuat-backend.md](de-xuat-backend.md) mục 4.2) |
 | `push_token` | `user_id` FK, `token`, `platform`, `updated_at` | Báo bác sĩ khi người bệnh báo đau (FR6) |
 
 ## 4. Chỗ lệch giữa mô hình đề xuất và kiểu hiện có trong ứng dụng
