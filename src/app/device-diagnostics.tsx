@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
-import { PROTOCOL } from '@/lib/device';
+import { PROTOCOL, setTransportPreference, transportPreference, usbAndroidAvailable } from '@/lib/device';
 import { LINK_LABEL, sendResultLabel } from '@/lib/device/labels';
 import { checkSpec } from '@/lib/device/spec-check';
 import type { TraceEntry } from '@/lib/device/trace';
@@ -49,6 +49,21 @@ export default function DeviceDiagnostics() {
         <InfoRow label="Nguồn" value={PROTOCOL.source} stack />
         {PROTOCOL.confirmed ? <Chip label="Đã xác nhận" tone="green" /> : <Chip label="Chưa được firmware xác nhận" tone="amber" />}
         {problems.length === 0 ? <Muted>Đặc tả hợp lệ.</Muted> : problems.map((x) => <Text key={x} style={{ color: C.red }}>{x}</Text>)}
+      </Card>
+
+      <Card>
+        <Text style={{ fontWeight: '700', color: C.text }}>Đường truyền</Text>
+        <InfoRow label="Đang dùng" value={link.kind === 'usb-android' ? 'USB thật (Android)' : link.kind === 'simulated' ? 'Thiết bị giả lập' : link.kind} />
+        {link.detail ? <Muted>{link.detail}</Muted> : null}
+        {usbAndroidAvailable() ? (
+          transportPreference() === 'auto' ? (
+            <Button label="Chuyển sang thiết bị giả lập" variant="secondary" icon="flask-outline" onPress={() => void setTransportPreference('simulated')} />
+          ) : (
+            <Button label="Dùng USB thật" variant="secondary" icon="hardware-chip-outline" onPress={() => void setTransportPreference('auto')} />
+          )
+        ) : (
+          <Muted>USB thật chỉ có trong bản dựng Android (không có trong Expo Go hay bản web).</Muted>
+        )}
       </Card>
 
       <View style={{ flexDirection: 'row', gap: 8 }}>

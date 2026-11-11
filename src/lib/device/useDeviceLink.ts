@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { capabilitiesFor } from './capabilities';
 import type { DeviceCapabilities } from './capabilities';
 import { createCodec } from './codec';
-import { getTransport, PROTOCOL } from './index';
+import { getTransport, onTransportChange, PROTOCOL } from './index';
 import { toDeviceMessage } from './protocol';
 import type { DeviceMessage, TreatmentConfig } from './protocol';
 import { identifyDevice, sendConfig } from './sender';
@@ -19,12 +19,29 @@ let lastState: LinkState = 'disconnected';
 let lastIdentity: DeviceIdentity | null = null;
 
 export function useDeviceLink() {
+  const [, setGen] = useState(0);
   const transport = getTransport();
   const [state, setState] = useState<LinkState>(lastState);
   const [detail, setDetail] = useState<string | undefined>();
   const [identity, setIdentity] = useState<DeviceIdentity | null>(lastIdentity);
   const [lastStatus, setLastStatus] = useState<StatusMessage | null>(null);
   const [lastStatusAt, setLastStatusAt] = useState<string | null>(null);
+
+  // Quản trị viên đổi giữa USB thật và giả lập: bỏ trạng thái của đường truyền cũ, vẽ lại với đường truyền mới.
+  useEffect(
+    () =>
+      onTransportChange(() => {
+        lastState = 'disconnected';
+        lastIdentity = null;
+        setState('disconnected');
+        setDetail(undefined);
+        setIdentity(null);
+        setLastStatus(null);
+        setLastStatusAt(null);
+        setGen((g) => g + 1);
+      }),
+    [],
+  );
 
   useEffect(() => {
     const reader = createCodec(PROTOCOL).createReader('device_to_app');

@@ -68,5 +68,13 @@ export function checkSpec(spec: ProtocolSpec): string[] {
   if (!(spec.ackTimeoutMs > 0)) errs.push('ackTimeoutMs phải lớn hơn 0');
   if (!(spec.maxRetries >= 0)) errs.push('maxRetries không được âm');
   if (!(spec.maxFrameBytes >= 64)) errs.push('maxFrameBytes phải từ 64 trở lên');
+  if (spec.usb) {
+    if (spec.usb.devices.length === 0) errs.push('usb.devices trống');
+    for (const d of spec.usb.devices) {
+      for (const [k, v] of [['vendorId', d.vendorId], ['productId', d.productId]] as const) {
+        if (!Number.isInteger(v) || v < 0 || v > 0xffff) errs.push(`usb: ${k} ${v} không vừa 16 bit`);
+      }
+    }
+  }
   return errs;
 }

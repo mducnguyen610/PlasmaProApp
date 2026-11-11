@@ -69,6 +69,9 @@ export const PROTOCOL: ProtocolSpec = {
   ackTimeoutMs: 2000,
   maxRetries: 2,
   maxFrameBytes: 1024,
+  // CP2102N theo báo cáo giữa kỳ (GA-2). VID 0x10C4, PID 0xEA60 là mã mặc định của Silicon Labs cho CP210x;
+  // nhà sản xuất mạch có thể đã lập trình mã khác, cần nhóm phần cứng xác nhận (ICD câu hỏi 13).
+  usb: { devices: [{ vendorId: 0x10c4, productId: 0xea60, chip: 'cp210x', note: 'CP2102N, mã mặc định Silicon Labs' }], confirmed: false },
 };
 
 /** Phương án B của ICD: khung nhị phân, CRC-16/MODBUS. Chỉ dùng trong kiểm thử để chứng minh đổi kiểu khung không phải sửa mã. */
