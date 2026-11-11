@@ -4,10 +4,11 @@ import { View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Choices, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
+import { fmtDuration } from '@/lib/course';
 import { modeLabel } from '@/lib/device/capabilities';
 import { planToConfig, PROTOCOL } from '@/lib/device';
-import { CONFIG_ERROR_LABEL, LINK_LABEL, MISSING_LABEL, sendResultLabel } from '@/lib/device/labels';
+import { CONFIG_ERROR_LABEL, LINK_LABEL, MISSING_LABEL, nakHint, sendResultLabel } from '@/lib/device/labels';
 import { configToWire, validateConfig } from '@/lib/device/protocol';
 import type { SendResult } from '@/lib/device/sender';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
@@ -47,6 +48,7 @@ export default function ConnectDevice() {
   const noDevice = !p.deviceId;
   // Máy chưa trả lời lệnh hỏi thông tin: chưa kiểm được phiên bản, không gửi (RK3).
   const unidentified = link.state === 'connected' && !!PROTOCOL.messages.query_info && link.identity?.kind !== 'known';
+  const isPatient = me?.role === 'patient';
   const canSend = link.state === 'connected' && !!cfg && errors.length === 0 && !versionMismatch && !unidentified && !noDevice && !sending;
 
   const send = async () => {
@@ -72,11 +74,18 @@ export default function ConnectDevice() {
     }
   };
 
+  // Bước hiện tại của luồng nạp (1 kết nối, 2 gửi, 3 theo dõi phiên), để người bệnh biết đang ở đâu.
+  const step = result?.kind === 'acked' ? 3 : link.state === 'connected' ? 2 : 1;
+  // NAK mà gửi lại cũng vô ích (BAD_FIELDS, mã lạ): ẩn Gửi lại, đưa người bệnh sang báo sự cố.
+  const noRetry = result?.kind === 'nacked' && !nakHint(result.code).retry;
+  const lostAfterSend = !!result && result.kind !== 'acked' && link.state !== 'connected';
+
   const capsNote = link.capsSource === 'device' ? 'Năng lực đọc từ máy' : link.identity?.kind === 'no_reply' ? 'Máy không trả lời lệnh hỏi, dùng bảng dự phòng' : link.capsSource === 'table' ? 'Dùng bảng năng lực ghi sẵn' : 'Chưa có năng lực cho mẫu này';
 
   return (
     <Screen header={<Header back title="Nạp liệu trình xuống máy" subtitle={p.code} />}>
-      {!PROTOCOL.confirmed && <Notice>Giao thức chưa được firmware xác nhận.</Notice>}
+      <StepRow step={step} />
+      {!PROTOCOL.confirmed && !isPatient && <Notice>Giao thức chưa được firmware xác nhận.</Notice>}
 
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -84,7 +93,7 @@ export default function ConnectDevice() {
           {link.kind === 'simulated' && <Chip label="Thiết bị giả lập" tone="amber" icon="flask-outline" />}
         </View>
         {link.detail ? <Muted>{link.detail}</Muted> : null}
-        {link.state === 'connected' && (
+        {link.state === 'connected' && !isPatient && (
           <>
             <InfoRow label="Giao thức của máy" value={idInfo ? `Phiên bản ${idInfo.protocolVersion}` : 'Không rõ'} />
             {idInfo && <InfoRow label="Firmware" value={idInfo.firmwareVersion} />}
@@ -122,15 +131,23 @@ export default function ConnectDevice() {
             <Notice tone="red">{`Đợt điều trị còn thiếu ${prepared.missing.map((m) => MISSING_LABEL[m]).join(', ')}. Bác sĩ cần lưu phiên bản mới.`}</Notice>
           ) : (
             <Card>
-              <Text style={{ fontWeight: '700', color: C.text }}>Cấu hình sẽ gửi</Text>
+              <Text style={{ fontWeight: '700', color: C.text }}>Liệu trình sẽ nạp xuống máy</Text>
+              {selected && <InfoRow label="Vết thương" value={`${selected.wound.code} · ${selected.wound.location}`} />}
               {cfg && <InfoRow label="Chế độ" value={modeLabel(cfg.treatmentMode)} />}
-              {wire
-                ? Object.entries(wire).map(([k, v]) => <InfoRow key={k} label={k} value={String(v)} mono />)
-                : errors.map((e) => (
-                    <Text key={e} style={{ color: C.red }}>
-                      {CONFIG_ERROR_LABEL[e]}
-                    </Text>
-                  ))}
+              {cfg && <InfoRow label="Mức năng lượng" value={`Mức ${cfg.energyLevel}`} />}
+              {cfg && <InfoRow label="Thời gian chiếu" value={fmtDuration(cfg.minTreatmentTimeSec)} />}
+              {plan && <InfoRow label="Đợt điều trị" value={`Phiên bản ${plan.version}, bác sĩ đã xác nhận`} />}
+              {wire ? (
+                <Disclosure title="Chi tiết kỹ thuật" summary="Các trường gói CFG gửi qua USB/UART" icon="code-slash-outline">
+                  {Object.entries(wire).map(([k, v]) => <InfoRow key={k} label={k} value={String(v)} mono />)}
+                </Disclosure>
+              ) : (
+                errors.map((e) => (
+                  <Text key={e} style={{ color: C.red }}>
+                    {CONFIG_ERROR_LABEL[e]}
+                  </Text>
+                ))
+              )}
             </Card>
           )}
         </>
@@ -142,10 +159,33 @@ export default function ConnectDevice() {
           {sendResultLabel(result)}
         </Notice>
       )}
-      {result && result.kind !== 'acked' && canSend && <Button label="Gửi lại" variant="secondary" icon="refresh-outline" onPress={send} />}
+      {result && result.kind !== 'acked' && canSend && !noRetry && <Button label="Gửi lại" variant="secondary" icon="refresh-outline" onPress={send} />}
+      {lostAfterSend && <Button label="Kết nối lại" variant="secondary" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />}
+      {noRetry && isPatient && <Button label="Báo sự cố cho bác sĩ" variant="secondary" icon="chatbubble-ellipses-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'device' } })} />}
       {result?.kind === 'acked' && (
-        <Button label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={() => router.push({ pathname: '/session-monitor', params: { patientId: p.id, woundId: selected?.wound.id } })} />
+        <Button label="Theo dõi phiên điều trị" icon="pulse-outline" onPress={() => router.push({ pathname: '/session-monitor', params: { patientId: p.id, woundId: selected?.wound.id } })} />
       )}
     </Screen>
+  );
+}
+
+const STEPS = ['Kết nối máy', 'Nạp liệu trình', 'Chiếu'];
+
+/** Ba bước của luồng nạp; bước đã qua có dấu tích, bước hiện tại tô màu chính. */
+function StepRow({ step }: { step: number }) {
+  return (
+    <View accessibilityRole="progressbar" accessibilityLabel={`Bước ${step} trên ${STEPS.length}: ${STEPS[step - 1]}`} style={{ flexDirection: 'row', gap: 6 }}>
+      {STEPS.map((label, i) => {
+        const n = i + 1;
+        const done = n < step;
+        const current = n === step;
+        return (
+          <View key={label} style={{ flex: 1, gap: 4 }}>
+            <View style={{ height: 4, borderRadius: 2, backgroundColor: done || current ? C.primary : C.border }} />
+            <Text style={{ fontSize: 13, color: current ? C.text : C.textSoft, fontWeight: current ? '700' : '400' }}>{done ? `✓ ${label}` : `${n}. ${label}`}</Text>
+          </View>
+        );
+      })}
+    </View>
   );
 }

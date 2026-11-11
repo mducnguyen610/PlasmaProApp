@@ -89,6 +89,10 @@ export default function PatientHome() {
                 <Ionicons name="information-circle-outline" size={18} color={C.amber} />
               </Pressable>
             )}
+            {/* Lối tắt vào luồng chính tại nhà: N02 sang T01, không phải vòng qua tab Thiết bị. */}
+            {status.kind === 'treat' && p.deviceId && (
+              <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={() => router.push('/connect-device')} />
+            )}
           </>
         ) : followUp ? (
           <>

@@ -790,10 +790,10 @@ Các mục dưới chưa làm, trừ mục ghi "Đã làm". Mỗi mục cần c�
 | # | Màn | Đề xuất | FR | Độ ưu tiên (đề xuất) |
 |---|---|---|---|---|
 | 1 | T01 | Đếm khung sai checksum, sai cấu trúc trong `request()` và báo riêng ở kết quả hết giờ (G5) | FR2 | Đã làm ngày 11/11/2026 (G5b) |
-| 2 | T01 | Nhãn dễ hiểu cho mã NAK `BAD_CHECKSUM`, `BAD_FIELDS`, `BUSY` (G1 đến G3) | FR2 | Cao |
-| 3 | T01 | Nút "Kết nối lại" sau G6; hiện lần gửi đang chạy (T01-f) | FR2 | Trung bình |
+| 2 | T01 | Nhãn dễ hiểu cho mã NAK `BAD_CHECKSUM`, `BAD_FIELDS`, `BUSY` (G1 đến G3) | FR2 | Đã làm ngày 11/11/2026 (`NAK_HINT` trong `labels.ts`; G2 và mã lạ ẩn Gửi lại, có nút báo sự cố) |
+| 3 | T01 | Nút "Kết nối lại" sau G6; hiện lần gửi đang chạy (T01-f) | FR2 | Nút Kết nối lại: đã làm ngày 11/11/2026. Hiện lần gửi đang chạy: chưa làm |
 | 4 | T01 | Trạng thái riêng cho iOS chưa có USB thật (K5) | FR2 | Trung bình, chờ quyết định nền tảng |
-| 5 | T02 | Thông báo và nút tiếp theo cho `done`, `stopped`, `error`; cảnh báo khi `STA` ngừng đến (P1 đến P5) | FR4, FR6 | Trung bình |
+| 5 | T02 | Thông báo và nút tiếp theo cho `done`, `stopped`, `error`; cảnh báo khi `STA` ngừng đến (P1 đến P5) | FR4, FR6 | Đã làm ngày 11/11/2026 trừ câu bổ sung của P4 (chờ phần cứng xác nhận tự ngắt) |
 | 6 | Q05 | Đánh dấu khung nhận lỗi trong bản ghi byte | TR3 | Trung bình |
 | 7 | N02 | Hiện chế độ điều trị | FR1 | Đã có trong mã (`CourseCard.tsx`) |
 | 8 | N03, N08 | Ngưỡng VAS do bác sĩ đặt (thang 0 đến 10 đã có ở N08) | FR6 | Chờ bác sĩ chốt ngưỡng |
@@ -803,6 +803,7 @@ Các mục dưới chưa làm, trừ mục ghi "Đã làm". Mỗi mục cần c�
 | 12 | Q02 | Số phiên bản bộ dữ liệu | FR12 | Thấp |
 | 13 | N05, N06 | Lối vào N06 cho người bệnh, hoặc bỏ chế độ xem người bệnh | FR1 | Thấp |
 | 14 | B04 | Cho bác sĩ sửa họ tên, năm sinh, số điện thoại; lưu người, giờ, giá trị cũ | FR18 | Trung bình |
+| 15 | N02, T01 | Nút "Nạp liệu trình vào máy" trên thẻ Hôm nay của N02; T01 hiện mức, chế độ, thời gian dạng đọc được, gói CFG thô thu vào "Chi tiết kỹ thuật"; thanh 3 bước; ẩn thông tin giao thức với người bệnh | FR1, FR2, NFR4 | Đã làm ngày 11/11/2026 |
 
 ## Giả định
 

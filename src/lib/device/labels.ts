@@ -26,14 +26,35 @@ export const CONFIG_ERROR_LABEL: Record<ConfigError, string> = {
   capabilities_unknown: 'Chưa biết năng lực của mẫu máy này.',
 };
 
+/**
+ * Lời giải thích mã NAK cho người dùng (wireframe T01, G1 đến G4). Mã gốc vẫn ghi kèm để báo bác sĩ hoặc kỹ thuật.
+ * `retry`: gửi lại có ích hay không. ICD mục 7 cấm ứng dụng tự gửi lại khi nhận NAK, nên người dùng bấm.
+ */
+export const NAK_HINT: Record<string, { text: string; retry: boolean }> = {
+  BAD_CHECKSUM: { text: 'Dữ liệu bị lỗi trên đường truyền. Kiểm tra cáp đã cắm chặt rồi bấm Gửi lại.', retry: true },
+  BAD_FIELDS: { text: 'Máy không nhận giá trị của đợt điều trị. Gửi lại sẽ vẫn lỗi, hãy báo bác sĩ.', retry: false },
+  BUSY: { text: 'Máy đang chiếu hoặc đang bận. Chờ máy xong rồi bấm Gửi lại.', retry: true },
+};
+
+export function nakHint(code: string): { text: string; retry: boolean } {
+  return NAK_HINT[code] ?? { text: 'Máy từ chối cấu hình. Hãy báo bác sĩ.', retry: false };
+}
+
+/** Giây còn lại dạng phút:giây, ví dụ 176 thành "2:56". */
+export function fmtRemaining(sec: number | null | undefined): string {
+  if (sec == null || !Number.isFinite(sec) || sec < 0) return '–';
+  const s = Math.round(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 export function sendResultLabel(r: SendResult): string {
   switch (r.kind) {
     case 'acked':
       return r.attempts > 1 ? `Máy đã nhận cấu hình (sau ${r.attempts} lần gửi).` : 'Máy đã nhận cấu hình.';
     case 'nacked':
-      return `Máy từ chối cấu hình, mã ${r.code}.`;
+      return `${nakHint(r.code).text} (Mã ${r.code}.)`;
     case 'timeout':
-      return `Máy không trả lời sau ${r.attempts} lần gửi.`;
+      return `Máy không trả lời sau ${r.attempts} lần gửi. Kiểm tra máy đã bật và cáp đã cắm rồi gửi lại.`;
     case 'corrupted':
       return `Máy trả về dữ liệu hỏng (sai checksum hoặc sai cấu trúc) sau ${r.attempts} lần gửi. Hãy kiểm tra cáp rồi gửi lại.`;
     case 'disconnected':
