@@ -5,7 +5,7 @@ Trạng thái: **bản nháp** (11/11/2026). Lập từ mã nhánh `trien-khai/g
 ## Căn cứ
 
 - Danh sách 12 nhóm màn dự kiến ở giai đoạn 5 trong tệp quy trình 9 giai đoạn chủ đồ án gửi ngày 11/11/2026 (tệp không nằm trong kho mã).
-- FR1 đến FR17 và NFR4 ở [05-nhu-cau-tinh-nang.md](05-nhu-cau-tinh-nang.md); bảng đối chiếu mã ở [doi-chieu-ma-nguon.md](doi-chieu-ma-nguon.md).
+- FR1 đến FR18 và NFR4 ở [05-nhu-cau-tinh-nang.md](05-nhu-cau-tinh-nang.md); bảng đối chiếu mã ở [doi-chieu-ma-nguon.md](doi-chieu-ma-nguon.md).
 - Vai trò: bác sĩ, người bệnh, quản trị viên; không có điều dưỡng ([10-kien-truc-tong-the.md](10-kien-truc-tong-the.md), KT7). Kiểm quyền mỗi màn bằng `RoleTabs`, `useCanView` (`src/components/RoleTabs.tsx`, `src/components/Guard.tsx`).
 - Mỗi tệp trong `src/app/` là một màn (Expo Router).
 
@@ -48,9 +48,9 @@ Trạng thái: **bản nháp** (11/11/2026). Lập từ mã nhánh `trien-khai/g
 | Mã | Màn | Tệp | FR | Hiện trạng |
 |---|---|---|---|---|
 | B01 | Trang chủ: ô việc cần làm, danh sách người bệnh xếp theo mức cần chú ý, 3 trạng thái hôm nay | `doctor/index.tsx` | FR10 | Có |
-| B02 | Danh sách người bệnh, tìm kiếm | `doctor/patients.tsx` | Không có FR (xem mục Thiếu sót) | Có |
-| B03 | Thêm người bệnh, cấp mã hồ sơ, mã kích hoạt | `patients/new.tsx` | Không có FR (xem mục Thiếu sót) | Có |
-| B04 | Hồ sơ người bệnh: thông tin, vết thương, thiết bị, báo cáo người bệnh gửi | `patients/[id].tsx` | FR6, FR13 | Có |
+| B02 | Danh sách người bệnh, tìm kiếm | `doctor/patients.tsx` | FR18 | Có |
+| B03 | Thêm người bệnh, cấp mã hồ sơ, mã kích hoạt | `patients/new.tsx` | FR18 | Có |
+| B04 | Hồ sơ người bệnh: thông tin, vết thương, thiết bị, báo cáo người bệnh gửi | `patients/[id].tsx` | FR18, FR6, FR13 | Một phần: chưa sửa được họ tên, năm sinh, số điện thoại (FR18) |
 | B05 | Thông tin vết thương: diện tích theo thời gian, album ảnh, đợt điều trị, đánh giá | `wounds/[id].tsx` | FR7, FR17 | Có |
 | B06 | Thiết lập thông tin điều trị (đợt điều trị có phiên bản, lý do thay đổi) | `plan/[patientId].tsx` | FR9, FR2 (nguồn cấu hình), FR3 | Một phần: chưa giới hạn an toàn theo năng lực máy (FR9), chưa tính J/cm² (FR3) |
 | B07 | Đánh giá tình trạng vết thương | `evaluate/[woundId].tsx` | Không có FR (mục "thừa" ở doi-chieu-ma-nguon) | Có |
@@ -86,7 +86,7 @@ Tổng cộng 33 màn: 6 chung, 8 người bệnh, 13 bác sĩ, 2 thiết bị d
 | Nhóm màn dự kiến | Màn đáp ứng | Đủ chưa |
 |---|---|---|
 | Đăng nhập và quản lý tài khoản | C01 đến C06, Q01 | Đủ ở mức cục bộ |
-| Danh sách và hồ sơ chi tiết bệnh nhân | B02, B03, B04 | Đủ |
+| Danh sách và hồ sơ chi tiết bệnh nhân | B02, B03, B04 | Một phần (FR18: chưa sửa thông tin hồ sơ) |
 | Thông tin vết thương | B05, N05 | Đủ |
 | Thiết lập thông tin điều trị | B06 | Một phần (FR3, FR9) |
 | Kết nối thiết bị Plasma Pro | T01, Q05 | Một phần (chưa thử mạch) |
@@ -100,7 +100,7 @@ Tổng cộng 33 màn: 6 chung, 8 người bệnh, 13 bác sĩ, 2 thiết bị d
 
 ## Thiếu sót và chồng lấn
 
-1. **Quản lý hồ sơ người bệnh chưa có FR.** B02, B03 và phần thông tin của B04 phục vụ nhóm chức năng "Quản lý hồ sơ bệnh nhân và mã định danh bệnh nhân" ở giai đoạn 2 của quy trình 9 giai đoạn, nhưng bộ FR1 đến FR17 không có dòng nào cho việc thêm, sửa, tra cứu người bệnh. Đề xuất (chưa chốt): bổ sung một FR quản lý hồ sơ người bệnh vào [05-nhu-cau-tinh-nang.md](05-nhu-cau-tinh-nang.md). Độ tin cậy cao: đã đọc đủ bảng FR.
+1. **Quản lý hồ sơ người bệnh:** lúc lập danh sách màn, bộ FR1 đến FR17 chưa có FR cho B02, B03, B04. Đã bổ sung FR18 vào [05-nhu-cau-tinh-nang.md](05-nhu-cau-tinh-nang.md) ngày 11/11/2026.
 2. **Chồng lấn với giai đoạn 7 (gán nhãn).** B11 hiện chỉ cho bác sĩ nhập diện tích (cm²) làm nhãn và lưu vết sửa nhãn (FR16). Phương pháp gán nhãn của FR15 (phân loại cả ảnh, khung chữ nhật hay phân vùng) chờ bác sĩ chốt và thuộc tài liệu giai đoạn 7. Tài liệu này giữ chỗ cho màn gán nhãn trong sơ đồ luồng (nút "Gán nhãn" trên B11) nhưng không thiết kế cách gán nhãn.
 3. **Duyệt nhãn nằm ngoài phạm vi.** Không có màn duyệt nhãn; trường `researchReviewedBy` chỉ là bác sĩ xác nhận ảnh không lộ danh tính.
 4. **iOS chưa có USB thật.** Người bệnh dùng cả Android và iOS, nhưng `usbAndroidAvailable()` chỉ có trên bản dựng Android; trên iOS, T01 rơi về thiết bị giả lập. Wireframe T01 thêm một trạng thái đề xuất cho trường hợp này.

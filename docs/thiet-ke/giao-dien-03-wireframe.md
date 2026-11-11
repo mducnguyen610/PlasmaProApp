@@ -793,6 +793,7 @@ Các mục dưới chưa làm. Mỗi mục cần cập nhật [doi-chieu-ma-nguo
 | 11 | B12 | Tìm theo mã người bệnh | FR17 | Thấp |
 | 12 | Q02 | Số phiên bản bộ dữ liệu | FR12 | Thấp |
 | 13 | N05, N06 | Lối vào N06 cho người bệnh, hoặc bỏ chế độ xem người bệnh | FR1 | Thấp |
+| 14 | B04 | Cho bác sĩ sửa họ tên, năm sinh, số điện thoại; lưu người, giờ, giá trị cũ | FR18 | Trung bình |
 
 ## Giả định
 

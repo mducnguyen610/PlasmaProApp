@@ -4,7 +4,7 @@ Mã nguồn hiện tại là prototype của vòng cũ, viết trước khi có 
 
 Cách đánh giá: đọc mã ở nhánh `nang-cap/sdk-58` (commit `765ba81`). Chưa chạy ứng dụng để kiểm lại từng dòng, nên cột "Mức đáp ứng" là nhận định từ việc đọc mã.
 
-Kết quả gộp: trong 17 FR có 8 FR đạt phần lớn, 7 FR đạt một phần, 2 FR chưa có (cập nhật theo quy trình 9 giai đoạn). Trong 7 NFR có 2 NFR đạt phần lớn, 1 NFR đạt một phần, 4 NFR chưa có.
+Kết quả gộp: trong 18 FR có 8 FR đạt phần lớn, 8 FR đạt một phần, 2 FR chưa có (FR18 thêm ngày 11/11/2026) (cập nhật theo quy trình 9 giai đoạn). Trong 7 NFR có 2 NFR đạt phần lớn, 1 NFR đạt một phần, 4 NFR chưa có.
 
 ## FR chức năng
 
@@ -25,6 +25,7 @@ Kết quả gộp: trong 17 FR có 8 FR đạt phần lớn, 7 FR đạt một p
 | FR15 Gán nhãn ảnh | Một phần | `src/app/images/[id].tsx`, `src/lib/naming.ts` (nhãn là diện tích cm², trạng thái đã đo, chưa đo, đã loại) | Chưa có phân loại, khung hay phân vùng; bộ dò hiện có lưu đường bao (`capture.wound.hull`) nhưng bác sĩ chưa sửa được |
 | FR16 Lưu vết nhãn | Phần lớn | `LabelChange` trong `src/lib/types.ts` (người sửa, giờ, giá trị trước và sau) | Duyệt nhãn ngoài phạm vi; trường `researchReviewedBy` chỉ là bác sĩ xác nhận ảnh không lộ danh tính, giữ lại |
 | FR17 Quản lý ảnh | Phần lớn | `src/app/doctor/dataset.tsx` (lọc chưa có, đã có, đã loại), `src/app/wounds/[id].tsx` (album theo ngày) | Chưa tìm theo bệnh nhân trên toàn bộ ảnh |
+| FR18 Quản lý hồ sơ người bệnh | Một phần | `src/app/doctor/patients.tsx` (tìm kiếm), `patients/new.tsx`, `patients/[id].tsx`; `addPatient` (mã `BN` + 3 số, chặn trùng số điện thoại, mã kích hoạt), `updatePatient`, `issueActivation`, `addWound` trong `src/lib/store.tsx` | Bác sĩ chưa sửa được họ tên, năm sinh, số điện thoại (`updatePatient` chỉ nhận đồng ý; quản trị chỉ đổi bác sĩ phụ trách); chưa lưu lịch sử sửa hồ sơ; đồng ý chỉ giữ bản mới nhất |
 | FR13 Gán máy và đầu phát, thu hồi | Phần lớn | `src/lib/devices.ts` (một máy một người, có kiểm thử), `src/app/admin/devices.tsx`, `Device.tip`, `Device.lifecycle` | Chưa gán bằng quét mã |
 | FR14 Vòng đời máy, bảo dưỡng | Phần lớn | `src/lib/maintenance.ts`, `src/components/DeviceView.tsx` | Chu kỳ bảo dưỡng là số tạm, chờ WCMD |
 

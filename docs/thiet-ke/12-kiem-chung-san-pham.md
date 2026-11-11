@@ -34,6 +34,7 @@ Tệp này cập nhật lại sau mỗi pull request mã của giai đoạn 2.
 | FR13 | Không | `devices.test.ts` | Thử tay |
 | FR14 | Không | `maintenance.test.ts` | Không |
 | FR15 đến FR17 | DR11 | `naming.test.ts` | Chờ phương pháp gán nhãn |
+| FR18 | DR14 | `workflow.test.cjs` (quyền bác sĩ phụ trách) | Thử tay: tạo, tìm, kích hoạt một hồ sơ |
 | NFR3 | DR5 | `simulated.test.cjs` | Chạy với mạch thật |
 | NFR4 | DR8 | `theme.contrast.test.ts` | V4 |
 | NFR5 | DR6, DR9 | `localDay.test.ts`, `vectors.test.cjs` | Không |

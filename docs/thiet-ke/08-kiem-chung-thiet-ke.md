@@ -19,7 +19,7 @@ Verification trên giấy đạt: 16 UR đều có FR, và mọi FR đều phụ
 | UR11 | FR2, FR13 | Bác sĩ giao, nạp liệu trình qua USB và thu hồi một máy | Chưa |
 | UR12 | FR14 | Ngoài phạm vi ứng dụng | Không làm |
 | UR13 | NFR1, NFR2, NFR6 | Pháp chế bệnh viện rà soát | Chưa |
-| UR14 | FR4, FR11 | Nhóm nghiên cứu truy một phiên từ ảnh về liệu trình | Chưa |
+| UR14 | FR4, FR11, FR18 | Nhóm nghiên cứu truy một phiên từ ảnh về liệu trình | Chưa |
 | UR15 | NFR3 | Chạy ứng dụng với thiết bị giả lập và mạch thật | Chưa |
 | UR17 | FR15, FR16, FR17 | Bác sĩ gán nhãn 20 ảnh mẫu theo bộ quy tắc | Chưa |
 | UR16 | NFR7 | Giảng viên, WCMD đánh giá | Chưa |

@@ -51,8 +51,8 @@ Quy ước: tiền tố `/api/v1`, JSON, thời gian ISO 8601 có múi giờ, m�
 |---|---|---|---|
 | Xác thực | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` | Mọi vai trò | NFR1 |
 | | `POST /auth/activate` (mã kích hoạt một lần do bác sĩ cấp) | Người bệnh | NFR1 |
-| Người bệnh | `GET /patients`, `POST /patients`, `GET /patients/{id}`, `PATCH /patients/{id}` | Bác sĩ (của mình); người bệnh chỉ `GET` bản thân | FR9 |
-| | `POST /patients/{id}/consents` | Bác sĩ ghi, người bệnh xác nhận | FR12 |
+| Người bệnh | `GET /patients`, `POST /patients`, `GET /patients/{id}`, `PATCH /patients/{id}` | Bác sĩ (của mình); người bệnh chỉ `GET` bản thân | FR18 |
+| | `POST /patients/{id}/consents` | Bác sĩ ghi, người bệnh xác nhận | FR12, FR18 |
 | Vết thương | `GET /patients/{id}/wounds`, `POST /wounds`, `PATCH /wounds/{id}` | Bác sĩ | FR1, FR9 |
 | Liệu trình | `GET /wounds/{id}/plans`, `POST /plans` (tạo phiên bản mới, không sửa đè) | Bác sĩ; người bệnh chỉ đọc bản "Đang áp dụng" | FR9, TR11 |
 | Lịch hôm nay | `GET /me/today` | Người bệnh | FR1 |
