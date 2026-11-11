@@ -124,14 +124,14 @@ export function createSeed(): AppData {
     plans: [
       {
         id: 'pl-1', patientId: 'p-1', woundId: 'w-1', version: 2, status: 'active', sessionsPerDay: 1, minIntervalMin: null, targetEnergyWh: null,
-        ...plan1, doseLevel: 8, durationSec: 180, secondsPerCm2: 20, areaAtStart: 12.5, reviewAtDay: 28,
+        ...plan1, doseLevel: 4, treatmentMode: 'cold', durationSec: 180, secondsPerCm2: 20, areaAtStart: 12.5, reviewAtDay: 28,
         reviewSchedule: 'Tái đánh giá mỗi 7 ngày',
         notes: 'Mức năng lượng, thời gian và lịch là giá trị mô phỏng theo dạng liệu trình trên slide 34 và 39, không phải chỉ định điều trị.',
         editedBy: DOCTOR, editedAt: at(D(-16), '09:00'), reason: 'Vết thương cải thiện: chuyển sang 3 buổi mỗi tuần', confirmed: true,
       },
       {
         id: 'pl-2', patientId: 'p-2', woundId: 'w-2', version: 1, status: 'paused', sessionsPerDay: 1, minIntervalMin: null, targetEnergyWh: null,
-        ...plan2, doseLevel: 6, durationSec: 120, secondsPerCm2: 15, areaAtStart: 8, reviewAtDay: 28,
+        ...plan2, doseLevel: 3, treatmentMode: 'cold', durationSec: 120, secondsPerCm2: 15, areaAtStart: 8, reviewAtDay: 28,
         reviewSchedule: 'Tái đánh giá mỗi 7 ngày', notes: 'Giá trị mô phỏng.',
         editedBy: DOCTOR, editedAt: at(D(-15), '09:00'), reason: 'Biểu mô đã khép lần 1, dừng chiếu chờ xác nhận', confirmed: true,
       },
