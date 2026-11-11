@@ -13,7 +13,7 @@ import { MONO, Text, TextInput } from '@/components/Text';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useStore } from '@/lib/store';
 import type { Role, WoundImage } from '@/lib/types';
-import { bar, C, cardShape, G, radius, shadow, type GradientName, T } from '@/theme';
+import { bar, C, cardShape, elevation, G, radius, radiusExtra, shadow, type GradientName, T, type Tone } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -199,7 +199,6 @@ export function SectionTitle({ children, right, action, onAction }: { icon?: Ico
   );
 }
 
-type Tone = 'blue' | 'green' | 'amber' | 'red' | 'violet' | 'teal' | 'gray';
 const TONES: Record<Tone, [string, string]> = {
   blue: [C.primarySoft, C.primary],
   green: [C.greenSoft, C.green],
@@ -495,7 +494,7 @@ export function H({ children, size = 16 }: { children: ReactNode; size?: number 
 export const s = StyleSheet.create({
   header: {
     backgroundColor: C.card, paddingHorizontal: 16, paddingBottom: 14, borderBottomLeftRadius: radius.sheet, borderBottomRightRadius: radius.sheet,
-    shadowColor: C.grey, shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 1.1, height: 1.1 }, elevation: 4, zIndex: 2,
+    ...elevation[3], zIndex: 2,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 },
   roundBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
@@ -510,7 +509,7 @@ export const s = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, alignSelf: 'flex-start' },
   chipText: { fontSize: T.caption, fontWeight: '600' },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 24 },
-  btnShadow: { shadowColor: C.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 4, height: 8 }, elevation: 5, borderRadius: 24 },
+  btnShadow: { ...elevation[2], borderRadius: radiusExtra.button },
   btnText: { fontSize: T.body, fontWeight: '500', letterSpacing: 0.3 },
   label: { color: C.grey, fontSize: T.label, fontWeight: '500' },
   input: { backgroundColor: C.surfaceMuted, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: T.body, color: C.text },
