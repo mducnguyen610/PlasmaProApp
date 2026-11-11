@@ -23,7 +23,7 @@ flowchart LR
 
 Ba vai trò dùng chung một ứng dụng, phân màn theo vai trò: bác sĩ là người dùng chính, người bệnh dùng ứng dụng để trị liệu tại nhà, quản trị viên quản lý tài khoản và thiết bị. Không có vai trò điều dưỡng.
 
-**Giới hạn quan trọng:** liệu trình do bác sĩ soạn trên điện thoại bác sĩ chỉ đến được điện thoại người bệnh khi có máy chủ. Máy chủ chỉ là đề xuất, nên bản lập trình của đề tài chạy trên dữ liệu cục bộ của một điện thoại (bản demo đăng nhập lần lượt từng vai trò trên cùng máy). Mục 4, quyết định KT1, nêu cách giữ chỗ để sau này nối máy chủ mà không sửa màn hình.
+**Giới hạn quan trọng:** liệu trình do bác sĩ soạn trên điện thoại bác sĩ chỉ đến được điện thoại người bệnh khi có máy chủ. Máy chủ chỉ là đề xuất, nên bản lập trình của đề tài chạy trên dữ liệu cục bộ của một điện thoại (bản demo đăng nhập lần lượt từng vai trò trên cùng máy). Chủ đồ án đã chốt giữ demo một máy, xử lý đồng bộ khi có backend và database (mục 4, KT1).
 
 ## 2. Nền tảng
 
@@ -57,7 +57,7 @@ flowchart TB
   subgraph T4["Tầng 4. Cổng ra ngoài (giao diện + bản cài cắm thay)"]
     P1["DeviceTransport + đặc tả giao thức"]
     P2["WoundRecognizer"]
-    P3["Kho dữ liệu (Repository)"]
+    P3["Lưu dữ liệu (store gọi AsyncStorage)"]
   end
   T1 --> T2 --> T3
   T2 --> T4
@@ -65,20 +65,20 @@ flowchart TB
   P1 --> USB["USB/UART"]
   P2 --> AIm["Mô-đun AI"]
   P3 --> LOC["AsyncStorage"]
-  P3 -.-> API["API máy chủ (đề xuất)"]
+  P3 -.-> API["API máy chủ (làm sau khi có backend)"]
 ```
 
 Quy tắc phụ thuộc:
 
 1. Tầng trên được gọi tầng dưới, không ngược lại.
 2. Tầng 3 là TypeScript thuần, kiểm thử bằng `node` không cần điện thoại, đúng cách repo đang làm (`npm test`).
-3. Mỗi thứ nằm ngoài ứng dụng (thiết bị, mô-đun AI, nơi lưu dữ liệu) chỉ được chạm qua một giao diện ở tầng 4. Mỗi giao diện có ít nhất một bản cài giả để chạy và kiểm thử khi chưa có thứ thật. Đây là cách đáp ứng NFR3.
+3. Thiết bị và mô-đun AI chỉ được chạm qua một giao diện ở tầng 4; nơi lưu dữ liệu tạm do store gọi thẳng cho đến khi có backend (KT1). Mỗi giao diện có ít nhất một bản cài giả để chạy và kiểm thử khi chưa có thứ thật. Đây là cách đáp ứng NFR3.
 
 ## 4. Quyết định kiến trúc
 
 | Mã | Quyết định | Lý do | Hệ quả | Trạng thái |
 |---|---|---|---|---|
-| KT1 | Ưu tiên lưu cục bộ, tách cổng "kho dữ liệu" | Máy chủ chỉ đề xuất; người bệnh ở nhà có thể mất mạng (FR8) | Store gọi kho qua giao diện; bản cài cục bộ dùng AsyncStorage, bản cài máy chủ là đề xuất. Mỗi bản ghi có mã duy nhất để đồng bộ không nhân đôi (TR5) | Hiện store gọi thẳng AsyncStorage; tách cổng là GĐ sau |
+| KT1 | Dữ liệu nằm trên một máy; luồng bác sĩ gửi liệu trình cho người bệnh chạy dạng demo trong ứng dụng, đăng nhập lần lượt hai vai trò trên cùng máy | Chủ đồ án chốt ngày 11/11/2026: "tạo 1 demo gửi luồng trong sản phẩm này thôi, khi nào có backend và database sẽ xử lý sau" | Không thêm mã đồng bộ; Chương 4 ghi rõ luồng giữa hai điện thoại chỉ là mô phỏng; nối máy chủ là việc sau khi có backend, database | Đã chốt |
 | KT2 | Giao tiếp thiết bị qua `DeviceTransport` chỉ chuyển byte, định dạng nằm trong đặc tả khai báo | Firmware chưa chốt | Firmware chốt thì sửa dữ liệu, không sửa mã; giả lập nói theo cùng đặc tả | GĐ1 (giả lập), GĐ sau (USB thật) |
 | KT3 | Nhận diện vết thương qua `WoundRecognizer` | Chưa biết dạng mô-đun AI có sẵn | Đổi mô-đun không sửa màn chụp; giai đoạn 1 dùng bộ dò màu hiện có làm bản cài tạm | GĐ1 |
 | KT4 | Kiểm quyền ở store (ứng dụng); khi có máy chủ thì kiểm lại ở máy chủ | NFR1 đòi kiểm ở máy chủ, nhưng máy chủ chỉ đề xuất | Bản lập trình chỉ đáp ứng một phần NFR1; ghi rõ trong Chương 4 | Có sẵn (ứng dụng), Đề xuất (máy chủ) |
@@ -100,7 +100,7 @@ Quy tắc phụ thuộc:
 | Tổng quan bác sĩ | `src/lib/attention.ts`, `doctor/index.tsx` | Xếp người bệnh theo mức cần chú ý, trạng thái hôm nay | TR12, FR10 | GĐ1 |
 | Triệu chứng | `report.tsx`, `patient/index.tsx`, hành động trong store | Báo đau, biến cố | FR6 | Có sẵn |
 | Báo cáo in | `src/lib/report.ts` | Xuất báo cáo diễn biến dạng PDF | FR7 | Có sẵn |
-| Kho dữ liệu | (mới) `src/lib/repo/*` | Giao diện đọc ghi dữ liệu; bản cài cục bộ, bản cài máy chủ | KT1, TR5, FR8 | GĐ sau (cục bộ), Đề xuất (máy chủ) |
+| Đồng bộ với máy chủ | chưa có | Đẩy, kéo dữ liệu giữa các điện thoại | KT1, TR5, FR8 | Làm khi có backend, database |
 | Máy chủ IoMT, database | tài liệu riêng | API, xác thực, kiểm quyền, nhật ký kiểm toán, mô hình dữ liệu | TR7, TR8, TR9 | Đề xuất |
 
 ## 6. Luồng dữ liệu chính
@@ -110,11 +110,11 @@ Quy tắc phụ thuộc:
 ```mermaid
 sequenceDiagram
   participant BS as Bác sĩ (ứng dụng)
-  participant KHO as Kho dữ liệu
+  participant KHO as Dữ liệu trên máy
   participant BN as Người bệnh (ứng dụng)
   participant MAY as Plasma Pro
   BS->>KHO: Lưu liệu trình "Đang áp dụng" (mức, chế độ, thời gian, đã xác nhận)
-  KHO-->>BN: Liệu trình mới (cùng máy khi demo; qua máy chủ khi có)
+  KHO-->>BN: Liệu trình mới (demo: cùng máy; sau này: qua máy chủ)
   BN->>MAY: Cắm USB, INF và CAP (hỏi phiên bản, năng lực)
   MAY-->>BN: INF, CAP (hoặc không trả lời: dùng bảng dự phòng)
   BN->>BN: Kiểm cấu hình theo năng lực máy
@@ -146,7 +146,7 @@ Phiên kết thúc trên máy, ứng dụng người bệnh nhận `STA` `done`,
 | TR1, TR2 | Firmware | Yêu cầu gửi nhóm phần cứng |
 | TR3 | Lớp thiết bị (phía ứng dụng), ICD | Lập trình phía ứng dụng |
 | TR4 | `DeviceTransport`, thiết bị giả lập | Lập trình |
-| TR5 | Store, kho dữ liệu | Lập trình phần cục bộ |
+| TR5 | Store | Lập trình phần cục bộ; đồng bộ làm sau |
 | TR6 | Màn chính người bệnh | Lập trình |
 | TR7, TR8, TR9 | Máy chủ, database | Đề xuất |
 | TR10 | `src/lib/ai/` | Tích hợp |
@@ -158,9 +158,8 @@ Mọi TR đều có mô-đun nhận. TR1 và TR2 nằm ngoài ứng dụng.
 
 ## 8. Câu hỏi mở ảnh hưởng kiến trúc
 
-1. Có làm tách cổng kho dữ liệu (KT1) trong đề tài không. Nếu không, Chương 4 cần ghi rõ dữ liệu chỉ nằm trên một máy, và luồng 6.1 chỉ là mô phỏng.
-2. Mô-đun AI chạy trên điện thoại hay trên máy chủ. Nếu chạy trên máy chủ, bản tích hợp phụ thuộc máy chủ đề xuất, nên đề tài chỉ cài được bản giả.
-3. Bộ chuyển USB cho iPhone (câu F4 của ICD).
+1. Mô-đun AI chạy trên điện thoại hay trên máy chủ. Nếu chạy trên máy chủ, bản tích hợp phụ thuộc máy chủ đề xuất, nên đề tài chỉ cài được bản giả.
+2. Bộ chuyển USB cho iPhone (câu F4 của ICD).
 
 ## Tài liệu tham khảo
 
