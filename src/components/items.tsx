@@ -10,6 +10,7 @@ import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, WoundImage } from '@/lib/types';
 import { bar, C, radius } from '@/theme';
+import { TODAY_LABEL, type Attention, type TodayState } from '@/lib/attention';
 
 /** Một lịch hẹn: vạch màu, ngày (đỏ nếu hôm nay), tiêu đề đậm, mô tả. Dùng chung cho Trang chủ và Lịch trình. */
 /** Ô ngày làm điểm neo: số ngày lớn, tháng nhỏ; nền đỏ nhạt nếu là hôm nay. */
@@ -38,7 +39,9 @@ export function AppointmentRow({ date, title, body, today }: { date: string; tit
   );
 }
 
-export function PatientCard({ patient }: { patient: Patient }) {
+const TODAY_TONE: Record<TodayState, 'green' | 'amber' | 'gray' | 'blue'> = { treated: 'green', due: 'amber', no_data: 'gray', rest: 'blue', no_plan: 'gray' };
+
+export function PatientCard({ patient, attention }: { patient: Patient; attention?: Attention }) {
   const { device, woundsOf } = useLookups();
   const { data } = useStore();
   const dev = device(patient.deviceId);
@@ -58,6 +61,12 @@ export function PatientCard({ patient }: { patient: Patient }) {
         {severity ? <Chip label={SEVERITY[severity].label} tone={SEVERITY[severity].tone} /> : null}
         <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
       </View>
+      {attention && (
+        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingLeft: 52 }}>
+          <Chip label={TODAY_LABEL[attention.state]} tone={TODAY_TONE[attention.state]} />
+          {attention.reasons[0] ? <Text style={{ color: C.textSoft, fontSize: 13, flexShrink: 1 }}>{attention.reasons[0]}</Text> : null}
+        </View>
+      )}
       {(unlabeled > 0 || !active) && (
         <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', paddingLeft: 52 }}>
           {unlabeled > 0 && <Chip icon="pricetag-outline" tone="amber" label={`${unlabeled} ảnh chưa đo`} />}

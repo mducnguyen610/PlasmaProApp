@@ -11,16 +11,16 @@ Kết quả gộp: trong 17 FR có 8 FR đạt phần lớn, 7 FR đạt một p
 | FR | Mức đáp ứng | Mã liên quan | Còn thiếu so với FR |
 |---|---|---|---|
 | FR1 Việc điều trị hôm nay | Phần lớn | `src/app/patient/index.tsx` (thẻ Hôm nay), `src/lib/course.ts`, `src/components/CourseCard.tsx` | Chưa hiện chế độ (Cold, Hybrid, Thermal); mô hình `TreatmentPlan` chưa có trường chế độ |
-| FR2 Nạp liệu trình qua USB, tự ngắt | Chưa có | `setDevicePower`, `simulateSession` trong `src/lib/store.tsx` chỉ mô phỏng bật tắt từ xa | Toàn bộ: gói liệu trình, mã kiểm tra, xác nhận nạp. Lệnh bật tắt từ xa hiện tại trái với phương án S1 |
+| FR2 Nạp liệu trình qua USB, tự ngắt | Một phần (giai đoạn 1) | `src/lib/device/` (đặc tả khai báo `protocol.config.ts`, bộ mã hóa khung, `sender.ts` gửi lại khi hết thời gian chờ, thiết bị giả lập), `src/app/connect-device.tsx` | Chưa có cổng USB thật trên Android, iOS; giao thức chưa được firmware xác nhận (`confirmed: false`); lệnh bật tắt từ xa cũ trong `store.tsx` chưa gỡ |
 | FR3 Liều J/cm² | Chưa có | `doseLevel`, `durationSec`, `secondsPerCm2`, `targetEnergyWh` trong `src/lib/types.ts` | Chưa tính J/cm²; chờ mật độ công suất từ WCMD |
-| FR4 Đọc nhật ký phiên | Một phần | Kiểu `DeviceSession` (có `sessionId` chống trùng, `woundId`), `src/lib/adherence.ts` | Dữ liệu phiên là mô phỏng; chưa có mức, chế độ, giây phát thực; chưa có lớp đọc từ máy |
+| FR4 Đọc nhật ký phiên | Một phần | `DeviceSession`, `src/lib/adherence.ts`, bản tin `STA` và `src/app/session-monitor.tsx` (theo dõi thời gian còn lại) | Chưa có lệnh đọc nhật ký phiên lưu trong máy; chờ firmware trả lời câu hỏi trong ICD |
 | FR5 Bác sĩ chụp, tải ảnh | Phần lớn | `src/app/guided-capture.tsx`, `src/app/capture.tsx`, `src/lib/capture/*`, `src/lib/photos.ts` | Mã chỉ cho bác sĩ chụp, nay khớp UR3. Chưa chặn ảnh trùng |
 | FR6 Đau VAS và biến cố | Một phần | `src/app/report.tsx`, `setSessionPain` trong `store.tsx`, `AdherenceCalendar.tsx` | Chưa có ngưỡng do bác sĩ đặt, chưa có hướng dẫn liên hệ khi vượt ngưỡng |
 | FR7 Diễn biến diện tích cho người bệnh | Phần lớn | `src/components/AreaChart.tsx`, `src/app/patient/index.tsx`, `src/app/patient/history.tsx` | Không |
 | FR8 Lưu ngoại tuyến, đồng bộ | Một phần | Lưu cục bộ bằng AsyncStorage trong `store.tsx` | Chưa có máy chủ, hàng đợi đồng bộ, mã bản ghi duy nhất (TR5) |
 | FR9 Bác sĩ soạn liệu trình, nhật ký thay đổi | Một phần | `src/app/plan/[patientId].tsx` (phiên bản, người sửa, lý do, giai đoạn) | Chưa có giới hạn an toàn theo bảng năng lực thiết bị (TR11) |
-| FR10 Xếp người bệnh theo mức cần chú ý, 3 trạng thái | Một phần | `src/app/doctor/index.tsx` (việc cần làm), `adherence.ts`, `DeviceView.tsx` (tách "chưa có dữ liệu") | Danh sách người bệnh chưa xếp theo mức cần chú ý; 3 trạng thái mới có ở màn thiết bị, chưa có ở màn tổng quan |
-| FR11 AI khoanh vùng, tính diện tích | Một phần | `src/lib/capture/woundDetect.ts` (ngưỡng màu Otsu), `estimateAreaCm2` trong `capture/ar.ts` | Chưa phải mô hình phân vùng; chạy trên máy, trái với phương án C1; bác sĩ chưa sửa được vùng; chưa lưu phiên bản mô hình |
+| FR10 Xếp người bệnh theo mức cần chú ý, 3 trạng thái | Có (giai đoạn 1) | `src/lib/attention.ts` (`classifyToday`, `rankPatients`), `src/app/doctor/index.tsx`, chip trạng thái trong `PatientCard` | Trọng số điểm là giả định của ứng dụng, cần bác sĩ góp ý |
+| FR11 AI khoanh vùng, tính diện tích | Một phần | `src/lib/ai/` (giao diện `WoundRecognizer`, kết quả có `modelId`, `modelVersion`), bản cài hiện tại bọc `woundDetect.ts` (ngưỡng màu Otsu) | Chưa thay bằng mô-đun nhận diện có sẵn; bác sĩ chưa sửa được vùng |
 | FR12 Xuất bộ dữ liệu có nhãn | Phần lớn | `src/lib/export.ts`, `src/lib/research.ts` (ZIP ảnh PNG bỏ metadata, mã RS, `labels.csv`), `src/lib/access.ts` (`researchImages`) | Chưa có số phiên bản bộ dữ liệu |
 | FR15 Gán nhãn ảnh | Một phần | `src/app/images/[id].tsx`, `src/lib/naming.ts` (nhãn là diện tích cm², trạng thái đã đo, chưa đo, đã loại) | Chưa có phân loại, khung hay phân vùng; bộ dò hiện có lưu đường bao (`capture.wound.hull`) nhưng bác sĩ chưa sửa được |
 | FR16 Lưu vết nhãn | Phần lớn | `LabelChange` trong `src/lib/types.ts` (người sửa, giờ, giá trị trước và sau) | Duyệt nhãn ngoài phạm vi; trường `researchReviewedBy` chỉ là bác sĩ xác nhận ảnh không lộ danh tính, giữ lại |
@@ -34,7 +34,7 @@ Kết quả gộp: trong 17 FR có 8 FR đạt phần lớn, 7 FR đạt một p
 |---|---|---|---|
 | NFR1 Mã hóa, phân quyền ở máy chủ | Chưa có | `src/lib/access.ts`, `src/components/Guard.tsx` kiểm ở phía ứng dụng | Máy chủ, mã hóa, tự đăng xuất, nhật ký truy cập |
 | NFR2 IEC 62304, ISO 14971, IEC 62366-1 | Một phần | 15 tệp kiểm thử trong `npm test`; `src/lib/compliance.ts` liệt kê căn cứ | Hồ sơ rủi ro, hồ sơ vòng đời phần mềm |
-| NFR3 Hợp đồng thiết bị và thiết bị giả lập | Chưa có | Mô phỏng nằm thẳng trong `store.tsx` | Lớp hợp đồng thiết bị với hai bản cài (TR4) |
+| NFR3 Hợp đồng thiết bị và thiết bị giả lập | Có (giai đoạn 1) | `src/lib/device/transport.ts` (hợp đồng), `simulated.ts` (giả lập), `getTransport` trong `index.ts` | Chưa có bản cài USB thật |
 | NFR4 Giao diện dễ đọc | Phần lớn | `src/theme.ts`, `src/theme.contrast.test.ts` | Chưa thử với người bệnh trên 60 tuổi |
 | NFR5 Mốc "hôm nay" theo giờ Việt Nam | Phần lớn | `localDay` trong `src/lib/course.ts`, `src/lib/localDay.test.ts` | Dùng giờ của máy, chưa ép UTC+7 khi máy đặt múi giờ khác |
 | NFR6 Hạ tầng lưu dữ liệu và AI | Chưa có | Không | Chờ pháp chế bệnh viện |
