@@ -70,6 +70,13 @@ export function useDeviceLink() {
     }
   }, [transport]);
 
+  /** Hỏi lại thông tin và năng lực máy khi đã kết nối. */
+  const identify = useCallback(async () => {
+    const id = await identifyDevice(transport, PROTOCOL);
+    lastIdentity = id;
+    setIdentity(id);
+  }, [transport]);
+
   const disconnect = useCallback(async () => {
     await transport.close().catch(() => {});
   }, [transport]);
@@ -90,6 +97,7 @@ export function useDeviceLink() {
     caps,
     capsSource,
     connect,
+    identify,
     disconnect,
     send,
     lastStatus,

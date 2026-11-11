@@ -18,6 +18,7 @@ export default function AdminDevices() {
   return (
     <Screen header={<Header title="Thiết bị" subtitle="Đăng ký và gán thiết bị" />}>
       <SimBadge />
+      <Button label="Chẩn đoán kết nối USB/UART" variant="secondary" icon="pulse-outline" onPress={() => router.push('/device-diagnostics')} />
       {/* Một thẻ cho cả danh sách: mỗi thiết bị một dòng, gán bệnh nhân và nhật ký nằm trong phần mở rộng. */}
       <ListCard>
       <View style={{ paddingVertical: 4 }}><Disclosure icon="add-circle-outline" title="Đăng ký thiết bị mới">
