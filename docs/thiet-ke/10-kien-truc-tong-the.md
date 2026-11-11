@@ -34,7 +34,7 @@ Ba vai trò dùng chung một ứng dụng, phân màn theo vai trò: bác sĩ l
 | Lưu cục bộ | AsyncStorage, khóa `plasmapro.demo.v2`; ảnh lưu bằng `expo-file-system` | `src/lib/store.tsx` |
 | Camera, ảnh | `expo-camera`, `expo-image-picker`, `expo-image-manipulator` | `package.json` |
 | Thông báo nhắc lịch | `expo-notifications` | `package.json`, `src/lib/reminders.ts` |
-| USB trên Android | Mô-đun gốc dùng USB Host API, cần development build (Expo Go chỉ có mô-đun gốc đóng sẵn) | `AGENTS.md`; chưa tra tài liệu Expo SDK 58, độ tin cậy trung bình |
+| USB trên Android | Mô-đun gốc `modules/plasma-usb` dùng USB Host API với trình điều khiển CP210x tự viết theo AN571; cần bản dựng Android (Expo Go chỉ có mô-đun gốc đóng sẵn) | `AGENTS.md`; mã giai đoạn 2, chưa biên dịch và thử với mạch |
 | USB trên iOS | Chưa chọn; CP2102N không có trình điều khiển cho iOS [2] | Câu F4 trong [icd-usb-uart.md](icd-usb-uart.md) |
 
 ## 3. Các tầng của ứng dụng

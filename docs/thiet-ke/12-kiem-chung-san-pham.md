@@ -4,11 +4,13 @@ Trạng thái: **bản nháp**. Verification bằng kiểm thử tự động đ
 
 ## 12.1. Kết quả kiểm thử tự động
 
-Chạy ngày 11/11/2026 trên nhánh `trien-khai/giai-doan-2` (gốc là mã giai đoạn 1, PR 11):
+Chạy ngày 11/11/2026 trên nhánh `trien-khai/giai-doan-2` (gốc là đỉnh PR 11, đã có bước 6 và 7):
 
 | Lệnh | Kết quả |
 |---|---|
-| `npm test` (22 tệp kiểm thử) | Tất cả đạt |
+| `npm test` (25 tệp kiểm thử, gồm `ai/result`, `attention` của PR 11 và `usb-android` của giai đoạn 2) | Tất cả đạt |
+| `npx expo lint` | Không lỗi |
+| Biên dịch mô-đun gốc Kotlin | **Chưa chạy**: môi trường dựng mã không có Android SDK |
 | `npx tsc --noEmit` | Không lỗi |
 
 Tệp này cập nhật lại sau mỗi pull request mã của giai đoạn 2.
@@ -18,7 +20,7 @@ Tệp này cập nhật lại sau mỗi pull request mã của giai đoạn 2.
 | FR, NFR | DR | Kiểm thử tự động | Thử tay hoặc validation |
 |---|---|---|---|
 | FR1 | DR8, DR9 | `course.test.ts`, `localDay.test.ts` | V4 |
-| FR2 | DR1 đến DR6, DR15 | `checksum`, `spec`, `protocol`, `vectors`, `simulated`, `sender`, `trace` (`src/lib/device/*.test.cjs`) | V5; thử với mạch thật (bước 13) |
+| FR2 | DR1 đến DR6, DR15 | `checksum`, `spec`, `protocol`, `vectors`, `simulated`, `sender`, `trace`, `usb-android` (`src/lib/device/*.test.cjs`) | V5; thử với mạch thật (bước 13) |
 | FR3 | Không | Chưa có (chờ WCMD) | Không |
 | FR4 | DR5 | `simulated.test.cjs` (bản tin STA) | Chờ F11 |
 | FR5 | DR11 | `naming.test.ts`, `quality.test.cjs`, `steady.test.cjs`, `motion-adapter.test.cjs`, `ar.test.cjs` | V3 |
@@ -26,8 +28,8 @@ Tệp này cập nhật lại sau mỗi pull request mã của giai đoạn 2.
 | FR7 | Không | `plausibility.test.ts` | V4 |
 | FR8 | Không | Ngoài phạm vi lập trình (KT1) | Không |
 | FR9 | DR7 | `course.test.ts` | V1 |
-| FR10 | DR9, DR10 | `adherence.test.ts`; `attention` (giai đoạn 2) | V2 |
-| FR11 | DR12 | `woundDetect.test.cjs`; `WoundRecognizer` (giai đoạn 2) | So với bác sĩ khi có mô-đun thật |
+| FR10 | DR9, DR10 | `adherence.test.ts`, `attention.test.ts` | V2 |
+| FR11 | DR12 | `woundDetect.test.cjs`, `ai/result.test.ts` | So với bác sĩ khi có mô-đun thật |
 | FR12 | DR13 | `workflow.test.cjs` | Kiểm bản xuất |
 | FR13 | Không | `devices.test.ts` | Thử tay |
 | FR14 | Không | `maintenance.test.ts` | Không |

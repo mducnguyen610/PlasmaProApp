@@ -11,7 +11,7 @@ Kết quả gộp: trong 17 FR có 8 FR đạt phần lớn, 7 FR đạt một p
 | FR | Mức đáp ứng | Mã liên quan | Còn thiếu so với FR |
 |---|---|---|---|
 | FR1 Việc điều trị hôm nay | Phần lớn | `src/app/patient/index.tsx` (thẻ Hôm nay), `src/lib/course.ts`, `src/components/CourseCard.tsx` | Chưa hiện chế độ (Cold, Hybrid, Thermal); mô hình `TreatmentPlan` chưa có trường chế độ |
-| FR2 Nạp liệu trình qua USB, tự ngắt | Một phần (giai đoạn 1) | `src/lib/device/` (đặc tả khai báo `protocol.config.ts`, bộ mã hóa khung, `sender.ts` gửi lại khi hết thời gian chờ, thiết bị giả lập), `src/app/connect-device.tsx` | Chưa có cổng USB thật trên Android, iOS; giao thức chưa được firmware xác nhận (`confirmed: false`); lệnh bật tắt từ xa cũ trong `store.tsx` chưa gỡ |
+| FR2 Nạp liệu trình qua USB, tự ngắt | Một phần (giai đoạn 1) | `src/lib/device/` (đặc tả khai báo `protocol.config.ts`, bộ mã hóa khung, `sender.ts` gửi lại khi hết thời gian chờ, thiết bị giả lập), `src/app/connect-device.tsx` | USB thật trên Android có ở giai đoạn 2 (`modules/plasma-usb`, `usb-android-core.ts`) nhưng chưa thử với mạch; iOS chưa có; giao thức chưa được firmware xác nhận (`confirmed: false`); lệnh bật tắt từ xa cũ trong `store.tsx` chưa gỡ |
 | FR3 Liều J/cm² | Chưa có | `doseLevel`, `durationSec`, `secondsPerCm2`, `targetEnergyWh` trong `src/lib/types.ts` | Chưa tính J/cm²; chờ mật độ công suất từ WCMD |
 | FR4 Đọc nhật ký phiên | Một phần | `DeviceSession`, `src/lib/adherence.ts`, bản tin `STA` và `src/app/session-monitor.tsx` (theo dõi thời gian còn lại) | Chưa có lệnh đọc nhật ký phiên lưu trong máy; chờ firmware trả lời câu hỏi trong ICD |
 | FR5 Bác sĩ chụp, tải ảnh | Phần lớn | `src/app/guided-capture.tsx`, `src/app/capture.tsx`, `src/lib/capture/*`, `src/lib/photos.ts` | Mã chỉ cho bác sĩ chụp, nay khớp UR3. Chưa chặn ảnh trùng |
@@ -34,7 +34,7 @@ Kết quả gộp: trong 17 FR có 8 FR đạt phần lớn, 7 FR đạt một p
 |---|---|---|---|
 | NFR1 Mã hóa, phân quyền ở máy chủ | Chưa có | `src/lib/access.ts`, `src/components/Guard.tsx` kiểm ở phía ứng dụng | Máy chủ, mã hóa, tự đăng xuất, nhật ký truy cập |
 | NFR2 IEC 62304, ISO 14971, IEC 62366-1 | Một phần | 15 tệp kiểm thử trong `npm test`; `src/lib/compliance.ts` liệt kê căn cứ | Hồ sơ rủi ro, hồ sơ vòng đời phần mềm |
-| NFR3 Hợp đồng thiết bị và thiết bị giả lập | Có (giai đoạn 1) | `src/lib/device/transport.ts` (hợp đồng), `simulated.ts` (giả lập), `getTransport` trong `index.ts` | Chưa có bản cài USB thật |
+| NFR3 Hợp đồng thiết bị và thiết bị giả lập | Có (giai đoạn 1) | `src/lib/device/transport.ts` (hợp đồng), `simulated.ts` (giả lập), `usb-android-core.ts` và mô-đun gốc `modules/plasma-usb` (USB thật, giai đoạn 2), `getTransport` trong `index.ts` | Bản USB Android chưa thử với mạch thật; chưa có bản iOS |
 | NFR4 Giao diện dễ đọc | Phần lớn | `src/theme.ts`, `src/theme.contrast.test.ts` | Chưa thử với người bệnh trên 60 tuổi |
 | NFR5 Mốc "hôm nay" theo giờ Việt Nam | Phần lớn | `localDay` trong `src/lib/course.ts`, `src/lib/localDay.test.ts` | Dùng giờ của máy, chưa ép UTC+7 khi máy đặt múi giờ khác |
 | NFR6 Hạ tầng lưu dữ liệu và AI | Chưa có | Không | Chờ pháp chế bệnh viện |

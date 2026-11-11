@@ -35,6 +35,7 @@ Tài liệu đi kèm:
 - [10-kien-truc-tong-the.md](10-kien-truc-tong-the.md): bản nháp kiến trúc tổng thể ứng dụng (tầng, quyết định kiến trúc, mô-đun, luồng dữ liệu).
 - [de-xuat-backend.md](de-xuat-backend.md): đề xuất backend (kiến trúc, bảng FR sang API, phương án đồng bộ, bảo mật); chỉ thiết kế, không lập trình.
 - [de-xuat-co-so-du-lieu.md](de-xuat-co-so-du-lieu.md): đề xuất mô hình dữ liệu (sơ đồ ER, bảng, đối chiếu với `src/lib/types.ts`).
+- [../huong-dan/chay-usb-android.md](../huong-dan/chay-usb-android.md): cách dựng bản Android có USB thật và thử với mạch.
 - [icd-usb-uart.md](icd-usb-uart.md): bản nháp tài liệu giao tiếp USB/UART (khung, bản tin, 10 trường, ví dụ đối chiếu) gửi nhóm firmware điền và xác nhận.
 
 ## Quy ước

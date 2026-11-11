@@ -25,27 +25,27 @@ Ngoài giai đoạn 2 (phải chờ): giao thức thật (firmware trả lời F
 
 ### Lựa chọn trình điều khiển
 
-Mạch dùng cầu CP2102N (GA-2). Android không có trình điều khiển CP210x dựng sẵn cho ứng dụng; ứng dụng phải tự gửi lệnh điều khiển qua USB Host API [1]. Hai cách:
+Mạch dùng cầu CP2102N (GA-2). Android không có trình điều khiển CP210x dựng sẵn cho ứng dụng; ứng dụng phải tự gửi lệnh điều khiển qua USB Host API [1]. Hai cách đã xét:
 
-1. **Thư viện `usb-serial-for-android`** (mik3y, giấy phép MIT) [2]: có sẵn trình điều khiển CP210x, CH34x, FTDI, PL2303, CDC-ACM. Nếu nhóm phần cứng đổi chip thì không phải viết lại. Cần thêm kho Maven JitPack vào bản dựng.
-2. **Tự viết trình điều khiển CP210x** theo tài liệu AN571 của Silicon Labs [3]: khoảng 150 dòng Kotlin, không thêm phụ thuộc, nhưng chỉ chạy với CP210x.
+1. Thư viện `usb-serial-for-android` (giấy phép MIT) [2]: có sẵn nhiều trình điều khiển, nhưng phát hành qua kho Maven JitPack, phải thêm kho này vào bản dựng.
+2. **Tự viết trình điều khiển CP210x** theo tài liệu AN571 của Silicon Labs [3]: khoảng 130 dòng Kotlin, không thêm phụ thuộc, chỉ chạy với CP210x.
 
-Chọn cách 1. Nếu bản dựng không tải được JitPack thì chuyển sang cách 2, giữ nguyên giao diện mô-đun.
+**Đã chọn cách 2** (đổi so với bản đầu của kế hoạch). Lý do: môi trường dựng mã không truy cập được JitPack để thử, và cấu hình kho Maven trong bản dựng Expo không kiểm được ở đây; cách 2 không phụ thuộc kho ngoài. Nếu nhóm phần cứng đổi sang chip khác (CH340, FTDI), thêm một lớp trình điều khiển cùng giao diện trong `modules/plasma-usb`, hoặc chuyển sang cách 1.
 
 ### Tệp
 
 - `modules/plasma-usb/` (mô-đun Expo cục bộ, chỉ Android, cùng kiểu `modules/plasma-ar/`):
-  - `expo-module.config.json`, `android/build.gradle` (phụ thuộc `usb-serial-for-android`), `PlasmaUsbModule.kt`.
-  - Hàm: `listDevices()` trả `{ id, vendorId, productId, name, driver }[]`; `requestPermission(id)`; `open(id, baudRate, dataBits, parity, stopBits)`; `write(bytes)`; `close()`.
-  - Sự kiện: `onData` (byte nhận), `onAttached`, `onDetached`, `onError`.
-  - Đọc bằng `SerialInputOutputManager` trên luồng riêng, đẩy về JS qua sự kiện.
-  - `app.plugin.js`: thêm `<uses-feature android:name="android.hardware.usb.host">`, intent filter `USB_DEVICE_ATTACHED` và `res/xml/device_filter.xml` (VID 0x10C4, PID 0xEA60 của CP2102N) để Android hỏi mở ứng dụng khi cắm máy. Không sửa thư mục `android/` bằng tay (quy tắc `AGENTS.md`).
-- `src/lib/device/usb-android.ts`: bản cài `DeviceTransport` gọi mô-đun trên; lấy thông số UART từ `PROTOCOL.uart`; trạng thái `connecting` khi chờ người dùng cho phép, `error` kèm câu tiếng Việt khi không thấy máy, bị từ chối quyền hoặc rút cáp giữa chừng.
-- `src/lib/device/usb-match.ts` (thuần): chọn thiết bị USB nào là Plasma Pro từ danh sách (theo VID, PID trong đặc tả), có kiểm thử `.test.cjs`.
+  - `expo-module.config.json`, `android/build.gradle` (không phụ thuộc ngoài), `Cp210xPort.kt` (trình điều khiển), `PlasmaUsbModule.kt`.
+  - Hàm: `listDevices()` trả `{ deviceId, vendorId, productId, name, hasPermission }[]`; `requestPermission(deviceId)`; `open(deviceId, baudRate, dataBits, parity, stopBits)`; `write(bytes)`; `close()`.
+  - Sự kiện: `onData` (byte nhận), `onDetached`, `onError`.
+  - Đọc bằng `bulkTransfer` trên luồng riêng, đẩy về JS qua sự kiện.
+  - `AndroidManifest.xml` của mô-đun khai báo `android.hardware.usb.host` (không bắt buộc). Không làm intent filter tự mở ứng dụng khi cắm máy (cần config plugin, không kiểm được ở đây); người dùng mở ứng dụng rồi bấm Kết nối. Không sửa thư mục `android/` bằng tay (quy tắc `AGENTS.md`).
+- `src/lib/device/usb-android-core.ts` (thuần, mô-đun gốc tiêm vào, kiểm thử bằng mô-đun giả) và `usb-android.ts` (nối mô-đun thật): bản cài `DeviceTransport`; lấy thông số UART từ `PROTOCOL.uart`; trạng thái `connecting` khi chờ người dùng cho phép, `error` kèm câu tiếng Việt khi không thấy máy, bị từ chối quyền hoặc rút cáp giữa chừng.
+- `matchUsbDevice` trong `usb-android-core.ts`: chọn thiết bị USB nào là Plasma Pro theo VID, PID trong đặc tả; kiểm thử ở `usb-android.test.cjs`.
 - `src/lib/device/protocol.config.ts`: thêm `usb: { vendorId: 0x10C4, productId: 0xEA60, confirmed: false }`, kèm cập nhật `spec.ts`, `spec-check.ts`, ICD mục kết nối.
-- `src/lib/device/index.ts`: `getTransport()` chọn `usb-android` khi chạy Android và mô-đun gốc có mặt (development build), ngược lại dùng giả lập. Màn chẩn đoán của quản trị viên có công tắc "Dùng thiết bị giả lập" để demo trên web và Expo Go.
-- `eas.json`: hồ sơ `development` (development client, APK nội bộ).
-- `docs/huong-dan/chay-usb-android.md`: cách dựng development build (EAS hoặc `npx expo run:android`), cắm cáp OTG, đọc màn chẩn đoán hex.
+- `src/lib/device/index.ts`: `getTransport()` chọn `usb-android` khi chạy Android và mô-đun gốc có mặt (bản dựng Android), ngược lại dùng giả lập. Màn chẩn đoán của quản trị viên có công tắc "Dùng thiết bị giả lập" để demo trên web và Expo Go.
+- `eas.json`: hồ sơ `usb-thu` dựng APK nội bộ (không cần `expo-dev-client`).
+- `docs/huong-dan/chay-usb-android.md`: cách dựng APK (EAS hoặc `npx expo run:android`), cắm cáp OTG, đọc màn chẩn đoán hex.
 
 ### Kiểm chứng
 
@@ -84,19 +84,18 @@ Thay `docs/thiet-ke/09-15-ke-hoach.md` (đã xóa) bằng các tệp riêng, đ�
 
 Lưu ý phương pháp: theo slide 27, bước 9 trở đi chỉ bắt đầu khi bước 8 đạt validation. Validation với người dùng thật chưa làm, nên các tệp 9 đến 15 ghi rõ "bản nháp, chờ validation".
 
-## G2-E và G2-F (nếu người dùng gộp vào)
+## G2-E và G2-F
 
-Giữ nguyên nội dung bước 6 và 7 của `plans/2026-11-11_ung-dung-giai-doan-1.md`: `src/lib/ai/` với giao diện `WoundRecognizer` và bộ dò màu hiện có làm bản cài tạm; `src/lib/attention.ts` xếp người bệnh theo mức cần chú ý trên màn `src/app/doctor/index.tsx`.
+Người dùng chọn gộp. Bước 6 và 7 đã được lập trình trên PR 11 (commit `84d4a49`, `53e7c0d`); nhánh giai đoạn 2 dựng lại trên đỉnh PR 11 và dùng bản đó, không làm lại.
 
 ## Thứ tự và pull request
 
-1. PR tài liệu: G2-B, G2-C, G2-D (không đụng mã).
-2. PR mã: G2-A (và G2-E, G2-F nếu gộp), cập nhật `docs/thiet-ke/doi-chieu-ma-nguon.md` cùng PR.
+Một PR gồm G2-A đến G2-D, nhắm vào `trien-khai/giai-doan-1` (PR 11), kèm cập nhật `docs/thiet-ke/doi-chieu-ma-nguon.md`.
 
 ## Tài liệu tham khảo
 
 1. Android Developers, "USB host overview". https://developer.android.com/develop/connectivity/usb/host (chưa kiểm lại trong phiên này).
-2. M. Wakefield (mik3y) và cộng sự, "usb-serial-for-android", GitHub, giấy phép MIT. https://github.com/mik3y/usb-serial-for-android (chưa kiểm lại phiên bản mới nhất).
+2. Tài khoản GitHub mik3y và cộng đồng đóng góp, "usb-serial-for-android", GitHub, giấy phép MIT. https://github.com/mik3y/usb-serial-for-android (chưa kiểm lại phiên bản mới nhất).
 3. Silicon Labs, "AN571: CP210x Virtual COM Port Interface". https://www.silabs.com/documents/public/application-notes/AN571.pdf (chưa kiểm lại).
 4. Quốc hội Việt Nam, Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15 (hiệu lực 01/01/2026), và Chính phủ Việt Nam, Nghị định 13/2023/NĐ-CP, 17/04/2023.
 5. ISO 14971:2019, *Medical devices: Application of risk management to medical devices*.

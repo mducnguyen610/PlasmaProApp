@@ -18,6 +18,7 @@ Tài liệu này là hợp đồng giữa ứng dụng điện thoại và firmw
 | Mục | Đề xuất | Ghi chú |
 |---|---|---|
 | Kết nối | Cáp USB từ điện thoại người bệnh tới cầu USB-UART trên mạch | Android: chế độ USB Host. iPhone: cầu CP2102N không có trình điều khiển cho iOS [1], cần bộ chuyển khác, xem câu hỏi 9 |
+| Mã USB của cầu | VID `0x10C4`, PID `0xEA60` (mã mặc định của Silicon Labs cho CP210x) | Ứng dụng Android chọn thiết bị theo cặp mã này (`PROTOCOL.usb`); nếu mạch dùng mã khác, xem câu F13 |
 | Tốc độ | 9600 baud | Đủ cho gói cấu hình dưới 64 byte |
 | Khung byte | 8 bit dữ liệu, không chẵn lẻ, 1 bit dừng (8N1) | |
 | Điều khiển luồng | Không | |
@@ -149,6 +150,7 @@ Nhóm firmware cần gửi lại các ví dụ tương ứng chụp từ mạch 
 | F10 | Thời gian máy cần để trả `ACK`; máy có phát `STA` không | |
 | F11 | Máy có ghi nhật ký phiên để ứng dụng đọc lại không (TR2, FR4) | |
 | F12 | Ví dụ đối chiếu từ mạch thật (mục 8) | |
+| F13 | Mã VID, PID thật của cầu USB-UART trên mạch (đọc bằng `lsusb` hoặc Device Manager); mạch có bật DTR, RTS không | |
 
 Xác nhận: phía firmware ............ ngày ........ ; phía ứng dụng ............ ngày ........ ; `protocol_version` = ....
 
