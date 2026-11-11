@@ -1,4 +1,6 @@
 import type { CaptureMetadata } from './capture/types';
+import type { SendResult } from './device/sender';
+import type { TransportKind } from './device/transport';
 export type Role = 'doctor' | 'patient' | 'admin';
 
 export interface Account {
@@ -168,8 +170,10 @@ export interface TreatmentPlan {
   woundId?: string;
   /** Các giai đoạn; trống thì coi như mỗi ngày từ startDate đến endDate. */
   phases?: CoursePhase[];
-  /** Mức năng lượng trên thiết bị (thiết bị tại nhà bị khóa ở mức này, slide 24). */
+  /** Mức năng lượng trên thiết bị (thiết bị tại nhà bị khóa ở mức này, slide 24). Đây là energy_level gửi firmware. */
   doseLevel?: number | null;
+  /** Chế độ điều trị gửi firmware (treatment_mode), ví dụ cold, hybrid, thermal. Bản cũ không có trường này. */
+  treatmentMode?: string | null;
   /** Thời gian chiếu mỗi lần, giây. */
   durationSec?: number | null;
   /** Hệ số giây/cm² để gợi ý thời gian theo diện tích (S2k 2022, Stratmann 2020). Chờ nhóm phần cứng xác nhận. */
@@ -245,6 +249,23 @@ export interface SyncError {
   resolved: boolean;
 }
 
+/** Một lần gửi cấu hình điều trị xuống máy qua USB/UART. */
+export interface DeviceLinkLog {
+  id: string;
+  deviceId: string | null;
+  patientId: string;
+  planId: string;
+  planVersion: number;
+  at: string;
+  by: string;
+  transport: TransportKind;
+  result: SendResult['kind'];
+  attempts: number;
+  code?: string;
+  protocolVersion: number;
+  capsSource: 'device' | 'table' | 'none';
+}
+
 export interface AppData {
   accounts: Account[];
   patients: Patient[];
@@ -257,5 +278,7 @@ export interface AppData {
   sessionNotes: SessionNote[];
   reports: SymptomReport[];
   syncErrors: SyncError[];
+  /** Nhật ký gửi cấu hình xuống máy. Tùy chọn để dữ liệu cũ đọc được. */
+  deviceLinks?: DeviceLinkLog[];
   counters: { image: number; patient: number };
 }

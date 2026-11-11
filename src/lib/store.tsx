@@ -13,7 +13,7 @@ import { CARE_ITEMS, LIFECYCLE } from './maintenance';
 import { buildFilename } from './naming';
 import { createSeed, DEMO_ASSETS } from './seed';
 import type {
-  Account, AppData, Device, DeviceLifecycle, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
+  Account, AppData, Device, DeviceLifecycle, DeviceLinkLog, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
 } from './types';
 
 // v2: dữ liệu demo theo đợt điều trị (ngày tính từ hôm nay); bản v1 cũ không được đọc lại.
@@ -83,6 +83,8 @@ interface Store {
   /** Quy trình kết thúc đợt khi liền thương (FDA 2006: xác nhận ở hai lần khám cách 2 tuần), rồi theo dõi. */
   recordClosure: (woundId: string, step: 'check1' | 'confirm' | 'not_healed' | 'reopen' | 'end_follow_up' | 'pause' | 'resume') => void;
   setLifecycle: (deviceId: string, next: DeviceLifecycle) => void;
+  /** Ghi một lần gửi cấu hình xuống máy; người bệnh của hồ sơ hoặc bác sĩ phụ trách. */
+  recordDeviceLink: (entry: Omit<DeviceLinkLog, 'id' | 'at' | 'by'>) => void;
 }
 
 /**
@@ -117,6 +119,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (raw) {
           const saved: AppData = JSON.parse(raw);
           saved.sessionNotes ??= [];
+          saved.deviceLinks ??= [];
           saved.patients = saved.patients.map(p => ({ ...p, researchCode: p.researchCode ?? 'RS-' + Crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase() }));
           setData(saved);
           dataRef.current = saved;
@@ -640,10 +643,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     update((d) => ({ ...d, devices: d.devices.map((x) => (x.id === deviceId ? { ...x, care: { ...x.care, [itemId]: nowIso() } } : x)) }));
   };
 
+  const recordDeviceLink: Store['recordDeviceLink'] = (entry) => {
+    const actor = meRef.current;
+    if (!actor || actor.locked) throw new Error('Chưa đăng nhập.');
+    if (actor.role === 'patient') {
+      if (actor.patientId !== entry.patientId) throw new Error('Chỉ ghi được nhật ký cho hồ sơ của mình.');
+    } else if (actor.role === 'doctor') requireDoctor(entry.patientId);
+    else throw new Error('Chỉ người bệnh hoặc bác sĩ phụ trách được nạp liệu trình xuống máy.');
+    const log: DeviceLinkLog = { ...entry, id: 'dl-' + Crypto.randomUUID(), at: nowIso(), by: actor.id };
+    update((d) => ({ ...d, deviceLinks: [...(d.deviceLinks ?? []), log] }));
+  };
+
   const value: Store = {
     ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, addWound, updateWound, addImage, labelImage,
     setExcluded, requestRetake, addEvaluation, savePlan, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
-    setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle,
+    setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle, recordDeviceLink,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
