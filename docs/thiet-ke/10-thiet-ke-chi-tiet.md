@@ -54,6 +54,8 @@ Khi màn theo dõi phiên nhận `done`, ứng dụng ghi một phiên điều t
 
 ## 10.3. Danh sách màn theo vai trò
 
+Bảng dưới là bản tóm tắt. Bản đầy đủ (mã màn, FR, hiện trạng), sơ đồ luồng và wireframe nằm ở [giao-dien-01-danh-sach-man.md](giao-dien-01-danh-sach-man.md), [giao-dien-02-luong-man.md](giao-dien-02-luong-man.md), [giao-dien-03-wireframe.md](giao-dien-03-wireframe.md).
+
 | Vai trò | Màn | Tệp | FR |
 |---|---|---|---|
 | Chung | Đăng nhập, kích hoạt, điều khoản, hướng dẫn lần đầu | `index.tsx`, `activate.tsx`, `terms.tsx`, `onboarding.tsx` | NFR1 |
