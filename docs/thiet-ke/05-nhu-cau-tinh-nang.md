@@ -1,8 +1,10 @@
 # Bước 5. Functional requirements
 
-Bản nháp có 14 FR chức năng và 7 NFR, viết từ trên cương vị người thiết kế theo SMART [1, slide 20, 21]; mỗi dòng ghi nó phục vụ UR nào. Các con số ghi “(đx)” là đề xuất của hệ thống, chưa có nguồn, cần giảng viên hoặc bác sĩ chốt.
+Bản nháp có 18 FR chức năng (14 FR ban đầu, FR15 đến FR17 thêm cho gán nhãn, FR18 thêm cho hồ sơ người bệnh) và 7 NFR, viết từ trên cương vị người thiết kế theo SMART [1, slide 20, 21]; mỗi dòng ghi nó phục vụ UR nào. Các con số ghi “(đx)” là đề xuất của hệ thống, chưa có nguồn, cần giảng viên hoặc bác sĩ chốt.
 
 **Điều chỉnh theo phạm vi đề tài (11/11/2026):** FR14 (vòng đời máy) và NFR7 (triển khai nhiều bệnh viện) không thuộc dòng nào của bảng phạm vi ở tệp 00, nên hạ xuống nice to have hoặc hướng phát triển. FR8, NFR1 và NFR6 giữ nguyên yêu cầu, nhưng phần máy chủ chỉ được đề xuất. FR11 đổi từ "AI khoanh vùng" thành "tích hợp mô-đun AI có sẵn để khoanh vùng".
+
+**Bổ sung FR18 (11/11/2026):** nhóm chức năng "Quản lý hồ sơ bệnh nhân và mã định danh bệnh nhân" ở giai đoạn 2 của quy trình 9 giai đoạn chưa có FR tương ứng; phát hiện khi lập danh sách màn giai đoạn 5 ([giao-dien-01-danh-sach-man.md](giao-dien-01-danh-sach-man.md)). Không có UR riêng cho việc này; FR18 là điều kiện cho UR14 (dữ liệu liên kết theo từng người), UR11 (mã người bệnh nạp xuống máy), UR13 (đồng ý) và UR7 (liệu trình gắn với người bệnh). Bộ FR nay là FR1 đến FR18.
 
 **Nhu cầu chức năng**
 
@@ -23,6 +25,7 @@ Bản nháp có 14 FR chức năng và 7 NFR, viết từ trên cương vị ng�
 | FR15 | Gán nhãn ảnh theo một phương pháp chọn cùng bác sĩ (phân loại cả ảnh, khung chữ nhật hoặc phân vùng) và bộ nhãn thống nhất | Phương pháp, bộ nhãn chờ bác sĩ chốt; không làm cả ba nếu không cần | UR17 |
 | FR16 | Lưu vết nhãn: ghi người gán, thời gian; lưu mọi lần sửa nhãn. Quy trình duyệt nhãn nằm ngoài phạm vi đề tài | 100% thay đổi nhãn có người và giờ | UR14, UR17 |
 | FR17 | Quản lý ảnh: danh sách, tìm kiếm, lọc theo bệnh nhân, vết thương, trạng thái nhãn | Tìm thấy một ảnh trong ≤ 3 thao tác (đx) | UR9, UR17 |
+| FR18 | Bác sĩ thêm, sửa, tra cứu hồ sơ người bệnh trong phạm vi được phân công; cấp mã hồ sơ duy nhất không chứa họ tên (dùng làm `patient_id` gửi firmware ở FR2); ghi và rút đồng ý dùng ảnh nghiên cứu; tạo tài khoản và mã kích hoạt một lần cho người bệnh; thêm vết thương vào hồ sơ | Mã hồ sơ duy nhất và nằm trong giới hạn `patient_id` của ICD (≤ 16 ký tự `A-Za-z0-9_-`); chặn hồ sơ trùng số điện thoại; 100% lần sửa thông tin có người, giờ, giá trị cũ (đx); tìm thấy một người bệnh trong ≤ 3 thao tác (đx) | UR7, UR11, UR13, UR14 |
 | FR13 | Gán máy và đầu phát cho người bệnh bằng quét mã; thu hồi khi kết thúc đợt | Một máy chỉ thuộc một người tại một thời điểm | UR11 |
 | FR14 | Theo dõi vòng đời máy: số phiên, tổng thời gian phát, lịch bảo dưỡng | Chu kỳ bảo dưỡng do WCMD cung cấp | UR12 |
 
@@ -33,7 +36,7 @@ Bản nháp có 14 FR chức năng và 7 NFR, viết từ trên cương vị ng�
 | NFR1 | Mã hóa khi truyền và lưu; phân quyền kiểm ở máy chủ; tự đăng xuất; nhật ký truy cập | Luật 91/2025/QH15; ISO/IEC 27001 tham khảo [4, mục 2.2.3] | UR13 |
 | NFR2 | Phát triển theo vòng đời phần mềm y tế, quản lý rủi ro và khả dụng | IEC 62304 lớp B, ISO 14971:2019, IEC 62366-1 [5] | UR2, UR13 |
 | NFR3 | Tách phần cứng bằng hợp đồng thiết bị, bảng năng lực và thiết bị giả lập | Đổi bo mạch chỉ sửa lớp kết nối | UR15 |
-| NFR4 | Giao diện người bệnh dễ đọc, tiếng Việt | Tương phản ≥ 4,5:1, vùng chạm ≥ 44 điểm, chữ ≥ 17 px [5] | UR1, UR3 |
+| NFR4 | Giao diện người bệnh dễ đọc, tiếng Việt | Tương phản ≥ 4,5:1, vùng chạm ≥ 44 điểm, chữ ≥ 17 px [5] | UR1 |
 | NFR5 | Tính mọi mốc “hôm nay” theo giờ Việt Nam (UTC+7) | Không sai ngày trong khoảng 0 đến 7 giờ sáng [5] | UR1, UR8 |
 | NFR6 | Lưu dữ liệu và chạy AI trên hạ tầng pháp chế cho phép | Chờ bệnh viện xác nhận | UR13 |
 | NFR7 | Triển khai thêm bệnh viện bằng cấu hình, không sửa mã | (đx) | UR16 |

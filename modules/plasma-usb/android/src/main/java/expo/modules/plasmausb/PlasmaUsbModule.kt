@@ -110,9 +110,14 @@ class PlasmaUsbModule : Module() {
           p.read(buf, READ_TIMEOUT_MS)
         } catch (e: Exception) {
           if (reading) sendEvent("onError", mapOf("message" to (e.message ?: "Lỗi đọc USB")))
+          reading = false
           -1
         }
-        if (n < 0) break
+        if (n < 0) {
+          // Lỗi đọc không ném ngoại lệ: báo lên tầng JS rồi dừng vòng đọc, không quay vòng vô ích.
+          if (reading) sendEvent("onError", mapOf("message" to "Lỗi đọc USB, hãy cắm lại cáp"))
+          break
+        }
         if (n > 0) sendEvent("onData", mapOf("bytes" to buf.copyOf(n).map { it.toInt() and 0xff }))
       }
     }.apply {

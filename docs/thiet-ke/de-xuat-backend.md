@@ -51,21 +51,26 @@ Quy ước: tiền tố `/api/v1`, JSON, thời gian ISO 8601 có múi giờ, m�
 |---|---|---|---|
 | Xác thực | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` | Mọi vai trò | NFR1 |
 | | `POST /auth/activate` (mã kích hoạt một lần do bác sĩ cấp) | Người bệnh | NFR1 |
-| Người bệnh | `GET /patients`, `POST /patients`, `GET /patients/{id}`, `PATCH /patients/{id}` | Bác sĩ (của mình); người bệnh chỉ `GET` bản thân | FR9 |
-| | `POST /patients/{id}/consents` | Bác sĩ ghi, người bệnh xác nhận | FR12 |
+| Người bệnh | `GET /patients`, `POST /patients`, `GET /patients/{id}`, `PATCH /patients/{id}` | Bác sĩ (của mình); người bệnh chỉ `GET` bản thân | FR18 |
+| | `POST /patients/{id}/consents` | Bác sĩ ghi, người bệnh xác nhận | FR12, FR18 |
 | Vết thương | `GET /patients/{id}/wounds`, `POST /wounds`, `PATCH /wounds/{id}` | Bác sĩ | FR1, FR9 |
 | Liệu trình | `GET /wounds/{id}/plans`, `POST /plans` (tạo phiên bản mới, không sửa đè) | Bác sĩ; người bệnh chỉ đọc bản "Đang áp dụng" | FR9, TR11 |
 | Lịch hôm nay | `GET /me/today` | Người bệnh | FR1 |
 | Phiên điều trị | `POST /sessions`, `GET /patients/{id}/sessions` | Người bệnh ghi; bác sĩ đọc | FR4 |
+| | `PUT /sessions/{id}/note` (mức đau trước, sau, cảm giác) | Người bệnh | FR6 |
+| Đánh giá | `GET /wounds/{id}/evaluations`, `POST /evaluations` (công bố cho người bệnh bằng cờ `visible_to_patient`) | Bác sĩ ghi; người bệnh đọc bản đã công bố | FR7, FR9 |
 | Nhật ký gửi máy | `POST /device-links` | Người bệnh, bác sĩ | FR2 |
 | Báo đau, biến cố | `POST /reports`, `PATCH /reports/{id}` (đánh dấu đã xử lý) | Người bệnh ghi; bác sĩ xử lý | FR6 |
-| Ảnh | `POST /images` (xin URL tải lên có hạn), `PUT` tệp vào kho đối tượng, `POST /images/{id}/commit` | Bác sĩ, người bệnh | FR5 |
+| Ảnh | `POST /images` (xin URL tải lên có hạn), `PUT` tệp vào kho đối tượng, `POST /images/{id}/commit` | Bác sĩ (UR3) | FR5 |
 | | `GET /images?patient=&wound=&status=` | Bác sĩ | FR17 |
 | Nhận diện | `POST /images/{id}/ai-results` (ứng dụng gửi kết quả C2) hoặc máy chủ tự chạy (C1) | Ứng dụng hoặc máy chủ | FR11 |
 | Nhãn | `POST /images/{id}/annotations` (mỗi lần sửa là bản ghi mới) | Bác sĩ | FR15, FR16 |
 | Bộ dữ liệu | `POST /datasets` (đóng băng phiên bản), `GET /datasets/{id}/export` | Bác sĩ có quyền nghiên cứu | FR12 |
 | Tổng quan | `GET /doctor/overview` (xếp hạng mức cần chú ý, 3 trạng thái hôm nay) | Bác sĩ | FR10 |
-| Thiết bị | `GET /devices`, `POST /devices/{id}/assign`, `POST /devices/{id}/return` | Quản trị, bác sĩ | FR13, FR14 |
+| Thiết bị | `GET /devices`, `POST /devices` (đăng ký), `PATCH /devices/{id}/lifecycle` (khử khuẩn, kiểm tra) | Quản trị | FR14 |
+| | `POST /devices/{id}/assign`, `POST /devices/{id}/return` | Bác sĩ phụ trách người bệnh (UR11) | FR13 |
+| Tài khoản | `GET /accounts`, `PATCH /accounts/{id}` (duyệt, khóa, quyền nghiên cứu), `POST /patients/{id}/activation` (cấp mã kích hoạt) | Quản trị; bác sĩ cấp mã cho người bệnh của mình | NFR1, FR18 |
+| | `POST /me/data-requests` (xem, yêu cầu xóa dữ liệu của mình) | Người bệnh | NFR1 |
 | Đồng bộ | `POST /sync/push`, `GET /sync/pull?since=` | Mọi vai trò | FR8, TR5 |
 | Kiểm toán | `GET /audit?entity=&from=&to=` | Quản trị | NFR1, TR9 |
 
@@ -100,7 +105,7 @@ Người bệnh kéo liệu trình "Đang áp dụng" về điện thoại, rồ
 
 | Yêu cầu | Đề xuất | Nguồn |
 |---|---|---|
-| Dữ liệu sức khỏe là dữ liệu cá nhân nhạy cảm | Thu thập tối thiểu, có đồng ý, cho người bệnh xem và yêu cầu xóa | Luật Bảo vệ dữ liệu cá nhân 91/2025/QH15 [4]; Nghị định 13/2023/NĐ-CP [5] |
+| Dữ liệu sức khỏe là dữ liệu cá nhân nhạy cảm | Thu thập tối thiểu, có đồng ý, cho người bệnh xem và yêu cầu xóa | Luật Bảo vệ dữ liệu cá nhân 91/2025/QH15 [4]; Nghị định 356/2025/NĐ-CP [5] |
 | Mã hóa đường truyền | Chỉ HTTPS (TLS 1.2 trở lên) | NFR1 |
 | Mã hóa khi lưu | Mã hóa ổ đĩa cơ sở dữ liệu và kho đối tượng | NFR1 |
 | Xác thực | Token truy cập ngắn hạn (ví dụ 15 phút) và token làm mới; token dạng JWT [6] | NFR1 |
@@ -131,7 +136,7 @@ Nếu bệnh viện cần trao đổi với hệ thống bệnh án điện tử
 
 [4] Quốc hội Việt Nam, Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15, thông qua ngày 26/06/2025, hiệu lực 01/01/2026 (chưa đọc toàn văn trong phiên này).
 
-[5] Chính phủ Việt Nam, Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân, 17/04/2023.
+[5] Chính phủ Việt Nam, Nghị định 356/2025/NĐ-CP quy định chi tiết một số điều và biện pháp thi hành Luật Bảo vệ dữ liệu cá nhân, ban hành 31/12/2025, hiệu lực 01/01/2026, thay thế Nghị định 13/2023/NĐ-CP (chủ đồ án xác nhận Nghị định 13/2023 hết hiệu lực ngày 11/11/2026). Ngày ban hành và hiệu lực lấy theo `src/lib/compliance.ts`, nguồn https://thuvienphapluat.vn/van-ban/Quyen-dan-su/Nghi-dinh-356-2025-ND-CP-huong-dan-Luat-Bao-ve-du-lieu-ca-nhan-687428.aspx; toàn văn chưa đọc lại trong phiên này.
 
 [6] M. Jones, J. Bradley, N. Sakimura, "JSON Web Token (JWT)", RFC 7519, IETF, 2015. https://www.rfc-editor.org/rfc/rfc7519
 

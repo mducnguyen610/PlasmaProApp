@@ -6,6 +6,7 @@ import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
+import android.os.SystemClock
 import java.io.IOException
 
 // Trình điều khiển tối thiểu cho cầu USB-UART Silicon Labs CP210x (CP2102N trên mạch Plasma Pro, GA-2).
@@ -36,23 +37,36 @@ class Cp210xPort(private val manager: UsbManager, private val device: UsbDevice)
     }
     connection = conn
     intf = iface
-    control(IFC_ENABLE, UART_ENABLE, null)
-    val baud = byteArrayOf(
-      (baudRate and 0xff).toByte(),
-      ((baudRate shr 8) and 0xff).toByte(),
-      ((baudRate shr 16) and 0xff).toByte(),
-      ((baudRate shr 24) and 0xff).toByte()
-    )
-    control(SET_BAUDRATE, 0, baud)
-    control(SET_LINE_CTL, lineCtl(dataBits, parity, stopBits), null)
-    control(SET_MHS, MCR_DTR or MCR_RTS or CONTROL_WRITE_DTR or CONTROL_WRITE_RTS, null)
+    try {
+      control(IFC_ENABLE, UART_ENABLE, null)
+      val baud = byteArrayOf(
+        (baudRate and 0xff).toByte(),
+        ((baudRate shr 8) and 0xff).toByte(),
+        ((baudRate shr 16) and 0xff).toByte(),
+        ((baudRate shr 24) and 0xff).toByte()
+      )
+      control(SET_BAUDRATE, 0, baud)
+      control(SET_LINE_CTL, lineCtl(dataBits, parity, stopBits), null)
+      control(SET_MHS, MCR_DTR or MCR_RTS or CONTROL_WRITE_DTR or CONTROL_WRITE_RTS, null)
+    } catch (e: IOException) {
+      // Cấu hình UART hỏng giữa chừng: nhả giao diện và đóng kết nối rồi mới báo lỗi, để lần mở sau không bị chiếm.
+      close()
+      throw e
+    }
   }
 
-  /** Đọc tối đa buffer.size byte; trả số byte đọc được, 0 khi hết thời gian chờ, -1 khi lỗi. */
+  /**
+   * Đọc tối đa buffer.size byte; trả số byte đọc được, 0 khi hết thời gian chờ, -1 khi lỗi.
+   * bulkTransfer trả số âm cả khi hết giờ lẫn khi lỗi, nên phân biệt theo thời gian đã trôi:
+   * trả số âm sớm hơn hạn chờ là lỗi thật (ví dụ máy bị rút giữa chừng).
+   */
   fun read(buffer: ByteArray, timeoutMs: Int): Int {
     val conn = connection ?: return -1
+    val started = SystemClock.elapsedRealtime()
     val n = conn.bulkTransfer(inEp, buffer, buffer.size, timeoutMs)
-    return if (n < 0) 0 else n
+    if (n >= 0) return n
+    val elapsed = SystemClock.elapsedRealtime() - started
+    return if (elapsed < timeoutMs - EARLY_FAIL_MARGIN_MS) -1 else 0
   }
 
   fun write(data: ByteArray, timeoutMs: Int) {
@@ -104,6 +118,7 @@ class Cp210xPort(private val manager: UsbManager, private val device: UsbDevice)
     private const val CONTROL_WRITE_DTR = 0x0100
     private const val CONTROL_WRITE_RTS = 0x0200
     private const val CONTROL_TIMEOUT_MS = 1000
+    private const val EARLY_FAIL_MARGIN_MS = 20
 
     /** SET_LINE_CTL: bit 0..3 số stop bit (0 = 1, 2 = 2), bit 4..7 parity (0 none, 1 odd, 2 even), bit 8..15 số data bit. */
     fun lineCtl(dataBits: Int, parity: String, stopBits: Int): Int {

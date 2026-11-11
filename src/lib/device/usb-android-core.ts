@@ -44,6 +44,8 @@ export function createUsbAndroidTransport(native: UsbNative, spec: ProtocolSpec,
   let state: LinkState = 'disconnected';
   let deviceId: number | null = null;
   let subs: Subscription[] = [];
+  // Lần mở đang chạy: gọi open() lần nữa trong lúc chờ thì dùng chung, tránh đăng ký listener hai lần.
+  let opening: Promise<void> | null = null;
 
   const setState = (s: LinkState, detail?: string) => {
     state = s;
@@ -60,44 +62,52 @@ export function createUsbAndroidTransport(native: UsbNative, spec: ProtocolSpec,
     throw new Error(detail);
   };
 
+  async function doOpen() {
+    setState('connecting');
+    const m = matchUsbDevice(await native.listDevices(), spec.usb);
+    if (m.kind === 'none') return fail('Chưa thấy thiết bị USB nào. Hãy cắm cáp OTG vào máy Plasma Pro.');
+    if (m.kind === 'unknown') return fail(describeUnknown(m.seen));
+    if (!m.device.hasPermission) {
+      setState('connecting', 'Chờ cho phép truy cập USB');
+      const ok = await native.requestPermission(m.device.deviceId);
+      if (!ok) return fail('Chưa được cho phép truy cập USB. Hãy cắm lại cáp và chọn Cho phép.');
+    }
+    unsubscribe();
+    subs = [
+      native.addListener('onData', (e) => {
+        const b = Uint8Array.from(e.bytes);
+        for (const cb of [...dataCbs]) cb(b);
+      }),
+      native.addListener('onDetached', (e) => {
+        if (e.deviceId !== deviceId) return;
+        unsubscribe();
+        deviceId = null;
+        setState('disconnected', 'Đã rút cáp USB');
+      }),
+      native.addListener('onError', (e) => {
+        if (deviceId === null) return;
+        setState('error', e.message);
+      }),
+    ];
+    const u = spec.uart;
+    try {
+      await native.open(m.device.deviceId, u.baudRate, u.dataBits, u.parity, u.stopBits);
+    } catch (e) {
+      return fail(e instanceof Error ? e.message : 'Không mở được cổng USB');
+    }
+    deviceId = m.device.deviceId;
+    setState('connected');
+  }
+
   return {
     kind: 'usb-android',
     model,
-    async open() {
-      if (state === 'connected') return;
-      setState('connecting');
-      const m = matchUsbDevice(await native.listDevices(), spec.usb);
-      if (m.kind === 'none') return fail('Chưa thấy thiết bị USB nào. Hãy cắm cáp OTG vào máy Plasma Pro.');
-      if (m.kind === 'unknown') return fail(describeUnknown(m.seen));
-      if (!m.device.hasPermission) {
-        setState('connecting', 'Chờ cho phép truy cập USB');
-        const ok = await native.requestPermission(m.device.deviceId);
-        if (!ok) return fail('Chưa được cho phép truy cập USB. Hãy cắm lại cáp và chọn Cho phép.');
-      }
-      subs = [
-        native.addListener('onData', (e) => {
-          const b = Uint8Array.from(e.bytes);
-          for (const cb of [...dataCbs]) cb(b);
-        }),
-        native.addListener('onDetached', (e) => {
-          if (e.deviceId !== deviceId) return;
-          unsubscribe();
-          deviceId = null;
-          setState('disconnected', 'Đã rút cáp USB');
-        }),
-        native.addListener('onError', (e) => {
-          if (deviceId === null) return;
-          setState('error', e.message);
-        }),
-      ];
-      const u = spec.uart;
-      try {
-        await native.open(m.device.deviceId, u.baudRate, u.dataBits, u.parity, u.stopBits);
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Không mở được cổng USB');
-      }
-      deviceId = m.device.deviceId;
-      setState('connected');
+    open() {
+      if (state === 'connected') return Promise.resolve();
+      if (!opening) opening = doOpen().finally(() => {
+        opening = null;
+      });
+      return opening;
     },
     async close() {
       unsubscribe();

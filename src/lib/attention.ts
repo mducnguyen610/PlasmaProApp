@@ -1,7 +1,9 @@
 // Xếp người bệnh của bác sĩ theo mức cần chú ý (FR10) và phân trạng thái hôm nay.
 // Trọng số điểm là đề xuất của ứng dụng, chưa có nguồn; cần bác sĩ chốt.
 
-export type TodayState = 'treated' | 'due' | 'no_data' | 'rest' | 'no_plan';
+// FR10 đòi ba trạng thái: đã điều trị (treated), bỏ lỡ (missed), chưa có dữ liệu kèm lần đồng bộ cuối (no_data).
+// due, rest, no_plan là trạng thái phụ để bác sĩ đọc đúng ngày chưa đến hạn, ngày nghỉ và người chưa có đợt.
+export type TodayState = 'treated' | 'missed' | 'due' | 'no_data' | 'rest' | 'no_plan';
 
 export interface AttentionInput {
   patientId: string;
@@ -12,18 +14,22 @@ export interface AttentionInput {
   lastSyncDay: string | null;
   today: string;
   missedLast7: number;
+  /** Hôm qua có lịch, máy đã đồng bộ qua hôm qua mà không có phiên hoàn tất. */
+  missedYesterday?: boolean;
   openReports: number;
   severity: 'mild' | 'moderate' | 'severe' | undefined;
 }
 
 export interface Attention { patientId: string; state: TodayState; score: number; reasons: string[] }
 
-export const TODAY_LABEL: Record<TodayState, string> = { treated: 'Đã chiếu', due: 'Cần chiếu', no_data: 'Chưa có dữ liệu', rest: 'Ngày nghỉ', no_plan: 'Chưa có đợt' };
+export const TODAY_LABEL: Record<TodayState, string> = { treated: 'Đã chiếu', missed: 'Bỏ lỡ', due: 'Cần chiếu', no_data: 'Chưa có dữ liệu', rest: 'Ngày nghỉ', no_plan: 'Chưa có đợt' };
 
 export function classifyToday(i: AttentionInput): TodayState {
   if (!i.hasActivePlan) return 'no_plan';
+  if (i.scheduledToday && i.completedToday >= i.targetPerDay) return 'treated';
+  // Hôm nay chưa đủ buổi mà hôm qua đã bỏ lỡ: báo bỏ lỡ trước, vì đây là việc bác sĩ cần gọi hỏi.
+  if (i.missedYesterday) return 'missed';
   if (!i.scheduledToday) return 'rest';
-  if (i.completedToday >= i.targetPerDay) return 'treated';
   if (i.lastSyncDay !== i.today) return 'no_data';
   return 'due';
 }

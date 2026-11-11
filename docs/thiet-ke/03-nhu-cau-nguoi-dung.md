@@ -30,9 +30,9 @@ Bộ vai trò đã chốt (11/11/2026): **bác sĩ**, **người bệnh** và **
 flowchart TB
   P["<b>Phần mềm Plasma Pro</b><br/>Ứng dụng người bệnh<br/>Máy chủ IoMT, mô-đun AI<br/>Ứng dụng bác sĩ"]
   WHO["<b>Cho ai?</b><br/>Người bệnh, người nhà<br/>Bác sĩ điều trị<br/><i>UR1 đến UR11</i>"]
-  ACT["<b>Tác động lên gì?</b><br/>Liều, thời gian, tần suất<br/>Ảnh, diện tích vết thương<br/>Đau, biến cố<br/><i>UR2, UR3, UR4, UR9</i>"]
+  ACT["<b>Tác động lên gì?</b><br/>Liều, thời gian, tần suất<br/>Ảnh, diện tích vết thương<br/>Đau, biến cố<br/><i>UR2, UR3, UR4, UR9, UR17</i>"]
   NORM["<b>Tiêu chuẩn, quy định</b><br/>IEC 62304, ISO 14971<br/>IEC 62366-1, IEC 60601-1-11<br/>Luật 91/2025, NĐ 98/2021<br/><i>UR2, UR13</i>"]
-  ENV["<b>Môi trường, sản phẩm khác</b><br/>Nhà người bệnh, mạng yếu<br/>Máy Plasma Pro, mạch IoT<br/>Điện thoại người bệnh<br/><i>UR6, UR11, UR15</i>"]
+  ENV["<b>Môi trường, sản phẩm khác</b><br/>Nhà người bệnh, mạng yếu<br/>Máy Plasma Pro, mạch IoT<br/>Điện thoại người bệnh<br/><i>UR6, UR11, UR12, UR15</i>"]
   ORG["<b>Tổ chức, người quyết định</b><br/>Bệnh viện ĐH Y Hà Nội<br/>PRATECH ĐHBK, WCMD<br/>Hội đồng đạo đức, Bộ Y tế<br/><i>UR13, UR14, UR15</i>"]
   EN["<b>Năng lượng, nguồn lực</b><br/>Pin điện thoại và pin máy<br/>Internet, máy chủ<br/>Kinh phí nhiệm vụ 2027<br/><i>UR6, UR16</i>"]
   COMP["<b>Đối thủ, thị trường</b><br/>myAir, Nerivio, Swift<br/>Sổ theo dõi bằng giấy<br/>Máy plasma chỉ dùng tại viện<br/><i>UR16</i>"]

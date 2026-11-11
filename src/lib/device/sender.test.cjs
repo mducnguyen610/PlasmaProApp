@@ -44,12 +44,12 @@ const { CAPABILITIES, SIM_MODEL } = load('capabilities');
 const caps = CAPABILITIES[SIM_MODEL];
 const cfg = { patientId: 'BN001', minTreatmentTimeSec: 120, energyLevel: 3, treatmentMode: 'cold', at: new Date('2026-11-10T23:30:05Z') };
 
-async function run(spec, simOpts, { open = true, cfgPatch = {}, deviceVersion, during } = {}) {
+async function run(spec, simOpts, { open = true, cfgPatch = {}, deviceVersion, during, now } = {}) {
   const timer = fakeTimer();
   const sim = createSimulatedTransport(spec, { timer, ...simOpts });
   if (open) await sim.open();
   let result;
-  const p = sendConfig(sim, { ...cfg, ...cfgPatch }, caps, spec, { timer, deviceVersion }).then((r) => (result = r));
+  const p = sendConfig(sim, { ...cfg, ...cfgPatch }, caps, spec, { timer, deviceVersion, now }).then((r) => (result = r));
   for (let i = 0; i < 10 && result === undefined; i++) {
     await flush();
     if (result !== undefined) break;
@@ -78,6 +78,18 @@ async function run(spec, simOpts, { open = true, cfgPatch = {}, deviceVersion, d
     const inc = await run(spec, {}, { deviceVersion: 2 });
     assert.deepEqual(inc.result, { kind: 'incompatible', deviceVersion: 2, appVersion: 1 }, L);
     assert.equal(inc.sim.received(), 0);
+    // Máy chưa trả lời INF (deviceVersion null): chặn gửi, không ghi khung nào xuống máy (RK3).
+    const unid = await run(spec, {}, { deviceVersion: null });
+    assert.deepEqual(unid.result, { kind: 'unidentified' }, L);
+    assert.equal(unid.sim.received(), 0);
+    // Mọi phản hồi đều sai checksum: báo dữ liệu hỏng, không báo nhầm là máy im lặng.
+    assert.deepEqual((await run(spec, { corruptFirst: 5 })).result, { kind: 'corrupted', attempts: 3 }, L);
+    // Ngày giờ trong khung lấy ở lúc gửi: lần gửi lại sau khi rơi khung đầu mang giây mới.
+    let tick = 0;
+    const clock = () => new Date(Date.UTC(2026, 10, 10, 23, 30, 5 + 2 * tick++));
+    const fresh = await run(spec, { dropFirst: 1 }, { now: clock });
+    assert.deepEqual(fresh.result, { kind: 'acked', attempts: 2 }, L);
+    assert.equal(fresh.sim.lastConfig().second, 7, L);
 
     // Sau khi có kết quả, hàm nghe của sendConfig đã được gỡ.
     const timer = fakeTimer();
