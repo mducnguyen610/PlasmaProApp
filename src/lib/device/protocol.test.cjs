@@ -54,6 +54,8 @@ assert.equal(configToWire({ ...good, minTreatmentTimeSec: 90 }, minutes).min_tre
 // encodeConfig ném lỗi với mã hồ sơ sai, không ném với lỗi phụ thuộc năng lực.
 assert.throws(() => encodeConfig({ ...good, patientId: '' }, PROTOCOL));
 assert.doesNotThrow(() => encodeConfig({ ...good, energyLevel: 9 }, PROTOCOL));
+assert.throws(() => encodeConfig({ ...good, energyLevel: 2.5 }, PROTOCOL), /energy_invalid/);
+assert.ok(validateConfig({ ...good, energyLevel: 2.5 }, null, PROTOCOL).includes('energy_invalid'));
 
 // Đổi kiểu khung không đổi kết quả đọc lại.
 for (const spec of [PROTOCOL, PROTOCOL_BINARY_EXAMPLE]) {
@@ -129,4 +131,13 @@ assert.deepEqual(dc.energyLevels, [1, 2, 3]);
 assert.deepEqual(dc.treatmentModes.map((m) => m.value), ['cold']);
 assert.deepEqual(dc.minTreatmentTimeSec, { min: 60, max: 1800 });
 assert.equal(dc.source, 'device');
+// Nhiễu có header giả đứng trước các khung thật: bộ đọc nhị phân đồng bộ lại, không nuốt khung thật.
+{
+  const codec = createCodec(PROTOCOL_BINARY_EXAMPLE);
+  const ack = codec.encode('ack', { command: 'config' });
+  const noise = [0xaa, 0x55, 0x83, 0x02];
+  const stream = Uint8Array.from([...noise, ...Array.from({ length: 9 }, () => [...ack]).flat()]);
+  const got = codec.createReader('device_to_app').push(stream);
+  assert.equal(got.filter((f) => f.kind === 'frame').length, 9);
+}
 console.log('protocol.test: ok');

@@ -231,7 +231,7 @@ export default function GuidedCapture() {
         // Diện tích bác sĩ xác nhận là số đo tham chiếu; ước lượng AR được giữ riêng.
         manualReference: { areaCm2: null, method: null, confirmedBy: null, confirmedAt: null }, geometry: null,
         ...(photoWound?.found && photoWound.box && photoWound.areaFraction !== null
-          ? { wound: { detector: photoWound.modelId, box: photoWound.box, hull: photoWound.hull, areaFraction: photoWound.areaFraction, ...(photoWound.contrast !== null ? { contrast: photoWound.contrast } : {}) } }
+          ? { wound: { detector: photoWound.modelId, modelVersion: photoWound.modelVersion, confidence: photoWound.confidence, areaCm2: photoWound.areaCm2 ?? estimate?.areaCm2 ?? null, box: photoWound.box, hull: photoWound.hull, areaFraction: photoWound.areaFraction, ...(photoWound.contrast !== null ? { contrast: photoWound.contrast } : {}) } }
           : {}),
         ...(photo.ar ? { ar: photo.ar } : {}),
       };

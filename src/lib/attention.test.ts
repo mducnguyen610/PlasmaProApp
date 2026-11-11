@@ -13,6 +13,11 @@ assert.equal(classifyToday(mk({ completedToday: 1 })), 'treated');
 assert.equal(classifyToday(mk({ lastSyncDay: null })), 'no_data');
 assert.equal(classifyToday(mk({ lastSyncDay: '2026-11-09' })), 'no_data');
 assert.equal(classifyToday(mk()), 'due');
+// Bỏ lỡ hôm qua: hiện "Bỏ lỡ" cả khi hôm nay là ngày nghỉ hay chưa có dữ liệu; đã chiếu đủ hôm nay thì vẫn là đã chiếu.
+assert.equal(classifyToday(mk({ missedYesterday: true })), 'missed');
+assert.equal(classifyToday(mk({ missedYesterday: true, scheduledToday: false })), 'missed');
+assert.equal(classifyToday(mk({ missedYesterday: true, lastSyncDay: null })), 'missed');
+assert.equal(classifyToday(mk({ missedYesterday: true, completedToday: 1 })), 'treated');
 // Đủ buổi hôm nay nhưng lần đồng bộ cuối là ngày cũ: dữ liệu đã có, vẫn là đã chiếu.
 assert.equal(classifyToday(mk({ completedToday: 2, targetPerDay: 2, lastSyncDay: '2026-11-01' })), 'treated');
 

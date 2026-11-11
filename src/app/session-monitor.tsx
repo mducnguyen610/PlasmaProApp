@@ -1,4 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
@@ -10,14 +11,32 @@ import { fmtDateTime } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
 
-/** Theo dõi phiên điều trị qua bản tin trạng thái máy phát mỗi giây. */
+/**
+ * Theo dõi phiên điều trị qua bản tin trạng thái máy phát mỗi giây.
+ * Khi thấy STA chuyển từ running sang done, stopped hoặc error, ghi một phiên vào nhật ký (FR4), để tổng quan bác sĩ thấy "Đã chiếu" (FR10).
+ * Phiên chỉ được ghi khi màn này đang mở; mất kết nối giữa phiên thì không ghi.
+ */
 export default function SessionMonitor() {
-  const params = useLocalSearchParams<{ patientId?: string }>();
-  const { me } = useStore();
+  const params = useLocalSearchParams<{ patientId?: string; woundId?: string }>();
+  const { me, recordDeviceSession } = useStore();
   const { patient } = useLookups();
   const p = patient(me?.role === 'patient' ? me.patientId : params.patientId);
   const canView = useCanView(p);
-  const link = useDeviceLink();
+  const [saved, setSaved] = useState<{ ok: boolean; text: string } | null>(null);
+  const link = useDeviceLink({
+    onSessionEnd: (done) => {
+      if (!p) return;
+      try {
+        const ok = recordDeviceSession({ patientId: p.id, woundId: params.woundId, startedAt: done.startedAt.toISOString(), durationSec: done.durationSec, outcome: done.outcome });
+        setSaved(ok
+          ? { ok: true, text: done.outcome === 'done' ? `Đã ghi phiên điều trị ${Math.round(done.durationSec / 6) / 10} phút vào nhật ký.` : 'Phiên dừng giữa chừng, đã ghi vào nhật ký là phiên bị gián đoạn.' }
+          : { ok: false, text: 'Hồ sơ chưa được giao máy nên phiên chưa được ghi. Bác sĩ cần giao máy trên hồ sơ người bệnh.' });
+      } catch (e) {
+        setSaved({ ok: false, text: e instanceof Error ? e.message : String(e) });
+      }
+    },
+  });
+
   if (!p || !canView) return <NoAccess />;
 
   const st = link.lastStatus;
@@ -36,8 +55,13 @@ export default function SessionMonitor() {
         <InfoRow label="Trạng thái phiên" value={st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'} />
         <InfoRow label="Giây còn lại" value={st?.remainingSec != null ? String(st.remainingSec) : '–'} />
         <InfoRow label="Nhận lần cuối" value={link.lastStatusAt ? fmtDateTime(link.lastStatusAt) : '–'} />
-        {!st && <Muted>Bắt đầu phiên trên máy; trạng thái hiện ở đây khi máy gửi về.</Muted>}
+        {!st && <Muted>Bắt đầu phiên trên máy; trạng thái hiện ở đây khi máy gửi về. Giữ màn này mở tới khi phiên xong để phiên được ghi vào nhật ký.</Muted>}
       </Card>
+      {saved && (
+        <Notice tone={saved.ok ? 'green' : 'red'} icon={saved.ok ? 'checkmark-circle-outline' : 'alert-circle-outline'}>
+          {saved.text}
+        </Notice>
+      )}
       {link.startSession && link.stopSession && link.state === 'connected' && (
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Button label="Bắt đầu phiên (giả lập)" icon="play-outline" onPress={link.startSession} style={{ flex: 1 }} />

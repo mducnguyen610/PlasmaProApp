@@ -4,7 +4,7 @@ import type { WoundDetection } from '../capture/woundDetect.ts';
 import { fromColorDetection } from './result.ts';
 
 const none = fromColorDetection(null, 'm', '1');
-assert.deepEqual(none, { found: false, box: null, hull: [], center: null, areaFraction: null, contrast: null, confidence: null, modelId: 'm', modelVersion: '1' });
+assert.deepEqual(none, { found: false, box: null, hull: [], center: null, areaFraction: null, areaCm2: null, contrast: null, confidence: null, modelId: 'm', modelVersion: '1' });
 
 const base: WoundDetection = { found: false, box: null, hull: [], center: null, areaFraction: 0, contrast: 0, meanLuma: null, clippedFraction: 0, width: 100, height: 100 };
 const miss = fromColorDetection(base, 'm', '1');
@@ -31,4 +31,8 @@ assert.equal(r.contrast, 12.5);
 assert.equal(r.confidence, null);
 assert.equal(r.modelId, 'color_lab_otsu_v1');
 assert.equal(r.modelVersion, '1');
+// Không có thước đo: areaCm2 null, không suy từ areaFraction. Có diện tích một điểm ảnh: 0,05 x 100 x 100 x 0,01 = 5 cm².
+assert.equal(r.areaCm2, null);
+assert.equal(fromColorDetection(hit, 'm', '1', 0.01).areaCm2, 5);
+assert.equal(fromColorDetection(hit, 'm', '1', 0).areaCm2, null);
 console.log('ai/result.test: ok');

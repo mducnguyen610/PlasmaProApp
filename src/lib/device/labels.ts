@@ -18,6 +18,7 @@ export const CONFIG_ERROR_LABEL: Record<ConfigError, string> = {
   patient_id_charset: 'Mã hồ sơ có ký tự máy không nhận.',
   time_invalid: 'Thời gian chiếu phải là số giây nguyên dương.',
   time_out_of_range: 'Thời gian chiếu nằm ngoài khoảng máy cho phép.',
+  energy_invalid: 'Mức năng lượng phải là số nguyên.',
   energy_not_allowed: 'Mức năng lượng của đợt không có trong danh sách của máy, bác sĩ cần lưu phiên bản mới.',
   mode_not_allowed: 'Chế độ điều trị của đợt không có trên máy này, bác sĩ cần lưu phiên bản mới.',
   mode_not_in_spec: 'Chế độ điều trị không có trong giao thức.',
@@ -33,8 +34,12 @@ export function sendResultLabel(r: SendResult): string {
       return `Máy từ chối cấu hình, mã ${r.code}.`;
     case 'timeout':
       return `Máy không trả lời sau ${r.attempts} lần gửi.`;
+    case 'corrupted':
+      return `Máy trả về dữ liệu hỏng (sai checksum hoặc sai cấu trúc) sau ${r.attempts} lần gửi. Hãy kiểm tra cáp rồi gửi lại.`;
     case 'disconnected':
       return 'Mất kết nối, hãy cắm lại cáp và gửi lại.';
+    case 'unidentified':
+      return 'Máy chưa trả lời lệnh hỏi thông tin nên chưa kiểm được phiên bản giao thức. Hãy ngắt rồi kết nối lại.';
     case 'incompatible':
       return `Máy dùng giao thức phiên bản ${r.deviceVersion}, ứng dụng dùng phiên bản ${r.appVersion}, cần cập nhật ứng dụng hoặc firmware.`;
     case 'invalid':

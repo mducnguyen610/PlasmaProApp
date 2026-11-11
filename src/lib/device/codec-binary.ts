@@ -124,8 +124,10 @@ export function createBinaryCodec(spec: ProtocolSpec, fr: BinaryFraming): FrameC
           }
           if (buf.length < total) break;
           const raw = Uint8Array.from(buf.slice(0, total));
-          buf = buf.slice(total);
-          out.push(decode(raw, direction));
+          const d = decode(raw, direction);
+          out.push(d);
+          // Khung hỏng có thể là header giả trong nhiễu: chỉ bỏ một byte rồi tìm lại, để không nuốt các khung thật phía sau.
+          buf = d.kind === 'frame' ? buf.slice(total) : buf.slice(1);
         }
         if (buf.length > spec.maxFrameBytes) buf = [];
         return out;

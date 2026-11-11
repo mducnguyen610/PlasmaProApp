@@ -30,4 +30,13 @@ const cells = monthCells('2026-11', [session], 1, '2026-11-08', plan.startDate, 
 assert.equal(cells.find((c) => c.date === '2026-11-08')?.count, 1);
 assert.equal(cells.find((c) => c.date === '2026-11-07')?.count, 0);
 
-console.log('localDay: ngày theo giờ máy (Asia/Ho_Chi_Minh) đạt');
+// Điện thoại đặt múi giờ khác: ngày và giờ hiển thị vẫn theo UTC+7, khớp đồng hồ máy (KT6).
+for (const tz of ['America/New_York', 'UTC', 'Asia/Tokyo']) {
+  process.env.TZ = tz;
+  assert.equal(localDay(morning), '2026-11-08', tz);
+  assert.equal(localDay('2026-11-08T17:00:00.000Z'), '2026-11-09', tz);
+  assert.equal(fmtDateTime(morning), '06:30 08/11/2026', tz);
+  assert.equal(monthCells('2026-11', [session], 1, '2026-11-08', plan.startDate, plan.endDate, '2026-11-08').find((c) => c.date === '2026-11-08')?.count, 1, tz);
+}
+
+console.log('localDay: ngày theo UTC+7 với mọi múi giờ điện thoại đạt');

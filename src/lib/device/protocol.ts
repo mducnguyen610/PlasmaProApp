@@ -14,6 +14,7 @@ export type ConfigError =
   | 'patient_id_charset'
   | 'time_invalid'
   | 'time_out_of_range'
+  | 'energy_invalid'
   | 'energy_not_allowed'
   | 'mode_not_allowed'
   | 'mode_not_in_spec'
@@ -87,6 +88,8 @@ export function validateConfig(cfg: TreatmentConfig, caps: DeviceCapabilities | 
   const timeOk = Number.isInteger(cfg.minTreatmentTimeSec) && cfg.minTreatmentTimeSec > 0;
   if (!timeOk) add('time_invalid');
   else if (caps?.minTreatmentTimeSec && (cfg.minTreatmentTimeSec < caps.minTreatmentTimeSec.min || cfg.minTreatmentTimeSec > caps.minTreatmentTimeSec.max)) add('time_out_of_range');
+  // Mức năng lượng là số nguyên; không để configToWire âm thầm làm tròn 2.5 thành 3.
+  if (!Number.isInteger(cfg.energyLevel)) add('energy_invalid');
   if (caps === null) add('capabilities_unknown');
   else {
     if (!caps.energyLevels.includes(cfg.energyLevel)) add('energy_not_allowed');
