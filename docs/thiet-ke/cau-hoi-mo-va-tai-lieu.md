@@ -12,8 +12,8 @@ Bốn câu hỏi đầu chặn bước 6; các câu còn lại chặn việc ch�
 | 6 | Bác sĩ | Phác đồ cho 3 nhóm tổn thương; ngưỡng đau cần cảnh báo; mốc chụp ảnh | FR6, FR9 |
 | 7 | Bệnh viện | Đã trả lời 11/11/2026: chỉ có bác sĩ và người bệnh | Không còn chặn |
 | 8 | Người giao mô-đun AI | Mô-đun nhận diện có sẵn ở dạng nào (mô hình chạy trên điện thoại hay dịch vụ máy chủ); đầu vào, đầu ra; đã đo sai số chưa? | C1 hay C2, TR10 |
-| 10 | Bác sĩ chuyên môn | Phương pháp gán nhãn (phân loại, khung, phân vùng) và bộ nhãn chính thức; ai là "người có thẩm quyền" duyệt nhãn khi chỉ có vai trò bác sĩ | FR15, FR16 |
-| 11 | Chủ đồ án | Người bệnh dùng ứng dụng để làm gì, vì 12 màn của quy trình 9 giai đoạn đều là màn của bác sĩ | UR1, UR4 đến UR6 |
+| 10 | Bác sĩ chuyên môn | Phương pháp gán nhãn (phân loại, khung, phân vùng) và bộ nhãn chính thức. Đã trả lời phần duyệt nhãn: nằm ngoài phạm vi đề tài | FR15 |
+| 11 | Chủ đồ án | Đã trả lời: người bệnh dùng ứng dụng để sử dụng Plasma Pro trị liệu tại nhà. Còn hỏi: điện thoại người bệnh có cắm USB/UART vào máy để nạp cấu hình bác sĩ đặt và nhận phản hồi không (giả định tạm: có) | UR1, UR2, FR2 |
 | 12 | Đồ án phần cứng | Đơn vị, miền giá trị của min_treatment_time, energy_level, treatment_mode; định dạng ngày giờ, múi giờ; trường phản hồi | FR2, TR3 |
 | 9 | Chủ đồ án | Chức năng USB/UART chạy trên Android, hay cần cả iOS (iOS không hỗ trợ CP2102N) | A1, A2 |
 

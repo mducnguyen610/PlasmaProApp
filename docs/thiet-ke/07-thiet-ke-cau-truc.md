@@ -22,7 +22,7 @@ Mức thực hiện theo phạm vi đề tài (tệp 00):
 | TR9 | Máy chủ IoMT | Nhật ký kiểm toán; tính trạng thái theo giờ Việt Nam | Nội bộ | NFR5 | FR9, FR10 |
 | TR10 | Lớp tích hợp mô-đun AI | Gói mô-đun có sẵn sau một giao diện chung: vào ảnh, ra vùng tổn thương, diện tích cm², độ tin cậy, phiên bản mô hình | Với ứng dụng (C2) hoặc máy chủ (C1) | Sai số chờ giảng viên chốt; chạy được với mô-đun giả khi chưa có mô-đun thật | FR11 |
 | TR11 | Ứng dụng bác sĩ | Soạn liệu trình trong giới hạn của bảng năng lực thiết bị; hiện liều J/cm² | Với máy chủ | Không lưu được liệu trình vượt giới hạn | FR3, FR9 |
-| TR13 | Ứng dụng bác sĩ | Màn chụp, tải ảnh; danh sách và chi tiết ảnh; màn gán nhãn; màn duyệt; màn bộ dữ liệu và xuất | Vào: camera, thư viện ảnh; ra: tệp xuất | Phương pháp gán nhãn chờ bác sĩ | FR5, FR12, FR15, FR16, FR17 |
+| TR13 | Ứng dụng bác sĩ | Màn chụp, tải ảnh; danh sách và chi tiết ảnh; màn gán nhãn; màn bộ dữ liệu và xuất | Vào: camera, thư viện ảnh; ra: tệp xuất | Phương pháp gán nhãn chờ bác sĩ | FR5, FR12, FR15, FR16, FR17 |
 | TR12 | Ứng dụng bác sĩ | Màn tổng quan xếp hạng; quét mã để gán máy | Với máy chủ | FR10 | FR10, FR13 |
 
 Bước này cũng là lúc lập cây chức năng và cây kết cấu (FAST) như slide 29, 30 [1]: FR ở gốc, TR ở tầng 2, mô-đun mã nguồn ở lá. Việc này nên làm sau khi bước 8 xác nhận TR.

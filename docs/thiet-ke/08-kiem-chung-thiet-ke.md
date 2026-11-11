@@ -21,7 +21,7 @@ Verification trên giấy đạt: 16 UR đều có FR, và mọi FR đều phụ
 | UR13 | NFR1, NFR2, NFR6 | Pháp chế bệnh viện rà soát | Chưa |
 | UR14 | FR4, FR11 | Nhóm nghiên cứu truy một phiên từ ảnh về liệu trình | Chưa |
 | UR15 | NFR3 | Chạy ứng dụng với thiết bị giả lập và mạch thật | Chưa |
-| UR17 | FR15, FR16, FR17 | Bác sĩ gán nhãn và duyệt 20 ảnh mẫu theo bộ quy tắc | Chưa |
+| UR17 | FR15, FR16, FR17 | Bác sĩ gán nhãn 20 ảnh mẫu theo bộ quy tắc | Chưa |
 | UR16 | NFR7 | Giảng viên, WCMD đánh giá | Chưa |
 
 **8.2. FMEA sơ bộ cho thiết kế cấu trúc.** Mức nghiêm trọng là ước lượng của hệ thống; khả năng xảy ra và khả năng phát hiện cần dữ liệu thử, nên chưa tính RPN.

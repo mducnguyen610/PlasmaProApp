@@ -19,9 +19,9 @@ Bản nháp có 14 FR chức năng và 7 NFR, viết từ trên cương vị ng�
 | FR9 | Cho bác sĩ tạo, sửa liệu trình theo từng vết thương trong giới hạn an toàn của WCMD; ghi nhật ký thay đổi | 100% thay đổi có người, giờ, lý do | UR7 |
 | FR10 | Xếp người bệnh theo mức cần chú ý; tách 3 trạng thái: đã điều trị, bỏ lỡ, chưa có dữ liệu (kèm lần đồng bộ cuối) | Bác sĩ tìm ra người cần chú ý trong ≤ 30 s (đx, đo bằng thử tác vụ) | UR8 |
 | FR11 | AI khoanh vùng và tính diện tích (cm²); bác sĩ sửa vùng; lưu cả giá trị AI và giá trị bác sĩ | Sai số so với bác sĩ: chờ giảng viên chốt | UR9, UR14 |
-| FR12 | Xuất bộ dữ liệu ảnh có nhãn: chỉ ảnh đã duyệt và có đồng ý; giả danh hóa (mã nghiên cứu, bỏ metadata); kèm tệp nhãn và số phiên bản bộ dữ liệu | 0 ảnh thiếu đồng ý hoặc chưa duyệt; 0 trường định danh trong bản xuất | UR10, UR13 |
+| FR12 | Xuất bộ dữ liệu ảnh có nhãn: chỉ ảnh đã gán nhãn và có đồng ý; giả danh hóa (mã nghiên cứu, bỏ metadata); kèm tệp nhãn và số phiên bản bộ dữ liệu | 0 ảnh thiếu đồng ý hoặc chưa gán nhãn; 0 trường định danh trong bản xuất | UR10, UR13 |
 | FR15 | Gán nhãn ảnh theo một phương pháp chọn cùng bác sĩ (phân loại cả ảnh, khung chữ nhật hoặc phân vùng) và bộ nhãn thống nhất | Phương pháp, bộ nhãn chờ bác sĩ chốt; không làm cả ba nếu không cần | UR17 |
-| FR16 | Duyệt nhãn: chờ duyệt, đã duyệt, yêu cầu sửa; ghi người gán, người duyệt, thời gian; lưu vết mọi lần sửa | 100% thay đổi nhãn có người và giờ | UR14, UR17 |
+| FR16 | Lưu vết nhãn: ghi người gán, thời gian; lưu mọi lần sửa nhãn. Quy trình duyệt nhãn nằm ngoài phạm vi đề tài | 100% thay đổi nhãn có người và giờ | UR14, UR17 |
 | FR17 | Quản lý ảnh: danh sách, tìm kiếm, lọc theo bệnh nhân, vết thương, trạng thái nhãn | Tìm thấy một ảnh trong ≤ 3 thao tác (đx) | UR9, UR17 |
 | FR13 | Gán máy và đầu phát cho người bệnh bằng quét mã; thu hồi khi kết thúc đợt | Một máy chỉ thuộc một người tại một thời điểm | UR11 |
 | FR14 | Theo dõi vòng đời máy: số phiên, tổng thời gian phát, lịch bảo dưỡng | Chu kỳ bảo dưỡng do WCMD cung cấp | UR12 |

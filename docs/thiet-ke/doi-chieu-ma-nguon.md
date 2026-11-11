@@ -4,7 +4,7 @@ Mã nguồn hiện tại là prototype của vòng cũ, viết trước khi có 
 
 Cách đánh giá: đọc mã ở nhánh `nang-cap/sdk-58` (commit `765ba81`). Chưa chạy ứng dụng để kiểm lại từng dòng, nên cột "Mức đáp ứng" là nhận định từ việc đọc mã.
 
-Kết quả gộp: trong 17 FR có 7 FR đạt phần lớn, 8 FR đạt một phần, 2 FR chưa có (cập nhật theo quy trình 9 giai đoạn). Trong 7 NFR có 2 NFR đạt phần lớn, 1 NFR đạt một phần, 4 NFR chưa có.
+Kết quả gộp: trong 17 FR có 8 FR đạt phần lớn, 7 FR đạt một phần, 2 FR chưa có (cập nhật theo quy trình 9 giai đoạn). Trong 7 NFR có 2 NFR đạt phần lớn, 1 NFR đạt một phần, 4 NFR chưa có.
 
 ## FR chức năng
 
@@ -23,7 +23,7 @@ Kết quả gộp: trong 17 FR có 7 FR đạt phần lớn, 8 FR đạt một p
 | FR11 AI khoanh vùng, tính diện tích | Một phần | `src/lib/capture/woundDetect.ts` (ngưỡng màu Otsu), `estimateAreaCm2` trong `capture/ar.ts` | Chưa phải mô hình phân vùng; chạy trên máy, trái với phương án C1; bác sĩ chưa sửa được vùng; chưa lưu phiên bản mô hình |
 | FR12 Xuất bộ dữ liệu có nhãn | Phần lớn | `src/lib/export.ts`, `src/lib/research.ts` (ZIP ảnh PNG bỏ metadata, mã RS, `labels.csv`), `src/lib/access.ts` (`researchImages`) | Chưa có số phiên bản bộ dữ liệu |
 | FR15 Gán nhãn ảnh | Một phần | `src/app/images/[id].tsx`, `src/lib/naming.ts` (nhãn là diện tích cm², trạng thái đã đo, chưa đo, đã loại) | Chưa có phân loại, khung hay phân vùng; bộ dò hiện có lưu đường bao (`capture.wound.hull`) nhưng bác sĩ chưa sửa được |
-| FR16 Duyệt nhãn, lưu vết | Một phần | `LabelChange` trong `src/lib/types.ts`, `researchReviewedBy`, `retakeRequested` | Người gán và người duyệt là một; chưa có trạng thái "yêu cầu sửa nhãn" |
+| FR16 Lưu vết nhãn | Phần lớn | `LabelChange` trong `src/lib/types.ts` (người sửa, giờ, giá trị trước và sau) | Duyệt nhãn ngoài phạm vi; trường `researchReviewedBy` chỉ là bác sĩ xác nhận ảnh không lộ danh tính, giữ lại |
 | FR17 Quản lý ảnh | Phần lớn | `src/app/doctor/dataset.tsx` (lọc chưa có, đã có, đã loại), `src/app/wounds/[id].tsx` (album theo ngày) | Chưa tìm theo bệnh nhân trên toàn bộ ảnh |
 | FR13 Gán máy và đầu phát, thu hồi | Phần lớn | `src/lib/devices.ts` (một máy một người, có kiểm thử), `src/app/admin/devices.tsx`, `Device.tip`, `Device.lifecycle` | Chưa gán bằng quét mã |
 | FR14 Vòng đời máy, bảo dưỡng | Phần lớn | `src/lib/maintenance.ts`, `src/components/DeviceView.tsx` | Chu kỳ bảo dưỡng là số tạm, chờ WCMD |
@@ -66,7 +66,7 @@ Theo bảng phạm vi ở tệp 00: backend và database chỉ đề xuất, nê
 Theo slide 27 [1], mã chỉ nên đổi lớn sau khi bước 8 đạt validation. Thứ tự dưới đây xếp theo mức phụ thuộc vào các câu hỏi còn mở.
 
 1. **Không phụ thuộc câu hỏi mở nào:** tách lớp hợp đồng thiết bị và chuyển phần mô phỏng thành thiết bị giả lập (NFR3, TR4); tách lớp tích hợp AI và đặt bộ dò ngưỡng màu hiện có sau nó (TR10); đưa 3 trạng thái và thứ tự ưu tiên lên màn tổng quan của bác sĩ (FR10).
-2. **Chờ bác sĩ chốt phương pháp và bộ nhãn:** màn gán nhãn, quy trình duyệt, số phiên bản bộ dữ liệu (FR15, FR16, FR12).
+2. **Chờ bác sĩ chốt phương pháp và bộ nhãn:** màn gán nhãn, số phiên bản bộ dữ liệu (FR15, FR12).
 3. **Chờ bác sĩ:** ngưỡng đau và hướng dẫn liên hệ (FR6).
 4. **Chờ nhóm phần cứng và lựa chọn nền tảng:** mô-đun USB gốc và bộ lệnh với firmware, gói liệu trình, nhật ký phiên (FR2, FR4). **Chờ WCMD:** liều J/cm², giới hạn an toàn (FR3, FR9).
 5. **Chờ người giao mô-đun AI:** thay bản giả bằng mô-đun thật (FR11). Máy chủ và database chỉ viết đề xuất, không nằm trong danh sách sửa mã.
