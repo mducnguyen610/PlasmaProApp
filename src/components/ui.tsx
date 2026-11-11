@@ -13,7 +13,7 @@ import { MONO, Text, TextInput } from '@/components/Text';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useStore } from '@/lib/store';
 import type { Role, WoundImage } from '@/lib/types';
-import { bar, C, cardShape, elevation, G, radius, radiusExtra, shadow, type GradientName, T, type Tone } from '@/theme';
+import { bar, C, cardShape, elevation, G, radius, radiusExtra, semantic, shadow, size, type GradientName, T, type Tone } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -236,10 +236,11 @@ export function IconBadge({ icon, tone = 'blue', size = 40 }: { icon: IconName; 
 export function Button({
   label, onPress, icon, variant = 'primary', disabled, loading, style,
 }: {
-  label: string; onPress: () => void; icon?: IconName; variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  /** dangerSolid: hành động dừng hoặc nguy hiểm cần thấy ngay (Dừng chiếu ở T02), nền đỏ đặc, cao size.buttonDanger. */
+  label: string; onPress: () => void; icon?: IconName; variant?: 'primary' | 'secondary' | 'danger' | 'dangerSolid' | 'ghost';
   disabled?: boolean; loading?: boolean; style?: StyleProp<ViewStyle>;
 }) {
-  const fg = { primary: C.onPrimary, secondary: C.primary, danger: C.red, ghost: C.primary }[variant];
+  const fg = { primary: C.onPrimary, secondary: C.primary, danger: C.red, dangerSolid: C.onPrimary, ghost: C.primary }[variant];
   const inner = (
     <>
       {loading ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={18} color={fg} /> : null}
@@ -259,7 +260,7 @@ export function Button({
           {inner}
         </LinearGradient>
       ) : (
-        <View style={[s.btn, { backgroundColor: variant === 'secondary' ? C.onPrimary : variant === 'danger' ? C.redSoft : 'transparent' }, variant === 'secondary' && { borderWidth: 1.5, borderColor: C.primarySoft }]}>
+        <View style={[s.btn, { backgroundColor: variant === 'secondary' ? C.onPrimary : variant === 'danger' ? C.redSoft : variant === 'dangerSolid' ? semantic.danger.solid! : 'transparent' }, variant === 'secondary' && { borderWidth: 1.5, borderColor: C.primarySoft }, variant === 'dangerSolid' && { minHeight: size.buttonDanger }]}>
           {inner}
         </View>
       )}

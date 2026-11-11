@@ -106,10 +106,14 @@ export default function SessionMonitor() {
           {isPatient && <Button label="Báo sự cố thiết bị" variant="secondary" icon="construct-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'device' } })} />}
         </>
       )}
+      {/* Chỉ thiết bị giả lập có nút bắt đầu, dừng trên ứng dụng. Mỗi lúc một nút theo trạng thái phiên (V01):
+          đang chiếu thì chỉ còn "Dừng chiếu" nền đỏ, rộng hết cột. */}
       {link.startSession && link.stopSession && link.state === 'connected' && (
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Button label="Bắt đầu phiên (giả lập)" icon="play-outline" onPress={link.startSession} style={{ flex: 1 }} />
-          <Button label="Dừng phiên (giả lập)" variant="secondary" icon="stop-outline" onPress={link.stopSession} style={{ flex: 1 }} />
+        <View style={{ gap: 6 }}>
+          {st?.state === 'running'
+            ? <Button label="Dừng chiếu" variant="dangerSolid" icon="stop-circle-outline" onPress={link.stopSession} />
+            : <Button label="Bắt đầu chiếu" icon="play-outline" onPress={link.startSession} />}
+          <Muted>Nút này thay cho thao tác trên máy, chỉ có với thiết bị giả lập.</Muted>
         </View>
       )}
     </Screen>
