@@ -275,3 +275,16 @@ Chạy web để xem hai màn mới với thiết bị giả lập: `npm run web
 - Thay bộ dò màu bằng mô-đun AI có sẵn khi biết dạng của mô-đun.
 - Màn gán nhãn kiểu phân loại, khung hoặc phân vùng (FR15) khi bác sĩ chốt phương pháp.
 - Đề xuất backend, database (viết trong hồ sơ thiết kế, không lập trình).
+
+## Due diligence record
+
+Mục này ghi kết luận của lượt thẩm định (due diligence) ngày 11/11/2026 về các sự kiện bên ngoài mà kế hoạch nêu hoặc để lại cho lúc triển khai; lượt kiểm tra sự kiện ở giai đoạn triển khai sẽ đọc mục này. Không lượt nào được coi một dòng ở đây là lý do để bỏ qua việc kiểm chứng: mục này ghi điều đã kết luận một lần, không khẳng định điều đó còn đúng ở thời điểm đọc. Ai sửa tay sự kiện tương ứng trong kế hoạch thì **xóa** dòng đó, không cập nhật nó, để mục này không trôi thành những khẳng định chưa ai kiểm.
+
+- SETTLED: checksum kiểu NMEA là XOR mã ASCII của mọi ký tự nằm giữa `$` và `*` (không tính hai ký tự này), viết thành 2 chữ số hex ngay sau `*` (đã kiểm với Wikipedia, mục NMEA 0183; nguồn không quy định chữ hoa hay thường, ví dụ dùng chữ hoa, nên chọn hex hoa là quy ước của ứng dụng).
+- SETTLED: Node chạy thẳng `.ts` bằng type stripping bắt buộc ghi đuôi tệp trong `import` và `require`, và không hỗ trợ `enum` cùng thuộc tính tham số trong hàm dựng; type stripping bật mặc định từ v22.18.0, máy hiện có Node v22.23.4 (đã kiểm với nodejs.org/api/typescript.html).
+- SETTLED: `expo/tsconfig.base.json` của `expo@58.0.22` (bản trong `package-lock.json`) không bật `allowImportingTsExtensions`, và `tsconfig.json` của repo cũng không bật, nên import có đuôi `.ts` trong mã nguồn bị `tsc` từ chối (đã kiểm với cdn.jsdelivr.net/npm/expo@58.0.22/tsconfig.base.json và typescriptlang.org/tsconfig/allowImportingTsExtensions).
+- SETTLED: import không đuôi `'@/lib/capture/analyzeImage'` để Metro tự chọn `analyzeImage.ts` hay `analyzeImage.web.ts` theo nền tảng (đã kiểm với docs.expo.dev/router/advanced/platform-specific-modules).
+- SETTLED: CP2102N không có trình điều khiển cho iOS; Silicon Labs chỉ phát hành trình điều khiển VCP cho Windows, macOS, Linux và Android (đã kiểm với silabs.com/developers/usb-to-uart-bridge-vcp-drivers).
+- OPEN (deferred): toàn bộ giá trị trong `PROTOCOL` (khung `$CFG,<10 trường>*hh\r\n`, UART 9600 8N1, `fieldOrder`, `minTreatmentTimeUnit: 's'`, `timeZoneOffsetMin: 420`, `patientIdMaxLength: 16`, `ackTimeoutMs: 2000`, `maxRetries: 2`, dạng `$ACK`, `$NAK`, `$STA`), kế hoạch cố ý để lại cho đặc tả firmware, hiện là giả định của ứng dụng với `confirmed: false`.
+- OPEN (unverified): `CAPABILITIES` với `energyLevels: [1, 2, 3, 4, 5]` và chế độ `cold`, `hybrid`, `thermal`, lấy từ báo cáo giữa kỳ đồ án nhúng (tài liệu nội bộ, không có nguồn sống để kiểm, và chính mục 3.2.1.1 của báo cáo đã được ghi nhận có lỗi trong `docs/thiet-ke/cau-hoi-mo-va-tai-lieu.md`).
+- OPEN (unverified): bản `usb-android` cần development build vì Expo Go chỉ có mô-đun gốc đóng sẵn; điều này dựa theo `AGENTS.md` của repo, chưa tra tài liệu Expo SDK 58, và thuộc giai đoạn sau.
