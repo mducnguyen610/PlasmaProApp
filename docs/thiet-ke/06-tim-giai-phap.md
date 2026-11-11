@@ -24,7 +24,7 @@ Cả hai phương án dùng chung một lớp tích hợp AI trong ứng dụng 
 
 **6.3. Tích hợp nhu cầu phi chức năng bắt buộc.** NFR3 (hợp đồng thiết bị) cho phép đổi S1 sang S2 sau này mà không viết lại ứng dụng. NFR1 và NFR6 quyết định đề xuất B2 thay vì B1. NFR5 và phân quyền phía máy chủ xử lý hai lỗi đã gặp ở vòng cũ [5].
 
-**6.4. Sàng lọc phần còn lại theo ưu tiên.** Thứ tự đề xuất cho nice to have: FR12 xuất phiếu (giúp nghiên cứu ngay năm 2027), rồi FR7, FR14, NFR7 (phục vụ thương mại hóa sau nhiệm vụ).
+**6.4. Sàng lọc phần còn lại theo ưu tiên.** Thứ tự đề xuất cho nice to have: FR7, FR14, NFR7 (phục vụ thương mại hóa sau nhiệm vụ). FR12 không nằm trong nhóm này vì UR10 là Must (bước 3).
 
 **6.5. Sơ đồ khối cấp 1** (bên dưới): 6 khối, ranh giới giữa phần của WCMD và phần của PRATECH.
 
@@ -43,7 +43,7 @@ flowchart LR
   SRV <-- "danh sách, cảnh báo, liệu trình mới" --> DAPP
   classDef ext stroke-dasharray: 5 4;
 ```
-*Sơ đồ khối cấp 1, phương án S1 + A1 + B2 + C1. Ứng dụng người bệnh là cầu nối duy nhất giữa máy và máy chủ.*
+*Sơ đồ khối cấp 1, phương án S1 + A1 + B2, vẽ theo C1 để thấy đủ đường dữ liệu. Phương án ưu tiên ở bảng 6.2 là C2; khi đó mũi tên AI chuyển từ máy chủ sang ứng dụng (đoạn cuối mục này). Ứng dụng người bệnh là cầu nối duy nhất giữa máy và máy chủ.*
 
 Máy không nối thẳng lên máy chủ: liệu trình mới và nhật ký phiên đều đi qua điện thoại người bệnh, nên dữ liệu chậm tối đa một lần cắm cáp. Khối nét đứt thuộc WCMD, ngoài phạm vi đồ án.
 

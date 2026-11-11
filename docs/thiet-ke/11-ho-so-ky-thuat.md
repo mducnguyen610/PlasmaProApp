@@ -26,10 +26,10 @@ Mức nghiêm trọng là ước lượng; khả năng xảy ra chưa có dữ l
 |---|---|---|---|---|---|
 | RK1 | Nạp sai thời gian hoặc mức | Đổi đơn vị sai, giá trị ngoài miền | Quá liều hoặc thiếu liều | Đơn vị và miền khai báo trong đặc tả; chặn trước khi gửi; ví dụ đối chiếu byte | `vectors.test.cjs`, `protocol.test.cjs` |
 | RK2 | Gói hỏng trên đường truyền | Nhiễu, rút cáp giữa chừng | Máy nhận cấu hình sai | Checksum; máy trả NAK; ứng dụng chỉ báo "đã nạp" khi có ACK | `sender.test.cjs`; TR1 phía firmware |
-| RK3 | Ứng dụng và firmware lệch phiên bản giao thức | Cập nhật một bên | Hiểu sai trường | Hỏi `INF`, từ chối gửi khi lệch | `sender.test.cjs` |
+| RK3 | Ứng dụng và firmware lệch phiên bản giao thức | Cập nhật một bên | Hiểu sai trường | Hỏi `INF`, từ chối gửi khi lệch hoặc khi máy chưa trả lời `INF` | `sender.test.cjs` |
 | RK4 | Ứng dụng tự đặt giá trị điều trị | Giá trị mặc định | Liều không do bác sĩ quyết | Không có mặc định; trường trống thì không gửi (KT5) | `planToConfig` trả `missing` |
-| RK5 | Nạp liệu trình của người khác | Dùng chung điện thoại | Sai người bệnh | `patient_id` trong gói; kiểm vai trò ở màn kết nối | `workflow.test.cjs` |
-| RK6 | Sai ngày giờ trên máy | Múi giờ điện thoại khác UTC+7 | Lịch sai | Đồng hồ gửi máy tính theo UTC+7 | `vectors.test.cjs` |
+| RK5 | Nạp liệu trình của người khác | Dùng chung điện thoại | Sai người bệnh | `patient_id` trong gói; kiểm vai trò ở màn kết nối; chỉ nạp khi hồ sơ đã được giao máy | Thử tay T01 (chưa có kiểm thử tự động cho màn kết nối) |
+| RK6 | Sai ngày giờ trên máy | Múi giờ điện thoại khác UTC+7 | Lịch sai | Đồng hồ gửi máy tính theo UTC+7, lấy lại ở mỗi lần gửi | `vectors.test.cjs`, `sender.test.cjs` |
 | RK7 | Đo sai diện tích | Ảnh kém, mô-đun AI sai | Đánh giá diễn biến sai | Kiểm chất lượng ảnh; bác sĩ xác nhận; cảnh báo số đo bất thường | `quality.test.cjs`, `plausibility.test.ts` |
 | RK8 | Lộ dữ liệu cá nhân trong bộ dữ liệu | Xuất ảnh có metadata | Vi phạm Luật 91/2025/QH15 | Chỉ xuất ảnh có đồng ý, bỏ metadata, mã nghiên cứu | `workflow.test.cjs` |
 | RK9 | Bác sĩ hiểu nhầm người bệnh bỏ điều trị | Chưa đồng bộ | Can thiệp sai | Trạng thái "chưa có dữ liệu" riêng | `adherence.test.ts` |

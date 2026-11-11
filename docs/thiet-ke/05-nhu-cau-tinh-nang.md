@@ -36,7 +36,7 @@ Bản nháp có 18 FR chức năng (14 FR ban đầu, FR15 đến FR17 thêm cho
 | NFR1 | Mã hóa khi truyền và lưu; phân quyền kiểm ở máy chủ; tự đăng xuất; nhật ký truy cập | Luật 91/2025/QH15; ISO/IEC 27001 tham khảo [4, mục 2.2.3] | UR13 |
 | NFR2 | Phát triển theo vòng đời phần mềm y tế, quản lý rủi ro và khả dụng | IEC 62304 lớp B, ISO 14971:2019, IEC 62366-1 [5] | UR2, UR13 |
 | NFR3 | Tách phần cứng bằng hợp đồng thiết bị, bảng năng lực và thiết bị giả lập | Đổi bo mạch chỉ sửa lớp kết nối | UR15 |
-| NFR4 | Giao diện người bệnh dễ đọc, tiếng Việt | Tương phản ≥ 4,5:1, vùng chạm ≥ 44 điểm, chữ ≥ 17 px [5] | UR1, UR3 |
+| NFR4 | Giao diện người bệnh dễ đọc, tiếng Việt | Tương phản ≥ 4,5:1, vùng chạm ≥ 44 điểm, chữ ≥ 17 px [5] | UR1 |
 | NFR5 | Tính mọi mốc “hôm nay” theo giờ Việt Nam (UTC+7) | Không sai ngày trong khoảng 0 đến 7 giờ sáng [5] | UR1, UR8 |
 | NFR6 | Lưu dữ liệu và chạy AI trên hạ tầng pháp chế cho phép | Chờ bệnh viện xác nhận | UR13 |
 | NFR7 | Triển khai thêm bệnh viện bằng cấu hình, không sửa mã | (đx) | UR16 |
