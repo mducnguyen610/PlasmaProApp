@@ -24,7 +24,7 @@ Sơ đồ bạch tuộc 7 nhánh ở cuối mục này.
 | UR17 | Bác sĩ | Gán nhãn ảnh theo bộ quy tắc thống nhất, sửa nhãn có lưu vết (việc duyệt nhãn nằm ngoài phạm vi đề tài) | Sau khi chụp, trước khi xuất | Bộ dữ liệu huấn luyện cần nhãn tin cậy | Must |
 | UR16 | WCMD, bệnh viện | Triển khai rộng với chi phí vận hành thấp | Sau nhiệm vụ | Thương mại hóa [3, mục 5.7] | Nice |
 
-Bộ vai trò đã chốt (11/11/2026): chỉ có **bác sĩ** và **người bệnh**. Báo cáo giữa kỳ có quản trị viên [4, mục 2.1.3] và vòng cũ có kỹ thuật viên [5]; việc của hai vai trò này (giao máy, nạp liệu trình, thu hồi) chuyển cho bác sĩ, còn theo dõi vòng đời máy (UR12) nằm ngoài ứng dụng.
+Bộ vai trò đã chốt (11/11/2026): **bác sĩ**, **người bệnh** và **quản trị viên** (giữ như mã hiện có và báo cáo giữa kỳ [4, mục 2.1.3]). Không có điều dưỡng, kỹ thuật viên; việc giao máy, nạp liệu trình, thu hồi thuộc bác sĩ. Người bệnh cắm USB vào máy tại nhà để nạp cấu hình bác sĩ đặt và nhận phản hồi, trên cả Android và iOS, còn theo dõi vòng đời máy (UR12) nằm ngoài ứng dụng.
 
 ```mermaid
 flowchart TB

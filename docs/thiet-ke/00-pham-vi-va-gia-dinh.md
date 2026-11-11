@@ -39,6 +39,6 @@ Cách đọc: mỗi bước ghi đầu vào lấy từ vòng cũ [5], phần là
 
 GA-2 vênh với đề cương: đề cương cần IoMT tự ghi nhận và đồng bộ dữ liệu từng phiên [3, mục 4.2, 4.7], còn mạch giữa kỳ không gửi dữ liệu gì sau khi rút cáp. Mâu thuẫn này được xử lý ở bước 4 và 6. Vì firmware thuộc đồ án phần cứng, phần ghi nhật ký phiên (TR2) là yêu cầu gửi nhóm phần cứng, không phải việc của đề tài này.
 
-**Rủi ro nền tảng:** iOS chỉ cho ứng dụng kết nối phụ kiện có chứng nhận MFi qua External Accessory framework [6]; chip CP2102N không thuộc loại này. Android có USB Host API [7]. Chức năng USB/UART vì vậy có thể chỉ chạy được trên Android. Lựa chọn nền tảng đang chờ chủ đồ án quyết định.
+**Rủi ro nền tảng:** iOS chỉ cho ứng dụng kết nối phụ kiện có chứng nhận MFi qua External Accessory framework [6]; chip CP2102N không thuộc loại này. Android có USB Host API [7]. Chủ đồ án yêu cầu điện thoại người bệnh kết nối USB/UART với máy tại nhà trên **cả Android và iOS** (11/11/2026). Phần iOS phụ thuộc vào phần cứng: cần đồ án phần cứng xác nhận bộ chuyển đổi dùng được với iOS (phụ kiện MFi, hoặc chip có trình điều khiển cho iOS). Ứng dụng tách lớp truyền dẫn để thêm bản iOS khi phần cứng sẵn sàng.
 
 **Bước 1 đến 8** viết đầy đủ đến mức có thể đem đi hỏi người dùng. **Bước 9 đến 15** phụ thuộc vào kết quả validation ở bước 8, nên chỉ ghi kế hoạch.

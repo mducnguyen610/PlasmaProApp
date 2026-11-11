@@ -55,11 +55,11 @@ Các phần dưới đây có trong mã nhưng không FR hay NFR nào yêu cầu
 
 ## Vai trò
 
-Mã có 3 vai trò: `doctor`, `patient`, `admin` (`src/lib/types.ts`). Bộ vai trò đã chốt chỉ có bác sĩ và người bệnh, nên vai trò `admin` và các màn `src/app/admin/*` (duyệt tài khoản, gán thiết bị, quyền nghiên cứu, bộ dữ liệu, lỗi đồng bộ) là phần thừa. Việc gán máy cho người bệnh (FR13) chuyển sang màn của bác sĩ; duyệt tài khoản bác sĩ chuyển sang backend đề xuất. Cần một pull request riêng để gỡ vai trò này.
+Mã có 3 vai trò: `doctor`, `patient`, `admin` (`src/lib/types.ts`). Chủ đồ án quyết định giữ cả ba vai trò (11/11/2026). Các màn `src/app/admin/*` giữ nguyên.
 
 ## Ảnh hưởng của phạm vi đề tài lên mã
 
-Theo bảng phạm vi ở tệp 00: backend và database chỉ đề xuất, nên FR8, NFR1, NFR6 không cần lập trình máy chủ trong đề tài; mã chỉ cần lớp lưu cục bộ và hàng đợi đồng bộ có thể nối vào backend sau. Mô-đun AI là mô-đun có sẵn, nên `woundDetect.ts` (ngưỡng màu) nên được đặt sau lớp tích hợp TR10 làm bản giả, chờ thay bằng mô-đun thật. Phần quản trị thiết bị (FR14) nằm ngoài phạm vi, giữ ở mức hiện có. Bộ dữ liệu ảnh (FR12, FR15 đến FR17, các màn `dataset`) nay thuộc phạm vi "thu thập và gán nhãn hình ảnh"; màn `src/app/admin/dataset.tsx` chuyển sang bác sĩ khi gỡ vai trò `admin`.
+Theo bảng phạm vi ở tệp 00: backend và database chỉ đề xuất, nên FR8, NFR1, NFR6 không cần lập trình máy chủ trong đề tài; mã chỉ cần lớp lưu cục bộ và hàng đợi đồng bộ có thể nối vào backend sau. Mô-đun AI là mô-đun có sẵn, nên `woundDetect.ts` (ngưỡng màu) nên được đặt sau lớp tích hợp TR10 làm bản giả, chờ thay bằng mô-đun thật. Phần quản trị thiết bị (FR14) nằm ngoài phạm vi, giữ ở mức hiện có. Bộ dữ liệu ảnh (FR12, FR15 đến FR17, các màn `dataset`) nay thuộc phạm vi "thu thập và gán nhãn hình ảnh".
 
 ## Thứ tự sửa mã đề xuất
 
