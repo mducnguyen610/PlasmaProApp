@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useSegments } from 'expo-router';
 import { Children, useState, type ComponentProps, type ReactNode } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, View, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, View, type ScrollViewInstance, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -93,7 +93,7 @@ export const FAB_RISE = 30;
 /** Vai trò có thanh tab nổi ở đáy (RoleTabs); màn hình trong các nhóm này cần chừa chỗ cho thanh tab. */
 const TAB_GROUPS = ['patient', 'doctor', 'admin'];
 
-export function Screen({ children, header, padded = true }: { children: ReactNode; header?: ReactNode; padded?: boolean }) {
+export function Screen({ children, header, padded = true, scrollRef }: { children: ReactNode; header?: ReactNode; padded?: boolean; scrollRef?: React.Ref<ScrollViewInstance> }) {
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
   const hasTabBar = TAB_GROUPS.includes(segments[0] ?? '');
@@ -106,7 +106,7 @@ export function Screen({ children, header, padded = true }: { children: ReactNod
     <View style={{ flex: 1, backgroundColor: C.bg, width: '100%', maxWidth: 1080, alignSelf: 'center' }}>
       {header}
       {/* Nội dung không rộng quá size.maxContent (cộng lề 2 x 20) để dòng chữ và nút không giãn hết khổ máy tính bảng (A08). */}
-      <ScrollView contentContainerStyle={[padded && { paddingHorizontal: 20, paddingTop: 18, gap: space.l }, { paddingBottom: bottom, width: '100%', maxWidth: size.maxContent + 40, alignSelf: 'center' }]} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={[padded && { paddingHorizontal: 20, paddingTop: 18, gap: space.l }, { paddingBottom: bottom, width: '100%', maxWidth: size.maxContent + 40, alignSelf: 'center' }]} keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>
     </View>
@@ -467,8 +467,14 @@ export function SwitchRow({ label, detail, value, onChange, disabled, muted }: {
  * Mục thu gọn: một dòng tiêu đề (biểu tượng, tên, tóm tắt ngắn bên phải), chạm để mở nội dung.
  * Dùng cho thông tin xem khi cần (liều, giải thích, công tắc quản trị), giữ màn hình ít chữ.
  */
-export function Disclosure({ title, summary, icon, children, initiallyOpen = false, summaryTone, right, below }: { title: string; summary?: string; icon?: IconName; children: ReactNode; initiallyOpen?: boolean; summaryTone?: string; right?: ReactNode; below?: ReactNode }) {
-  const [open, setOpen] = useState(initiallyOpen);
+/**
+ * Khối thu gọn. Mặc định tự giữ trạng thái mở (initiallyOpen). Truyền `open` cùng `onToggle` để màn cha điều khiển,
+ * ví dụ mở nhóm chứa trường lỗi khi lưu (B07); không truyền `open` thì hành vi như cũ.
+ */
+export function Disclosure({ title, summary, icon, children, initiallyOpen = false, summaryTone, right, below, open: openProp, onToggle }: { title: string; summary?: string; icon?: IconName; children: ReactNode; initiallyOpen?: boolean; summaryTone?: string; right?: ReactNode; below?: ReactNode; open?: boolean; onToggle?: (next: boolean) => void }) {
+  const [openState, setOpenState] = useState(initiallyOpen);
+  const open = openProp ?? openState;
+  const setOpen = (next: boolean) => { if (openProp === undefined) setOpenState(next); onToggle?.(next); };
   return (
     <View style={{ gap: 10 }}>
       <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={summary ? `${title}, ${summary}` : title}
