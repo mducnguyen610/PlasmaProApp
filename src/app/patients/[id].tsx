@@ -12,7 +12,8 @@ import { confirm, notify } from '@/lib/dialog';
 import { buildReportHtml, shareReport } from '@/lib/report';
 import { fmtDate, fmtDateTime, PLAN_STATUS, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore, type Activation } from '@/lib/store';
-import { C } from '@/theme';
+import { C, semantic } from '@/theme';
+import { CLOUD_LINK, cloudState } from '@/theme.status';
 import { courseProgress, localDay } from '@/lib/course';
 
 // BS03 – Hồ sơ bệnh nhân: thông tin, bác sĩ phụ trách, thiết bị, liệu trình, vết thương.
@@ -26,11 +27,13 @@ export default function PatientDetail() {
   const [reporting, setReporting] = useState(false);
   const [activation, setActivation] = useState<Activation | null>(null);
   const [issuing, setIssuing] = useState(false);
+  const [now] = useState(() => Date.now());
   if (!p) return <NoAccess notFound />;
   if (!canView) return <NoAccess />;
 
   const isDoctor = me?.role === 'doctor';
   const dev = device(p.deviceId);
+  const cloud = dev ? CLOUD_LINK[cloudState(dev.online, dev.lastSync, now)] : null;
   const plan = isDoctor ? activePlan(p.id) : data.plans.filter(x => x.patientId === p.id && x.confirmed && x.status !== 'draft').sort((a,b) => b.version - a.version)[0];
   const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id), localDay(), dev.lastSync ? localDay(dev.lastSync) : null) : null;
   const wounds = woundsOf(p.id);
@@ -102,11 +105,11 @@ export default function PatientDetail() {
             )}
           </>
         )}
-        {/* Ô số màu (cùng kiểu "Việc cần làm"): tiến độ đợt và thiết bị, chạm để mở. */}
+        {/* Ô số: tiến độ đợt (neutral) và kênh Wi-Fi của thiết bị (tông theo CLOUD_LINK, V02, V07), chạm để mở. */}
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <NumberTile icon="flash-outline" tone="violet" value={pr ? `${pr.done}/${pr.total}` : plan ? `v${plan.version}` : '—'} label={plan ? `Buổi · ${PLAN_STATUS[plan.status].label}` : 'Chưa lập đợt'}
+          <NumberTile icon="flash-outline" tone="gray" value={pr ? `${pr.done}/${pr.total}` : plan ? `v${plan.version}` : '—'} label={plan ? `Buổi · ${PLAN_STATUS[plan.status].label}` : 'Chưa lập đợt'}
             onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id } })} />
-          <NumberTile icon={dev?.online ? 'wifi' : 'cloud-offline-outline'} tone={dev ? (dev.online ? 'green' : 'gray') : 'amber'} value={dev?.code ?? '—'} label={dev ? (dev.online ? 'Đang kết nối' : 'Mất kết nối') : 'Chưa gán thiết bị'}
+          <NumberTile icon={(cloud ? cloud.icon : 'hardware-chip-outline') as IconName} tone={cloud ? semantic[cloud.role].tone : 'amber'} value={dev?.code ?? '—'} label={cloud ? cloud.label : 'Chưa gán thiết bị'}
             onPress={dev ? () => router.push({ pathname: '/devices/[id]', params: { id: dev.id } }) : undefined} />
         </View>
         {/* Giao máy, thu hồi thuộc bác sĩ phụ trách (UR11). */}

@@ -13,7 +13,7 @@ import { MONO, Text, TextInput } from '@/components/Text';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useStore } from '@/lib/store';
 import type { Role, WoundImage } from '@/lib/types';
-import { bar, C, cardShape, elevation, G, radius, radiusExtra, semantic, shadow, size, type GradientName, T, type Tone } from '@/theme';
+import { bar, C, cardShape, elevation, G, radius, radiusExtra, semantic, type Semantic, shadow, size, type GradientName, T, type Tone } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -218,6 +218,11 @@ export function Chip({ label, tone = 'blue', icon }: { label: string; tone?: Ton
       <Text style={[s.chipText, { color: fg }]}>{label}</Text>
     </View>
   );
+}
+
+/** Chip trạng thái theo bảng trong src/theme.status.ts: tông lấy từ vai trò ngữ nghĩa, luôn kèm biểu tượng và chữ. */
+export function StatusChip({ status, label }: { status: { role: Semantic; icon: string }; label: string }) {
+  return <Chip label={label} tone={semantic[status.role].tone} icon={(status.icon || undefined) as IconName | undefined} />;
 }
 
 export function SimBadge() {

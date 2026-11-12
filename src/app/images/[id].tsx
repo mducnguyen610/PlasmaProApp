@@ -8,7 +8,7 @@ import { MONO, Text } from '@/components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Field, Header, InfoRow, Muted, Screen, SectionTitle, Segmented, WoundPhoto } from '@/components/ui';
+import { Button, Card, Chip, Field, Header, InfoRow, Muted, Screen, SectionTitle, Segmented, StatusChip, WoundPhoto } from '@/components/ui';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { buildFilename, checkFullFilename, formatAreaDisplay, formatAreaForName, parseArea, type AreaUnit } from '@/lib/naming';
@@ -16,6 +16,7 @@ import { areaWarning, previousArea } from '@/lib/plausibility';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
+import { AI_CONFIDENCE, aiConfidenceLevel, SOURCE } from '@/theme.status';
 
 type Mode = 'area' | 'full';
 
@@ -127,6 +128,7 @@ export default function ImageDetail() {
         <Text style={{ color: C.textSoft, fontSize: 13 }}>Tên hiện tại</Text>
         <Text selectable style={{ fontFamily: MONO, fontSize: 14, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{im.filename}</Text>
         <InfoRow label="Diện tích bác sĩ đã đo" value={formatAreaDisplay(im.areaCm2)} />
+        {im.areaCm2 !== null && <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />}
         {im.measureMethod ? <InfoRow label="Phương pháp đo" value={im.measureMethod} /> : null}
         <InfoRow label="Mã bệnh nhân" value={p.code} />
         <InfoRow label="Mã vết thương" value={w.code} />
@@ -136,6 +138,9 @@ export default function ImageDetail() {
         <InfoRow label="Người tải" value={im.source === 'demo' ? 'Dữ liệu mô phỏng' : account(im.uploadedBy)?.name ?? '—'} />
         {im.excludeReason ? <InfoRow label="Lý do loại" value={im.excludeReason} /> : null}
       </Card>
+
+      {/* Kết quả nhận diện tách khỏi số đo của bác sĩ, luôn ghi nguồn và độ tin cậy (V06). Chỉ hiển thị, không ghi đè số đo. */}
+      {isDoctor && <AiResultCard wound={im.capture?.wound} arArea={im.capture?.automaticMeasurement.areaCm2 ?? null} />}
 
       {im.capture && <>
         <Card>
@@ -301,5 +306,31 @@ export default function ImageDetail() {
         </View>
       </Modal>
     </Screen>
+  );
+}
+
+function AiResultCard({ wound, arArea }: { wound: { detector: string; modelVersion?: string; confidence?: number | null; areaCm2?: number | null; areaFraction: number } | undefined; arArea: number | null }) {
+  if (!wound) {
+    return (
+      <Card>
+        <SectionTitle>Gợi ý của AI</SectionTitle>
+        <Muted>Ảnh này chưa có kết quả nhận diện. Ảnh chụp bằng Chụp có hướng dẫn sẽ được khoanh vết thương tự động.</Muted>
+      </Card>
+    );
+  }
+  const level = aiConfidenceLevel(wound.confidence ?? null);
+  const area = wound.areaCm2 ?? arArea;
+  return (
+    <Card>
+      <SectionTitle>Gợi ý của AI</SectionTitle>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+        <StatusChip status={SOURCE.ai} label={SOURCE.ai.label} />
+        <StatusChip status={AI_CONFIDENCE[level]} label={AI_CONFIDENCE[level].label} />
+      </View>
+      <InfoRow label="Diện tích ước lượng" value={area !== null ? `${formatAreaDisplay(area)} (chưa kiểm chứng)` : 'Không có (thiếu dữ liệu AR)'} />
+      <InfoRow label="Vùng vết thương" value={`${(wound.areaFraction * 100).toFixed(1).replace('.', ',')}% ảnh`} />
+      <InfoRow label="Mô-đun" value={wound.modelVersion ? `${wound.detector} ${wound.modelVersion}` : wound.detector} />
+      <Muted>Số của AI chỉ để tham khảo. Diện tích dùng cho theo dõi và bộ dữ liệu là số bác sĩ đã đo ở trên.</Muted>
+    </Card>
   );
 }

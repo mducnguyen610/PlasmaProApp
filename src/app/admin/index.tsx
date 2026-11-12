@@ -22,11 +22,11 @@ export default function AdminAccounts() {
     <Screen header={<Header title="Quản lý tài khoản" />}>
       {/* Điểm neo: ô số tổng quan. Mỗi tài khoản một dòng; công tắc nằm trong phần mở rộng. */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-        <NumberTile value={data.accounts.length} label="Tài khoản" tone="blue" icon="people-outline" />
+        <NumberTile value={data.accounts.length} label="Tài khoản" tone="gray" icon="people-outline" />
         <NumberTile value={pending} label="Chờ duyệt" tone={pending ? 'amber' : 'gray'} icon="hourglass-outline" />
-        <NumberTile value={`${online}/${data.devices.length}`} label="Đang kết nối" tone="green" icon="wifi-outline" />
+        <NumberTile value={`${online}/${data.devices.length}`} label="Trực tuyến" tone={online < data.devices.length ? 'amber' : 'gray'} icon="cloud-done-outline" />
         <NumberTile value={openErrors} label="Lỗi chưa xử lý" tone={openErrors ? 'red' : 'gray'} icon="alert-circle-outline" />
-        <NumberTile value={`${pct}%`} label={`Ảnh đã đo (${labeled}/${usable})`} tone="violet" icon="image-outline" />
+        <NumberTile value={`${pct}%`} label={`Ảnh đã đo (${labeled}/${usable})`} tone="gray" icon="image-outline" />
       </View>
       <Muted>Chỉ hiển thị mã hồ sơ, không có dữ liệu lâm sàng.</Muted>
 

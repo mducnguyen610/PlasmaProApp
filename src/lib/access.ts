@@ -2,7 +2,8 @@ import type { Account, AppData, Evaluation, Patient, Severity, WoundImage } from
 
 export const TERMS_VERSION = 'demo-2026-10-12';
 export const SEVERITY = {
-  mild: { label: 'Nhẹ', tone: 'green' },
+  // Tông theo SEVERITY_ROLE (src/theme.status.ts): Nhẹ là neutral để xanh lá chỉ còn nghĩa hoàn thành.
+  mild: { label: 'Nhẹ', tone: 'gray' },
   moderate: { label: 'Trung bình', tone: 'amber' },
   severe: { label: 'Nặng', tone: 'red' },
 } as const;

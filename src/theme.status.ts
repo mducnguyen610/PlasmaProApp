@@ -43,6 +43,13 @@ export const CLOUD_LINK: Record<CloudState, StatusStyle & { label: string }> = {
 /** Giá trị đề xuất, chưa có nguồn; cần nhóm phần cứng và bác sĩ chốt. */
 export const CLOUD_STALE_HOURS = 48;
 
+/** Suy trạng thái kênh Wi-Fi từ cờ online và lần đồng bộ cuối của thiết bị. */
+export function cloudState(online: boolean, lastSync: string | null | undefined, nowMs: number, staleHours: number = CLOUD_STALE_HOURS): CloudState {
+  if (!lastSync) return 'never';
+  if (!online) return 'offline';
+  return nowMs - new Date(lastSync).getTime() > staleHours * 3600_000 ? 'stale' : 'online';
+}
+
 /** Kết quả gửi cấu hình CFG. Nhãn chữ giữ sendResultLabel. */
 export const SEND_RESULT: Record<SendResult['kind'], StatusStyle> = {
   acked: { role: 'success', icon: 'checkmark-circle-outline' },

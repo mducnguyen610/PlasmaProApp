@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Chip, Divider, Empty, InfoRow, Muted, Notice, SectionTitle, Segmented, SimBadge, NumberTile } from '@/components/ui';
+import { Button, Card, Chip, Divider, Empty, InfoRow, Muted, Notice, SectionTitle, Segmented, SimBadge, StatusChip, NumberTile } from '@/components/ui';
 import { noteText } from '@/components/AdherenceCalendar';
 import { ProgressRows } from '@/components/CourseCard';
 import { courseProgress, isScheduled, localDay } from '@/lib/course';
@@ -13,6 +13,7 @@ import { fmtDate, fmtDateTime } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import type { Device } from '@/lib/types';
 import { bar, C } from '@/theme';
+import { CLOUD_LINK, cloudState } from '@/theme.status';
 
 const SOURCE = { device: 'Thiết bị gửi', manual: 'Nhập tay', simulated: 'Mô phỏng' } as const;
 const STATUS = { completed: 'Hoàn tất', interrupted: 'Bị ngắt', over_limit: 'Ngắt do vượt ngưỡng' } as const;
@@ -61,6 +62,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
   // Kỹ thuật: chia ba thẻ để mỗi lần chỉ đọc một nhóm (bản rút gọn 08/11/2026). Vai trò khác thấy một trang.
   const [tab, setTab] = useState<'overview' | 'care' | 'log'>('overview');
   const [allSessions, setAllSessions] = useState(false);
+  const [now] = useState(() => Date.now());
+  const cloud = CLOUD_LINK[cloudState(device.online, device.lastSync, now)];
   const show = (t: typeof tab) => !tech || tab === t;
   const doCare = (itemId: string, label: string) =>
     confirm(label, 'Ghi nhận đã làm xong; bộ đếm của mục này bắt đầu lại từ 0.', () => {
@@ -91,7 +94,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
       {show('overview') && <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={{ fontSize: 18, fontWeight: '800', color: C.text, flex: 1 }}>{device.code}</Text>
-          <Chip label={device.online ? 'Đang kết nối' : 'Mất kết nối'} tone={device.online ? 'green' : 'gray'} icon={device.online ? 'wifi' : 'cloud-offline-outline'} />
+          {/* Kênh Wi-Fi tới máy chủ, tách chữ với kênh cáp USB ở T01 (V02). */}
+          <StatusChip status={cloud} label={cloud.label} />
         </View>
         {patientView && (
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
@@ -108,7 +112,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         <InfoRow label="Đồng bộ gần nhất" value={device.lastSync ? fmtDateTime(device.lastSync) : 'Chưa từng đồng bộ'} />
         {!patientView && <InfoRow label="Gán cho" value={owner ? `${owner.code}` : 'Chưa gán'} />}
         {!patientView && <InfoRow label="Trạng thái nguồn" value={powerLabel} />}
-        {patientView && !device.online && <Muted>Số liệu cập nhật khi thiết bị kết nối lại.</Muted>}
+        {patientView && !device.online && <Muted>Số liệu cập nhật khi thiết bị trực tuyến trở lại.</Muted>}
         {canControl && (
           <Button
             label={device.power === 'on' ? 'Ngắt nguồn thiết bị' : 'Bật nguồn thiết bị'}
@@ -214,8 +218,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
 
 
       {!patientView && show('overview') && <View style={{ flexDirection: 'row', gap: 10 }}>
-        <NumberTile value={sessions.length} label={tech ? 'Phiên (bỏ trùng)' : 'Số phiên'} tone="blue" icon="pulse-outline" />
-        <NumberTile value={`${totalMin}′`} label="Tổng thời gian" tone="violet" icon="time-outline" />
+        <NumberTile value={sessions.length} label={tech ? 'Phiên (bỏ trùng)' : 'Số phiên'} tone="gray" icon="pulse-outline" />
+        <NumberTile value={`${totalMin}′`} label="Tổng thời gian" tone="gray" icon="time-outline" />
       </View>}
       {tech && tab === 'log' && rawCount !== sessions.length && (
         <Muted>Đã bỏ {rawCount - sessions.length} bản ghi thiết bị gửi lại trùng mã phiên.</Muted>
