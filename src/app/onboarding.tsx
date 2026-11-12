@@ -12,7 +12,7 @@ import type { IconName } from '@/components/ui';
 
 type Step = { icon: IconName; tone: string; soft: string; title: string; points: string[]; emergency?: boolean };
 
-// Hướng dẫn lần đầu cho bệnh nhân (đề xuất 3 của bản đánh giá trải nghiệm), 4 màn:
+// Hướng dẫn lần đầu cho bệnh nhân (đề xuất 3 của bản đánh giá trải nghiệm), 5 màn (thêm màn nạp liệu trình bằng USB, V19):
 // thiết bị là gì, mỗi ngày làm gì, báo triệu chứng ở đâu, gọi ai khi khẩn cấp.
 // Nội dung y khoa trong các màn này là bản nháp cho demo, cần bác sĩ trong nhóm duyệt.
 export default function Onboarding() {
@@ -50,6 +50,17 @@ export default function Onboarding() {
       ],
     },
     {
+      // V19: việc chính của bệnh nhân tại nhà, cùng ba bước với thanh bước ở màn Nạp liệu trình.
+      icon: 'git-commit', tone: C.teal, soft: C.tealSoft,
+      title: 'Nạp liệu trình bằng cáp USB',
+      points: [
+        'Ngày có buổi chiếu, Trang chủ có nút "Nạp liệu trình vào máy".',
+        '1. Kết nối máy: cắm cáp USB từ điện thoại vào thiết bị, chạm Kết nối.',
+        '2. Nạp liệu trình: kiểm tra mức, chế độ, thời gian rồi chạm "Nạp liệu trình vào máy". Chờ dòng "Máy đã nhận cấu hình".',
+        '3. Chiếu: chạm "Theo dõi phiên điều trị" và giữ màn hình mở tới khi xong buổi để buổi được ghi vào nhật ký.',
+      ],
+    },
+    {
       icon: 'medkit', tone: C.amber, soft: C.amberSoft,
       title: 'Báo triệu chứng ở đâu',
       points: [
@@ -80,7 +91,7 @@ export default function Onboarding() {
     <Screen
       header={
         <Header
-          title="Hướng dẫn sử dụng"
+          title="Hướng dẫn"
           subtitle={`Bước ${i + 1}/${steps.length}`}
           right={!last ? <HeaderButton icon="play-skip-forward-outline" label="Bỏ qua" onPress={done} /> : undefined}
         />

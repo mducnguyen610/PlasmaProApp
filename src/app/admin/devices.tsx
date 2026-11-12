@@ -42,7 +42,8 @@ export default function AdminDevices() {
           }}
         />
       </Disclosure></View>
-      {data.devices.map((d) => (
+      {/* Thiết bị cần chú ý (ngoại tuyến, lâu chưa đồng bộ) lên đầu (V24); thứ tự còn lại giữ như dữ liệu. */}
+      {[...data.devices].sort((a, b) => Number(CLOUD_LINK[cloudState(b.online, b.lastSync, now)].role === 'warning') - Number(CLOUD_LINK[cloudState(a.online, a.lastSync, now)].role === 'warning')).map((d) => (
         <View key={d.id} style={{ paddingVertical: 4 }}>
           <Disclosure icon="hardware-chip-outline" title={d.code} summary={`${data.patients.find((p) => p.id === d.patientId)?.code ?? 'Chưa gán'} · đồng bộ ${d.lastSync ? fmtDateTime(d.lastSync) : 'chưa từng'}`}
             right={<StatusChip status={CLOUD_LINK[cloudState(d.online, d.lastSync, now)]} label={CLOUD_LINK[cloudState(d.online, d.lastSync, now)].label} />}>

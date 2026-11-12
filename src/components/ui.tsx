@@ -39,7 +39,7 @@ export function Header({
           {(me && back) || subtitle ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
               {me && back ? <View accessible accessibilityLabel={`Vai trò: ${ROLE_BADGE[me.role].label}`}><Ionicons name={ROLE_BADGE[me.role].icon} size={14} color={C.textSoft} /></View> : null}
-              <Text style={[s.headerSub, { marginTop: 0, flexShrink: 1 }]} numberOfLines={1}>{subtitle || (me ? ROLE_BADGE[me.role].label : '')}</Text>
+              <Text style={[s.headerSub, { marginTop: 0, flexShrink: 1 }]} numberOfLines={2}>{subtitle || (me ? ROLE_BADGE[me.role].label : '')}</Text>
             </View>
           ) : null}
         </View>

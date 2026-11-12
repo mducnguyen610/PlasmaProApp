@@ -164,7 +164,7 @@ export default function ImageDetail() {
       {isDoctor && <Card>
         <SectionTitle>Chia sẻ cho bên kỹ thuật</SectionTitle>
         <Chip label={im.researchReady ? 'Đã kiểm tra và chia sẻ' : 'Chưa đưa vào kho dữ liệu'} tone={im.researchReady ? 'green' : 'gray'} />
-        <Muted>Chỉ xác nhận khi ảnh không có mặt, tên, giấy tờ hay thông tin nhận dạng. App tạo bản sao PNG bỏ metadata; giữ nguyên ảnh gốc trong hồ sơ.</Muted>
+        <Muted>Chỉ xác nhận khi ảnh không có mặt, tên, giấy tờ hay thông tin nhận dạng. Ứng dụng tạo bản sao PNG bỏ siêu dữ liệu; giữ nguyên ảnh gốc trong hồ sơ.</Muted>
         <Button label={im.researchReady ? 'Ngừng chia sẻ ảnh' : 'Xác nhận ảnh và chia sẻ'} variant="secondary" loading={sharingBusy}
           disabled={!im.researchReady && (im.areaCm2 === null || im.status !== 'labeled' || !p.researchConsent || im.source === 'patient')}
           onPress={() => confirm(im.researchReady ? 'Ngừng chia sẻ' : 'Kiểm tra nội dung ảnh', im.researchReady ? 'Ảnh sẽ không còn trong kho kỹ thuật. Tệp đã tải trước đó không tự thu hồi.' : 'Tôi đã kiểm tra ảnh không chứa khuôn mặt, tên, giấy tờ hoặc thông tin nhận dạng cá nhân.', async () => {

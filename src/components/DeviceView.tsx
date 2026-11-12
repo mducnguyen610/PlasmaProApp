@@ -218,8 +218,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
 
 
       {!patientView && show('overview') && <View style={{ flexDirection: 'row', gap: 10 }}>
-        <NumberTile value={sessions.length} label={tech ? 'Phiên (bỏ trùng)' : 'Số phiên'} tone="gray" icon="pulse-outline" />
-        <NumberTile value={`${totalMin}′`} label="Tổng thời gian" tone="gray" icon="time-outline" />
+        <NumberTile value={sessions.length} label={tech ? 'Số phiên (đã bỏ bản trùng)' : 'Số phiên'} tone="gray" icon="pulse-outline" />
+        <NumberTile value={`${totalMin} phút`} label="Tổng thời gian" tone="gray" icon="time-outline" />
       </View>}
       {tech && tab === 'log' && rawCount !== sessions.length && (
         <Muted>Đã bỏ {rawCount - sessions.length} bản ghi thiết bị gửi lại trùng mã phiên.</Muted>

@@ -34,8 +34,8 @@ export default function Dataset() {
         value={filter}
         onChange={setFilter}
         options={[
-          { value: 'unlabeled', label: `Chưa có (${count('unlabeled')})` },
-          { value: 'labeled', label: `Đã có (${count('labeled')})` },
+          { value: 'unlabeled', label: `Chưa đo (${count('unlabeled')})` },
+          { value: 'labeled', label: `Đã đo (${count('labeled')})` },
           { value: 'excluded', label: `Đã loại (${count('excluded')})` },
         ]}
       />

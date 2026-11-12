@@ -11,7 +11,7 @@ import { fmtDate } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import type { Reminder } from '@/lib/reminders';
 import type { DeviceSession, SessionNote, TreatmentPlan } from '@/lib/types';
-import { C, radius } from '@/theme';
+import { C, radius, T } from '@/theme';
 
 // Ngưỡng cảnh báo đau giống màn Báo triệu chứng; đề xuất cho demo, cần bác sĩ xác nhận.
 const HIGH_PAIN = 7;
@@ -133,14 +133,17 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {reminders.length > 0 && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="calendar" size={12} color={C.violet} />
-              <Text style={{ fontSize: 13, color: C.textSoft }}>Lịch hẹn</Text>
+              <Ionicons name="calendar" size={14} color={C.violet} />
+              <Text style={{ fontSize: T.small, color: C.textSoft }}>Lịch hẹn</Text>
             </View>
           )}
           {(['met', 'planned', 'rest', 'none', 'unsynced'] as const).map((kind) => (
             <View key={kind} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: KIND[kind].bg, borderWidth: 1, borderColor: KIND[kind].color }} />
-              <Text style={{ fontSize: 13, color: C.textSoft }}>{KIND[kind].label}</Text>
+              {/* Chú giải dùng đúng biểu tượng của ô lịch, không chỉ ô màu (V17). */}
+              <View style={{ width: 22, height: 22, borderRadius: 6, backgroundColor: KIND[kind].bg, borderWidth: 1, borderColor: kind === 'rest' ? C.cardBorder : KIND[kind].bg, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={MARK[kind] ?? 'moon-outline'} size={kind === 'planned' ? 8 : 13} color={KIND[kind].color} />
+              </View>
+              <Text style={{ fontSize: T.small, color: C.textSoft }}>{KIND[kind].label}</Text>
             </View>
           ))}
         </View>
@@ -268,7 +271,8 @@ const MARK: Partial<Record<DayKind, React.ComponentProps<typeof Ionicons>['name'
 
 function CellMark({ kind, color, text }: { kind: DayKind; color: string; text: string }) {
   const icon = MARK[kind];
-  if (!icon) return null; // ngày nghỉ: chỉ làm mờ số ngày
+  if (kind === 'rest') return <Ionicons name="moon-outline" size={11} color={color} />;
+  if (!icon) return null;
   // Nhiều lần trong một buổi thì hiện số (2×, 1/2) thay biểu tượng.
   if ((kind === 'over' || kind === 'partial' || kind === 'met') && /\d/.test(text) && text !== '1×') {
     return <Text maxFontSizeMultiplier={1.2} style={{ fontSize: 12, fontWeight: '700', color }}>{text}</Text>;

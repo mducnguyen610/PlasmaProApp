@@ -41,13 +41,23 @@ export default function Report() {
         <Segmented value={kind} onChange={setKind} options={[{ value: 'symptom', label: 'Triệu chứng' }, { value: 'device', label: 'Sự cố thiết bị' }]} />
         {kind === 'symptom' && (
           <>
-            <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Mức đau (0 = không đau, 10 = đau nhất)</Text>
-            <View accessibilityRole="radiogroup" accessibilityLabel="Mức đau" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {Array.from({ length: 11 }, (_, i) => (
-                <Pressable key={i} onPress={() => setPain(i)} accessibilityRole="radio" accessibilityLabel={`Mức đau ${i}`} accessibilityState={{ checked: pain === i, selected: pain === i }} style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: pain === i ? C.primary : C.surfaceMuted }}>
-                  <Text style={{ color: pain === i ? C.onPrimary : C.text, fontWeight: '700' }}>{i}</Text>
-                </Pressable>
+            <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Mức đau</Text>
+            {/* Hai hàng đều cột 0 đến 5 và 6 đến 10, chữ mốc ở hai đầu thang (V18). */}
+            <View accessibilityRole="radiogroup" accessibilityLabel="Mức đau" style={{ gap: 6 }}>
+              {[[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10]].map((row) => (
+                <View key={row[0]} style={{ flexDirection: 'row', gap: 6 }}>
+                  {row.map((i) => (
+                    <Pressable key={i} onPress={() => setPain(i)} accessibilityRole="radio" accessibilityLabel={`Mức đau ${i}${i === 0 ? ', không đau' : i === 10 ? ', đau nhất' : ''}`} accessibilityState={{ checked: pain === i, selected: pain === i }} style={{ flex: 1, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: pain === i ? C.primary : C.surfaceMuted, borderWidth: 1, borderColor: pain === i ? C.primary : C.cardBorder }}>
+                      <Text style={{ color: pain === i ? C.onPrimary : C.text, fontWeight: '700' }}>{i}</Text>
+                    </Pressable>
+                  ))}
+                  {row.length < 6 && <View style={{ flex: 1 }} />}
+                </View>
               ))}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ color: C.textSoft, fontSize: 14 }}>0: không đau</Text>
+                <Text style={{ color: C.textSoft, fontSize: 14 }}>10: đau nhất</Text>
+              </View>
             </View>
             {pain !== null && pain >= HIGH_PAIN && (
               <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '700' }}>
