@@ -41,3 +41,11 @@ export const TREND: Record<Trend, { label: string; tone: 'green' | 'red' | 'gray
   worsening: { label: 'Diễn biến bất lợi', tone: 'red' },
   insufficient: { label: 'Chưa đủ thông tin', tone: 'gray' },
 };
+
+/** Ô nhập ngày dd/mm/yyyy: chỉ giữ chữ số, tự chèn dấu / (V11). Không đổi cách lưu; giá trị vẫn được kiểm khi lưu. */
+export function maskDateInput(v: string): string {
+  const d = v.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}

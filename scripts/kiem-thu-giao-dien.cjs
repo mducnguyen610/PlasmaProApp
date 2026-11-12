@@ -167,14 +167,14 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     const p = await newPage();
     await login(p, 'bacsi'); await go(p, '/plan/p-1');
     const step1 = await visible(p, 'Lịch theo giai đoạn');
-    await p.getByText('3. Xác nhận').click(); await p.waitForTimeout(300);
+    await p.getByRole('tab', { name: '3. Xác nhận' }).click(); await p.waitForTimeout(300);
     await p.getByText('Lưu phiên bản mới').click(); await p.waitForTimeout(400);
     const e1 = await visible(p, 'Nhập lý do thay đổi để lưu vết phiên bản.');
     const sumOk = (await p.getByText(/^Giai đoạn 1: mỗi ngày .*Mức 4, chế độ Cold, 3 phút, 1 lần mỗi buổi\.$/).count()) > 0;
     // Xóa ngày của giai đoạn 1 rồi lưu từ bước 3: phải quay về bước 1 và báo lỗi.
-    await p.getByText('1. Lịch').click(); await p.waitForTimeout(300);
+    await p.getByRole('tab', { name: '1. Lịch' }).click(); await p.waitForTimeout(300);
     await p.getByPlaceholder('dd/mm/yyyy').first().fill('');
-    await p.getByText('3. Xác nhận').click(); await p.waitForTimeout(300);
+    await p.getByRole('tab', { name: '3. Xác nhận' }).click(); await p.waitForTimeout(300);
     await p.getByLabel('Lý do thay đổi').fill('Kiểm thử');
     await p.getByText('Lưu phiên bản mới').click(); await p.waitForTimeout(400);
     const e2 = await visible(p, 'Giai đoạn 1: ngày theo dạng dd/mm/yyyy.');

@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Consent, CheckRow } from '@/components/Consent';
 import { Text } from '@/components/Text';
-import { Button, Card, Choices, Field, Header, Muted, Screen } from '@/components/ui';
+import { Button, Card, Choices, Field, Header, Muted, Screen, Segmented } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import type { Role } from '@/lib/types';
 import { C } from '@/theme';
@@ -46,7 +46,8 @@ export default function Register() {
         <Field label="Số điện thoại" accessibilityLabel="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="09xxxxxxxx" />
         {role === 'patient' && <>
           <Field label="Năm sinh" accessibilityLabel="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" />
-          <Choices value={sex} onChange={setSex} options={[{ value: 'Nam', label: 'Nam' }, { value: 'Nữ', label: 'Nữ' }]} />
+          <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Giới tính</Text>
+          <Segmented value={sex} onChange={setSex} options={[{ value: 'Nam', label: 'Nam' }, { value: 'Nữ', label: 'Nữ' }]} />
         </>}
         <Field label="Mật khẩu" accessibilityLabel="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry placeholder="Ít nhất 8 ký tự" />
         <Field label="Nhập lại mật khẩu" accessibilityLabel="Nhập lại mật khẩu" value={repeat} onChangeText={setRepeat} secureTextEntry />

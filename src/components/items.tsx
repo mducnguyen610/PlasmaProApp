@@ -39,7 +39,8 @@ export function AppointmentRow({ date, title, body, today }: { date: string; tit
   );
 }
 
-const TODAY_TONE: Record<TodayState, 'green' | 'amber' | 'gray' | 'blue' | 'red'> = { treated: 'green', missed: 'red', due: 'amber', no_data: 'gray', rest: 'blue', no_plan: 'gray' };
+// Theo DESIGN_SYSTEM.md mục 6.2: đã chiếu success, bỏ lỡ warning, đến hạn hôm nay info, còn lại neutral.
+const TODAY_TONE: Record<TodayState, 'green' | 'amber' | 'gray' | 'teal'> = { treated: 'green', missed: 'amber', due: 'teal', no_data: 'gray', rest: 'gray', no_plan: 'gray' };
 
 export function PatientCard({ patient, attention }: { patient: Patient; attention?: Attention }) {
   const { device, woundsOf } = useLookups();
@@ -69,11 +70,11 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
           {attention.reasons[0] ? <Text style={{ color: C.textSoft, fontSize: 13, flexShrink: 1 }}>{attention.reasons[0]}</Text> : null}
         </View>
       )}
+      {/* Việc phụ thành một dòng chữ thay vì thêm chip (V08): mỗi dòng tối đa hai chip, mức độ và trạng thái hôm nay. */}
       {(unlabeled > 0 || !active) && (
-        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', paddingLeft: 52 }}>
-          {unlabeled > 0 && <Chip icon="pricetag-outline" tone="amber" label={`${unlabeled} ảnh chưa đo`} />}
-          {!active && <Chip label="Tạm dừng" tone="gray" />}
-        </View>
+        <Text style={{ color: C.textSoft, fontSize: 13, paddingLeft: 52 }}>
+          {[unlabeled > 0 ? `${unlabeled} ảnh chưa đo` : null, !active ? 'không có vết thương đang điều trị' : null].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}
+        </Text>
       )}
     </Pressable>
   );

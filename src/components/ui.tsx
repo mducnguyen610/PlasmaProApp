@@ -476,6 +476,35 @@ export function TextLink({ label, onPress, tone = C.primary, accessibilityLabel 
   );
 }
 
+/**
+ * Thanh các bước của một luồng (T01, B06): bước đã qua có dấu tích, bước hiện tại tô màu chính. step đếm từ 1.
+ * onStep: cho phép chạm để chuyển bước (B06), mỗi bước thành một tab có vùng chạm 44.
+ */
+export function StepRow({ steps, step, onStep }: { steps: string[]; step: number; onStep?: (step: number) => void }) {
+  return (
+    <View accessibilityRole={onStep ? 'tablist' : 'progressbar'} accessibilityLabel={`Bước ${step} trên ${steps.length}: ${steps[step - 1]}`} style={{ flexDirection: 'row', gap: 6 }}>
+      {steps.map((label, i) => {
+        const n = i + 1;
+        const done = n < step;
+        const current = n === step;
+        const inner = (
+          <>
+            <View style={{ height: 4, borderRadius: 2, backgroundColor: done || current ? C.primary : C.border }} />
+            <Text style={{ fontSize: T.caption, color: current ? C.text : C.textSoft, fontWeight: current ? '700' : '400' }}>{done ? `✓ ${label}` : `${n}. ${label}`}</Text>
+          </>
+        );
+        return onStep ? (
+          <Pressable key={label} onPress={() => onStep(n)} accessibilityRole="tab" accessibilityLabel={`${n}. ${label}`} accessibilityState={{ selected: current }} style={{ flex: 1, gap: 4, minHeight: size.touch, justifyContent: 'center' }}>
+            {inner}
+          </Pressable>
+        ) : (
+          <View key={label} style={{ flex: 1, gap: 4 }}>{inner}</View>
+        );
+      })}
+    </View>
+  );
+}
+
 export function Divider() {
   return <View style={{ height: 1, backgroundColor: C.border, marginVertical: 4 }} />;
 }

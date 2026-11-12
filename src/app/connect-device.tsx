@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Choices, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle, TextLink, type IconName } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, type IconName } from '@/components/ui';
 import { fmtDuration } from '@/lib/course';
 import { modeLabel } from '@/lib/device/capabilities';
 import { planToConfig, PROTOCOL } from '@/lib/device';
@@ -85,7 +85,7 @@ export default function ConnectDevice() {
 
   return (
     <Screen header={<Header back title="Nạp liệu trình" subtitle={p.code} />}>
-      <StepRow step={step} />
+      <StepRow steps={STEPS} step={step} />
       {!PROTOCOL.confirmed && !isPatient && <Notice>Giao thức chưa được firmware xác nhận.</Notice>}
 
       <Card>
@@ -179,22 +179,3 @@ export default function ConnectDevice() {
 }
 
 const STEPS = ['Kết nối máy', 'Nạp liệu trình', 'Chiếu'];
-
-/** Ba bước của luồng nạp; bước đã qua có dấu tích, bước hiện tại tô màu chính. */
-function StepRow({ step }: { step: number }) {
-  return (
-    <View accessibilityRole="progressbar" accessibilityLabel={`Bước ${step} trên ${STEPS.length}: ${STEPS[step - 1]}`} style={{ flexDirection: 'row', gap: 6 }}>
-      {STEPS.map((label, i) => {
-        const n = i + 1;
-        const done = n < step;
-        const current = n === step;
-        return (
-          <View key={label} style={{ flex: 1, gap: 4 }}>
-            <View style={{ height: 4, borderRadius: 2, backgroundColor: done || current ? C.primary : C.border }} />
-            <Text style={{ fontSize: 13, color: current ? C.text : C.textSoft, fontWeight: current ? '700' : '400' }}>{done ? `✓ ${label}` : `${n}. ${label}`}</Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
