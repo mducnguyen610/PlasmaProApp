@@ -52,9 +52,9 @@ export default function Register() {
         <Field label="Mật khẩu" accessibilityLabel="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry placeholder="Ít nhất 8 ký tự" />
         <Field label="Nhập lại mật khẩu" accessibilityLabel="Nhập lại mật khẩu" value={repeat} onChangeText={setRepeat} secureTextEntry />
         <Consent agreed={agreed} onChange={setAgreed} />
-        {role === 'patient' && <CheckRow checked={research} onChange={setResearch} label="Tùy chọn: đồng ý dùng ảnh đã bỏ thông tin cá nhân để nghiên cứu" />}
+        {role === 'patient' && <CheckRow checked={research} onChange={setResearch} label="Đồng ý dùng ảnh đã bỏ thông tin cá nhân để nghiên cứu (không bắt buộc)" />}
         {error ? <Text accessibilityRole="alert" style={{ color: C.red }}>{error}</Text> : null}
-        <Button label={role === 'patient' ? 'Đăng ký' : 'Gửi yêu cầu đăng ký'} loading={busy} disabled={!agreed} onPress={submit} />
+        <Button label={role === 'patient' ? 'Đăng ký' : 'Gửi yêu cầu đăng ký'} loading={busy} disabled={!agreed} reason="Đánh dấu đồng ý Điều khoản sử dụng và Chính sách quyền riêng tư để đăng ký." onPress={submit} />
         <Muted>Bản demo lưu trên máy này. Hãy dùng thông tin và mật khẩu thử nghiệm.</Muted>
       </>}
     </Card>

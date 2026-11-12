@@ -12,7 +12,7 @@ import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import type { Device } from '@/lib/types';
-import { bar, C } from '@/theme';
+import { bar, C, T, space } from '@/theme';
 import { CLOUD_LINK, cloudState } from '@/theme.status';
 
 const SOURCE = { device: 'Thiết bị gửi', manual: 'Nhập tay', simulated: 'Mô phỏng' } as const;
@@ -92,15 +92,15 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
       {device.simulated && <SimBadge />}
       {tech && <Segmented value={tab} onChange={setTab} options={[{ value: 'overview', label: 'Tổng quan' }, { value: 'care', label: 'Bảo trì' }, { value: 'log', label: 'Nhật ký' }]} />}
       {show('overview') && <Card>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={{ fontSize: 18, fontWeight: '800', color: C.text, flex: 1 }}>{device.code}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
+          <Text style={{ fontSize: T.cardTitle, fontWeight: '800', color: C.text, flex: 1 }}>{device.code}</Text>
           {/* Kênh Wi-Fi tới máy chủ, tách chữ với kênh cáp USB ở T01 (V02). */}
           <StatusChip status={cloud} label={cloud.label} />
         </View>
         {patientView && (
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
-            <Text style={{ fontSize: 32, fontWeight: '700', color: C.primary }}>{restToday ? 'Nghỉ' : plan ? `${todayN}/${plan.sessionsPerDay ?? 1}` : todayN}</Text>
-            <Text style={{ fontSize: 16, color: C.textSoft, marginBottom: 6 }}>{restToday ? 'theo lịch hôm nay' : lastSyncDay === today ? 'lần chiếu hôm nay' : 'lần chiếu đã nhận hôm nay'}</Text>
+            <Text style={{ fontSize: T.display, fontWeight: '700', color: C.primary }}>{restToday ? 'Nghỉ' : plan ? `${todayN}/${plan.sessionsPerDay ?? 1}` : todayN}</Text>
+            <Text style={{ fontSize: T.body, color: C.textSoft, marginBottom: 6 }}>{restToday ? 'theo lịch hôm nay' : lastSyncDay === today ? 'lần chiếu hôm nay' : 'lần chiếu đã nhận hôm nay'}</Text>
           </View>
         )}
         {patientView
@@ -164,7 +164,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           const pct = Math.max(0, Math.min(1, c.remaining / c.item.everySessions));
           const color = c.due ? bar.red : pct < 0.5 ? bar.amber : bar.green;
           return (
-            <View key={c.item.id} style={{ gap: 4, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border }}>
+            <View key={c.item.id} style={{ gap: space.xs, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ flex: 1, fontWeight: '600', color: C.text }}>{c.item.label}</Text>
                 <Text style={{ color: c.due ? C.red : C.textSoft, fontWeight: c.due ? '700' : '400' }}>
@@ -174,7 +174,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
               <View accessible accessibilityRole="progressbar" accessibilityLabel={`${c.item.label}: còn ${Math.max(0, c.remaining)} trên ${c.item.everySessions} lần`} style={{ height: 6, borderRadius: 3, backgroundColor: C.surfaceMuted, overflow: 'hidden' }}>
                 <View style={{ width: `${pct * 100}%`, height: '100%', backgroundColor: color }} />
               </View>
-              <Text style={{ fontSize: 13, color: C.textFaint }}>
+              <Text style={{ fontSize: T.caption, color: C.textFaint }}>
                 {c.item.everySessions === 1 ? 'Sau mỗi phiên' : `Chu kỳ ${c.item.everySessions} phiên`}, {c.item.doneBy === 'patient' ? 'bệnh nhân tự làm' : 'kỹ thuật làm'}.{'\n'}Lần gần nhất: {c.lastDone ? fmtDate(c.lastDone) : 'chưa ghi nhận'}
               </Text>
               <Button label="Đánh dấu đã làm" variant="ghost" icon="checkmark-done-outline" onPress={() => doCare(c.item.id, c.item.label)} />
@@ -238,7 +238,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           const kind = n > 0 ? `${n} lần` : rest ? 'Nghỉ theo lịch' : plan ? 'Bỏ lỡ' : 'Không sử dụng';
           return (
             <View key={d} accessible accessibilityLabel={`${fmtDate(d)}: ${kind}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Text style={{ width: 46, color: C.textSoft, fontSize: 13 }}>{fmtDate(d).slice(0, 5)}</Text>
+              <Text style={{ width: 46, color: C.textSoft, fontSize: T.caption }}>{fmtDate(d).slice(0, 5)}</Text>
               <View style={{ flex: 1, height: 22, backgroundColor: C.surfaceMuted, borderRadius: 8, overflow: 'hidden', justifyContent: 'center' }}>
                 {n > 0 && <View style={{ width: `${(n / maxN) * 100}%`, height: '100%', backgroundColor: C.primary, borderRadius: 8 }} />}
                 {n === 0 && <Ionicons name={rest ? 'moon-outline' : 'alert-circle'} size={16} color={rest ? C.textFaint : C.amber} style={{ marginLeft: 8 }} />}
@@ -248,21 +248,21 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           );
         })}
         <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={{ flexDirection: 'row', gap: 14, flexWrap: 'wrap' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><View style={{ width: 14, height: 10, borderRadius: 3, backgroundColor: C.primary }} /><Text style={{ fontSize: 13, color: C.textSoft }}>Đã chiếu</Text></View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Ionicons name="moon-outline" size={14} color={C.textFaint} /><Text style={{ fontSize: 13, color: C.textSoft }}>Nghỉ</Text></View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Ionicons name="alert-circle" size={14} color={C.amber} /><Text style={{ fontSize: 13, color: C.textSoft }}>Bỏ lỡ</Text></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}><View style={{ width: 14, height: 10, borderRadius: 3, backgroundColor: C.primary }} /><Text style={{ fontSize: T.caption, color: C.textSoft }}>Đã chiếu</Text></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}><Ionicons name="moon-outline" size={14} color={C.textFaint} /><Text style={{ fontSize: T.caption, color: C.textSoft }}>Nghỉ</Text></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}><Ionicons name="alert-circle" size={14} color={C.amber} /><Text style={{ fontSize: T.caption, color: C.textSoft }}>Bỏ lỡ</Text></View>
         </View>
         {!patientView && <>
         <Divider />
         <SectionTitle icon="list-outline">Phiên sử dụng</SectionTitle>
         {sessions.length === 0 && <Empty text="Chưa có phiên nào được ghi nhận." />}
         {sessions.slice(0, allSessions ? 30 : 5).map((s) => (
-          <View key={s.sessionId} style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border, gap: 2 }}>
+          <View key={s.sessionId} style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border, gap: space.xxs }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ fontWeight: '600', color: C.text }}>{fmtDateTime(s.start)}</Text>
               <Text style={{ color: C.textSoft }}>{s.durationMin} phút</Text>
             </View>
-            <Text style={{ fontSize: 13, color: C.textFaint }}>
+            <Text style={{ fontSize: T.caption, color: C.textFaint }}>
               {tech
                 ? `Mã phiên ${s.sessionId} · ${STATUS[s.status]} · ${SOURCE[s.source]}${s.energyWh !== null ? ` · ${s.energyWh} Wh` : ''}`
                 : STATUS[s.status]}

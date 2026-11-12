@@ -48,7 +48,7 @@ export default function TechnicalDataset() {
         try { const result = await exportDataset(data, shown, me.id); notify('Đã xuất dữ liệu', result.count + ' ảnh · ' + result.location); }
         catch(e) { notify('Chưa xuất được dữ liệu', String(e)); }
         finally { setBusy(false); }
-      }} />
+      }} reason="Không có ảnh nào khớp bộ lọc." />
     </Card>
   </Screen>;
 }

@@ -167,7 +167,7 @@ export default function ImageDetail() {
           ) : (
             <Field label="Tên tệp đầy đủ" value={fullName} onChangeText={setFullName} autoCapitalize="none" autoCorrect={false} error={error} hint="Chỉ sửa phần số sau area_; mã và đuôi tệp phải giữ nguyên." />
           )}
-          <Field label={im.capture ? "Phương pháp đo (bắt buộc)" : "Phương pháp đo (khuyến nghị)"} value={method} onChangeText={setMethod} placeholder="Ví dụ: thước giấy kẻ ô, phần mềm đo trên máy tính…" />
+          <Field label="Phương pháp đo" optional={!im.capture} hint={im.capture ? undefined : "Nên ghi để so sánh được giữa các lần đo."} value={method} onChangeText={setMethod} placeholder="Ví dụ: thước giấy kẻ ô, phần mềm đo trên máy tính…" />
           <View style={{ gap: 4 }}>
             <Text style={{ color: C.textSoft, fontSize: 13 }}>Xem trước tên sẽ lưu</Text>
             <Text style={{ fontFamily: MONO, fontSize: 14, color: preview ? C.green : C.textFaint, backgroundColor: preview ? C.greenSoft : C.surfaceMuted, padding: 10, borderRadius: 10 }}>
@@ -178,7 +178,7 @@ export default function ImageDetail() {
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Button style={{ flex: 1 }} label="Hủy" variant="secondary" onPress={() => setEditing(false)} />
-            <Button style={{ flex: 1 }} label="Lưu" icon="checkmark" disabled={!preview} onPress={save} />
+            <Button style={{ flex: 1 }} label="Lưu" icon="checkmark" disabled={!preview} onPress={save} reason="Nhập diện tích hợp lệ để có tên xem trước." />
           </View>
           {im.areaCm2 !== null && (
             <Pressable
@@ -222,13 +222,14 @@ export default function ImageDetail() {
         <Muted>Chỉ xác nhận khi ảnh không có mặt, tên, giấy tờ hay thông tin nhận dạng. Ứng dụng tạo bản sao PNG bỏ siêu dữ liệu; giữ nguyên ảnh gốc trong hồ sơ.</Muted>
         <Button label={im.researchReady ? 'Ngừng chia sẻ ảnh' : 'Xác nhận ảnh và chia sẻ'} variant="secondary" loading={sharingBusy}
           disabled={!im.researchReady && (im.areaCm2 === null || im.status !== 'labeled' || !p.researchConsent || im.source === 'patient')}
+          reason={im.source === 'patient' ? 'Ảnh bệnh nhân tự chụp không đưa vào kho dữ liệu.' : !p.researchConsent ? 'Bệnh nhân chưa đồng ý dùng ảnh cho nghiên cứu.' : 'Nhập diện tích bác sĩ đã đo trước khi chia sẻ.'}
           onPress={() => confirm(im.researchReady ? 'Ngừng chia sẻ' : 'Kiểm tra nội dung ảnh', im.researchReady ? 'Ảnh sẽ không còn trong kho kỹ thuật. Tệp đã tải trước đó không tự thu hồi.' : 'Tôi đã kiểm tra ảnh không chứa khuôn mặt, tên, giấy tờ hoặc thông tin nhận dạng cá nhân.', async () => {
             setSharingBusy(true);
             try { await setResearchReady(im.id, !im.researchReady); }
             catch(e) { notify('Chưa cập nhật được ảnh', String(e)); }
             finally { setSharingBusy(false); }
           })} />
-        {!p.researchConsent && <Muted>Bệnh nhân chưa đồng ý sử dụng ảnh cho nghiên cứu.</Muted>}
+        {!p.researchConsent && im.researchReady && <Muted>Bệnh nhân chưa đồng ý sử dụng ảnh cho nghiên cứu.</Muted>}
       </Card>}
       {isDoctor && (
         <Card>

@@ -132,12 +132,14 @@ export default function ConnectDevice() {
             <Card>
               <Text style={{ fontWeight: '700', color: C.text }}>Liệu trình sẽ nạp xuống máy</Text>
               {selected && <InfoRow label="Vết thương" value={`${selected.wound.code}: ${selected.wound.location}`} />}
-              {cfg && <InfoRow label="Chế độ" value={modeLabel(cfg.treatmentMode)} />}
+              {/* Cùng tên và thứ tự nhãn với DoseRows (B05, N03, N06) để một thông số chỉ có một tên (A10). */}
               {cfg && <InfoRow label="Mức năng lượng" value={`Mức ${cfg.energyLevel}`} />}
-              {cfg && <InfoRow label="Thời gian chiếu" value={fmtDuration(cfg.minTreatmentTimeSec)} />}
+              {cfg && <InfoRow label="Chế độ điều trị" value={modeLabel(cfg.treatmentMode)} />}
+              {cfg && <InfoRow label="Thời gian mỗi lần chiếu" value={fmtDuration(cfg.minTreatmentTimeSec)} />}
               {plan && <InfoRow label="Đợt điều trị" value={`Phiên bản ${plan.version}, bác sĩ đã xác nhận`} />}
+              {/* Bệnh nhân vẫn xem được, nhưng tiêu đề bằng lời thường; mã trường CFG chỉ nằm bên trong phần thu gọn (A12). */}
               {wire ? (
-                <Disclosure title="Chi tiết kỹ thuật" summary="Các trường gói CFG gửi qua USB/UART" icon="code-slash-outline">
+                <Disclosure title={isPatient ? 'Dữ liệu gửi xuống máy' : 'Chi tiết kỹ thuật'} summary={isPatient ? 'Chỉ cần khi kỹ thuật viên hỏi' : 'Các trường gói CFG gửi qua USB/UART'} icon="code-slash-outline">
                   {Object.entries(wire).map(([k, v]) => <InfoRow key={k} label={k} value={String(v)} mono />)}
                 </Disclosure>
               ) : (

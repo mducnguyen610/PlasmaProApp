@@ -72,8 +72,7 @@ export default function Report() {
         )}
         <Field label="Mô tả" value={content} onChangeText={setContent} multiline placeholder={kind === 'symptom' ? 'Đau, rát, chảy dịch, sốt…' : 'Không bật được, mất Wi-Fi, báo lỗi…'} />
       </Card>
-      <Button label="Gửi" icon="send" disabled={!canSend} onPress={send} />
-      {!canSend && <Muted>{kind === 'symptom' ? 'Chọn mức đau hoặc nhập mô tả để gửi.' : 'Nhập mô tả sự cố để gửi.'}</Muted>}
+      <Button label="Gửi" icon="send" disabled={!canSend} onPress={send} reason={kind === 'symptom' ? 'Chọn mức đau hoặc nhập mô tả để gửi.' : 'Nhập mô tả sự cố để gửi.'} />
     </Screen>
   );
 }
