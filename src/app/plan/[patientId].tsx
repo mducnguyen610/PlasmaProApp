@@ -19,7 +19,7 @@ import { C } from '@/theme';
 // Điều xảy ra khi lưu với từng trạng thái; nội dung theo quy tắc lưu hiện có (đợt "Đang áp dụng" cần mức, thời gian và xác nhận).
 const STATUS_EFFECT: Record<PlanStatus, string> = {
   draft: 'Nháp: bệnh nhân không thấy và chưa nạp được.',
-  active: 'Đang áp dụng: cần mức năng lượng, thời gian chiếu và xác nhận của bác sĩ; sau khi lưu, bệnh nhân nạp được xuống máy.',
+  active: 'Đang áp dụng: cần mức năng lượng, thời gian điều trị và xác nhận của bác sĩ; sau khi lưu, bệnh nhân nạp được xuống máy.',
   paused: 'Tạm dừng: bệnh nhân không nạp được cho tới khi đợt được áp dụng lại.',
   ended: 'Kết thúc: bệnh nhân không nạp được đợt này nữa.',
 };
@@ -136,7 +136,7 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
     }
     const nums = [perVisit, gap, level, duration, spc, reviewDay].map(numOrNull);
     if (nums.some((n) => n !== null && (!Number.isFinite(n) || n < 0))) return fail(1, 'Thông số phải là số không âm.');
-    if (status === 'active' && (nums[2] === null || nums[3] === null)) return fail(1, 'Đợt "Đang áp dụng" cần mức năng lượng và thời gian chiếu để khóa trên thiết bị.');
+    if (status === 'active' && (nums[2] === null || nums[3] === null)) return fail(1, 'Đợt "Đang áp dụng" cần mức năng lượng và thời gian điều trị để khóa trên thiết bị.');
     if (caps && nums[2] !== null && !caps.energyLevels.includes(nums[2])) return fail(1, 'Mức năng lượng phải thuộc danh sách của mẫu thiết bị.');
     if (caps && status === 'active' && caps.treatmentModes.length > 0 && !mode) return fail(1, 'Đợt "Đang áp dụng" cần chọn chế độ điều trị.');
     if (!reason.trim()) return fail(2, 'Nhập lý do thay đổi để lưu vết phiên bản.');
@@ -206,11 +206,11 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         )}
         {step === 1 && (
           <>
-        <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Liều mỗi lần chiếu</Text>
+        <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Liều mỗi lần điều trị</Text>
         <Muted>Thiết bị tại nhà bị khóa ở mức và thời gian này; bệnh nhân không đổi được.</Muted>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {!caps && <View style={{ flex: 1 }}><Field label="Mức năng lượng" value={level} onChangeText={setLevel} keyboardType="number-pad" hint="Ví dụ: 8" /></View>}
-          <View style={{ flex: 1 }}><Field label="Thời gian mỗi lần chiếu (giây)" value={duration} onChangeText={setDuration} keyboardType="number-pad" hint={numOrNull(duration) != null ? fmtDuration(numOrNull(duration)) : undefined} /></View>
+          <View style={{ flex: 1 }}><Field label="Thời gian mỗi lần điều trị (giây)" value={duration} onChangeText={setDuration} keyboardType="number-pad" hint={numOrNull(duration) != null ? fmtDuration(numOrNull(duration)) : undefined} /></View>
         </View>
         {caps ? (
           <>

@@ -37,7 +37,7 @@ export function DoseRows({ plan }: { plan: TreatmentPlan }) {
     <>
       <InfoRow label="Mức năng lượng" value={plan.doseLevel != null ? `Mức ${plan.doseLevel}` : 'Chưa đặt'} />
       {plan.treatmentMode ? <InfoRow label="Chế độ điều trị" value={modeLabel(plan.treatmentMode)} /> : null}
-      <InfoRow label="Thời gian mỗi lần chiếu" value={fmtDuration(plan.durationSec)} />
+      <InfoRow label="Thời gian mỗi lần điều trị" value={fmtDuration(plan.durationSec)} />
       <InfoRow label="Số lần mỗi buổi" value={String(plan.sessionsPerDay ?? 1)} />
     </>
   );

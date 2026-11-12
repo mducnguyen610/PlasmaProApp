@@ -75,7 +75,7 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
       {attention && (
         <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingLeft: 52 }}>
           <Chip label={TODAY_LABEL[attention.state]} tone={TODAY_TONE[attention.state]} />
-          {/* FR10: "chưa có dữ liệu" luôn kèm lần đồng bộ cuối, để bác sĩ phân biệt máy chưa gửi với người bệnh không chiếu. */}
+          {/* FR10: "chưa có dữ liệu" luôn kèm lần đồng bộ cuối, để bác sĩ phân biệt máy chưa gửi với người bệnh không điều trị. */}
           {attention.state === 'no_data' && <Text style={{ color: C.textSoft, fontSize: T.caption }}>{dev?.lastSync ? `đồng bộ lần cuối ${fmtDateTime(dev.lastSync)}` : 'chưa từng đồng bộ'}</Text>}
           {attention.reasons[0] ? <Text style={{ color: C.textSoft, fontSize: T.caption, flexShrink: 1 }}>{attention.reasons[0]}</Text> : null}
         </View>

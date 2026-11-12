@@ -148,14 +148,14 @@ export function courseStatus(pr: CourseProgress, fmt: (iso: string) => string): 
   const nextText = pr.next ? `Buổi tiếp theo: ${fmt(pr.next)}.` : 'Không còn buổi nào theo lịch.';
   if (pr.today === 'before') return { kind: 'before', title: 'Đợt điều trị chưa bắt đầu', detail: nextText };
   if (pr.today === 'after') return { kind: 'after', title: 'Đã qua ngày dự kiến của đợt', detail: 'Bác sĩ sẽ xem lại vết thương và quyết định kết thúc hay kéo dài đợt.' };
-  if (pr.today === 'rest' && pr.todayCount > 0) return { kind: 'over', title: 'Hôm nay là ngày nghỉ theo lịch', detail: `Đã ghi nhận ${pr.todayCount} lần chiếu. Hãy báo bác sĩ phụ trách.` };
+  if (pr.today === 'rest' && pr.todayCount > 0) return { kind: 'over', title: 'Hôm nay là ngày nghỉ theo lịch', detail: `Đã ghi nhận ${pr.todayCount} lần điều trị. Hãy báo bác sĩ phụ trách.` };
   if (pr.today === 'rest') return { kind: 'rest', title: 'Hôm nay nghỉ theo lịch', detail: nextText };
-  if (pr.todayCount > pr.perVisit) return { kind: 'over', title: `Đã chiếu ${pr.todayCount} lần, nhiều hơn ${pr.perVisit}`, detail: 'Hãy báo bác sĩ phụ trách.' };
+  if (pr.todayCount > pr.perVisit) return { kind: 'over', title: `Đã điều trị ${pr.todayCount} lần, nhiều hơn ${pr.perVisit}`, detail: 'Hãy báo bác sĩ phụ trách.' };
   if (pr.todayCount >= pr.perVisit) return { kind: 'done', title: 'Đã xong buổi hôm nay', detail: `Buổi ${pr.done}/${pr.total} của đợt. ${nextText}` };
   return {
     kind: 'treat',
     title: 'Hôm nay có buổi điều trị',
-    detail: pr.perVisit > 1 ? `Hôm nay là buổi ${pr.done + (pr.todayCount > 0 ? 0 : 1)}/${pr.total} · đã chiếu ${pr.todayCount}/${pr.perVisit} lần` : `Hôm nay là buổi ${pr.done + 1}/${pr.total} của đợt`,
+    detail: pr.perVisit > 1 ? `Hôm nay là buổi ${pr.done + (pr.todayCount > 0 ? 0 : 1)}/${pr.total} · đã điều trị ${pr.todayCount}/${pr.perVisit} lần` : `Hôm nay là buổi ${pr.done + 1}/${pr.total} của đợt`,
   };
 }
 

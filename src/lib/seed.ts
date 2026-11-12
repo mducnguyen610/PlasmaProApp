@@ -118,7 +118,7 @@ export function createSeed(): AppData {
         symptoms: 'Đau nhẹ khi thay băng.', symptomSource: 'Bệnh nhân báo qua app',
         severity: 'mild', trend: 'improving', instructions: 'Chuyển sang 3 buổi mỗi tuần theo giai đoạn 2, tái khám để bác sĩ chụp ảnh và đánh giá.', nextReview: D(5), visibleToPatient: true,
       },
-      { id: 'e-demo2', woundId: 'w-2', imageId: 'IMG0006', date: D(-15), doctorId: DOCTOR, areaCm2: null, severity: 'mild', trend: 'improving', characteristics: 'Biểu mô phủ kín, không còn dịch (mô phỏng).', symptoms: '', symptomSource: 'Bác sĩ', instructions: 'Dừng chiếu plasma. Giữ vùng da khô sạch, tái khám sau 2 tuần để xác nhận đã liền.', nextReview: D(0), visibleToPatient: true },
+      { id: 'e-demo2', woundId: 'w-2', imageId: 'IMG0006', date: D(-15), doctorId: DOCTOR, areaCm2: null, severity: 'mild', trend: 'improving', characteristics: 'Biểu mô phủ kín, không còn dịch (mô phỏng).', symptoms: '', symptomSource: 'Bác sĩ', instructions: 'Dừng điều trị plasma. Giữ vùng da khô sạch, tái khám sau 2 tuần để xác nhận đã liền.', nextReview: D(0), visibleToPatient: true },
       { id: 'e-demo3', woundId: 'w-3', date: D(-24), doctorId: DOCTOR, areaCm2: null, severity: 'severe', trend: 'worsening', characteristics: 'Đánh giá mô phỏng.', symptoms: '', symptomSource: 'Bác sĩ', instructions: 'Liên hệ bác sĩ phụ trách để được đánh giá trực tiếp.', visibleToPatient: true },
     ],
     plans: [
@@ -133,7 +133,7 @@ export function createSeed(): AppData {
         id: 'pl-2', patientId: 'p-2', woundId: 'w-2', version: 1, status: 'paused', sessionsPerDay: 1, minIntervalMin: null, targetEnergyWh: null,
         ...plan2, doseLevel: 3, treatmentMode: 'cold', durationSec: 120, secondsPerCm2: 15, areaAtStart: 8, reviewAtDay: 28,
         reviewSchedule: 'Tái đánh giá mỗi 7 ngày', notes: 'Giá trị mô phỏng.',
-        editedBy: DOCTOR, editedAt: at(D(-15), '09:00'), reason: 'Biểu mô đã khép lần 1, dừng chiếu chờ xác nhận', confirmed: true,
+        editedBy: DOCTOR, editedAt: at(D(-15), '09:00'), reason: 'Biểu mô đã khép lần 1, dừng điều trị chờ xác nhận', confirmed: true,
       },
     ],
     devices: [
@@ -148,7 +148,7 @@ export function createSeed(): AppData {
       { sessionId: sesP1[6].sessionId, painBefore: 3, painAfter: 2, at: sesP1[6].start },
     ],
     reports: [
-      { id: 'r-1', patientId: 'p-2', date: at(D(-16), '08:30'), kind: 'symptom', content: 'Rát nhẹ quanh vết thương sau buổi chiếu.', painLevel: 3, handled: false },
+      { id: 'r-1', patientId: 'p-2', date: at(D(-16), '08:30'), kind: 'symptom', content: 'Rát nhẹ quanh vết thương sau buổi điều trị.', painLevel: 3, handled: false },
       { id: 'r-2', patientId: 'p-2', date: at(D(-17), '08:30'), kind: 'device', content: 'Thiết bị không hiện kết nối Wi-Fi.', handled: false },
     ],
     syncErrors: [

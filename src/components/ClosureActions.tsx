@@ -26,7 +26,7 @@ export function ClosureActions({ woundId, status, check1, followUpFrom, today, h
     return (
       <View style={{ gap: 8 }}>
         <Button label="Ghi nhận biểu mô đã khép (lần 1)" icon="checkmark-circle-outline" variant="secondary"
-          onPress={() => run('check1', 'Biểu mô đã khép', 'Dừng chiếu plasma và hẹn khám lại sau 2 tuần để xác nhận đã liền. Thiết bị sẽ không phát trong thời gian chờ.', 'Ghi nhận')} />
+          onPress={() => run('check1', 'Biểu mô đã khép', 'Dừng điều trị plasma và hẹn khám lại sau 2 tuần để xác nhận đã liền. Thiết bị sẽ không phát trong thời gian chờ.', 'Ghi nhận')} />
         <Button label="Tạm dừng đợt" icon="pause-outline" variant="ghost" onPress={() => run('pause', 'Tạm dừng', 'Thiết bị sẽ không phát cho tới khi bác sĩ tiếp tục đợt.', 'Tạm dừng')} />
       </View>
     );

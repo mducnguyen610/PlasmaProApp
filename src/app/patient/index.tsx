@@ -20,7 +20,7 @@ import { SEVERITY_ROLE, SOURCE, TREND_ROLE } from '@/theme.status';
 // Việc trước và sau mỗi lần chiếu (slide 34: chiếu sau chăm sóc thường quy; S2k 2022: loại dịch tiết, không làm khô vết).
 // Nội dung là bản nháp cho demo, cần bác sĩ trong nhóm duyệt.
 const BEFORE = ['Rửa tay, thay băng và làm sạch vết thương theo dặn', 'Không lau khô hẳn vết thương', 'Lắp đầu phát riêng của mình'];
-const AFTER = ['Vệ sinh đầu phát rồi đậy nắp', 'Băng lại hoặc bôi thuốc theo dặn', 'Ghi cảm giác của lần chiếu trong Lịch trình'];
+const AFTER = ['Vệ sinh đầu phát rồi đậy nắp', 'Băng lại hoặc bôi thuốc theo dặn', 'Ghi cảm giác của lần điều trị trong Lịch trình'];
 
 // Trang chủ bệnh nhân (đặc tả mục 6): một cột, theo thứ tự việc bệnh nhân cần biết trong ngày.
 // Điều hướng sang Lịch trình, Lịch sử, Thiết bị nằm ở thanh tab, không lặp lại bằng thẻ gradient.
@@ -103,7 +103,7 @@ export default function PatientHome() {
               <Ionicons name="checkmark-done-circle" size={30} color={C.green} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: T.screenTitle, fontWeight: '700', color: C.green }}>Vết thương {followUp.w.code} đã liền</Text>
-                <Text style={{ color: C.textSoft }}>Đợt điều trị đã kết thúc. Không cần chiếu plasma nữa.</Text>
+                <Text style={{ color: C.textSoft }}>Đợt điều trị đã kết thúc. Không cần điều trị plasma nữa.</Text>
               </View>
             </View>
             <Muted>{nextCheck ? `Lần kiểm tra tiếp theo: ${fmtDate(nextCheck.date)} (${nextCheck.days} ngày sau khi liền). Bác sĩ sẽ chụp ảnh để chắc vết thương không mở lại.` : 'Đã qua các mốc theo dõi.'}</Muted>
@@ -122,7 +122,7 @@ export default function PatientHome() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Ionicons name="hourglass-outline" size={30} color={C.primary} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: T.screenTitle, fontWeight: '700', color: C.primary }}>Đã dừng chiếu, chờ bác sĩ xác nhận liền</Text>
+                <Text style={{ fontSize: T.screenTitle, fontWeight: '700', color: C.primary }}>Đã dừng điều trị, chờ bác sĩ xác nhận liền</Text>
                 <Text style={{ color: C.textSoft }}>Bác sĩ ghi nhận vết thương {awaiting.w.code} đã khép ngày {fmtDate(awaiting.w.closureCheck1)}. Cần một lần khám nữa sau 2 tuần để xác nhận.</Text>
               </View>
             </View>
@@ -134,9 +134,9 @@ export default function PatientHome() {
         <View style={{ gap: 10 }}>
           <Divider />
           {/* Gộp vào thẻ Hôm nay. Thu gọn mặc định: một dòng có số bước đã tích. Mở ra khi cần. */}
-          <Pressable onPress={() => setOpenSteps(!openSteps)} accessibilityRole="button" accessibilityState={{ expanded: openSteps }} accessibilityLabel={`${status?.kind === 'treat' ? 'Trước khi chiếu' : 'Sau khi chiếu'}, đã làm ${steps.filter((t) => checked[t]).length} trên ${steps.length} bước`} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Pressable onPress={() => setOpenSteps(!openSteps)} accessibilityRole="button" accessibilityState={{ expanded: openSteps }} accessibilityLabel={`${status?.kind === 'treat' ? 'Trước khi điều trị' : 'Sau khi điều trị'}, đã làm ${steps.filter((t) => checked[t]).length} trên ${steps.length} bước`} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Ionicons name="list" size={26} color={C.primary} />
-            <Text style={{ flex: 1, fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{status?.kind === 'treat' ? 'Trước khi chiếu' : 'Sau khi chiếu'}</Text>
+            <Text style={{ flex: 1, fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{status?.kind === 'treat' ? 'Trước khi điều trị' : 'Sau khi điều trị'}</Text>
             <Text style={{ color: steps.every((t) => checked[t]) ? C.green : C.textSoft, fontWeight: '700' }}>{steps.filter((t) => checked[t]).length}/{steps.length}</Text>
             <Ionicons name={openSteps ? 'chevron-up' : 'chevron-down'} size={22} color={C.textSoft} />
           </Pressable>

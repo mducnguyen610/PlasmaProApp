@@ -89,18 +89,18 @@ export default function SessionMonitor() {
         <Notice tone={semantic.success.tone} icon="checkmark-circle-outline">{saved.text}</Notice>
       )}
       {saved?.kind === 'interrupted' && st?.state !== 'stopped' && st?.state !== 'error' && (
-        <Notice tone={semantic.warning.tone} icon="stop-circle-outline">{`Buổi chiếu chưa đủ thời gian. ${saved.text}`}</Notice>
+        <Notice tone={semantic.warning.tone} icon="stop-circle-outline">{`Buổi điều trị chưa đủ thời gian. ${saved.text}`}</Notice>
       )}
       {/* Việc tiếp theo sau khi phiên kết thúc (wireframe T02, P1 đến P3). */}
       {st?.state === 'done' && isPatient && (
         <>
-          <Notice tone={semantic.success.tone} icon="checkmark-circle-outline">{saved?.kind === 'done' ? `Đã xong buổi chiếu hôm nay. ${saved.text}` : 'Đã xong buổi chiếu hôm nay.'}</Notice>
-          <Button label="Ghi cảm giác sau khi chiếu" icon="create-outline" onPress={() => router.push('/schedule')} />
+          <Notice tone={semantic.success.tone} icon="checkmark-circle-outline">{saved?.kind === 'done' ? `Đã xong buổi điều trị hôm nay. ${saved.text}` : 'Đã xong buổi điều trị hôm nay.'}</Notice>
+          <Button label="Ghi cảm giác sau khi điều trị" icon="create-outline" onPress={() => router.push('/schedule')} />
         </>
       )}
       {st?.state === 'stopped' && (
         <>
-          <Notice tone={semantic.warning.tone} icon="stop-circle-outline">{`Buổi chiếu dừng trước khi đủ thời gian.${saved?.kind === 'interrupted' ? ` ${saved.text}` : ''} Nếu do đau hoặc khó chịu, hãy báo bác sĩ.`}</Notice>
+          <Notice tone={semantic.warning.tone} icon="stop-circle-outline">{`Buổi điều trị dừng trước khi đủ thời gian.${saved?.kind === 'interrupted' ? ` ${saved.text}` : ''} Nếu do đau hoặc khó chịu, hãy báo bác sĩ.`}</Notice>
           {isPatient && <Button label="Báo triệu chứng" variant="secondary" icon="chatbubble-ellipses-outline" onPress={() => router.push('/report')} />}
         </>
       )}
@@ -111,12 +111,12 @@ export default function SessionMonitor() {
         </>
       )}
       {/* Chỉ thiết bị giả lập có nút bắt đầu, dừng trên ứng dụng. Mỗi lúc một nút theo trạng thái phiên (V01):
-          đang chiếu thì chỉ còn "Dừng chiếu" nền đỏ, rộng hết cột. */}
+          đang điều trị thì chỉ còn "Dừng điều trị" nền đỏ, rộng hết cột. */}
       {link.startSession && link.stopSession && link.state === 'connected' && (
         <View style={{ gap: 6 }}>
           {st?.state === 'running'
-            ? <Button label="Dừng chiếu" variant="dangerSolid" icon="stop-circle-outline" onPress={link.stopSession} />
-            : <Button label="Bắt đầu chiếu" icon="play-outline" onPress={link.startSession} />}
+            ? <Button label="Dừng điều trị" variant="dangerSolid" icon="stop-circle-outline" onPress={link.stopSession} />
+            : <Button label="Bắt đầu điều trị" icon="play-outline" onPress={link.startSession} />}
           <Muted>Nút này thay cho thao tác trên máy, chỉ có với thiết bị giả lập.</Muted>
         </View>
       )}
