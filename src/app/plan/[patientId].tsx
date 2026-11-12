@@ -5,14 +5,24 @@ import { Text } from '@/components/Text';
 
 import { DoseRows, PhaseList } from '@/components/CourseCard';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, Segmented, SwitchRow, TextLink } from '@/components/ui';
+import { CheckRow } from '@/components/Consent';
+import { PLAN } from '@/theme.status';
+import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
 import { capabilitiesFor, modeLabel } from '@/lib/device/capabilities';
 import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, suggestDurationSec } from '@/lib/course';
 import { notify } from '@/lib/dialog';
-import { fmtDate, fmtDateTime, PLAN_STATUS } from '@/lib/format';
+import { fmtDate, fmtDateTime, maskDateInput, PLAN_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import type { CoursePhase, PhasePattern, PlanStatus, TreatmentPlan } from '@/lib/types';
 import { C } from '@/theme';
+
+// Điều xảy ra khi lưu với từng trạng thái; nội dung theo quy tắc lưu hiện có (đợt "Đang áp dụng" cần mức, thời gian và xác nhận).
+const STATUS_EFFECT: Record<PlanStatus, string> = {
+  draft: 'Nháp: bệnh nhân không thấy và chưa nạp được.',
+  active: 'Đang áp dụng: cần mức năng lượng, thời gian chiếu và xác nhận của bác sĩ; sau khi lưu, bệnh nhân nạp được xuống máy.',
+  paused: 'Tạm dừng: bệnh nhân không nạp được cho tới khi đợt được áp dụng lại.',
+  ended: 'Kết thúc: bệnh nhân không nạp được đợt này nữa.',
+};
 
 const toVn = (iso: string) => (iso ? fmtDate(iso) : '');
 const fromVn = (s: string) => {
@@ -32,7 +42,7 @@ function PlanCard({ plan, editorName }: { plan: TreatmentPlan; editorName?: stri
     <Card>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Text style={{ fontWeight: '700', color: C.text, flex: 1 }}>Phiên bản {plan.version}</Text>
-        <Chip label={PLAN_STATUS[plan.status].label} tone={PLAN_STATUS[plan.status].tone} />
+        <StatusChip status={PLAN[plan.status]} label={PLAN_STATUS[plan.status].label} />
       </View>
       <PhaseList plan={plan} />
       <DoseRows plan={plan} />
@@ -154,7 +164,8 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         <Muted>Mỗi vết thương một đợt. Giá trị điều trị cụ thể do nhóm chuyên môn đặt; ứng dụng không đặt sẵn lịch hay liều.</Muted>
 
         {/* Biểu mẫu chia 3 bước (đề xuất 8): Lịch, Liều, Xác nhận. Lỗi đưa người dùng về đúng bước. */}
-        <Segmented<string> value={String(step)} onChange={(v) => setStep(Number(v))} options={['Lịch', 'Liều', 'Xác nhận'].map((l, i) => ({ value: String(i), label: `${i + 1}. ${l}` }))} />
+        {/* Cùng kiểu thanh bước với T01 (V10); vẫn chạm được để chuyển bước như trước. */}
+        <StepRow steps={['Lịch', 'Liều', 'Xác nhận']} step={step + 1} onStep={(n) => setStep(n - 1)} />
         {err ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{err}</Text> : null}
         {step === 0 && (
           <>
@@ -167,8 +178,8 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
               {phases.length > 1 && <TextLink label="Xóa" tone={C.red} accessibilityLabel={`Xóa giai đoạn ${i + 1}`} onPress={() => setPhases(phases.filter((_, k) => k !== i))} />}
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={{ flex: 1 }}><Field label="Từ ngày" value={ph.from} onChangeText={(v) => setPhase(i, { from: v })} placeholder="dd/mm/yyyy" /></View>
-              <View style={{ flex: 1 }}><Field label="Đến ngày" value={ph.to} onChangeText={(v) => setPhase(i, { to: v })} placeholder="dd/mm/yyyy" /></View>
+              <View style={{ flex: 1 }}><Field label="Từ ngày" value={ph.from} onChangeText={(v) => setPhase(i, { from: maskDateInput(v) })} keyboardType="number-pad" maxLength={10} placeholder="dd/mm/yyyy" /></View>
+              <View style={{ flex: 1 }}><Field label="Đến ngày" value={ph.to} onChangeText={(v) => setPhase(i, { to: maskDateInput(v) })} keyboardType="number-pad" maxLength={10} placeholder="dd/mm/yyyy" /></View>
             </View>
             <Choices<PhasePattern> value={ph.pattern} onChange={(v) => setPhase(i, { pattern: v })} options={PATTERNS} />
             {ph.pattern !== 'daily' && (
@@ -198,8 +209,8 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Liều mỗi lần chiếu</Text>
         <Muted>Thiết bị tại nhà bị khóa ở mức và thời gian này; bệnh nhân không đổi được.</Muted>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          {!caps && <View style={{ flex: 1 }}><Field label="Mức năng lượng" value={level} onChangeText={setLevel} keyboardType="number-pad" placeholder="Ví dụ 8" /></View>}
-          <View style={{ flex: 1 }}><Field label="Thời gian (giây)" value={duration} onChangeText={setDuration} keyboardType="number-pad" hint={numOrNull(duration) != null ? fmtDuration(numOrNull(duration)) : undefined} /></View>
+          {!caps && <View style={{ flex: 1 }}><Field label="Mức năng lượng" value={level} onChangeText={setLevel} keyboardType="number-pad" hint="Ví dụ: 8" /></View>}
+          <View style={{ flex: 1 }}><Field label="Thời gian mỗi lần chiếu (giây)" value={duration} onChangeText={setDuration} keyboardType="number-pad" hint={numOrNull(duration) != null ? fmtDuration(numOrNull(duration)) : undefined} /></View>
         </View>
         {caps ? (
           <>
@@ -240,16 +251,18 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
             <Text style={{ fontWeight: '700', color: C.text }}>Tóm tắt</Text>
             <Muted>{phases.map((ph, i) => `Giai đoạn ${i + 1}: ${phaseLabel({ from: '', to: '', pattern: ph.pattern, n: Number(ph.n) || 1 }).toLowerCase()} (${ph.from || '?'} đến ${ph.to || '?'})`).join('; ')}. Mức {level || '?'}{mode ? `, chế độ ${modeLabel(mode)}` : ''}, {duration ? fmtDuration(numOrNull(duration)) : '? giây'}, {perVisit || 1} lần mỗi buổi.</Muted>
             <Choices<PlanStatus> value={status} onChange={setStatus} options={(['draft', 'active', 'paused', 'ended'] as const).map((v) => ({ value: v, label: PLAN_STATUS[v].label }))} />
+            {/* Hậu quả của trạng thái đang chọn (V12). */}
+            <Muted>{STATUS_EFFECT[status]}</Muted>
         <Field label="Lịch tái khám" value={review} onChangeText={setReview} placeholder="Ví dụ: tái đánh giá mỗi 7 ngày" />
         <Field label="Ghi chú" value={notes} onChangeText={setNotes} multiline />
-        <Field label="Lý do thay đổi" value={reason} onChangeText={setReason} placeholder="Bắt buộc" />
-        <SwitchRow label="Bác sĩ xác nhận đợt điều trị" detail="Bệnh nhân sẽ xem được đợt này" value={confirmed} onChange={setConfirmed} />
+        <Field label="Lý do thay đổi" value={reason} onChangeText={setReason} placeholder="Ví dụ: vết thương cải thiện, giảm còn 3 buổi mỗi tuần" />
+        <CheckRow checked={confirmed} onChange={setConfirmed} label="Tôi xác nhận liều và lịch này. Bệnh nhân sẽ xem được đợt và nạp liệu trình xuống máy." />
             <Button label="Lưu phiên bản mới" icon="save-outline" onPress={save} />
           </>
         )}
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {step > 0 && <View style={{ flex: 1 }}><Button label="Quay lại" variant="ghost" onPress={() => setStep(step - 1)} /></View>}
-          {step < 2 && <View style={{ flex: 1 }}><Button label="Tiếp" icon="arrow-forward" variant="secondary" onPress={() => setStep(step + 1)} /></View>}
+          {step < 2 && <View style={{ flex: 1 }}><Button label="Tiếp" icon="arrow-forward" onPress={() => setStep(step + 1)} /></View>}
         </View>
       </Card>
 

@@ -13,11 +13,12 @@ export function fmtDateTime(iso?: string | null): string {
   return `${vn.slice(11, 16)} ${fmtDate(vn.slice(0, 10))}`;
 }
 
-export const WOUND_STATUS: Record<WoundStatus, { label: string; tone: 'green' | 'amber' | 'gray' | 'blue' | 'violet' }> = {
-  active: { label: 'Đang điều trị', tone: 'green' },
+// Tông của các bảng dưới đây theo src/theme.status.ts (DESIGN_SYSTEM.md mục 6): đang diễn ra = teal (info), hoàn thành = green.
+export const WOUND_STATUS: Record<WoundStatus, { label: string; tone: 'green' | 'amber' | 'gray' | 'teal' }> = {
+  active: { label: 'Đang điều trị', tone: 'teal' },
   paused: { label: 'Tạm dừng', tone: 'amber' },
-  awaiting_closure: { label: 'Chờ xác nhận liền', tone: 'blue' },
-  follow_up: { label: 'Đã liền, đang theo dõi', tone: 'violet' },
+  awaiting_closure: { label: 'Chờ xác nhận liền', tone: 'teal' },
+  follow_up: { label: 'Đã liền, đang theo dõi', tone: 'green' },
   closed: { label: 'Kết thúc', tone: 'gray' },
 };
 
@@ -27,16 +28,24 @@ export const LABEL_STATUS: Record<LabelStatus, { label: string; tone: 'green' | 
   excluded: { label: 'Loại khỏi bộ dữ liệu', tone: 'gray' },
 };
 
-export const PLAN_STATUS: Record<PlanStatus, { label: string; tone: 'gray' | 'green' | 'amber' | 'red' }> = {
+export const PLAN_STATUS: Record<PlanStatus, { label: string; tone: 'gray' | 'teal' | 'amber' }> = {
   draft: { label: 'Nháp', tone: 'gray' },
-  active: { label: 'Đang áp dụng', tone: 'green' },
+  active: { label: 'Đang áp dụng', tone: 'teal' },
   paused: { label: 'Tạm dừng', tone: 'amber' },
-  ended: { label: 'Kết thúc', tone: 'red' },
+  ended: { label: 'Kết thúc', tone: 'gray' },
 };
 
-export const TREND: Record<Trend, { label: string; tone: 'green' | 'blue' | 'red' | 'gray' }> = {
+export const TREND: Record<Trend, { label: string; tone: 'green' | 'red' | 'gray' }> = {
   improving: { label: 'Cải thiện', tone: 'green' },
-  stable: { label: 'Ít thay đổi', tone: 'blue' },
+  stable: { label: 'Ít thay đổi', tone: 'gray' },
   worsening: { label: 'Diễn biến bất lợi', tone: 'red' },
   insufficient: { label: 'Chưa đủ thông tin', tone: 'gray' },
 };
+
+/** Ô nhập ngày dd/mm/yyyy: chỉ giữ chữ số, tự chèn dấu / (V11). Không đổi cách lưu; giá trị vẫn được kiểm khi lưu. */
+export function maskDateInput(v: string): string {
+  const d = v.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}

@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Consent, CheckRow } from '@/components/Consent';
 import { Text } from '@/components/Text';
-import { Button, Card, Choices, Field, Header, Muted, Screen } from '@/components/ui';
+import { Button, Card, Choices, Field, Header, Muted, Screen, Segmented } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import type { Role } from '@/lib/types';
 import { C } from '@/theme';
@@ -41,19 +41,20 @@ export default function Register() {
         <Text style={{ fontWeight: '700', fontSize: 18 }}>Bạn sử dụng ứng dụng với vai trò</Text>
         <Choices<Role> value={role} onChange={setRole} options={[{ value: 'patient', label: 'Bệnh nhân' }, { value: 'doctor', label: 'Bác sĩ' }, { value: 'admin', label: 'Quản trị viên' }]} />
         {role !== 'patient' && <Muted>Tài khoản chuyên môn cần quản trị duyệt; quyền nghiên cứu được cấp riêng.</Muted>}
-        <Field label="Họ và tên" accessibilityLabel="Họ và tên" value={name} onChangeText={setName} placeholder="Nguyễn Văn A" />
+        <Field label="Họ và tên" accessibilityLabel="Họ và tên" value={name} onChangeText={setName} />
         <Field label="Tên đăng nhập" accessibilityLabel="Tên đăng nhập" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} placeholder="Tối thiểu 4 ký tự, không dấu" />
         <Field label="Số điện thoại" accessibilityLabel="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="09xxxxxxxx" />
         {role === 'patient' && <>
-          <Field label="Năm sinh" accessibilityLabel="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" placeholder="1990" />
-          <Choices value={sex} onChange={setSex} options={[{ value: 'Nam', label: 'Nam' }, { value: 'Nữ', label: 'Nữ' }]} />
+          <Field label="Năm sinh" accessibilityLabel="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" />
+          <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Giới tính</Text>
+          <Segmented value={sex} onChange={setSex} options={[{ value: 'Nam', label: 'Nam' }, { value: 'Nữ', label: 'Nữ' }]} />
         </>}
         <Field label="Mật khẩu" accessibilityLabel="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry placeholder="Ít nhất 8 ký tự" />
         <Field label="Nhập lại mật khẩu" accessibilityLabel="Nhập lại mật khẩu" value={repeat} onChangeText={setRepeat} secureTextEntry />
         <Consent agreed={agreed} onChange={setAgreed} />
-        {role === 'patient' && <CheckRow checked={research} onChange={setResearch} label="Tùy chọn: đồng ý dùng ảnh đã bỏ thông tin cá nhân để nghiên cứu" />}
+        {role === 'patient' && <CheckRow checked={research} onChange={setResearch} label="Đồng ý dùng ảnh đã bỏ thông tin cá nhân để nghiên cứu (không bắt buộc)" />}
         {error ? <Text accessibilityRole="alert" style={{ color: C.red }}>{error}</Text> : null}
-        <Button label={role === 'patient' ? 'Đăng ký' : 'Gửi yêu cầu đăng ký'} loading={busy} disabled={!agreed} onPress={submit} />
+        <Button label={role === 'patient' ? 'Đăng ký' : 'Gửi yêu cầu đăng ký'} loading={busy} disabled={!agreed} reason="Đánh dấu đồng ý Điều khoản sử dụng và Chính sách quyền riêng tư để đăng ký." onPress={submit} />
         <Muted>Bản demo lưu trên máy này. Hãy dùng thông tin và mật khẩu thử nghiệm.</Muted>
       </>}
     </Card>

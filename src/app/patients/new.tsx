@@ -58,12 +58,12 @@ export default function NewPatient() {
   return (
     <Screen header={<Header back title="Thêm bệnh nhân" subtitle="Mã hồ sơ được cấp tự động" />}>
       <Card>
-        <Field label="Họ và tên" value={name} onChangeText={setName} placeholder="Nguyễn Văn A" />
-        <Field label="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" placeholder="1960" />
+        <Field label="Họ và tên" value={name} onChangeText={setName} />
+        <Field label="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" />
         <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Giới tính</Text>
         <Segmented value={sex} onChange={setSex} options={[{ value: 'Nam', label: 'Nam' }, { value: 'Nữ', label: 'Nữ' }]} />
         <Field label="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-        <Field label="Vị trí vết thương đầu tiên (không bắt buộc)" value={wound} onChangeText={setWound} placeholder="Cẳng chân trái" hint="Tạo sẵn vết thương VT01" />
+        <Field label="Vị trí vết thương đầu tiên" optional value={wound} onChangeText={setWound} placeholder="Ví dụ: Cẳng chân trái" hint="Tạo sẵn vết thương VT01" />
       </Card>
       <Card>
         <Pressable onPress={() => setConsent((v) => !v)} style={{ flexDirection: 'row', gap: 10 }}>

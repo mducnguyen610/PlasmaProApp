@@ -6,7 +6,7 @@ import { Chip, InfoRow, Muted, StatGrid } from '@/components/ui';
 import { type AreaReview, type CourseProgress, fmtDuration, phaseLabel, phasesOf, REVIEW_MIN_REDUCTION } from '@/lib/course';
 import { fmtDate } from '@/lib/format';
 import type { TreatmentPlan } from '@/lib/types';
-import { C, radius } from '@/theme';
+import { C, radius, T, space } from '@/theme';
 import { modeLabel } from '@/lib/device/capabilities';
 
 /** Các giai đoạn của đợt, giai đoạn hiện tại được tô đậm. */
@@ -21,7 +21,7 @@ export function PhaseList({ plan, current }: { plan: TreatmentPlan; current?: nu
             <Text style={{ fontWeight: '700', color: on ? C.primary : C.textSoft, width: 22 }}>{i + 1}</Text>
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '600', color: C.text }}>{phaseLabel(p)}</Text>
-              <Text style={{ fontSize: 13, color: C.textSoft }}>{fmtDate(p.from)} đến {fmtDate(p.to)}</Text>
+              <Text style={{ fontSize: T.caption, color: C.textSoft }}>{fmtDate(p.from)} đến {fmtDate(p.to)}</Text>
             </View>
             {on && <Chip label="Hiện tại" tone="blue" />}
           </View>
@@ -73,9 +73,9 @@ export function ReviewNote({ review, forPatient }: { review: AreaReview; forPati
   return (
     <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 12, borderRadius: radius.m, backgroundColor: low ? C.amberSoft : review.state === 'ok' ? C.greenSoft : C.surfaceMuted }}>
       <Ionicons name={low ? 'alert-circle-outline' : review.state === 'ok' ? 'checkmark-circle-outline' : 'time-outline'} size={20} color={low ? C.amber : review.state === 'ok' ? C.green : C.textSoft} />
-      <View style={{ flex: 1, gap: 2 }}>
+      <View style={{ flex: 1, gap: space.xxs }}>
         <Text style={{ color: C.text }}>{line}</Text>
-        <Text style={{ color: C.textSoft, fontSize: 14 }}>
+        <Text style={{ color: C.textSoft, fontSize: T.small }}>
           {review.state === 'pending'
             ? `Mốc xem lại hiệu quả: ${fmtDate(review.reviewDate)}.`
             : low

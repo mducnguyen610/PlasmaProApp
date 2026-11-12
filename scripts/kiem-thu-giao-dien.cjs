@@ -151,7 +151,7 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     const dates1 = await p.getByText(/^Chụp \d/).count();
     rec('TC08b', 'Album mặc định 2 ngày, "Xem tất cả" mở đủ', dates0 === 2 && dates1 > 2, `${dates0} → ${dates1}`);
     const hidden0 = await visible(p, 'Mỗi ngày');
-    await p.getByText(/^Giai đoạn \d\/\d · mức/).first().click(); await p.waitForTimeout(300);
+    await p.getByText(/^Giai đoạn \d trên \d$/).first().click(); await p.waitForTimeout(300);
     const shown1 = await visible(p, 'Mỗi ngày');
     const missed = await visible(p, /Bỏ lỡ/, false);
     rec('TC08c', 'Chi tiết đợt ẩn mặc định, mở được; số buổi bỏ lỡ vẫn hiện ở dòng tóm tắt', !hidden0 && shown1, `ẩn trước: ${!hidden0}; hiện sau: ${shown1}`);
@@ -167,15 +167,15 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     const p = await newPage();
     await login(p, 'bacsi'); await go(p, '/plan/p-1');
     const step1 = await visible(p, 'Lịch theo giai đoạn');
-    await p.getByText('3. Xác nhận').click(); await p.waitForTimeout(300);
+    await p.getByRole('tab', { name: '3. Xác nhận' }).click(); await p.waitForTimeout(300);
     await p.getByText('Lưu phiên bản mới').click(); await p.waitForTimeout(400);
     const e1 = await visible(p, 'Nhập lý do thay đổi để lưu vết phiên bản.');
     const sumOk = (await p.getByText(/^Giai đoạn 1: mỗi ngày .*Mức 4, chế độ Cold, 3 phút, 1 lần mỗi buổi\.$/).count()) > 0;
     // Xóa ngày của giai đoạn 1 rồi lưu từ bước 3: phải quay về bước 1 và báo lỗi.
-    await p.getByText('1. Lịch').click(); await p.waitForTimeout(300);
+    await p.getByRole('tab', { name: '1. Lịch' }).click(); await p.waitForTimeout(300);
     await p.getByPlaceholder('dd/mm/yyyy').first().fill('');
-    await p.getByText('3. Xác nhận').click(); await p.waitForTimeout(300);
-    await p.getByPlaceholder('Bắt buộc').fill('Kiểm thử');
+    await p.getByRole('tab', { name: '3. Xác nhận' }).click(); await p.waitForTimeout(300);
+    await p.getByLabel('Lý do thay đổi').fill('Kiểm thử');
     await p.getByText('Lưu phiên bản mới').click(); await p.waitForTimeout(400);
     const e2 = await visible(p, 'Giai đoạn 1: ngày theo dạng dd/mm/yyyy.');
     const back = await visible(p, 'Lịch theo giai đoạn');

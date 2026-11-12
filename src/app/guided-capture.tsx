@@ -254,7 +254,7 @@ export default function GuidedCapture() {
         <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
         {photoWound?.found ? <WoundOutline hull={photoWound.hull} color={bar.green} /> : null}
       </View>
-      <Muted>{analyzing ? 'Đang khoanh vết thương trên ảnh…' : photoWound?.found ? 'Viền xanh là vùng vết thương app tự khoanh theo màu (thử nghiệm). Bác sĩ kiểm tra lại trước khi xác nhận diện tích.' : 'Chưa khoanh được vết thương trên ảnh này. Bác sĩ vẫn có thể nhập diện tích đã đo.'}</Muted>
+      <Muted>{analyzing ? 'Đang khoanh vết thương trên ảnh…' : photoWound?.found ? 'Viền xanh là vùng vết thương ứng dụng tự khoanh theo màu (thử nghiệm). Bác sĩ kiểm tra lại trước khi xác nhận diện tích.' : 'Chưa khoanh được vết thương trên ảnh này. Bác sĩ vẫn có thể nhập diện tích đã đo.'}</Muted>
 
       <Card>
         <SectionTitle>Diện tích vết thương</SectionTitle>
@@ -264,7 +264,7 @@ export default function GuidedCapture() {
           {estimate.cosTilt !== null ? <InfoRow label="Góc nghiêng" value={`${Math.round(Math.acos(Math.min(1, estimate.cosTilt)) * 180 / Math.PI)}°`} /> : null}
           <Muted>Ước lượng từ vùng khoanh, khoảng cách và thông số camera của phiên AR. Chưa kiểm chứng lâm sàng; bác sĩ sửa số nếu đo thực tế khác.</Muted>
         </> : <Muted>{photo.ar ? 'Chưa ước lượng được vì chưa khoanh được vết thương hoặc chưa đo được khoảng cách.' : 'Không có dữ liệu AR nên app không ước lượng diện tích. Nhập số đo của bác sĩ.'}</Muted>}
-        <Field label="Diện tích xác nhận (cm²)" value={areaText} onChangeText={setAreaText} keyboardType="decimal-pad" placeholder="Ví dụ 12,5 — để trống nếu chưa đo" />
+        <Field label="Diện tích xác nhận (cm²)" value={areaText} onChangeText={setAreaText} keyboardType="decimal-pad" placeholder="Ví dụ: 12,5. Để trống nếu chưa đo" />
         <Choices value={method} options={[...(estimate ? [METHOD_AR] : []), ...METHODS].map(m => ({ value: m, label: m }))} onChange={setMethod} />
         <CheckRow checked={reviewed} onChange={setReviewed} label="Đã xem ảnh: rõ nét, đủ sáng, thấy toàn bộ vết thương" />
       </Card>
@@ -278,16 +278,19 @@ export default function GuidedCapture() {
           : <CameraView ref={camera} style={{ flex: 1 }} facing="back" flash="off" enableTorch={false} animateShutter={false} onCameraReady={onCameraReady} onMountError={onCameraError} />
           : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 35 }}>
             <Text style={{ color: C.onPrimary, fontSize: 23, fontWeight: '700', textAlign: 'center' }}>Hướng camera vào vết thương</Text>
-            <Text style={{ color: C.onDarkSoft, textAlign: 'center', marginTop: 12, lineHeight: 22 }}>App tự khoanh vết thương, kiểm tra độ sáng{useAr ? ' và khoảng cách bằng AR' : ''} rồi mới cho chụp. Tránh để lộ khuôn mặt hoặc thông tin cá nhân.</Text>
+            <Text style={{ color: C.onDarkSoft, textAlign: 'center', marginTop: 12, lineHeight: 22 }}>Ứng dụng tự khoanh vết thương, kiểm tra độ sáng{useAr ? ' và khoảng cách bằng AR' : ''} rồi mới cho chụp. Tránh để lộ khuôn mặt hoặc thông tin cá nhân.</Text>
           </View>}
         {liveVisible && <WoundOverlay detection={liveWound} viewWidth={view.width} viewHeight={view.height} color={overlayColor} label={readiness.ready ? 'Vết thương · đạt' : 'Vết thương'} />}
         {liveVisible && <View accessibilityLiveRegion="polite" style={{ position: 'absolute', left: 14, top: 14, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: C.scrim }}>
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: TONE_COLOR[readiness.tone] }} />
           <Text style={{ color: C.onPrimary, fontWeight: '700' }}>{readiness.ready ? 'Sẵn sàng chụp' : 'Chưa đạt'}</Text>
         </View>}
-        <View style={{ position: 'absolute', bottom: 18, left: 16, right: 16, padding: 12, borderRadius: 12, backgroundColor: C.scrim }}>
-          <Text style={{ color: C.onPrimary, textAlign: 'center' }}>{liveVisible ? (ready ? readiness.headline : 'Đang mở camera…') : useAr ? 'Mở camera AR rồi quét chậm quanh vết thương.' : 'Mở camera để app khoanh vết thương.'}</Text>
-        </View>
+        {/* Khi camera chưa mở, chú thích chỉ lặp lại nút "Mở camera" nên ẩn; giữ hướng dẫn quét cho AR (A23). */}
+        {(liveVisible || useAr) && (
+          <View style={{ position: 'absolute', bottom: 18, left: 16, right: 16, padding: 12, borderRadius: 12, backgroundColor: C.scrim }}>
+            <Text style={{ color: C.onPrimary, textAlign: 'center' }}>{liveVisible ? (ready ? readiness.headline : 'Đang mở camera…') : useAr ? 'Mở camera AR rồi quét chậm quanh vết thương.' : 'Mở camera để ứng dụng khoanh vết thương.'}</Text>
+          </View>
+        )}
       </View>
       {liveVisible && ready && <Card>
         <SectionTitle>Kiểm tra trước khi chụp</SectionTitle>
@@ -303,7 +306,7 @@ export default function GuidedCapture() {
         ? 'AR đo khoảng cách tới đúng vết thương đang khoanh và độ sáng môi trường. Nút chụp chỉ mở khi vết thương được khoanh, đủ sáng và cách 20–60 cm.'
         : Platform.OS !== 'web' && !arViewInBuild
           ? 'Expo Go không có AR: app vẫn khoanh vết thương và kiểm tra độ sáng, nhưng không đo được khoảng cách và diện tích. Cần bản cài riêng để dùng AR.'
-          : 'Không có AR: app khoanh vết thương và kiểm tra độ sáng, không đo được khoảng cách.'}</Muted>
+          : 'Không có AR: ứng dụng khoanh vết thương và kiểm tra độ sáng, không đo được khoảng cách.'}</Muted>
     </>}
     {error ? <Text accessibilityRole="alert" style={{ color: C.red }}>{error}</Text> : null}
   </Screen>;

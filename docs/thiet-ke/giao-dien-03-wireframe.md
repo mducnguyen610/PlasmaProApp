@@ -57,7 +57,7 @@ Nguyên tắc cho thông báo lỗi: nói lỗi gì bằng lời người dùng 
 │ │ energy_level    2                │ │
 │ │ ... day, month, year, hour ...   │ │
 │ └──────────────────────────────────┘ │
-│ [  Gửi cấu hình xuống máy  ] (mờ)    │  khóa đến khi đã kết nối
+│ [  Nạp liệu trình vào máy  ] (mờ)    │  khóa đến khi đã kết nối
 └──────────────────────────────────────┘
 ```
 
@@ -86,7 +86,7 @@ Có nhiều vết thương đang điều trị thì hiện hàng chip chọn v�
 │ │ <chuỗi chi tiết, xem bảng dưới>  │ │
 │ │ [        Kết nối         ]       │ │  bấm lại để thử
 │ └──────────────────────────────────┘ │
-│ [  Gửi cấu hình xuống máy  ] (mờ)    │
+│ [  Nạp liệu trình vào máy  ] (mờ)    │
 ```
 
 | Mã trạng thái | Khi nào | Chuỗi hiện tại trong mã | Việc người dùng làm | Đề xuất |
@@ -109,7 +109,7 @@ Có nhiều vết thương đang điều trị thì hiện hàng chip chọn v�
 │ │ [          Ngắt          ]       │ │
 │ └──────────────────────────────────┘ │
 │ ... thẻ Cấu hình sẽ gửi ...          │
-│ [  Gửi cấu hình xuống máy  ]         │  bấm được
+│ [  Nạp liệu trình vào máy  ]         │  bấm được
 ```
 
 Biến thể: máy không trả lời `INF` trong thời gian chờ thì dòng Năng lực là "Máy không trả lời lệnh hỏi, dùng bảng dự phòng" và Giao thức của máy là "Không rõ". Vẫn cho gửi, vì ICD cho phép firmware chưa cài `INF`, `CAP`.
@@ -129,7 +129,7 @@ Biến thể: máy không trả lời `INF` trong thời gian chờ thì dòng N
 │ │    có trong danh sách của máy,   │ │
 │ │    bác sĩ cần lưu phiên bản mới."│ │
 │ └──────────────────────────────────┘ │
-│ [  Gửi cấu hình xuống máy  ] (mờ)    │
+│ [  Nạp liệu trình vào máy  ] (mờ)    │
 ```
 
 Không có đợt được bác sĩ xác nhận thì thẻ chỉ ghi "Chưa có đợt điều trị được bác sĩ xác nhận."
@@ -137,7 +137,7 @@ Không có đợt được bác sĩ xác nhận thì thẻ chỉ ghi "Chưa có 
 **T01-f. Đang gửi**
 
 ```
-│ [  ◌ Gửi cấu hình xuống máy  ]       │  nút quay, các nút khác khóa
+│ [  ◌ Nạp liệu trình vào máy  ]       │  nút quay, các nút khác khóa
 │ i Đang gửi, lần 2/3 (đề xuất)    │
 ```
 

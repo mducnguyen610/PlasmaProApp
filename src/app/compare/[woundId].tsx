@@ -24,7 +24,12 @@ export default function Compare() {
 
   const A = images.find((i) => i.id === a) ?? images[0];
   const B = images.find((i) => i.id === b) ?? images[images.length - 1];
-  const opts = images.map((i) => ({ value: i.id, label: `${i.id} · ${i.capture?.sourceDateKnown === false ? 'Chưa rõ ngày' : fmtDate(i.captureDate).slice(0, 5)}` }));
+  // Nhãn chip là ngày và diện tích, mã ảnh chỉ đọc cho trình đọc màn hình (V31).
+  const opts = images.map((i) => {
+    const day = i.capture?.sourceDateKnown === false ? 'Chưa rõ ngày' : fmtDate(i.captureDate).slice(0, 5);
+    const area = i.areaCm2 === null ? 'chưa đo' : formatAreaDisplay(i.areaCm2);
+    return { value: i.id, label: `${day}, ${area}`, a11y: `Ảnh ${i.id}, ${day}, ${area}` };
+  });
   const diff = A.areaCm2 !== null && B.areaCm2 !== null ? B.areaCm2 - A.areaCm2 : null;
 
   return (

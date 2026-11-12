@@ -86,13 +86,13 @@ export default function Evaluate() {
         <Text style={{ fontWeight: '700', fontSize: 17 }}>Mức độ vết thương</Text>
         <Choices<Severity | ''> value={severity} onChange={setSeverity} options={(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))} />
         <Muted>Bác sĩ chọn mức độ sau khi đánh giá; mức độ không tự tính từ diện tích hay diễn biến.</Muted>
-        <Field label="Đặc điểm vết thương" value={characteristics} onChangeText={setCharacteristics} multiline placeholder="Nền, bờ, da xung quanh, dịch tiết, mô hạt…" />
-        <Field label="Triệu chứng" value={symptoms} onChangeText={setSymptoms} multiline placeholder="Đau, khó chịu…" />
-        <Field label="Nguồn thông tin triệu chứng" value={symptomSource} onChangeText={setSymptomSource} />
+        <Field optional label="Đặc điểm vết thương" value={characteristics} onChangeText={setCharacteristics} multiline placeholder="Nền, bờ, da xung quanh, dịch tiết, mô hạt…" />
+        <Field optional label="Triệu chứng" value={symptoms} onChangeText={setSymptoms} multiline placeholder="Đau, khó chịu…" />
+        <Field optional label="Nguồn thông tin triệu chứng" value={symptomSource} onChangeText={setSymptomSource} />
         <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
         <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
-        <Field label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
-        <Field label="Ngày tái đánh giá" value={nextReview} onChangeText={setNextReview} placeholder="dd/mm/yyyy" />
+        <Field optional label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
+        <Field optional label="Ngày tái đánh giá" value={nextReview} onChangeText={setNextReview} placeholder="dd/mm/yyyy" />
         <SwitchRow label="Công bố cho bệnh nhân xem" value={visible} onChange={setVisible} />
       </Card>
       {err ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{err}</Text> : null}
@@ -101,14 +101,14 @@ export default function Evaluate() {
   );
 }
 
-/** Nhãn câu hỏi kèm dấu * bắt buộc và nút (i) mở giải thích ngắn (mẫu Swift). */
+/** Nhãn câu hỏi kèm nút (i) mở giải thích ngắn. Chỉ ghi "(không bắt buộc)" cho câu không bắt buộc, cùng quy ước với Field (A05). */
 function Q({ label, required, help, children }: { label: string; required?: boolean; help: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <View style={{ gap: 6 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>
-          {required ? <Text style={{ color: C.red }}>* </Text> : null}{label}
+          {label}{required ? null : <Text style={{ color: C.textSoft, fontWeight: '400' }}> (không bắt buộc)</Text>}
         </Text>
         <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityLabel={`Giải thích: ${label}`} accessibilityState={{ expanded: open }} hitSlop={10} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name={open ? 'information-circle' : 'information-circle-outline'} size={18} color={C.primary} />

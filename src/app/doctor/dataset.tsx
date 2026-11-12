@@ -34,8 +34,8 @@ export default function Dataset() {
         value={filter}
         onChange={setFilter}
         options={[
-          { value: 'unlabeled', label: `Chưa có (${count('unlabeled')})` },
-          { value: 'labeled', label: `Đã có (${count('labeled')})` },
+          { value: 'unlabeled', label: `Chưa đo (${count('unlabeled')})` },
+          { value: 'labeled', label: `Đã đo (${count('labeled')})` },
           { value: 'excluded', label: `Đã loại (${count('excluded')})` },
         ]}
       />
@@ -64,7 +64,7 @@ export default function Dataset() {
       ) : (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           {shown.map((im) => (
-            <ImageTile key={im.id} image={im} width={160} />
+            <ImageTile key={im.id} image={im} width={160} showOwner />
           ))}
         </View>
       )}

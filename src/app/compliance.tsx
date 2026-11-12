@@ -25,7 +25,7 @@ export default function Compliance() {
                 <Chip label={it.verified ? 'Đã đối chiếu nguồn' : 'Chưa xác minh'} tone={it.verified ? 'green' : 'amber'} />
               </View>
               <Muted><Text style={{ fontWeight: '700' }}>Áp dụng: </Text>{it.appliesTo}</Muted>
-              <Muted><Text style={{ fontWeight: '700' }}>Trong app: </Text>{it.inApp}</Muted>
+              <Muted><Text style={{ fontWeight: '700' }}>Trong ứng dụng: </Text>{it.inApp}</Muted>
               {it.note ? <Muted style={{ color: C.amber }}>{it.note}</Muted> : null}
               <TextLink label="Mở nguồn" onPress={() => WebBrowser.openBrowserAsync(it.source)} />
             </Card>

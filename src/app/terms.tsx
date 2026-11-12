@@ -2,7 +2,7 @@ import { Card, Header, H, Muted, Screen } from '@/components/ui';
 import { TERMS_VERSION } from '@/lib/access';
 
 export default function Terms() {
-  return <Screen header={<Header back title="Điều khoản & quyền riêng tư" subtitle="Điều khoản cho bản demo Plasma Pro" />}>
+  return <Screen header={<Header back title="Điều khoản" subtitle="Điều khoản sử dụng và quyền riêng tư, bản demo" />}>
     <Card><H>1. Phạm vi sử dụng</H><Muted>Đây là ứng dụng trình diễn. Tài khoản, lịch trình, thiết bị và dữ liệu được lưu trên máy đang dùng; chưa kết nối hệ thống điều trị thật. Chỉ dùng dữ liệu và mật khẩu thử nghiệm.</Muted></Card>
     <Card><H>2. Tài khoản và vai trò</H><Muted>Bệnh nhân theo dõi hồ sơ của mình. Bác sĩ được phân công quản lý hồ sơ, chụp ảnh, nhập diện tích đã đo và đánh giá mức Nhẹ, Trung bình hoặc Nặng. Tài khoản bác sĩ và kỹ thuật mới cần quản trị duyệt.</Muted></Card>
     <Card><H>3. Thông tin được lưu</H><Muted>Ứng dụng lưu thông tin đăng ký, hồ sơ, ảnh vết thương, diện tích, đánh giá và lịch sử thiết bị để thể hiện luồng theo dõi. Khi đồng ý, ứng dụng ghi phiên bản điều khoản và thời điểm chấp thuận.</Muted></Card>

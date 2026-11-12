@@ -7,17 +7,17 @@ import { SEVERITY } from '@/lib/access';
 import { AreaChart } from '@/components/AreaChart';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { ImageTile } from '@/components/items';
-import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, TextLink } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, TextLink, StatusChip } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
+import { WOUND } from '@/theme.status';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
-import { areaReview, courseProgress, fmtDuration, followUpDates, phasesOf, localDay } from '@/lib/course';
+import { areaReview, courseProgress, followUpDates, phasesOf, localDay } from '@/lib/course';
 import { fmtDate, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
 import { assessmentSummary } from '@/lib/assessment';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
-import { modeLabel } from '@/lib/device/capabilities';
 
 // BS04 – Chi tiết vết thương: vị trí, ngày bắt đầu, album ảnh theo ngày, diện tích đã nhập, lịch sử đánh giá.
 export default function WoundDetail() {
@@ -72,7 +72,7 @@ export default function WoundDetail() {
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
+          <StatusChip status={WOUND[w.status]} label={WOUND_STATUS[w.status].label} />
           <Chip label={sev ? `Mức độ ${SEVERITY[sev].label.toLowerCase()}` : 'Chưa đánh giá mức độ'} tone={sev ? SEVERITY[sev].tone : 'gray'} />
           {isDoctor && retakes.length > 0 && (
             <Pressable accessibilityRole="button" hitSlop={10} onPress={() => notify(`Đã yêu cầu chụp lại ${retakes.length} ảnh`, retakes.map((im) => `${im.id}: ${im.retakeRequested}`).join('\n'))}>
@@ -103,7 +103,7 @@ export default function WoundDetail() {
           </View>
         ) : <Muted>Chưa có ảnh đã đo diện tích.</Muted>}
         <AreaChart images={images} />
-        {isDoctor && <Button label="Chụp / thêm ảnh có hướng dẫn" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />}
+        {isDoctor && <Button label="Chụp ảnh có hướng dẫn" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />}
       </Card>
 
       {/* Đợt điều trị: một dòng tóm tắt; giai đoạn, liều, tuân thủ và mốc xem lại nằm trong phần thu gọn. */}
@@ -111,16 +111,17 @@ export default function WoundDetail() {
         <SectionTitle icon="flash-outline" right={isDoctor ? <TextLink label={plan ? 'Sửa đợt' : '+ Lập đợt'} onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} /> : null}>
           Đợt điều trị
         </SectionTitle>
+        {plan && isDoctor && <DoseRows plan={plan} />}
         {plan ? (
           <Disclosure
-            // Bác sĩ đọc nhanh một dòng nén; bệnh nhân thấy câu ngắn, liều nằm thành dòng có nhãn khi mở (rà soát thiết kế 12/11/2026).
-            title={!isDoctor ? (currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1} trên ${pr!.phaseCount}` : `${phasesOf(plan).length} giai đoạn`) : currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1}/${pr!.phaseCount} · mức ${plan.doseLevel ?? '—'}${plan.treatmentMode ? ` · ${modeLabel(plan.treatmentMode)}` : ''} · ${fmtDuration(plan.durationSec)}` : `${phasesOf(plan).length} giai đoạn · mức ${plan.doseLevel ?? '—'}`}
-            summary={!isDoctor ? (pr ? `Đã xong ${pr.done}/${pr.total} buổi, ${PLAN_STATUS[plan.status].label.toLowerCase()}` : PLAN_STATUS[plan.status].label) : pr ? `${pr.done}/${pr.total} buổi${isDoctor && pr.missed > 0 ? ` · bỏ lỡ ${pr.missed}` : ''}${isDoctor && pr.extra > 0 ? ` · ngoài lịch ${pr.extra}` : ''} · ${PLAN_STATUS[plan.status].label}` : PLAN_STATUS[plan.status].label}
+            // Tiêu đề là giai đoạn, dòng tóm tắt là tiến độ; liều của bác sĩ hiện thành cặp nhãn và giá trị ngay trên (V29).
+            title={currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1} trên ${pr!.phaseCount}` : `${phasesOf(plan).length} giai đoạn`}
+            summary={pr ? `Đã xong ${pr.done}/${pr.total} buổi${isDoctor && pr.missed > 0 ? `, bỏ lỡ ${pr.missed}` : ''}${isDoctor && pr.extra > 0 ? `, ngoài lịch ${pr.extra}` : ''}, ${PLAN_STATUS[plan.status].label.toLowerCase()}` : PLAN_STATUS[plan.status].label}
             summaryTone={pr && isDoctor && pr.missed + pr.extra > 0 ? C.amber : undefined}>
             <Muted>Phiên bản {plan.version}{plan.status === 'active' && pr?.next ? ` · buổi tiếp theo ${fmtDate(pr.next)}` : ''}</Muted>
             {review && <ReviewNote review={review} forPatient={!isDoctor} />}
             <PhaseList plan={plan} current={pr?.phaseIndex} />
-            <DoseRows plan={plan} />
+            {!isDoctor && <DoseRows plan={plan} />}
             {pr && isDoctor && <ProgressRows pr={pr} />}
           </Disclosure>
         ) : <Muted>Chưa có đợt điều trị cho vết thương này.</Muted>}

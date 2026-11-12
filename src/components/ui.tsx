@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useSegments } from 'expo-router';
 import { Children, useState, type ComponentProps, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, View, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -13,7 +13,7 @@ import { MONO, Text, TextInput } from '@/components/Text';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useStore } from '@/lib/store';
 import type { Role, WoundImage } from '@/lib/types';
-import { bar, C, cardShape, elevation, G, radius, radiusExtra, shadow, type GradientName, T, type Tone } from '@/theme';
+import { bar, C, cardShape, elevation, G, radius, interaction, radiusExtra, semantic, type Semantic, shadow, size, type GradientName, T, type Tone, typeScale, space } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -35,10 +35,11 @@ export function Header({
         {me && !back ? <RoleAvatar role={me.role} /> : null}
         <View style={{ flex: 1, paddingHorizontal: back ? 4 : 10 }}>
           <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
+          {/* Biểu tượng vai trò không đứng một mình (V21): màn không có dòng phụ thì ghi tên vai trò cạnh biểu tượng. */}
           {(me && back) || subtitle ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
               {me && back ? <View accessible accessibilityLabel={`Vai trò: ${ROLE_BADGE[me.role].label}`}><Ionicons name={ROLE_BADGE[me.role].icon} size={14} color={C.textSoft} /></View> : null}
-              {subtitle ? <Text style={[s.headerSub, { marginTop: 0, flexShrink: 1 }]} numberOfLines={1}>{subtitle}</Text> : null}
+              <Text style={[s.headerSub, { marginTop: 0, flexShrink: 1 }]} numberOfLines={2}>{subtitle || (me ? ROLE_BADGE[me.role].label : '')}</Text>
             </View>
           ) : null}
         </View>
@@ -69,7 +70,7 @@ export function RoleAvatar({ role }: { role: Role }) {
 export function RoleBadge({ role }: { role: Role }) {
   const b = ROLE_BADGE[role];
   return (
-    <View accessible accessibilityLabel={`Vai trò: ${b.label}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: C.neutralSoft }}>
+    <View accessible accessibilityLabel={`Vai trò: ${b.label}`} style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: C.neutralSoft }}>
       <Ionicons name={b.icon} size={12} color={C.textSoft} />
       <Text style={{ fontSize: T.caption, fontWeight: '600', color: C.textSoft }}>{b.label}</Text>
     </View>
@@ -104,7 +105,8 @@ export function Screen({ children, header, padded = true }: { children: ReactNod
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, width: '100%', maxWidth: 1080, alignSelf: 'center' }}>
       {header}
-      <ScrollView contentContainerStyle={[padded && { paddingHorizontal: 20, paddingTop: 18, gap: 16 }, { paddingBottom: bottom }]} keyboardShouldPersistTaps="handled">
+      {/* Nội dung không rộng quá size.maxContent (cộng lề 2 x 20) để dòng chữ và nút không giãn hết khổ máy tính bảng (A08). */}
+      <ScrollView contentContainerStyle={[padded && { paddingHorizontal: 20, paddingTop: 18, gap: space.l }, { paddingBottom: bottom, width: '100%', maxWidth: size.maxContent + 40, alignSelf: 'center' }]} keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>
     </View>
@@ -143,16 +145,16 @@ export function GradientCard({
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[cardShape(), { flexGrow: 1, padding: 14, paddingTop: 48, minHeight: 196, gap: 6, shadowColor: G[colors][1], shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 1, height: 4 }, elevation: 4 }]}>
-        <Text style={{ color: C.onPrimary, fontWeight: '700', fontSize: 16, letterSpacing: 0.2 }} numberOfLines={2}>{title}</Text>
+        <Text style={{ color: C.onPrimary, fontWeight: '700', fontSize: T.body, letterSpacing: 0.2 }} numberOfLines={2}>{title}</Text>
         <View style={{ flex: 1 }}>
           {lines.map((l, i) => (
-            <Text key={i} style={{ color: C.onPrimary, fontSize: 12, lineHeight: 17 }}>{l}</Text>
+            <Text key={i} style={{ color: C.onPrimary, fontSize: T.min, lineHeight: 17 }}>{l}</Text>
           ))}
         </View>
         {value !== undefined && (
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
-            <Text style={{ color: C.onPrimary, fontWeight: '500', fontSize: 24, letterSpacing: 0.2 }}>{value}</Text>
-            {unit ? <Text style={{ color: C.onPrimary, fontSize: 12, marginBottom: 4 }}>{unit}</Text> : null}
+            <Text style={{ color: C.onPrimary, fontWeight: '500', fontSize: T.stat, letterSpacing: 0.2 }}>{value}</Text>
+            {unit ? <Text style={{ color: C.onPrimary, fontSize: T.min, marginBottom: 4 }}>{unit}</Text> : null}
           </View>
         )}
       </LinearGradient>
@@ -191,7 +193,7 @@ export function SectionTitle({ children, right, action, onAction }: { icon?: Ico
       <View style={{ flex: 1 }} />
       {right}
       {action && (
-        <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button" accessibilityLabel={action} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44, paddingHorizontal: 4 }}>
+        <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button" accessibilityLabel={action} style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: 44, paddingHorizontal: 4 }}>
           <Text style={{ color: C.primary, fontSize: T.label, fontWeight: '600' }}>{action}</Text>
         </Pressable>
       )}
@@ -220,6 +222,11 @@ export function Chip({ label, tone = 'blue', icon }: { label: string; tone?: Ton
   );
 }
 
+/** Chip trạng thái theo bảng trong src/theme.status.ts: tông lấy từ vai trò ngữ nghĩa, luôn kèm biểu tượng và chữ. */
+export function StatusChip({ status, label }: { status: { role: Semantic; icon: string }; label: string }) {
+  return <Chip label={label} tone={semantic[status.role].tone} icon={(status.icon || undefined) as IconName | undefined} />;
+}
+
 export function SimBadge() {
   return <Chip label="Dữ liệu mô phỏng" tone="amber" icon="flask-outline" />;
 }
@@ -234,56 +241,101 @@ export function IconBadge({ icon, tone = 'blue', size = 40 }: { icon: IconName; 
 }
 
 export function Button({
-  label, onPress, icon, variant = 'primary', disabled, loading, style,
+  label, onPress, icon, variant = 'primary', disabled, loading, style, reason,
 }: {
-  label: string; onPress: () => void; icon?: IconName; variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  /** dangerSolid: hành động dừng hoặc nguy hiểm cần thấy ngay (Dừng chiếu ở T02), nền đỏ đặc, cao size.buttonDanger. */
+  label: string; onPress: () => void; icon?: IconName; variant?: 'primary' | 'secondary' | 'danger' | 'dangerSolid' | 'ghost';
   disabled?: boolean; loading?: boolean; style?: StyleProp<ViewStyle>;
+  /** Lý do nút đang khóa, hiện ngay dưới nút (V20). Chỉ hiện khi disabled. */
+  reason?: string;
 }) {
-  const fg = { primary: C.onPrimary, secondary: C.primary, danger: C.red, ghost: C.primary }[variant];
+  const off = !!disabled && !loading;
+  const fg = off ? interaction.disabled.fg : { primary: C.onPrimary, secondary: C.primary, danger: C.red, dangerSolid: C.onPrimary, ghost: C.primary }[variant];
   const inner = (
     <>
       {loading ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={18} color={fg} /> : null}
       <Text style={[s.btnText, { color: fg }]}>{label}</Text>
     </>
   );
-  return (
+  const btn = (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityHint={off ? reason : undefined}
       accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
       onPress={onPress}
       disabled={disabled || loading}
-      style={({ pressed }) => [{ opacity: disabled ? 0.45 : pressed ? 0.8 : 1 }, variant === 'primary' && s.btnShadow, style]}>
-      {variant === 'primary' ? (
+      style={({ pressed }) => [{ opacity: pressed && !off ? interaction.pressedOpacity : 1 }, variant === 'primary' && !off && s.btnShadow, !reason && style]}>
+      {/* Nút khóa: nền neutral, chữ textSoft (6,58:1), không bóng; bản cũ giảm độ mờ còn 2,2:1. */}
+      {off ? (
+        <View style={[s.btn, { backgroundColor: variant === 'ghost' ? 'transparent' : interaction.disabled.bg }, variant === 'dangerSolid' && { minHeight: size.buttonDanger }]}>
+          {inner}
+        </View>
+      ) : variant === 'primary' ? (
         <LinearGradient colors={G.fab} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.btn}>
           {inner}
         </LinearGradient>
       ) : (
-        <View style={[s.btn, { backgroundColor: variant === 'secondary' ? C.onPrimary : variant === 'danger' ? C.redSoft : 'transparent' }, variant === 'secondary' && { borderWidth: 1.5, borderColor: C.primarySoft }]}>
+        <View style={[s.btn, { backgroundColor: variant === 'secondary' ? C.onPrimary : variant === 'danger' ? C.redSoft : variant === 'dangerSolid' ? semantic.danger.solid! : 'transparent' }, variant === 'secondary' && { borderWidth: 1.5, borderColor: C.primarySoft }, variant === 'dangerSolid' && { minHeight: size.buttonDanger }]}>
           {inner}
         </View>
       )}
     </Pressable>
   );
+  if (!reason) return btn;
+  return (
+    <View style={[{ gap: 6 }, style]}>
+      {btn}
+      {off ? <Text style={s.hint}>{reason}</Text> : null}
+    </View>
+  );
 }
 
-export function Field({ label, hint, error, ...props }: TextInputProps & { label: string; hint?: string; error?: string | null }) {
+/**
+ * Trên web, trình duyệt vẽ vòng focus mặc định (outline: auto) đè lên viền ô nhập; outline-width không tắt được kiểu auto.
+ * Kiểu RN chưa khai báo 'none' nên ép kiểu; chỉ áp trên web, trạng thái focus vẫn hiện bằng viền 2 px primary (A07).
+ */
+const NO_OUTLINE = (Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) as unknown as TextStyle;
+
+/**
+ * Ô tìm kiếm có biểu tượng kính lúp. Cùng viền và trạng thái focus với Field (interaction.inputBorder), không có nhãn hiển thị
+ * nên bắt buộc truyền accessibilityLabel qua label (A07, audit lần 2).
+ */
+export function SearchField({ label, ...props }: TextInputProps & { label: string }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <View style={[s.input, { flexDirection: 'row', alignItems: 'center', gap: space.s, paddingVertical: 0 }, focused && { borderColor: interaction.inputBorder.focus, borderWidth: 2, paddingHorizontal: 13 }]}>
+      <Ionicons name="search" size={size.icon.s} color={C.textSoft} />
+      <TextInput accessibilityLabel={label} placeholderTextColor={C.textFaint} autoCorrect={false} {...props}
+        onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
+        onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
+        style={{ flex: 1, minHeight: size.input - 2, fontSize: T.body, color: C.text, ...NO_OUTLINE }} />
+    </View>
+  );
+}
+
+/** optional: ghi "(không bắt buộc)" sau nhãn (V13). Viền theo interaction.inputBorder: nghỉ, đang nhập, lỗi. */
+export function Field({ label, hint, error, optional, ...props }: TextInputProps & { label: string; hint?: string; error?: string | null; optional?: boolean }) {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={{ gap: 6 }}>
-      <Text style={s.label}>{label}</Text>
-      <TextInput accessibilityLabel={label} placeholderTextColor={C.textFaint} {...props} style={[s.input, props.multiline && { minHeight: 80, textAlignVertical: 'top' }, error ? { borderColor: C.red } : null, props.style]} />
+      <Text style={s.label}>{label}{optional ? <Text style={{ color: C.textSoft, fontWeight: '400' }}> (không bắt buộc)</Text> : null}</Text>
+      <TextInput accessibilityLabel={optional ? `${label}, không bắt buộc` : label} placeholderTextColor={C.textFaint} {...props}
+        onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
+        onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
+        style={[s.input, props.multiline && { minHeight: 80, textAlignVertical: 'top' }, focused && { borderColor: interaction.inputBorder.focus, borderWidth: 2, paddingHorizontal: 13, paddingVertical: 11 }, error ? { borderColor: interaction.inputBorder.error } : null, props.style]} />
       {error ? <Text style={s.error} accessibilityLiveRegion="polite">{error}</Text> : hint ? <Text style={s.hint}>{hint}</Text> : null}
     </View>
   );
 }
 
-export function Choices<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
+export function Choices<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string; a11y?: string }[]; onChange: (v: T) => void }) {
   return (
-    <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+    <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
       {options.map((o) => {
         const on = o.value === value;
         return (
-          <Pressable key={o.value} onPress={() => onChange(o.value)} accessibilityRole="radio" accessibilityLabel={o.label} accessibilityState={{ checked: on, selected: on }} style={[s.choice, on && { backgroundColor: C.primary, borderColor: C.primary }]}>
+          <Pressable key={o.value} onPress={() => onChange(o.value)} accessibilityRole="radio" accessibilityLabel={o.a11y ?? o.label} accessibilityState={{ checked: on, selected: on }} style={[s.choice, on && { backgroundColor: C.primary, borderColor: C.primary }]}>
             <Text style={{ color: on ? C.onPrimary : C.grey, fontWeight: '500', fontSize: T.label }}>{o.label}</Text>
           </Pressable>
         );
@@ -313,7 +365,7 @@ export function InfoRow({ label, value, mono, stack }: { label: string; value: R
   const stacked = stack ?? (isText && (String(value).length > 24 || label.length + String(value).length > 38));
   if (stacked) {
     return (
-      <View style={{ gap: 2, paddingVertical: 4 }}>
+      <View style={{ gap: space.xxs, paddingVertical: 4 }}>
         <Text style={s.infoLabel}>{label}</Text>
         {isText ? <Text style={[{ color: C.text, fontSize: T.body, fontWeight: '500' }, mono && { fontFamily: MONO, fontSize: T.caption }]} selectable>{value}</Text> : value}
       </View>
@@ -334,10 +386,10 @@ export function InfoRow({ label, value, mono, stack }: { label: string; value: R
 /** Lưới số liệu ngắn 2 cột thay cho nhiều dòng nhãn và giá trị (đề xuất 6). */
 export function StatGrid({ items }: { items: { label: string; value: string | number; tone?: 'amber' | 'red' | 'green' }[] }) {
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
       {items.map((it) => (
         <View key={it.label} accessible accessibilityLabel={`${it.label}: ${it.value}`} style={{ flexGrow: 1, flexBasis: '45%', padding: 10, borderRadius: radius.m, backgroundColor: it.tone === 'amber' ? C.amberSoft : it.tone === 'red' ? C.redSoft : it.tone === 'green' ? C.greenSoft : C.surfaceMuted }}>
-          <Text style={{ fontSize: T.stat, fontWeight: '700', color: it.tone === 'amber' ? C.amber : it.tone === 'red' ? C.red : C.text }}>{it.value}</Text>
+          <Text style={{ fontSize: typeScale.stat.size, lineHeight: typeScale.stat.line, fontWeight: '700', color: it.tone === 'amber' ? C.amber : it.tone === 'red' ? C.red : C.text }}>{it.value}</Text>
           <Text style={{ fontSize: T.small, color: C.textSoft }}>{it.label}</Text>
         </View>
       ))}
@@ -347,7 +399,7 @@ export function StatGrid({ items }: { items: { label: string; value: string | nu
 
 export function Stat({ value, label, tone = 'blue', unit }: { value: string | number; label: string; tone?: Tone; unit?: string }) {
   return (
-    <View accessible accessibilityLabel={`${label}: ${value}${unit ? ' ' + unit : ''}`} style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
+    <View accessible accessibilityLabel={`${label}: ${value}${unit ? ' ' + unit : ''}`} style={{ flex: 1, flexDirection: 'row', gap: space.s }}>
       <View style={{ width: 2, borderRadius: 4, backgroundColor: TONE_BAR[tone], opacity: 0.8 }} />
       <View style={{ paddingVertical: 2, flex: 1, minWidth: 0 }}>
         <Text style={{ color: C.textSoft, fontWeight: '500', fontSize: T.small }}>{label}</Text>
@@ -362,7 +414,7 @@ export function Stat({ value, label, tone = 'blue', unit }: { value: string | nu
 
 export function Empty({ icon = 'file-tray-outline', text }: { icon?: IconName; text: string }) {
   return (
-    <View style={{ alignItems: 'center', padding: 20, gap: 8 }}>
+    <View style={{ alignItems: 'center', padding: 20, gap: space.s }}>
       <Ionicons name={icon} size={30} color={C.textFaint} />
       <Text style={{ color: C.textSoft, textAlign: 'center' }}>{text}</Text>
     </View>
@@ -401,8 +453,8 @@ export function SwitchRow({ label, detail, value, onChange, disabled, muted }: {
       accessibilityRole="switch"
       accessibilityLabel={label}
       accessibilityState={{ checked: value, disabled }}
-      style={({ pressed }) => ({ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6, paddingHorizontal: muted ? 12 : 8, marginHorizontal: muted ? 0 : -8, borderRadius: radius.m, backgroundColor: pressed ? C.neutralSoft : muted ? C.surfaceMuted : 'transparent' })}>
-      <View style={{ flex: 1, gap: 2 }}>
+      style={({ pressed }) => ({ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: space.m, paddingVertical: 6, paddingHorizontal: muted ? 12 : 8, marginHorizontal: muted ? 0 : -8, borderRadius: radius.m, backgroundColor: pressed ? C.neutralSoft : muted ? C.surfaceMuted : 'transparent' })}>
+      <View style={{ flex: 1, gap: space.xxs }}>
         <Text style={{ color: C.text, fontWeight: detail ? '600' : '400' }}>{label}</Text>
         {detail ? <Text style={{ color: C.textSoft, fontSize: T.small, lineHeight: 21 }}>{detail}</Text> : null}
       </View>
@@ -415,16 +467,18 @@ export function SwitchRow({ label, detail, value, onChange, disabled, muted }: {
  * Mục thu gọn: một dòng tiêu đề (biểu tượng, tên, tóm tắt ngắn bên phải), chạm để mở nội dung.
  * Dùng cho thông tin xem khi cần (liều, giải thích, công tắc quản trị), giữ màn hình ít chữ.
  */
-export function Disclosure({ title, summary, icon, children, initiallyOpen = false, summaryTone, right }: { title: string; summary?: string; icon?: IconName; children: ReactNode; initiallyOpen?: boolean; summaryTone?: string; right?: ReactNode }) {
+export function Disclosure({ title, summary, icon, children, initiallyOpen = false, summaryTone, right, below }: { title: string; summary?: string; icon?: IconName; children: ReactNode; initiallyOpen?: boolean; summaryTone?: string; right?: ReactNode; below?: ReactNode }) {
   const [open, setOpen] = useState(initiallyOpen);
   return (
     <View style={{ gap: 10 }}>
       <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={summary ? `${title}, ${summary}` : title}
         style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         {icon ? <Ionicons name={icon} size={22} color={C.primary} /> : null}
-        <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flex: 1, gap: space.xxs }}>
           <Text style={{ color: C.text, fontWeight: '700' }}>{title}</Text>
           {summary ? <Text style={{ color: summaryTone ?? C.textSoft, fontSize: T.small }} numberOfLines={2}>{summary}</Text> : null}
+          {/* below: chip trạng thái nằm dưới tiêu đề khi đặt bên phải sẽ ép tiêu đề xuống dòng (A09). */}
+          {below ? <View style={{ flexDirection: 'row', marginTop: 2 }}>{below}</View> : null}
         </View>
         {right}
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={22} color={C.textSoft} />
@@ -445,6 +499,35 @@ export function TextLink({ label, onPress, tone = C.primary, accessibilityLabel 
       style={({ pressed }) => ({ minHeight: 44, minWidth: 44, justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}>
       <Text style={{ color: tone, fontWeight: '600' }}>{label}</Text>
     </Pressable>
+  );
+}
+
+/**
+ * Thanh các bước của một luồng (T01, B06): bước đã qua có dấu tích, bước hiện tại tô màu chính. step đếm từ 1.
+ * onStep: cho phép chạm để chuyển bước (B06), mỗi bước thành một tab có vùng chạm 44.
+ */
+export function StepRow({ steps, step, onStep }: { steps: string[]; step: number; onStep?: (step: number) => void }) {
+  return (
+    <View accessibilityRole={onStep ? 'tablist' : 'progressbar'} accessibilityLabel={`Bước ${step} trên ${steps.length}: ${steps[step - 1]}`} style={{ flexDirection: 'row', gap: 6 }}>
+      {steps.map((label, i) => {
+        const n = i + 1;
+        const done = n < step;
+        const current = n === step;
+        const inner = (
+          <>
+            <View style={{ height: 4, borderRadius: 2, backgroundColor: done || current ? C.primary : C.border }} />
+            <Text style={{ fontSize: T.caption, color: current ? C.text : C.textSoft, fontWeight: current ? '700' : '400' }}>{done ? `✓ ${label}` : `${n}. ${label}`}</Text>
+          </>
+        );
+        return onStep ? (
+          <Pressable key={label} onPress={() => onStep(n)} accessibilityRole="tab" accessibilityLabel={`${n}. ${label}`} accessibilityState={{ selected: current }} style={{ flex: 1, gap: space.xs, minHeight: size.touch, justifyContent: 'center' }}>
+            {inner}
+          </Pressable>
+        ) : (
+          <View key={label} style={{ flex: 1, gap: space.xs }}>{inner}</View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -471,12 +554,14 @@ export function ListCard({ children }: { children: ReactNode }) {
 /** Ô số lớn làm điểm neo (đếm việc, tổng quan). Bấm được nếu có onPress. */
 export function NumberTile({ value, label, tone = 'blue', icon, onPress }: { value: string | number; label: string; tone?: Tone; icon?: IconName; onPress?: () => void }) {
   const [bg, fg] = TONES[tone];
+  const isCode = typeof value === 'string' && /^[A-Za-z]{1,4}-\d+$/.test(value);
   return (
     <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={`${value} ${label}`}
-      style={({ pressed }) => ({ flexGrow: 1, flexBasis: '30%', minHeight: 88, padding: 12, gap: 2, borderRadius: radius.m, backgroundColor: bg, opacity: pressed ? 0.8 : 1 })}>
+      style={({ pressed }) => ({ flexGrow: 1, flexBasis: '30%', minHeight: 88, padding: 12, gap: space.xxs, borderRadius: radius.m, backgroundColor: bg, opacity: pressed ? 0.8 : 1 })}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         {icon ? <Ionicons name={icon} size={18} color={fg} /> : null}
-        <Text style={{ fontSize: 28, lineHeight: 34, fontWeight: '700', color: fg }}>{value}</Text>
+        {/* Giá trị là mã thiết bị (dạng TB-001) thì dùng cỡ nhỏ hơn và không bẻ dòng: mã bị bẻ giữa chừng khó đọc (A09). */}
+        <Text numberOfLines={isCode ? 1 : undefined} style={{ fontSize: isCode ? T.screenTitle : typeScale.stat.size, lineHeight: typeScale.stat.line, fontWeight: '700', color: fg, flexShrink: 1 }}>{value}</Text>
       </View>
       <Text style={{ fontSize: T.small, color: C.text, fontWeight: '600' }}>{label}</Text>
     </Pressable>
@@ -498,29 +583,30 @@ export const s = StyleSheet.create({
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 },
   roundBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: C.text, fontSize: 22, fontWeight: '700', letterSpacing: 0.2 },
+  headerTitle: { color: C.text, fontSize: T.screenTitle, fontWeight: '700', letterSpacing: 0.2 },
   headerSub: { color: C.textSoft, fontSize: T.small, marginTop: 2 },
-  headerBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.primarySoft, paddingHorizontal: 12, paddingVertical: 8, minHeight: 44, borderRadius: 22 },
+  headerBtn: { flexDirection: 'row', alignItems: 'center', gap: space.xs, backgroundColor: C.primarySoft, paddingHorizontal: 12, paddingVertical: 8, minHeight: 44, borderRadius: 22 },
   headerBtnText: { color: C.primary, fontWeight: '500', fontSize: T.small },
   card: { backgroundColor: C.card, padding: 16, gap: 10 },
   cardFlat: { borderWidth: 1, borderColor: C.cardBorder },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginTop: 4 },
-  sectionTitle: { color: C.text, fontSize: T.cardTitle, fontWeight: '700', letterSpacing: 0.2, flexShrink: 1 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, alignSelf: 'flex-start' },
+  sectionTitle: { color: C.text, fontSize: typeScale.sectionTitle.size, lineHeight: typeScale.sectionTitle.line, fontWeight: '700', letterSpacing: 0.2, flexShrink: 1 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, alignSelf: 'flex-start' },
   chipText: { fontSize: T.caption, fontWeight: '600' },
-  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 24 },
+  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.s, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 24 },
   btnShadow: { ...elevation[2], borderRadius: radiusExtra.button },
   btnText: { fontSize: T.body, fontWeight: '500', letterSpacing: 0.3 },
   label: { color: C.grey, fontSize: T.label, fontWeight: '500' },
-  input: { backgroundColor: C.surfaceMuted, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: T.body, color: C.text },
+  // outlineStyle none: tắt vòng focus mặc định của trình duyệt; trạng thái focus do viền 2 px màu primary đảm nhận (A07).
+  input: { backgroundColor: C.surfaceMuted, borderWidth: 1, borderColor: interaction.inputBorder.rest, borderRadius: radiusExtra.input, minHeight: size.input, paddingHorizontal: 14, paddingVertical: 12, fontSize: T.body, color: C.text, ...NO_OUTLINE },
   hint: { color: C.textFaint, fontSize: T.caption },
   error: { color: C.red, fontSize: T.caption, fontWeight: '500' },
   choice: { paddingHorizontal: 14, paddingVertical: 8, minHeight: 44, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: C.border, backgroundColor: C.card },
-  seg: { flexDirection: 'row', backgroundColor: C.card, borderRadius: 24, padding: 4, gap: 4, ...shadow },
+  seg: { flexDirection: 'row', backgroundColor: C.card, borderRadius: 24, padding: 4, gap: space.xs, ...shadow },
   segItem: { flex: 1, paddingVertical: 9, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
   segItemOn: { backgroundColor: C.primary },
   segText: { color: C.grey, fontSize: T.label, fontWeight: '500', textAlign: 'center' },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 4 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: space.m, paddingVertical: 4 },
   infoLabel: { color: C.textSoft, fontSize: T.label },
   infoValue: { color: C.text, fontSize: T.label, fontWeight: '500', flexShrink: 1, textAlign: 'right' },
 });

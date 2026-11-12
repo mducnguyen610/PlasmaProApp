@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { C, interaction, semantic, size, space } from './theme.ts';
 import * as S from './theme.status.ts';
 import { contrast } from './theme.contrast.test.ts';
+import * as F from './lib/format.ts';
+import { SEVERITY } from './lib/access.ts';
 
 const AA = 4.5;
 for (const [role, v] of Object.entries(semantic)) {
@@ -43,5 +45,19 @@ assert.equal(S.aiConfidenceLevel(0.8), 'high');
 assert.equal(S.aiConfidenceLevel(0.6), 'medium');
 assert.equal(S.aiConfidenceLevel(0.2), 'low');
 assert.equal(S.aiConfidenceLevel(0.6, { high: 0.95, medium: 0.7 }), 'low');
+
+// Kênh Wi-Fi.
+const NOW = Date.parse('2026-11-12T00:00:00Z');
+assert.equal(S.cloudState(true, null, NOW), 'never');
+assert.equal(S.cloudState(false, '2026-11-11T23:00:00Z', NOW), 'offline');
+assert.equal(S.cloudState(true, '2026-11-11T23:00:00Z', NOW), 'online');
+assert.equal(S.cloudState(true, '2026-11-09T00:00:00Z', NOW), 'stale');
+
+// Bảng nhãn đang dùng ở màn khớp vai trò chuẩn.
+for (const [k, v] of Object.entries(F.PLAN_STATUS)) assert.equal(v.tone, semantic[S.PLAN[k as keyof typeof S.PLAN].role].tone, `PLAN_STATUS.${k}`);
+for (const [k, v] of Object.entries(F.WOUND_STATUS)) assert.equal(v.tone, semantic[S.WOUND[k as keyof typeof S.WOUND].role].tone, `WOUND_STATUS.${k}`);
+for (const [k, v] of Object.entries(F.LABEL_STATUS)) assert.equal(v.tone, semantic[S.LABEL[k as keyof typeof S.LABEL].role].tone, `LABEL_STATUS.${k}`);
+for (const [k, v] of Object.entries(F.TREND)) assert.equal(v.tone, semantic[S.TREND_ROLE[k as keyof typeof S.TREND_ROLE].role].tone, `TREND.${k}`);
+for (const [k, v] of Object.entries(SEVERITY)) assert.equal(v.tone, semantic[S.SEVERITY_ROLE[k as keyof typeof S.SEVERITY_ROLE].role].tone, `SEVERITY.${k}`);
 
 console.log('theme.status: token và quy tắc màu trạng thái hợp lệ');

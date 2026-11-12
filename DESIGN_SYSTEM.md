@@ -73,8 +73,9 @@ Một họ chữ: Google Sans Flex (Regular, Medium, Bold; `src/components/Text.
 | `display` | 40 / 48 | 700 | Một số chính của màn: đồng hồ T02, diện tích B05, N05 | Nhiều cỡ khác nhau |
 | `screenTitle` | 22 / 28 | 700 | Tiêu đề thanh trên | Đúng |
 | `sectionTitle` | 20 / 26 | 700 | Tiêu đề mục (`SectionTitle`) | 18, trùng tiêu đề thẻ (V23) |
-| `cardTitle` | 17 / 24 | 700 | Tiêu đề thẻ | 18 |
-| `stat` | 28 / 34 | 700 | Số trong ô số liệu | 24 (`StatGrid`, `Ring`) và 28 (`NumberTile`) |
+| `cardTitle` | 18 / 24 | 700 | Tiêu đề thẻ (bằng `T.cardTitle`) | Đúng |
+| `stat` | 28 / 34 | 700 | Số trong ô số liệu (`NumberTile`) | Đúng |
+| `statCompact` | 24 / 30 | 700 | Số trong vòng tiến độ (`Ring`) và `StatGrid` (bằng `T.stat`) | Đúng |
 | `body` | 16 / 24 | 400 | Thân bài | Đúng |
 | `bodyStrong` | 16 / 24 | 500 | Giá trị thông số điều trị | Đúng ở `InfoRow` |
 | `label` | 15 / 20 | 500 | Nhãn ô nhập, nhãn thông số, chữ lựa chọn | Đúng |

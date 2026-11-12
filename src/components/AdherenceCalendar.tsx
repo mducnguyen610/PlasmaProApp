@@ -11,7 +11,7 @@ import { fmtDate } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import type { Reminder } from '@/lib/reminders';
 import type { DeviceSession, SessionNote, TreatmentPlan } from '@/lib/types';
-import { C, radius } from '@/theme';
+import { C, radius, T, space } from '@/theme';
 
 // Ngưỡng cảnh báo đau giống màn Báo triệu chứng; đề xuất cho demo, cần bác sĩ xác nhận.
 const HIGH_PAIN = 7;
@@ -103,7 +103,7 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
         </View>
         {/* Lưới ngày lấn 10 pt vào lề thẻ mỗi bên để ô ngày rộng tối thiểu 44 pt trên máy 360 pt (vùng chạm Apple HIG). */}
         <View style={{ flexDirection: 'row', marginHorizontal: -10 }}>
-          {WEEKDAYS.map((w) => <Text key={w} style={{ flex: 1, textAlign: 'center', fontSize: 13, color: C.textSoft, fontWeight: '600' }}>{w}</Text>)}
+          {WEEKDAYS.map((w) => <Text key={w} style={{ flex: 1, textAlign: 'center', fontSize: T.caption, color: C.textSoft, fontWeight: '600' }}>{w}</Text>)}
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -10 }}>
           {cells.map((c, i) => {
@@ -121,9 +121,9 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
                 accessibilityLabel={`Ngày ${day} tháng ${Number(m)}${k ? `: ${k.detail ?? k.label}${c.kind !== 'unsynced' ? `, ${c.count} lần` : ''}` : ''}${hasReminder ? ', có lịch hẹn' : ''}`}
                 style={{ width: `${100 / 7}%`, height: 52, padding: 2 }}>
                 <View style={{ flex: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: k ? k.bg : 'transparent', borderWidth: on ? 2 : 0, borderColor: C.primary }}>
-                  {hasReminder && <Ionicons name="calendar" size={10} color={C.violet} style={{ position: 'absolute', top: 3, right: 4 }} />}
+                  {hasReminder && <Ionicons name="calendar" size={12} color={C.violet} style={{ position: 'absolute', top: 3, right: 4 }} />}
                   {/* Ô lịch: số ngày cỡ 15 và một biểu tượng thay cho chữ cỡ 10 (đề xuất 3); chữ đầy đủ ở accessibilityLabel và ô chi tiết. */}
-                  <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 15, fontWeight: '700', color: k && c.kind !== 'rest' ? C.text : C.textFaint }}>{day}</Text>
+                  <Text maxFontSizeMultiplier={1.3} style={{ fontSize: T.label, fontWeight: '700', color: k && c.kind !== 'rest' ? C.text : C.textFaint }}>{day}</Text>
                   {k && <CellMark kind={c.kind} color={k.color} text={cellText(c, target)} />}
                 </View>
               </Pressable>
@@ -132,15 +132,18 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {reminders.length > 0 && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="calendar" size={12} color={C.violet} />
-              <Text style={{ fontSize: 13, color: C.textSoft }}>Lịch hẹn</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+              <Ionicons name="calendar" size={14} color={C.violet} />
+              <Text style={{ fontSize: T.small, color: C.textSoft }}>Lịch hẹn</Text>
             </View>
           )}
           {(['met', 'planned', 'rest', 'none', 'unsynced'] as const).map((kind) => (
-            <View key={kind} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: KIND[kind].bg, borderWidth: 1, borderColor: KIND[kind].color }} />
-              <Text style={{ fontSize: 13, color: C.textSoft }}>{KIND[kind].label}</Text>
+            <View key={kind} style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+              {/* Chú giải dùng đúng biểu tượng của ô lịch, không chỉ ô màu (V17). */}
+              <View style={{ width: 22, height: 22, borderRadius: 6, backgroundColor: KIND[kind].bg, borderWidth: 1, borderColor: kind === 'rest' ? C.cardBorder : KIND[kind].bg, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={MARK[kind] ?? 'moon-outline'} size={kind === 'planned' ? 8 : 13} color={KIND[kind].color} />
+              </View>
+              <Text style={{ fontSize: T.small, color: C.textSoft }}>{KIND[kind].label}</Text>
             </View>
           ))}
         </View>
@@ -149,13 +152,13 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
 
       {selected && (
         <Card>
-          <Text style={{ fontWeight: '700', fontSize: 16, color: C.text }}>{fmtDate(selected)}</Text>
+          <Text style={{ fontWeight: '700', fontSize: T.body, color: C.text }}>{fmtDate(selected)}</Text>
           {reminders.filter((r) => r.date === selected).map((r) => (
             <View key={r.id} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: C.violetSoft, borderRadius: radius.m, padding: 12 }}>
               <Ionicons name="calendar" size={18} color={C.violet} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontWeight: '700', color: C.text }}>{r.title}</Text>
-                <Text style={{ color: C.textSoft, fontSize: 14 }}>{r.body}</Text>
+                <Text style={{ color: C.textSoft, fontSize: T.small }}>{r.body}</Text>
               </View>
             </View>
           ))}
@@ -173,14 +176,14 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
             const n = note(s.sessionId);
             const done = s.status === 'completed';
             return (
-              <View key={s.sessionId} style={{ gap: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.border }}>
+              <View key={s.sessionId} style={{ gap: space.s, paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.border }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <View style={{ minWidth: 58, paddingVertical: 8, borderRadius: 12, backgroundColor: done ? C.primarySoft : C.amberSoft, alignItems: 'center' }}>
                     <Text style={{ fontWeight: '700', color: done ? C.primary : C.amber }}>{time(s.start)}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontWeight: '600', color: C.text }}>{done ? 'Phiên điều trị' : 'Phiên bị ngắt'} · {s.durationMin} phút</Text>
-                    <Text style={{ color: C.textSoft, fontSize: 14 }}>
+                    <Text style={{ color: C.textSoft, fontSize: T.small }}>
                       {n ? noteText(n) : 'Chưa ghi cảm giác'}
                     </Text>
                   </View>
@@ -189,21 +192,21 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
                   )}
                 </View>
                 {editing === s.sessionId && (
-                  <View style={{ gap: 8 }}>
+                  <View style={{ gap: space.s }}>
                     <PainRow label="Đau trước phiên" value={before} onChange={setBefore} />
                     <PainRow label="Đau sau phiên" value={after} onChange={setAfter} />
                     <Muted>0 = không đau, 10 = đau nhất. Có thể bỏ trống một trong hai.</Muted>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: C.text }}>Trong lúc chiếu</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    <Text style={{ fontSize: T.small, fontWeight: '600', color: C.text }}>Trong lúc chiếu</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
                       <Toggle label="Nóng rát" on={!!flags.burning} onPress={() => setFlags({ ...flags, burning: !flags.burning })} />
                       <Toggle label="Châm chích" on={!!flags.stinging} onPress={() => setFlags({ ...flags, stinging: !flags.stinging })} />
                     </View>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: C.text }}>Ngày hôm sau, da quanh vết thương</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    <Text style={{ fontSize: T.small, fontWeight: '600', color: C.text }}>Ngày hôm sau, da quanh vết thương</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
                       <Toggle label="Đỏ da" on={!!flags.rednessNextDay} onPress={() => setFlags({ ...flags, rednessNextDay: !flags.rednessNextDay })} />
                       <Toggle label="Sưng" on={!!flags.swellingNextDay} onPress={() => setFlags({ ...flags, swellingNextDay: !flags.swellingNextDay })} />
                     </View>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <View style={{ flexDirection: 'row', gap: space.s }}>
                       <View style={{ flex: 1 }}><Button label="Hủy" variant="ghost" onPress={() => setEditing(null)} /></View>
                       <View style={{ flex: 1 }}><Button label="Lưu" icon="checkmark" disabled={before === undefined && after === undefined && !Object.values(flags).some(Boolean)} onPress={save} /></View>
                     </View>
@@ -243,9 +246,9 @@ function Toggle({ label, on, onPress }: { label: string; on: boolean; onPress: (
 
 function PainRow({ label, value, onChange }: { label: string; value?: number; onChange: (v: number | undefined) => void }) {
   return (
-    <View style={{ gap: 4 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: C.text }}>{label}{value !== undefined ? `: ${value}/10` : ''}</Text>
-      <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+    <View style={{ gap: space.xs }}>
+      <Text style={{ fontSize: T.small, fontWeight: '600', color: C.text }}>{label}{value !== undefined ? `: ${value}/10` : ''}</Text>
+      <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}>
         {Array.from({ length: 11 }, (_, i) => (
           <Pressable
             key={i}
@@ -268,10 +271,11 @@ const MARK: Partial<Record<DayKind, React.ComponentProps<typeof Ionicons>['name'
 
 function CellMark({ kind, color, text }: { kind: DayKind; color: string; text: string }) {
   const icon = MARK[kind];
-  if (!icon) return null; // ngày nghỉ: chỉ làm mờ số ngày
+  if (kind === 'rest') return <Ionicons name="moon-outline" size={11} color={color} />;
+  if (!icon) return null;
   // Nhiều lần trong một buổi thì hiện số (2×, 1/2) thay biểu tượng.
   if ((kind === 'over' || kind === 'partial' || kind === 'met') && /\d/.test(text) && text !== '1×') {
-    return <Text maxFontSizeMultiplier={1.2} style={{ fontSize: 12, fontWeight: '700', color }}>{text}</Text>;
+    return <Text maxFontSizeMultiplier={1.2} style={{ fontSize: T.min, fontWeight: '700', color }}>{text}</Text>;
   }
   return <Ionicons name={icon} size={kind === 'planned' ? 8 : 15} color={color} />;
 }

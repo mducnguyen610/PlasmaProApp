@@ -147,14 +147,16 @@ export const radiusExtra = { pill: 999, button: 24, input: radius.m } as const;
 
 /**
  * Bậc chữ đích (pt trước hệ số ROLE_SCALE). size/line/weight. Các bậc trùng T giữ nguyên giá trị T;
- * sectionTitle 20 và cardTitle 17 là bậc mới, áp dụng khi chuyển màn (V23 trong báo cáo audit).
+ * sectionTitle 20 là bậc mới (V23); cardTitle và statCompact khớp T để chỉ còn một thang (A11).
  */
 export const typeScale = {
   display: { size: 40, line: 48, weight: '700' },
   screenTitle: { size: T.screenTitle, line: 28, weight: '700' },
   sectionTitle: { size: 20, line: 26, weight: '700' },
-  cardTitle: { size: 17, line: 24, weight: '700' },
+  // cardTitle theo T.cardTitle (18) đang dùng ở mọi thẻ; statCompact cho số trong vòng tiến độ và StatGrid (A11, audit lần 2).
+  cardTitle: { size: T.cardTitle, line: 24, weight: '700' },
   stat: { size: 28, line: 34, weight: '700' },
+  statCompact: { size: T.stat, line: 30, weight: '700' },
   body: { size: T.body, line: 24, weight: '400' },
   bodyStrong: { size: T.body, line: 24, weight: '500' },
   label: { size: T.label, line: 20, weight: '500' },

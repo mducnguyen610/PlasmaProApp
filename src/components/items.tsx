@@ -9,7 +9,7 @@ import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, WoundImage } from '@/lib/types';
-import { bar, C, radius } from '@/theme';
+import { bar, C, radius, T, space } from '@/theme';
 import { TODAY_LABEL, type Attention, type TodayState } from '@/lib/attention';
 
 /** Một lịch hẹn: vạch màu, ngày (đỏ nếu hôm nay), tiêu đề đậm, mô tả. Dùng chung cho Trang chủ và Lịch trình. */
@@ -19,8 +19,8 @@ export function DateTile({ date, today }: { date: string; today: string }) {
   const [, m, d] = date.split('-');
   return (
     <View accessible accessibilityLabel={isToday ? 'Hôm nay' : `Ngày ${Number(d)} tháng ${Number(m)}`} style={{ width: 60, paddingVertical: 6, borderRadius: radius.m, alignItems: 'center', backgroundColor: isToday ? C.redSoft : C.primarySoft }}>
-      <Text style={{ fontSize: 24, lineHeight: 28, fontWeight: '700', color: isToday ? C.red : C.primary }}>{Number(d)}</Text>
-      <Text style={{ fontSize: 13, fontWeight: '600', color: isToday ? C.red : C.primary }}>{isToday ? 'Hôm nay' : `Th${Number(m)}`}</Text>
+      <Text style={{ fontSize: T.stat, lineHeight: 28, fontWeight: '700', color: isToday ? C.red : C.primary }}>{Number(d)}</Text>
+      <Text style={{ fontSize: T.caption, fontWeight: '600', color: isToday ? C.red : C.primary }}>{isToday ? 'Hôm nay' : `Th${Number(m)}`}</Text>
     </View>
   );
 }
@@ -28,18 +28,19 @@ export function DateTile({ date, today }: { date: string; today: string }) {
 export function AppointmentRow({ date, title, body, today }: { date: string; title: string; body?: string; today: string }) {
   const isToday = date === today;
   return (
-    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+    <View style={{ flexDirection: 'row', gap: space.m, alignItems: 'center' }}>
       <View style={{ width: 3, alignSelf: 'stretch', borderRadius: 4, backgroundColor: isToday ? bar.red : bar.blue }} />
-      <View style={{ flex: 1, gap: 2 }}>
+      <View style={{ flex: 1, gap: space.xxs }}>
         <Text style={{ color: isToday ? C.red : C.primary, fontWeight: '700' }}>{isToday ? 'Hôm nay' : fmtDate(date)}</Text>
         <Text style={{ color: C.text, fontWeight: '600' }}>{title}</Text>
-        {body ? <Text style={{ color: C.textSoft, fontSize: 14, lineHeight: 21 }}>{body}</Text> : null}
+        {body ? <Text style={{ color: C.textSoft, fontSize: T.small, lineHeight: 21 }}>{body}</Text> : null}
       </View>
     </View>
   );
 }
 
-const TODAY_TONE: Record<TodayState, 'green' | 'amber' | 'gray' | 'blue' | 'red'> = { treated: 'green', missed: 'red', due: 'amber', no_data: 'gray', rest: 'blue', no_plan: 'gray' };
+// Theo DESIGN_SYSTEM.md mục 6.2: đã chiếu success, bỏ lỡ warning, đến hạn hôm nay info, còn lại neutral.
+const TODAY_TONE: Record<TodayState, 'green' | 'amber' | 'gray' | 'teal'> = { treated: 'green', missed: 'amber', due: 'teal', no_data: 'gray', rest: 'gray', no_plan: 'gray' };
 
 export function PatientCard({ patient, attention }: { patient: Patient; attention?: Attention }) {
   const { device, woundsOf } = useLookups();
@@ -51,12 +52,12 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
   const active = wounds.some((w) => w.status === 'active');
   // Một dòng trong ListCard (không còn thẻ riêng cho mỗi bệnh nhân). Bản rút gọn (08/11/2026): một dòng tên, một dòng mã; mức độ là điểm neo bên phải; chỉ hiện việc cần làm khi có.
   return (
-    <Pressable onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityRole="button" style={({ pressed }) => ({ paddingVertical: 12, gap: 8, opacity: pressed ? 0.7 : 1 })} accessibilityLabel={`${patient.name}, ${patient.code}${severity ? `, mức độ ${SEVERITY[severity].label}` : ''}${unlabeled ? `, ${unlabeled} ảnh chưa đo` : ''}`}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <Pressable onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityRole="button" style={({ pressed }) => ({ paddingVertical: 12, gap: space.s, opacity: pressed ? 0.7 : 1 })} accessibilityLabel={`${patient.name}, ${patient.code}${severity ? `, mức độ ${SEVERITY[severity].label}` : ''}${unlabeled ? `, ${unlabeled} ảnh chưa đo` : ''}`}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
         <IconBadge icon="person-outline" />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>{patient.name}</Text>
-          <Text style={{ color: C.textSoft, fontSize: 13 }}>{patient.code} · {dev?.code ?? 'chưa gán thiết bị'}</Text>
+          <Text style={{ fontSize: T.body, fontWeight: '700', color: C.text }}>{patient.name}</Text>
+          <Text style={{ color: C.textSoft, fontSize: T.caption }}>{patient.code} · {dev?.code ?? 'chưa gán thiết bị'}</Text>
         </View>
         {severity ? <Chip label={SEVERITY[severity].label} tone={SEVERITY[severity].tone} /> : null}
         <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
@@ -65,22 +66,24 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
         <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingLeft: 52 }}>
           <Chip label={TODAY_LABEL[attention.state]} tone={TODAY_TONE[attention.state]} />
           {/* FR10: "chưa có dữ liệu" luôn kèm lần đồng bộ cuối, để bác sĩ phân biệt máy chưa gửi với người bệnh không chiếu. */}
-          {attention.state === 'no_data' && <Text style={{ color: C.textSoft, fontSize: 13 }}>{dev?.lastSync ? `đồng bộ lần cuối ${fmtDateTime(dev.lastSync)}` : 'chưa từng đồng bộ'}</Text>}
-          {attention.reasons[0] ? <Text style={{ color: C.textSoft, fontSize: 13, flexShrink: 1 }}>{attention.reasons[0]}</Text> : null}
+          {attention.state === 'no_data' && <Text style={{ color: C.textSoft, fontSize: T.caption }}>{dev?.lastSync ? `đồng bộ lần cuối ${fmtDateTime(dev.lastSync)}` : 'chưa từng đồng bộ'}</Text>}
+          {attention.reasons[0] ? <Text style={{ color: C.textSoft, fontSize: T.caption, flexShrink: 1 }}>{attention.reasons[0]}</Text> : null}
         </View>
       )}
+      {/* Việc phụ thành một dòng chữ thay vì thêm chip (V08): mỗi dòng tối đa hai chip, mức độ và trạng thái hôm nay. */}
       {(unlabeled > 0 || !active) && (
-        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', paddingLeft: 52 }}>
-          {unlabeled > 0 && <Chip icon="pricetag-outline" tone="amber" label={`${unlabeled} ảnh chưa đo`} />}
-          {!active && <Chip label="Tạm dừng" tone="gray" />}
-        </View>
+        <Text style={{ color: C.textSoft, fontSize: T.caption, paddingLeft: 52 }}>
+          {[unlabeled > 0 ? `${unlabeled} ảnh chưa đo` : null, !active ? 'không có vết thương đang điều trị' : null].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}
+        </Text>
       )}
     </Pressable>
   );
 }
 
-export function ImageTile({ image, width = 150 }: { image: WoundImage; width?: number }) {
+/** showOwner: thêm dòng mã bệnh nhân, mã vết thương (B12 gom ảnh của nhiều bệnh nhân). Tên tệp chỉ xem ở B11 (A17). */
+export function ImageTile({ image, width = 150, showOwner }: { image: WoundImage; width?: number; showOwner?: boolean }) {
   const st = LABEL_STATUS[image.status];
+  const { patient, wound } = useLookups();
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/images/[id]', params: { id: image.id } })}
@@ -96,19 +99,19 @@ export function ImageTile({ image, width = 150 }: { image: WoundImage; width?: n
           <Chip label="Chụp lại" tone="red" icon="refresh" />
         </View>
       )}
-      <Text style={{ fontSize: 13, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>
-      <Text style={{ fontSize: 13, color: C.textFaint }} numberOfLines={1}>{image.filename}</Text>
+      <Text style={{ fontSize: T.caption, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>
+      {showOwner ? <Text style={{ fontSize: T.caption, color: C.textSoft }} numberOfLines={1}>{patient(image.patientId)?.code ?? '—'} · {wound(image.woundId)?.code ?? '—'}</Text> : null}
     </Pressable>
   );
 }
 
 export function TaskRow({ icon, tone, title, detail, onPress }: { icon: IconName; tone: 'amber' | 'red' | 'blue' | 'violet'; title: string; detail: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}. ${detail}`} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, minHeight: 48, opacity: pressed ? 0.7 : 1 })}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}. ${detail}`} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.m, paddingVertical: 8, minHeight: 48, opacity: pressed ? 0.7 : 1 })}>
       <IconBadge icon={icon} tone={tone} size={36} />
       <View style={{ flex: 1 }}>
         <Text style={{ fontWeight: '600', color: C.text }}>{title}</Text>
-        <Text style={{ color: C.textSoft, fontSize: 13 }} numberOfLines={2}>{detail}</Text>
+        <Text style={{ color: C.textSoft, fontSize: T.caption }} numberOfLines={2}>{detail}</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
     </Pressable>
