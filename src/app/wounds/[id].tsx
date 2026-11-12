@@ -58,6 +58,42 @@ export default function WoundDetail() {
   const shownDates = showAllPhotos ? dates : dates.slice(0, 2);
   const shownEvals = showOldEvals ? evals : evals.slice(0, 1);
 
+  const compareTitle = (title: string) => (
+    <SectionTitle icon="stats-chart-outline" right={images.length >= 2 ? <TextLink label="So sánh" onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} /> : null}>{title}</SectionTitle>
+  );
+  // Số diện tích lớn và hàng chip (nguồn, thay đổi từ đầu đợt, mốc xem lại). showDate: màn bệnh nhân giữ ngày đo cạnh số như cũ.
+  const areaBlock = (showDate: boolean) => latest && (
+          <View style={{ gap: 8 }}>
+            {/* Màn bác sĩ: số lớn có nhãn "Diện tích" vì tiêu đề khối là "Hiện trạng". */}
+            {!showDate ? <Text style={{ color: C.textSoft, fontWeight: '600' }}>Diện tích</Text> : null}
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+              <Text style={{ fontSize: 36, fontWeight: '800', color: C.text }}>{formatAreaDisplay(latest.areaCm2)}</Text>
+              {showDate ? <Muted>{fmtDate(latest.captureDate)}</Muted> : null}
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {/* PP-01: nguồn số đo đặt ngay cạnh số diện tích, thay cho câu chú thích cuối biểu đồ. */}
+              {latest.areaCm2 !== null && <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />}
+              {review && review.reduction != null && (
+                <Chip icon={review.reduction >= 0 ? 'trending-down' : 'trending-up'} tone={review.reduction >= 0 ? 'green' : 'amber'} label={`${review.reduction >= 0 ? 'Giảm' : 'Tăng'} ${pctOf(review.reduction)} từ đầu đợt`} />
+              )}
+              {isDoctor && review?.state === 'low' && (
+                <Pressable accessibilityRole="button" accessibilityLabel="Cảnh báo giảm chậm, xem giải thích" hitSlop={10}
+                  onPress={() => notify('Giảm chậm sau mốc xem lại', `Đã qua mốc ${fmtDate(review.reviewDate)} mà diện tích mới giảm ${pctOf(review.reduction ?? 0)}, chưa tới 50%. Cân nhắc xem lại liệu trình và nguyên nhân. Ngưỡng tham khảo cho loét bàn chân đái tháo đường (Sheehan 2003).`)}>
+                  <Chip icon="alert-circle" tone="red" label={`Mốc ${fmtDate(review.reviewDate)}: chưa tới 50%`} />
+                </Pressable>
+              )}
+            </View>
+          </View>
+  );
+  // PP-08: mỗi ngày bắt đầu khác nhau của các đợt (không tính bản nháp) là một mốc "Đợt n". Cùng cách lọc với coursePlan trong store;
+  // các phiên bản sửa giữ nguyên ngày bắt đầu thì gộp làm một.
+  const firstWound = data.wounds.find((x) => x.patientId === w.patientId)?.id;
+  const courseMarkers = [...new Set(data.plans
+    .filter((pl) => pl.patientId === w.patientId && (pl.woundId ?? firstWound) === w.id && pl.status !== 'draft')
+    .map((pl) => pl.startDate))]
+    .sort()
+    .map((date, i) => ({ date, label: `Đợt ${i + 1}` }));
+
   // Ba thẻ: tổng quan (vị trí, trạng thái, mức độ, diện tích), đợt điều trị, đánh giá. Album không đóng khung.
   return (
     <Screen header={<Header back title={`Vết thương ${w.code}`} subtitle={`${p.name} · ${p.code}`} />}>
@@ -83,31 +119,39 @@ export default function WoundDetail() {
         </View>
         <Text style={{ color: C.textSoft }}>Theo dõi từ {fmtDate(w.startDate)}, {images.length} ảnh</Text>
         <Divider />
-        <SectionTitle icon="stats-chart-outline" right={images.length >= 2 ? <TextLink label="So sánh" onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} /> : null}>Diện tích</SectionTitle>
-        {latest ? (
-          <View style={{ gap: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-              <Text style={{ fontSize: 36, fontWeight: '800', color: C.text }}>{formatAreaDisplay(latest.areaCm2)}</Text>
-              <Muted>{fmtDate(latest.captureDate)}</Muted>
+        {isDoctor ? (
+          <>
+            {/* PP-02: khối Hiện trạng ở màn đầu: diện tích kèm nguồn, thay đổi từ đầu đợt, ngày đo, xu hướng bác sĩ đánh giá, đợt đang áp dụng.
+                Chỉ dùng dữ liệu sẵn có; không suy ra mức độ hay xu hướng từ diện tích (chip thay đổi diện tích giữ màu cam theo quyết định PP-07). */}
+            <SectionTitle icon="pulse-outline">Hiện trạng</SectionTitle>
+            {latest ? areaBlock(false) : <Muted>Chưa có số đo. Chụp ảnh rồi nhập diện tích.</Muted>}
+            <View>
+              {latest ? <InfoRow label="Ngày đo" value={fmtDate(latest.captureDate)} /> : null}
+              <InfoRow label="Xu hướng (bác sĩ đánh giá)" stack value={evals[0]
+                ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}><StatusChip status={TREND_ROLE[evals[0].trend]} label={TREND[evals[0].trend].label} /><Muted>{fmtDate(evals[0].date)}</Muted></View>
+                : 'Chưa có đánh giá'} />
+              <InfoRow label="Đợt đang áp dụng" value={plan
+                ? `${PLAN_STATUS[plan.status].label}, từ ${fmtDate(plan.startDate)}${currentPhase ? `, giai đoạn ${pr!.phaseIndex + 1}/${pr!.phaseCount}` : ''}`
+                : 'Chưa có đợt'} />
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {/* PP-01: nguồn số đo đặt ngay cạnh số diện tích, thay cho câu chú thích cuối biểu đồ. */}
-              {latest.areaCm2 !== null && <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />}
-              {review && review.reduction != null && (
-                <Chip icon={review.reduction >= 0 ? 'trending-down' : 'trending-up'} tone={review.reduction >= 0 ? 'green' : 'amber'} label={`${review.reduction >= 0 ? 'Giảm' : 'Tăng'} ${pctOf(review.reduction)} từ đầu đợt`} />
-              )}
-              {isDoctor && review?.state === 'low' && (
-                <Pressable accessibilityRole="button" accessibilityLabel="Cảnh báo giảm chậm, xem giải thích" hitSlop={10}
-                  onPress={() => notify('Giảm chậm sau mốc xem lại', `Đã qua mốc ${fmtDate(review.reviewDate)} mà diện tích mới giảm ${pctOf(review.reduction ?? 0)}, chưa tới 50%. Cân nhắc xem lại liệu trình và nguyên nhân. Ngưỡng tham khảo cho loét bàn chân đái tháo đường (Sheehan 2003).`)}>
-                  <Chip icon="alert-circle" tone="red" label={`Mốc ${fmtDate(review.reviewDate)}: chưa tới 50%`} />
-                </Pressable>
-              )}
-            </View>
-          </View>
-        ) : <Muted>Chưa có ảnh đã đo diện tích.</Muted>}
-        <AreaChart images={images} />
-        {isDoctor && <Button label="Chụp ảnh có hướng dẫn" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />}
+            <Button label="Chụp ảnh có hướng dẫn" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />
+          </>
+        ) : (
+          <>
+            {compareTitle('Diện tích')}
+            {latest ? areaBlock(true) : <Muted>Chưa có ảnh đã đo diện tích.</Muted>}
+            <AreaChart images={images} />
+          </>
+        )}
       </Card>
+
+      {/* PP-08: biểu đồ diện tích tách thành thẻ riêng ở màn bác sĩ, có vạch ngày bắt đầu từng đợt. */}
+      {isDoctor && (
+        <Card>
+          {compareTitle('Diện tích theo ngày')}
+          <AreaChart images={images} markers={courseMarkers} />
+        </Card>
+      )}
 
       {/* Đợt điều trị: một dòng tóm tắt; giai đoạn, liều, tuân thủ và mốc xem lại nằm trong phần thu gọn. */}
       <Card>
