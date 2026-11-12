@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { latestEvaluation, SEVERITY } from '@/lib/access';
 import { areaReview, courseProgress, courseStatus, followUpDates, localDay } from '@/lib/course';
@@ -14,7 +14,7 @@ import { fmtDate, fmtDateTime, TREND } from '@/lib/format';
 import { formatAreaForName } from '@/lib/naming';
 import { computeReminders, scheduleReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
-import { C, radius } from '@/theme';
+import { C, radius, size, T, typeScale } from '@/theme';
 
 // Việc trước và sau mỗi lần chiếu (slide 34: chiếu sau chăm sóc thường quy; S2k 2022: loại dịch tiết, không làm khô vết).
 // Nội dung là bản nháp cho demo, cần bác sĩ trong nhóm duyệt.
@@ -30,6 +30,8 @@ export default function PatientHome() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [openSteps, setOpenSteps] = useState(false);
   const [openNote, setOpenNote] = useState(false);
+  // Màn hẹp (dưới 380 px): câu chính dùng bậc sectionTitle để không xuống 3 dòng; vòng tiến độ giữ 120 cho chữ trong vòng đủ chỗ (A25).
+  const narrow = useWindowDimensions().width < 380;
   const p = patient(me?.patientId);
   if (!p) return null;
   const today = localDay();
@@ -55,7 +57,7 @@ export default function PatientHome() {
   const steps = status?.kind === 'treat' ? BEFORE : status?.kind === 'done' ? AFTER : [];
 
   return (
-    <Screen header={<Header title="Trang chủ" subtitle={`${p.name}, mã ${p.code}`} right={<DateBadge />} />}>
+    <Screen header={<Header title="Trang chủ" subtitle={`${p.name} · ${p.code}`} right={<DateBadge />} />}>
       {/* Bản rút gọn (08/11/2026): mỗi thẻ một điểm neo thị giác (vòng tiến độ, ô ngày hẹn, số diện tích),
           chữ phụ đưa vào chạm để xem hoặc sang Lịch trình. */}
       <Card hero style={{ padding: 20, gap: 14 }}>
@@ -73,7 +75,7 @@ export default function PatientHome() {
               <Ring size={120} value={pr.done} max={pr.total} label={`${pr.done}/${pr.total}`} sub="buổi đã xong" color={statusColor === C.textSoft ? C.primary : statusColor} />
               <View style={{ flex: 1, gap: 6 }}>
                 <Ionicons name={status.kind === 'done' ? 'checkmark-circle' : status.kind === 'over' ? 'alert-circle' : status.kind === 'rest' ? 'moon' : 'flash'} size={28} color={statusColor} />
-                <Text style={{ fontSize: 22, lineHeight: 28, fontWeight: '700', color: statusColor }}>{status.title}</Text>
+                <Text style={{ fontSize: narrow ? typeScale.sectionTitle.size : T.screenTitle, lineHeight: narrow ? typeScale.sectionTitle.line : 28, fontWeight: '700', color: statusColor }}>{status.title}</Text>
                 <Text style={{ color: C.textSoft }}>{status.detail}</Text>
               </View>
             </View>
@@ -83,7 +85,7 @@ export default function PatientHome() {
                 onPress={() => notify('Chưa nhận dữ liệu hôm nay', dev.lastSync ? `Thiết bị gửi dữ liệu lần cuối ${fmtDateTime(dev.lastSync)}. Số buổi sẽ cập nhật khi thiết bị bật ở nơi có Wi-Fi.` : 'Thiết bị chưa gửi dữ liệu lần nào.')}
                 accessibilityRole="button"
                 accessibilityLabel="Chưa đồng bộ hôm nay. Chạm để xem chi tiết"
-                style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 36, paddingHorizontal: 12, borderRadius: 999, backgroundColor: C.amberSoft }}>
+                style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: size.touch, paddingHorizontal: 12, borderRadius: 999, backgroundColor: C.amberSoft }}>
                 <Ionicons name="cloud-offline-outline" size={18} color={C.amber} />
                 <Text style={{ color: C.amber, fontWeight: '600', fontSize: 14 }}>Chưa đồng bộ hôm nay</Text>
                 <Ionicons name="information-circle-outline" size={18} color={C.amber} />

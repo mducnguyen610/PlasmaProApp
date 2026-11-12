@@ -6,7 +6,8 @@ import { Text } from '@/components/Text';
 import { DoseRows, PhaseList } from '@/components/CourseCard';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { CheckRow } from '@/components/Consent';
-import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, StepRow, TextLink } from '@/components/ui';
+import { PLAN } from '@/theme.status';
+import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
 import { capabilitiesFor, modeLabel } from '@/lib/device/capabilities';
 import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, suggestDurationSec } from '@/lib/course';
 import { notify } from '@/lib/dialog';
@@ -41,7 +42,7 @@ function PlanCard({ plan, editorName }: { plan: TreatmentPlan; editorName?: stri
     <Card>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Text style={{ fontWeight: '700', color: C.text, flex: 1 }}>Phiên bản {plan.version}</Text>
-        <Chip label={PLAN_STATUS[plan.status].label} tone={PLAN_STATUS[plan.status].tone} />
+        <StatusChip status={PLAN[plan.status]} label={PLAN_STATUS[plan.status].label} />
       </View>
       <PhaseList plan={plan} />
       <DoseRows plan={plan} />

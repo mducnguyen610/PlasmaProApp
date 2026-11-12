@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { NoAccess } from '@/components/Guard';
 import { MONO, Text } from '@/components/Text';
 import { Button, Card, Chip, Choices, Empty, Header, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
@@ -9,7 +9,7 @@ import { buildCsv, exportDataset } from '@/lib/export';
 import { formatAreaDisplay } from '@/lib/naming';
 import { researchFilename, researchPhoto } from '@/lib/research';
 import { useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { C, radius } from '@/theme';
 
 export default function TechnicalDataset() {
   const { me, data } = useStore();
@@ -42,7 +42,10 @@ export default function TechnicalDataset() {
       <Text style={{ fontWeight: '700' }}>Tải dữ liệu theo bộ lọc</Text>
       <Muted>ZIP gồm {shown.length} ảnh PNG và labels.csv. Ảnh cùng một người được giữ trong cùng tập train/validation/test.</Muted>
       <Text style={{ color: C.textSoft, fontSize: 13 }}>Xem trước labels.csv (4 dòng đầu)</Text>
-      <Text selectable style={{ fontFamily: MONO, fontSize: 13, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{buildCsv(data, shown).split('\n').slice(0, 4).join('\n')}</Text>
+      {/* Mỗi dòng CSV giữ nguyên trên một dòng, cuộn ngang trong khối thay vì bẻ giữa tên tệp (A22). */}
+      <ScrollView horizontal style={{ backgroundColor: C.surfaceMuted, borderRadius: radius.s }} contentContainerStyle={{ padding: 10 }}>
+        <Text selectable style={{ fontFamily: MONO, fontSize: 13, color: C.text }}>{buildCsv(data, shown).split('\n').slice(0, 4).join('\n')}</Text>
+      </ScrollView>
       <Button label={'Tải bộ dữ liệu (' + shown.length + ' ảnh)'} icon="download-outline" disabled={!shown.length || !me.researchAccess} loading={busy} onPress={async () => {
         setBusy(true);
         try { const result = await exportDataset(data, shown, me.id); notify('Đã xuất dữ liệu', result.count + ' ảnh · ' + result.location); }

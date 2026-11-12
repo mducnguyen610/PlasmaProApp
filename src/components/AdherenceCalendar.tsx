@@ -121,7 +121,7 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
                 accessibilityLabel={`Ngày ${day} tháng ${Number(m)}${k ? `: ${k.detail ?? k.label}${c.kind !== 'unsynced' ? `, ${c.count} lần` : ''}` : ''}${hasReminder ? ', có lịch hẹn' : ''}`}
                 style={{ width: `${100 / 7}%`, height: 52, padding: 2 }}>
                 <View style={{ flex: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: k ? k.bg : 'transparent', borderWidth: on ? 2 : 0, borderColor: C.primary }}>
-                  {hasReminder && <Ionicons name="calendar" size={10} color={C.violet} style={{ position: 'absolute', top: 3, right: 4 }} />}
+                  {hasReminder && <Ionicons name="calendar" size={12} color={C.violet} style={{ position: 'absolute', top: 3, right: 4 }} />}
                   {/* Ô lịch: số ngày cỡ 15 và một biểu tượng thay cho chữ cỡ 10 (đề xuất 3); chữ đầy đủ ở accessibilityLabel và ô chi tiết. */}
                   <Text maxFontSizeMultiplier={1.3} style={{ fontSize: T.label, fontWeight: '700', color: k && c.kind !== 'rest' ? C.text : C.textFaint }}>{day}</Text>
                   {k && <CellMark kind={c.kind} color={k.color} text={cellText(c, target)} />}

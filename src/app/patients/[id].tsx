@@ -6,14 +6,14 @@ import { Text } from '@/components/Text';
 
 import { ActivationCode } from '@/components/ActivationCode';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, ListCard, Muted, NumberTile, Screen, SectionTitle, WoundPhoto, SwitchRow, type IconName } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, ListCard, Muted, NumberTile, Screen, SectionTitle, WoundPhoto, SwitchRow, type IconName, StatusChip, Empty } from '@/components/ui';
 import { isPendingActivation } from '@/lib/auth';
 import { confirm, notify } from '@/lib/dialog';
 import { buildReportHtml, shareReport } from '@/lib/report';
 import { fmtDate, fmtDateTime, PLAN_STATUS, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore, type Activation } from '@/lib/store';
 import { C, semantic } from '@/theme';
-import { CLOUD_LINK, cloudState } from '@/theme.status';
+import { CLOUD_LINK, WOUND, cloudState } from '@/theme.status';
 import { courseProgress, localDay } from '@/lib/course';
 
 // BS03 – Hồ sơ bệnh nhân: thông tin, bác sĩ phụ trách, thiết bị, liệu trình, vết thương.
@@ -159,7 +159,7 @@ export default function PatientDetail() {
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={{ fontWeight: '700', color: C.text }}>{w.code} · {w.location}</Text>
                 <Muted>Theo dõi từ {fmtDate(w.startDate)} · {imgs.length} ảnh</Muted>
-                <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
+                <StatusChip status={WOUND[w.status]} label={WOUND_STATUS[w.status].label} />
               </View>
               <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
             </View>
@@ -183,7 +183,7 @@ export default function PatientDetail() {
       </ListCard>
 
       <SectionTitle icon="chatbubble-ellipses-outline">Triệu chứng và sự cố bệnh nhân báo</SectionTitle>
-      {reports.length === 0 ? <Muted>Chưa có báo cáo.</Muted> : <Card>
+      {reports.length === 0 ? <Empty icon="chatbubble-ellipses-outline" text="Bệnh nhân chưa gửi báo cáo triệu chứng hay sự cố nào." /> : <Card>
         {reports.map((r) => (
           <View key={r.id} style={{ gap: 4, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border }}>
             <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>

@@ -44,7 +44,8 @@ export default function Login() {
     <View style={{ gap: 5 }}><Text style={{ fontSize: 25, fontWeight: '700' }}>Chào mừng trở lại</Text><Muted>Đăng nhập để tiếp tục theo dõi và chăm sóc.</Muted></View>
     <Card style={{ gap: 16 }}>
       <Field label="Tên đăng nhập" accessibilityLabel="Tên đăng nhập" value={username} onChangeText={(v) => { setUsername(v); setTermsNotice(''); setAgreed(false); }} autoCapitalize="none" autoCorrect={false} placeholder="Nhập tên đăng nhập" />
-      <Field label="Mật khẩu" accessibilityLabel="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry placeholder="Nhập mật khẩu" />
+      {/* Lỗi đăng nhập hiện ngay dưới ô mật khẩu, viền ô đổi màu lỗi (A14). */}
+      <Field label="Mật khẩu" accessibilityLabel="Mật khẩu" value={password} onChangeText={(v) => { setPassword(v); setError(''); }} secureTextEntry placeholder="Nhập mật khẩu" error={error || null} />
       {termsNotice ? (
         <>
           <Text accessibilityRole="alert" style={{ color: C.amber, fontWeight: '600' }}>{termsNotice}</Text>
@@ -53,7 +54,6 @@ export default function Login() {
       ) : (
         <TermsLink />
       )}
-      {error ? <Text accessibilityRole="alert" style={{ color: C.red }}>{error}</Text> : null}
       <Button label="Đăng nhập" icon="log-in-outline" loading={busy} disabled={!username.trim() || !password || (!!termsNotice && !agreed)} onPress={submit}
         reason={(!username.trim() || !password) ? 'Nhập tên đăng nhập và mật khẩu để đăng nhập.' : 'Đánh dấu đồng ý điều khoản để tiếp tục.'} />
       <Button label="Có mã kích hoạt từ bác sĩ? Kích hoạt tài khoản" variant="ghost" onPress={() => router.push('/activate')} />

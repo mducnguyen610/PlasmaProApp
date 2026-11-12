@@ -64,7 +64,7 @@ export default function Dataset() {
       ) : (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           {shown.map((im) => (
-            <ImageTile key={im.id} image={im} width={160} />
+            <ImageTile key={im.id} image={im} width={160} showOwner />
           ))}
         </View>
       )}

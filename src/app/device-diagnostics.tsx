@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { UsbLinkStatus } from '@/components/UsbLinkStatus';
-import { Button, Card, Chip, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Chip, Header, InfoRow, Muted, Notice, Screen, SectionTitle, Empty } from '@/components/ui';
 import { PROTOCOL, setTransportPreference, transportPreference, usbAndroidAvailable } from '@/lib/device';
 import { LINK_LABEL, sendResultLabel } from '@/lib/device/labels';
 import { checkSpec } from '@/lib/device/spec-check';
@@ -99,7 +99,7 @@ export default function DeviceDiagnostics() {
 
       <SectionTitle action="Xóa bản ghi" onAction={() => { transport.clearTrace(); setTrace([]); }}>Byte gửi và nhận</SectionTitle>
       {trace.length === 0 ? (
-        <Muted>Chưa có dữ liệu.</Muted>
+        <Empty icon="swap-vertical-outline" text={link.state === 'connected' ? 'Chưa có byte gửi hoặc nhận. Bấm Hỏi thông tin máy để thử.' : 'Chưa có byte gửi hoặc nhận. Kết nối máy để bắt đầu.'} />
       ) : (
         [...trace].reverse().map((e, i) => (
           <Card key={trace.length - i}>

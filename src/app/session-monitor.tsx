@@ -60,7 +60,7 @@ export default function SessionMonitor() {
   const staleSec = link.lastStatusAt ? Math.floor((now - new Date(link.lastStatusAt).getTime()) / 1000) : 0;
   const stale = link.state === 'connected' && st?.state === 'running' && staleSec > STALE_AFTER_SEC;
   return (
-    <Screen header={<Header back title="Theo dõi phiên điều trị" subtitle={p.code} />}>
+    <Screen header={<Header back title="Theo dõi phiên điều trị" subtitle={`${p.name} · ${p.code}`} />}>
       <Card>
         <UsbLinkStatus state={link.state} simulated={link.kind === 'simulated'} />
         {link.state !== 'connected' && <Button label="Kết nối" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />}

@@ -285,9 +285,12 @@ export default function GuidedCapture() {
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: TONE_COLOR[readiness.tone] }} />
           <Text style={{ color: C.onPrimary, fontWeight: '700' }}>{readiness.ready ? 'Sẵn sàng chụp' : 'Chưa đạt'}</Text>
         </View>}
-        <View style={{ position: 'absolute', bottom: 18, left: 16, right: 16, padding: 12, borderRadius: 12, backgroundColor: C.scrim }}>
-          <Text style={{ color: C.onPrimary, textAlign: 'center' }}>{liveVisible ? (ready ? readiness.headline : 'Đang mở camera…') : useAr ? 'Mở camera AR rồi quét chậm quanh vết thương.' : 'Mở camera để ứng dụng khoanh vết thương.'}</Text>
-        </View>
+        {/* Khi camera chưa mở, chú thích chỉ lặp lại nút "Mở camera" nên ẩn; giữ hướng dẫn quét cho AR (A23). */}
+        {(liveVisible || useAr) && (
+          <View style={{ position: 'absolute', bottom: 18, left: 16, right: 16, padding: 12, borderRadius: 12, backgroundColor: C.scrim }}>
+            <Text style={{ color: C.onPrimary, textAlign: 'center' }}>{liveVisible ? (ready ? readiness.headline : 'Đang mở camera…') : useAr ? 'Mở camera AR rồi quét chậm quanh vết thương.' : 'Mở camera để ứng dụng khoanh vết thương.'}</Text>
+          </View>
+        )}
       </View>
       {liveVisible && ready && <Card>
         <SectionTitle>Kiểm tra trước khi chụp</SectionTitle>

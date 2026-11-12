@@ -7,9 +7,10 @@ import { SEVERITY } from '@/lib/access';
 import { AreaChart } from '@/components/AreaChart';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { ImageTile } from '@/components/items';
-import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, TextLink } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, TextLink, StatusChip } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
+import { WOUND } from '@/theme.status';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
 import { areaReview, courseProgress, followUpDates, phasesOf, localDay } from '@/lib/course';
 import { fmtDate, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
@@ -71,7 +72,7 @@ export default function WoundDetail() {
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
+          <StatusChip status={WOUND[w.status]} label={WOUND_STATUS[w.status].label} />
           <Chip label={sev ? `Mức độ ${SEVERITY[sev].label.toLowerCase()}` : 'Chưa đánh giá mức độ'} tone={sev ? SEVERITY[sev].tone : 'gray'} />
           {isDoctor && retakes.length > 0 && (
             <Pressable accessibilityRole="button" hitSlop={10} onPress={() => notify(`Đã yêu cầu chụp lại ${retakes.length} ảnh`, retakes.map((im) => `${im.id}: ${im.retakeRequested}`).join('\n'))}>
@@ -102,7 +103,7 @@ export default function WoundDetail() {
           </View>
         ) : <Muted>Chưa có ảnh đã đo diện tích.</Muted>}
         <AreaChart images={images} />
-        {isDoctor && <Button label="Chụp / thêm ảnh có hướng dẫn" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />}
+        {isDoctor && <Button label="Chụp ảnh có hướng dẫn" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />}
       </Card>
 
       {/* Đợt điều trị: một dòng tóm tắt; giai đoạn, liều, tuân thủ và mốc xem lại nằm trong phần thu gọn. */}

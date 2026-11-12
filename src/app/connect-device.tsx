@@ -85,7 +85,7 @@ export default function ConnectDevice() {
   const capsNote = link.capsSource === 'device' ? 'Năng lực đọc từ máy' : link.identity?.kind === 'no_reply' ? 'Máy không trả lời lệnh hỏi, dùng bảng dự phòng' : link.capsSource === 'table' ? 'Dùng bảng năng lực ghi sẵn' : 'Chưa có năng lực cho mẫu này';
 
   return (
-    <Screen header={<Header back title="Nạp liệu trình" subtitle={p.code} />}>
+    <Screen header={<Header back title="Nạp liệu trình" subtitle={`${p.name} · ${p.code}`} />}>
       <StepRow steps={STEPS} step={step} />
       {!PROTOCOL.confirmed && !isPatient && <Notice>Giao thức chưa được firmware xác nhận.</Notice>}
 

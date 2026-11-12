@@ -16,7 +16,7 @@ import { areaWarning, previousArea } from '@/lib/plausibility';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
-import { AI_CONFIDENCE, aiConfidenceLevel, SOURCE } from '@/theme.status';
+import { AI_CONFIDENCE, LABEL, SOURCE, aiConfidenceLevel } from '@/theme.status';
 
 type Mode = 'area' | 'full';
 
@@ -122,10 +122,11 @@ export default function ImageDetail() {
 
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Chip label={LABEL_STATUS[im.status].label} tone={LABEL_STATUS[im.status].tone} />
+          <StatusChip status={LABEL[im.status]} label={LABEL_STATUS[im.status].label} />
           {im.retakeRequested && <Chip label="Đã yêu cầu chụp lại" tone="red" icon="refresh" />}
         </View>
-        <InfoRow label="Diện tích bác sĩ đã đo" value={formatAreaDisplay(im.areaCm2)} />
+        {/* Khi chưa có số đo, chip trạng thái đã nói "Chưa có nhãn diện tích": không lặp lại ở dòng giá trị (A18). */}
+        {im.areaCm2 !== null && <InfoRow label="Diện tích bác sĩ đã đo" value={formatAreaDisplay(im.areaCm2)} />}
         {im.areaCm2 !== null && <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />}
         {im.measureMethod ? <InfoRow label="Phương pháp đo" value={im.measureMethod} /> : null}
         <InfoRow label="Ngày chụp" value={im.capture?.sourceDateKnown === false ? 'Chưa xác định (ảnh thư viện)' : fmtDate(im.captureDate)} />
@@ -147,7 +148,7 @@ export default function ImageDetail() {
 
       {isDoctor && editing && (
         <Card style={{ borderWidth: 1.5, borderColor: C.primary }}>
-          <SectionTitle icon="create-outline">Sửa tên theo diện tích đã đo</SectionTitle>
+          <SectionTitle icon="create-outline">{im.areaCm2 === null ? 'Nhập diện tích bác sĩ đã đo' : 'Sửa số đo / tên ảnh'}</SectionTitle>
           <Muted>Ứng dụng không tự đo diện tích. Nhập số đo bác sĩ đã đo bên ngoài; ứng dụng ghép thành tên đúng quy ước.</Muted>
           <Segmented<Mode> value={mode} onChange={setMode} options={[{ value: 'area', label: 'Nhập diện tích' }, { value: 'full', label: 'Sửa tên đầy đủ' }]} />
           {mode === 'area' ? (

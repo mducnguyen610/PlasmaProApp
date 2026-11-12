@@ -3,7 +3,8 @@ import { router } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Card, Chip, Header, ListCard, IconBadge, InfoRow, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
+import { Card, Header, ListCard, IconBadge, InfoRow, Muted, Screen, SectionTitle, WoundPhoto, StatusChip } from '@/components/ui';
+import { WOUND } from '@/theme.status';
 import { fmtDate, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
@@ -15,7 +16,7 @@ export default function PatientHistory() {
   const p = patient(me?.patientId);
   if (!p) return null;
   return (
-    <Screen header={<Header title="Hồ sơ và lịch sử" subtitle={p.code} />}>
+    <Screen header={<Header title="Hồ sơ và lịch sử" subtitle={`${p.name} · ${p.code}`} />}>
       <Card>
         <InfoRow label="Họ tên" value={p.name} />
         <InfoRow label="Năm sinh" value={String(p.birthYear)} />
@@ -35,7 +36,7 @@ export default function PatientHistory() {
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={{ fontWeight: '700', color: C.text }}>{w.code}: {w.location}</Text>
                 <Muted>{`Theo dõi từ ${fmtDate(w.startDate)}, ${imgs.length} ảnh`}</Muted>
-                <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
+                <StatusChip status={WOUND[w.status]} label={WOUND_STATUS[w.status].label} />
               </View>
               <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
             </View>

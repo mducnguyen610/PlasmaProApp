@@ -80,8 +80,10 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
   );
 }
 
-export function ImageTile({ image, width = 150 }: { image: WoundImage; width?: number }) {
+/** showOwner: thêm dòng mã bệnh nhân, mã vết thương (B12 gom ảnh của nhiều bệnh nhân). Tên tệp chỉ xem ở B11 (A17). */
+export function ImageTile({ image, width = 150, showOwner }: { image: WoundImage; width?: number; showOwner?: boolean }) {
   const st = LABEL_STATUS[image.status];
+  const { patient, wound } = useLookups();
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/images/[id]', params: { id: image.id } })}
@@ -98,7 +100,7 @@ export function ImageTile({ image, width = 150 }: { image: WoundImage; width?: n
         </View>
       )}
       <Text style={{ fontSize: T.caption, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>
-      <Text style={{ fontSize: T.caption, color: C.textFaint }} numberOfLines={1}>{image.filename}</Text>
+      {showOwner ? <Text style={{ fontSize: T.caption, color: C.textSoft }} numberOfLines={1}>{patient(image.patientId)?.code ?? '—'} · {wound(image.woundId)?.code ?? '—'}</Text> : null}
     </Pressable>
   );
 }
