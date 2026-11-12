@@ -601,7 +601,7 @@ export const s = StyleSheet.create({
   input: { backgroundColor: C.surfaceMuted, borderWidth: 1, borderColor: interaction.inputBorder.rest, borderRadius: radiusExtra.input, minHeight: size.input, paddingHorizontal: 14, paddingVertical: 12, fontSize: T.body, color: C.text, ...NO_OUTLINE },
   hint: { color: C.textFaint, fontSize: T.caption },
   error: { color: C.red, fontSize: T.caption, fontWeight: '500' },
-  choice: { paddingHorizontal: 14, paddingVertical: 8, minHeight: 44, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: C.border, backgroundColor: C.card },
+  choice: { paddingHorizontal: 14, paddingVertical: 8, minHeight: size.touch, minWidth: size.touch, alignItems: 'center', justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: C.border, backgroundColor: C.card },
   seg: { flexDirection: 'row', backgroundColor: C.card, borderRadius: 24, padding: 4, gap: space.xs, ...shadow },
   segItem: { flex: 1, paddingVertical: 9, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
   segItemOn: { backgroundColor: C.primary },

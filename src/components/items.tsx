@@ -4,12 +4,13 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { patientSeverity, SEVERITY } from '@/lib/access';
-import { Chip, IconBadge, WoundPhoto, type IconName } from '@/components/ui';
+import { Chip, IconBadge, StatusChip, WoundPhoto, type IconName } from '@/components/ui';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, WoundImage } from '@/lib/types';
 import { bar, C, radius, T, space } from '@/theme';
+import { SEVERITY_ROLE, SOURCE } from '@/theme.status';
 import { TODAY_LABEL, type Attention, type TodayState } from '@/lib/attention';
 
 /** Một lịch hẹn: vạch màu, ngày (đỏ nếu hôm nay), tiêu đề đậm, mô tả. Dùng chung cho Trang chủ và Lịch trình. */
@@ -59,7 +60,7 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
           <Text style={{ fontSize: T.body, fontWeight: '700', color: C.text }}>{patient.name}</Text>
           <Text style={{ color: C.textSoft, fontSize: T.caption }}>{patient.code} · {dev?.code ?? 'chưa gán thiết bị'}</Text>
         </View>
-        {severity ? <Chip label={SEVERITY[severity].label} tone={SEVERITY[severity].tone} /> : null}
+        {severity ? <StatusChip status={SEVERITY_ROLE[severity]} label={SEVERITY[severity].label} /> : null}
         <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
       </View>
       {attention && (
@@ -101,6 +102,8 @@ export function ImageTile({ image, width = 150, showOwner }: { image: WoundImage
       )}
       <Text style={{ fontSize: T.caption, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>
       {showOwner ? <Text style={{ fontSize: T.caption, color: C.textSoft }} numberOfLines={1}>{patient(image.patientId)?.code ?? '—'} · {wound(image.woundId)?.code ?? '—'}</Text> : null}
+      {/* PP-01: ảnh có diện tích thì ghi nguồn số đo ngay dưới ảnh. */}
+      {image.areaCm2 !== null ? <View style={{ flexDirection: 'row', marginTop: 4 }}><StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} /></View> : null}
     </Pressable>
   );
 }

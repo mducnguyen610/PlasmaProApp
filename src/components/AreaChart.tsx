@@ -35,7 +35,7 @@ export function AreaChart({ images }: { images: WoundImage[] }) {
           <Text key={p.id} style={{ flex: 1, textAlign: 'center', fontSize: 13, color: C.textFaint }}>{fmtDate(p.captureDate).slice(0, 5)}</Text>
         ))}
       </View>
-      <Text style={{ fontSize: 13, color: C.textFaint }}>Đơn vị cm². Không dùng ảnh chưa rõ ngày chụp. Nguồn số đo: bác sĩ nhập, đo bên ngoài ứng dụng.</Text>
+      <Text style={{ fontSize: 13, color: C.textFaint }}>Đơn vị cm². Không dùng ảnh chưa rõ ngày chụp. Số đo lấy bên ngoài ứng dụng.</Text>
     </View>
   );
 }
