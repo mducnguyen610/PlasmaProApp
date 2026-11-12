@@ -20,8 +20,12 @@ export default function Report() {
   const [pain, setPain] = useState<number | null>(null);
   if (!me?.patientId) return <NoAccess />;
 
+  // Luồng an toàn (UR4): chọn mức đau là đủ để gửi, không bắt gõ chữ.
+  const hasPain = kind === 'symptom' && pain !== null;
+  const canSend = !!content.trim() || hasPain;
+
   const send = () => {
-    addReport({ patientId: me.patientId!, kind, content: content.trim(), painLevel: kind === 'symptom' && pain !== null ? pain : undefined });
+    addReport({ patientId: me.patientId!, kind, content: content.trim() || `Mức đau ${pain}/10`, painLevel: kind === 'symptom' && pain !== null ? pain : undefined });
     // Không hứa thời gian phản hồi: bản demo lưu cục bộ, bác sĩ chỉ thấy khi mở ứng dụng.
     notify('Đã ghi nhận', 'Bác sĩ phụ trách sẽ xem khi mở ứng dụng. Nếu đau tăng, sốt, chảy máu hoặc mủ nhiều, hãy gọi 115 hoặc đến cơ sở y tế, không chờ phản hồi trong ứng dụng.');
     router.back();
@@ -54,7 +58,8 @@ export default function Report() {
         )}
         <Field label="Mô tả" value={content} onChangeText={setContent} multiline placeholder={kind === 'symptom' ? 'Đau, rát, chảy dịch, sốt…' : 'Không bật được, mất Wi-Fi, báo lỗi…'} />
       </Card>
-      <Button label="Gửi" icon="send" disabled={!content.trim()} onPress={send} />
+      <Button label="Gửi" icon="send" disabled={!canSend} onPress={send} />
+      {!canSend && <Muted>{kind === 'symptom' ? 'Chọn mức đau hoặc nhập mô tả để gửi.' : 'Nhập mô tả sự cố để gửi.'}</Muted>}
     </Screen>
   );
 }

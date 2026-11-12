@@ -5,12 +5,11 @@ import { View } from 'react-native';
 import { DateTile } from '@/components/items';
 import { Card, Disclosure, Empty, Header, Muted, Notice, Ring, Screen, SectionTitle } from '@/components/ui';
 import { DoseRows, PhaseList } from '@/components/CourseCard';
-import { courseProgress, courseStatus, fmtDuration, localDay, phasesOf } from '@/lib/course';
+import { courseProgress, courseStatus, localDay, phasesOf } from '@/lib/course';
 import { fmtDate, PLAN_STATUS } from '@/lib/format';
 import { computeReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
-import { modeLabel } from '@/lib/device/capabilities';
 
 export default function Schedule() {
   const { data, me } = useStore();
@@ -37,16 +36,17 @@ export default function Schedule() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           {pr && <Ring size={88} value={pr.done} max={pr.total} label={`${pr.done}/${pr.total}`} sub="đã xong" />}
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ color: C.textSoft, fontSize: 14, fontWeight: '600' }}>{plan.status === 'active' ? `Đợt điều trị · ${course!.w.code}` : `Đợt ${PLAN_STATUS[plan.status].label.toLowerCase()} · ${course!.w.code}`}</Text>
+            <Text style={{ color: C.textSoft, fontSize: 14, fontWeight: '600' }}>{plan.status === 'active' ? `Đợt điều trị ${course!.w.code}` : `Đợt ${PLAN_STATUS[plan.status].label.toLowerCase()}, vết thương ${course!.w.code}`}</Text>
             {plan.status === 'active' && st ? <>
               <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{st.title}</Text>
               <Muted>{st.detail}</Muted>
             </> : <Muted>Lịch dưới đây để xem lại.</Muted>}
           </View>
         </View>
-        <Disclosure icon="options-outline" title="Liệu trình" summary={[ph ? `Giai đoạn ${pr!.phaseIndex + 1}/${phases.length}` : `${phases.length} giai đoạn`, plan.doseLevel != null ? `mức ${plan.doseLevel}` : null, plan.treatmentMode ? modeLabel(plan.treatmentMode) : null, fmtDuration(plan.durationSec)].filter(Boolean).join(' · ')}>
+        {/* Liều luôn hiện thành dòng có nhãn (rà soát thiết kế 12/11/2026), không nén vào một chuỗi nối dấu chấm giữa. */}
+        <DoseRows plan={plan} />
+        <Disclosure icon="options-outline" title="Các giai đoạn" summary={ph ? `Đang ở giai đoạn ${pr!.phaseIndex + 1} trên ${phases.length}` : `${phases.length} giai đoạn`}>
           <PhaseList plan={plan} current={pr?.phaseIndex} />
-          <DoseRows plan={plan} />
           {plan.notes ? <Notice icon="information-circle-outline">{plan.notes}</Notice> : null}
         </Disclosure>
       </> : <Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted>}

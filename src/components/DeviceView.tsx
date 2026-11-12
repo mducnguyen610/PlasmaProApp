@@ -171,7 +171,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
                 <View style={{ width: `${pct * 100}%`, height: '100%', backgroundColor: color }} />
               </View>
               <Text style={{ fontSize: 13, color: C.textFaint }}>
-                {c.item.everySessions === 1 ? 'Sau mỗi phiên' : `Chu kỳ ${c.item.everySessions} phiên`} · {c.item.doneBy === 'patient' ? 'bệnh nhân tự làm' : 'kỹ thuật làm'} · lần gần nhất {c.lastDone ? fmtDate(c.lastDone) : 'chưa ghi nhận'}
+                {c.item.everySessions === 1 ? 'Sau mỗi phiên' : `Chu kỳ ${c.item.everySessions} phiên`}, {c.item.doneBy === 'patient' ? 'bệnh nhân tự làm' : 'kỹ thuật làm'}.{'\n'}Lần gần nhất: {c.lastDone ? fmtDate(c.lastDone) : 'chưa ghi nhận'}
               </Text>
               <Button label="Đánh dấu đã làm" variant="ghost" icon="checkmark-done-outline" onPress={() => doCare(c.item.id, c.item.label)} />
             </View>
@@ -180,7 +180,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         <Muted>Cách vệ sinh là giả định cho demo, theo hướng dẫn nhà sản xuất khi có.</Muted>
         {device.lifecycle === 'in_use' && <>
         <Divider />
-        <Muted>Máy đang giao cho bệnh nhân. Bác sĩ phụ trách thu hồi trên hồ sơ người bệnh.</Muted>
+        <Muted>Máy đang giao cho bệnh nhân. Bác sĩ phụ trách thu hồi trên hồ sơ bệnh nhân.</Muted>
         </>}
         {device.lifecycle !== 'in_use' && LIFECYCLE[device.lifecycle ?? 'ready'].next && <>
         <Divider />

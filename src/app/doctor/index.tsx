@@ -66,7 +66,7 @@ export default function DoctorHome() {
   const offline = mine.map((p) => device(p.deviceId)).filter((d) => d && !d.online);
   // Chỉ hiện việc đang có; số liệu tổng hợp (tỉ lệ gán nhãn, thống kê) nằm ở màn hình quản trị kỹ thuật.
   const candidates: (Task | false)[] = [
-    reports.length > 0 && { key: 'reports', icon: 'medkit-outline', tone: 'red', count: reports.length, label: 'Báo cáo triệu chứng, sự cố', onPress: () => router.push({ pathname: '/patients/[id]', params: { id: reports[0].patientId } }) },
+    reports.length > 0 && { key: 'reports', icon: 'medkit-outline', tone: 'red', count: reports.length, label: 'Báo cáo mới', onPress: () => router.push({ pathname: '/patients/[id]', params: { id: reports[0].patientId } }) },
     unlabeled.length > 0 && { key: 'unlabeled', icon: 'pricetag-outline', tone: 'amber', count: unlabeled.length, label: 'Ảnh chưa đo', onPress: () => router.push({ pathname: '/images/[id]', params: { id: unlabeled[0].id } }) },
     retakes.length > 0 && { key: 'retakes', icon: 'camera-outline', tone: 'amber', count: retakes.length, label: 'Ảnh cần chụp lại', onPress: () => router.push({ pathname: '/images/[id]', params: { id: retakes[0].id } }) },
     drafts.length > 0 && { key: 'drafts', icon: 'flash-outline', tone: 'violet', count: drafts.length, label: 'Đợt nháp chờ xác nhận', onPress: () => router.push({ pathname: '/plan/[patientId]', params: { patientId: drafts[0].patientId } }) },

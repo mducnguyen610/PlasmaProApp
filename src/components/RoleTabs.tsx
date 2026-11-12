@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Text';
@@ -22,6 +22,11 @@ const FAB_SLOT = 80;
 /** Thanh tab của mẫu Fitness App: nền trắng, bo trên, nút tròn gradient nổi ở giữa, có nhãn bên dưới. */
 function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarProps & { tabs: TabDef[]; fab?: { icon: IconName; onPress: () => void; label: string; title: string } }) {
   const insets = useSafeAreaInsets();
+  // Máy hẹp (dưới 380 pt, ví dụ 360 pt): thu ô nút giữa (giữ lề 12 pt theo TC13), giảm cỡ nhãn 1 pt để "Trang chủ", "Bệnh nhân" không bị cắt.
+  // Trên máy thật nhãn còn tự thu (adjustsFontSizeToFit) khi người dùng đặt cỡ chữ lớn.
+  const narrow = useWindowDimensions().width < 380;
+  const labelSize = narrow ? 12 : 13;
+  const fabSlot = narrow ? 72 : FAB_SLOT;
   const items = state.routes.map((r, i) => ({ route: r, index: i, def: tabs.find((t) => t.name === r.name)! })).filter((x) => x.def);
   const half = Math.ceil(items.length / 2);
   const render = (x: (typeof items)[number]) => {
@@ -45,7 +50,7 @@ function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarPro
             </View>
           ) : null}
         </View>
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ fontSize: 13, color: on ? C.primary : C.textFaint, fontWeight: on ? '700' : '500' }}>{x.def.title}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.3} style={{ fontSize: labelSize, color: on ? C.primary : C.textFaint, fontWeight: on ? '700' : '500' }}>{x.def.title}</Text>
         <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: on ? C.primary : 'transparent' }} />
       </Pressable>
     );
@@ -62,10 +67,10 @@ function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarPro
         {items.slice(0, half).map(render)}
         {fab && (
           // Nhãn của nút giữa nằm trong thanh, cùng hàng với nhãn các tab, để người dùng biết nút mở gì.
-          <View style={{ width: FAB_SLOT, alignItems: 'center', justifyContent: 'center', gap: 3, paddingTop: 10 }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+          <View style={{ width: fabSlot, alignItems: 'center', justifyContent: 'center', gap: 3, paddingTop: 10 }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
             {/* Cùng khung với một tab (chỗ biểu tượng 25, nhãn, chấm 5) để nhãn thẳng hàng với các nhãn khác. */}
             <View style={{ height: 25 }} />
-            <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ fontSize: 13, color: C.primary, fontWeight: '600' }}>{fab.title}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.3} style={{ fontSize: labelSize, color: C.primary, fontWeight: '600' }}>{fab.title}</Text>
             <View style={{ height: 5 }} />
           </View>
         )}

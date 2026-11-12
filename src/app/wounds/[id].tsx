@@ -7,7 +7,7 @@ import { SEVERITY } from '@/lib/access';
 import { AreaChart } from '@/components/AreaChart';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { ImageTile } from '@/components/items';
-import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, TextLink } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
@@ -30,7 +30,8 @@ export default function WoundDetail() {
   const [openEval, setOpenEval] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [showOldEvals, setShowOldEvals] = useState(false);
-  if (!w || !p || !canView) return <NoAccess />;
+  if (!w || !p) return <NoAccess notFound />;
+  if (!canView) return <NoAccess />;
 
   const isDoctor = me?.role === 'doctor';
   const images = imagesOf(w.id);
@@ -79,9 +80,9 @@ export default function WoundDetail() {
             </Pressable>
           )}
         </View>
-        <Text style={{ color: C.textSoft }}>Từ {fmtDate(w.startDate)} · {images.length} ảnh</Text>
+        <Text style={{ color: C.textSoft }}>Theo dõi từ {fmtDate(w.startDate)}, {images.length} ảnh</Text>
         <Divider />
-        <SectionTitle icon="stats-chart-outline" right={images.length >= 2 ? <Text onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} style={{ color: C.primary, fontWeight: '600' }}>So sánh</Text> : null}>Diện tích</SectionTitle>
+        <SectionTitle icon="stats-chart-outline" right={images.length >= 2 ? <TextLink label="So sánh" onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} /> : null}>Diện tích</SectionTitle>
         {latest ? (
           <View style={{ gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
@@ -107,13 +108,14 @@ export default function WoundDetail() {
 
       {/* Đợt điều trị: một dòng tóm tắt; giai đoạn, liều, tuân thủ và mốc xem lại nằm trong phần thu gọn. */}
       <Card>
-        <SectionTitle icon="flash-outline" right={isDoctor ? <Text onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} style={{ color: C.primary, fontWeight: '600' }}>{plan ? 'Sửa đợt' : '+ Lập đợt'}</Text> : null}>
+        <SectionTitle icon="flash-outline" right={isDoctor ? <TextLink label={plan ? 'Sửa đợt' : '+ Lập đợt'} onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} /> : null}>
           Đợt điều trị
         </SectionTitle>
         {plan ? (
           <Disclosure
-            title={currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1}/${pr!.phaseCount} · mức ${plan.doseLevel ?? '—'}${plan.treatmentMode ? ` · ${modeLabel(plan.treatmentMode)}` : ''} · ${fmtDuration(plan.durationSec)}` : `${phasesOf(plan).length} giai đoạn · mức ${plan.doseLevel ?? '—'}`}
-            summary={pr ? `${pr.done}/${pr.total} buổi${isDoctor && pr.missed > 0 ? ` · bỏ lỡ ${pr.missed}` : ''}${isDoctor && pr.extra > 0 ? ` · ngoài lịch ${pr.extra}` : ''} · ${PLAN_STATUS[plan.status].label}` : PLAN_STATUS[plan.status].label}
+            // Bác sĩ đọc nhanh một dòng nén; bệnh nhân thấy câu ngắn, liều nằm thành dòng có nhãn khi mở (rà soát thiết kế 12/11/2026).
+            title={!isDoctor ? (currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1} trên ${pr!.phaseCount}` : `${phasesOf(plan).length} giai đoạn`) : currentPhase ? `Giai đoạn ${pr!.phaseIndex + 1}/${pr!.phaseCount} · mức ${plan.doseLevel ?? '—'}${plan.treatmentMode ? ` · ${modeLabel(plan.treatmentMode)}` : ''} · ${fmtDuration(plan.durationSec)}` : `${phasesOf(plan).length} giai đoạn · mức ${plan.doseLevel ?? '—'}`}
+            summary={!isDoctor ? (pr ? `Đã xong ${pr.done}/${pr.total} buổi, ${PLAN_STATUS[plan.status].label.toLowerCase()}` : PLAN_STATUS[plan.status].label) : pr ? `${pr.done}/${pr.total} buổi${isDoctor && pr.missed > 0 ? ` · bỏ lỡ ${pr.missed}` : ''}${isDoctor && pr.extra > 0 ? ` · ngoài lịch ${pr.extra}` : ''} · ${PLAN_STATUS[plan.status].label}` : PLAN_STATUS[plan.status].label}
             summaryTone={pr && isDoctor && pr.missed + pr.extra > 0 ? C.amber : undefined}>
             <Muted>Phiên bản {plan.version}{plan.status === 'active' && pr?.next ? ` · buổi tiếp theo ${fmtDate(pr.next)}` : ''}</Muted>
             {review && <ReviewNote review={review} forPatient={!isDoctor} />}
@@ -130,7 +132,7 @@ export default function WoundDetail() {
       <Card>
       <SectionTitle
         icon="clipboard-outline"
-        right={isDoctor ? <Text onPress={() => router.push({ pathname: '/evaluate/[woundId]', params: { woundId: w.id } })} style={{ color: C.primary, fontWeight: '600' }}>+ Ghi đánh giá</Text> : null}>
+        right={isDoctor ? <TextLink label="+ Ghi đánh giá" onPress={() => router.push({ pathname: '/evaluate/[woundId]', params: { woundId: w.id } })} /> : null}>
         {isDoctor ? 'Đánh giá gần nhất' : 'Nhận xét của bác sĩ'}
       </SectionTitle>
       {evals.length === 0 && <Muted>Chưa có đánh giá.</Muted>}
@@ -148,7 +150,7 @@ export default function WoundDetail() {
             {!full ? (
               <>
                 {main ? <Text numberOfLines={3} style={{ color: C.text, lineHeight: 24 }}>{main}</Text> : null}
-                <Text onPress={() => setOpenEval(true)} accessibilityRole="button" style={{ color: C.primary, fontWeight: '600', paddingVertical: 8 }}>Xem đầy đủ</Text>
+                <TextLink label="Xem đầy đủ" onPress={() => setOpenEval(true)} />
               </>
             ) : (
               <>
@@ -159,7 +161,7 @@ export default function WoundDetail() {
                 {e.instructions ? <Text style={{ color: C.text }}>Hướng dẫn: {e.instructions}</Text> : null}
                 {e.nextReview ? <Muted>Tái đánh giá: {fmtDate(e.nextReview)}</Muted> : null}
                 {isDoctor && <Chip label={e.visibleToPatient ? 'Bệnh nhân xem được' : 'Chỉ nội bộ'} tone={e.visibleToPatient ? 'blue' : 'gray'} />}
-                {i === 0 && <Text onPress={() => setOpenEval(false)} accessibilityRole="button" style={{ color: C.primary, fontWeight: '600', paddingVertical: 8 }}>Thu gọn</Text>}
+                {i === 0 && <TextLink label="Thu gọn" onPress={() => setOpenEval(false)} />}
               </>
             )}
           </View>

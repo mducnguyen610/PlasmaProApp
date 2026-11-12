@@ -46,7 +46,7 @@ export default function AdminDevices() {
             right={<Chip label={d.online ? 'Đang kết nối' : 'Mất kết nối'} tone={d.online ? 'green' : 'gray'} />}>
           <Muted>Firmware {d.firmware}</Muted>
           <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Đang giao cho: {data.patients.find((p) => p.id === d.patientId)?.code ?? 'chưa giao'}</Text>
-          <Muted>Bác sĩ phụ trách giao và thu hồi máy trên hồ sơ người bệnh.</Muted>
+          <Muted>Bác sĩ phụ trách giao và thu hồi máy trên hồ sơ bệnh nhân.</Muted>
           <Button label="Xem nhật ký" variant="ghost" icon="list-outline" onPress={() => router.push({ pathname: '/devices/[id]', params: { id: d.id } })} />
           </Disclosure>
         </View>

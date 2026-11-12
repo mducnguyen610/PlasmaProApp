@@ -101,10 +101,11 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
           <Text accessibilityRole="header" style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: C.text }}>Tháng {Number(m)}/{y}</Text>
           <NavBtn icon="chevron-forward" label="Tháng sau" onPress={() => { setMonth(shiftMonth(month, 1)); setSelected(null); }} />
         </View>
-        <View style={{ flexDirection: 'row' }}>
+        {/* Lưới ngày lấn 10 pt vào lề thẻ mỗi bên để ô ngày rộng tối thiểu 44 pt trên máy 360 pt (vùng chạm Apple HIG). */}
+        <View style={{ flexDirection: 'row', marginHorizontal: -10 }}>
           {WEEKDAYS.map((w) => <Text key={w} style={{ flex: 1, textAlign: 'center', fontSize: 13, color: C.textSoft, fontWeight: '600' }}>{w}</Text>)}
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -10 }}>
           {cells.map((c, i) => {
             if (!c.date) return <View key={`pad-${i}`} style={{ width: `${100 / 7}%`, height: 52 }} />;
             const k = c.kind === 'outside' ? null : KIND[c.kind];
@@ -227,7 +228,7 @@ export function noteText(n: SessionNote): string {
   if (t.length) parts.push(`Khi chiếu: ${t.join(', ')}`);
   const r = [n.rednessNextDay && 'đỏ da', n.swellingNextDay && 'sưng'].filter(Boolean);
   if (r.length) parts.push(`Hôm sau: ${r.join(', ')}`);
-  return parts.length ? parts.join(' · ') : 'Không ghi nhận khó chịu';
+  return parts.length ? parts.join('. ') : 'Không ghi nhận khó chịu';
 }
 
 function Toggle({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {

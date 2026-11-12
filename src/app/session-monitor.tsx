@@ -1,11 +1,12 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Header, InfoRow, Muted, Notice, Screen } from '@/components/ui';
-import { LINK_LABEL, SESSION_LABEL } from '@/lib/device/labels';
+import { fmtRemaining, LINK_LABEL, SESSION_LABEL } from '@/lib/device/labels';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
 import { fmtDateTime } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
@@ -16,6 +17,8 @@ import { C } from '@/theme';
  * Khi thấy STA chuyển từ running sang done, stopped hoặc error, ghi một phiên vào nhật ký (FR4), để tổng quan bác sĩ thấy "Đã chiếu" (FR10).
  * Phiên chỉ được ghi khi màn này đang mở; mất kết nối giữa phiên thì không ghi.
  */
+const STALE_AFTER_SEC = 5;
+
 export default function SessionMonitor() {
   const params = useLocalSearchParams<{ patientId?: string; woundId?: string }>();
   const { me, recordDeviceSession } = useStore();
@@ -30,17 +33,28 @@ export default function SessionMonitor() {
         const ok = recordDeviceSession({ patientId: p.id, woundId: params.woundId, startedAt: done.startedAt.toISOString(), durationSec: done.durationSec, outcome: done.outcome });
         setSaved(ok
           ? { ok: true, text: done.outcome === 'done' ? `Đã ghi phiên điều trị ${Math.round(done.durationSec / 6) / 10} phút vào nhật ký.` : 'Phiên dừng giữa chừng, đã ghi vào nhật ký là phiên bị gián đoạn.' }
-          : { ok: false, text: 'Hồ sơ chưa được giao máy nên phiên chưa được ghi. Bác sĩ cần giao máy trên hồ sơ người bệnh.' });
+          : { ok: false, text: 'Hồ sơ chưa được giao máy nên phiên chưa được ghi. Bác sĩ cần giao máy trên hồ sơ bệnh nhân.' });
       } catch (e) {
         setSaved({ ok: false, text: e instanceof Error ? e.message : String(e) });
       }
     },
   });
 
+  // Đồng hồ một giây để phát hiện bản tin STA ngừng đến (P5).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   if (!p || !canView) return <NoAccess />;
 
+  const isPatient = me?.role === 'patient';
   const st = link.lastStatus;
   const lost = link.state === 'disconnected' || link.state === 'error';
+  // Ngưỡng 5 s là đề xuất ở wireframe T02 (P5), chưa có nguồn; ICD hiện quy định máy gửi STA mỗi giây.
+  const staleSec = link.lastStatusAt ? Math.floor((now - new Date(link.lastStatusAt).getTime()) / 1000) : 0;
+  const stale = link.state === 'connected' && st?.state === 'running' && staleSec > STALE_AFTER_SEC;
   return (
     <Screen header={<Header back title="Theo dõi phiên điều trị" subtitle={p.code} />}>
       <Card>
@@ -51,9 +65,20 @@ export default function SessionMonitor() {
         {link.state !== 'connected' && <Button label="Kết nối" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />}
       </Card>
       {lost && st?.state === 'running' && <Notice tone="red">Mất kết nối với máy trong lúc phiên đang chạy. Hãy cắm lại cáp.</Notice>}
+      {stale && <Notice>{`Chưa nhận trạng thái từ máy ${staleSec} giây. Kiểm tra cáp còn cắm chặt.`}</Notice>}
       <Card>
-        <InfoRow label="Trạng thái phiên" value={st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'} />
-        <InfoRow label="Giây còn lại" value={st?.remainingSec != null ? String(st.remainingSec) : '–'} />
+        {st && st.state !== 'stopped' && st.state !== 'error' && st.remainingSec != null ? (
+          <View accessible accessibilityLabel={`${SESSION_LABEL[st.state]}, còn ${fmtRemaining(st.remainingSec)}`} style={{ alignItems: 'center', gap: 2, paddingVertical: 8 }}>
+            <Text style={{ fontSize: 44, fontWeight: '700', color: st.state === 'running' ? C.primary : C.text, fontVariant: ['tabular-nums'] }}>{fmtRemaining(st.remainingSec)}</Text>
+            <Text style={{ color: C.textSoft }}>{`${SESSION_LABEL[st.state]}, còn lại`}</Text>
+          </View>
+        ) : (
+          // Chưa nhận STA, hoặc phiên đã dừng, lỗi: không hiện số giây cũ dễ gây hiểu nhầm.
+          <View accessible accessibilityLabel={st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'} style={{ alignItems: 'center', gap: 6, paddingVertical: 12 }}>
+            <Ionicons name={!st ? 'radio-outline' : st.state === 'error' ? 'warning-outline' : 'stop-circle-outline'} size={36} color={st?.state === 'error' ? C.red : C.textSoft} />
+            <Text style={{ fontSize: 20, fontWeight: '700', color: C.text }}>{st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'}</Text>
+          </View>
+        )}
         <InfoRow label="Nhận lần cuối" value={link.lastStatusAt ? fmtDateTime(link.lastStatusAt) : '–'} />
         {!st && <Muted>Bắt đầu phiên trên máy; trạng thái hiện ở đây khi máy gửi về. Giữ màn này mở tới khi phiên xong để phiên được ghi vào nhật ký.</Muted>}
       </Card>
@@ -61,6 +86,25 @@ export default function SessionMonitor() {
         <Notice tone={saved.ok ? 'green' : 'red'} icon={saved.ok ? 'checkmark-circle-outline' : 'alert-circle-outline'}>
           {saved.text}
         </Notice>
+      )}
+      {/* Việc tiếp theo sau khi phiên kết thúc (wireframe T02, P1 đến P3). */}
+      {st?.state === 'done' && isPatient && (
+        <>
+          <Notice tone="green" icon="checkmark-circle-outline">Đã xong buổi chiếu hôm nay.</Notice>
+          <Button label="Ghi cảm giác sau khi chiếu" icon="create-outline" onPress={() => router.push('/schedule')} />
+        </>
+      )}
+      {st?.state === 'stopped' && (
+        <>
+          <Notice>Buổi chiếu dừng trước khi đủ thời gian. Nếu do đau hoặc khó chịu, hãy báo bác sĩ.</Notice>
+          {isPatient && <Button label="Báo triệu chứng" variant="secondary" icon="chatbubble-ellipses-outline" onPress={() => router.push('/report')} />}
+        </>
+      )}
+      {st?.state === 'error' && (
+        <>
+          <Notice tone="red">Máy báo lỗi. Tắt máy, bật lại. Nếu vẫn lỗi, báo sự cố thiết bị.</Notice>
+          {isPatient && <Button label="Báo sự cố thiết bị" variant="secondary" icon="construct-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'device' } })} />}
+        </>
       )}
       {link.startSession && link.stopSession && link.state === 'connected' && (
         <View style={{ flexDirection: 'row', gap: 8 }}>

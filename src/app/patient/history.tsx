@@ -33,8 +33,8 @@ export default function PatientHistory() {
             <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
               {last ? <WoundPhoto image={last} style={{ width: 64, height: 64, borderRadius: 12 }} /> : <IconBadge icon="image-outline" size={64} tone="gray" />}
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={{ fontWeight: '700', color: C.text }}>{w.code} · {w.location}</Text>
-                <Muted>{imgs.length} ảnh · từ {fmtDate(w.startDate)}</Muted>
+                <Text style={{ fontWeight: '700', color: C.text }}>{w.code}: {w.location}</Text>
+                <Muted>{`Theo dõi từ ${fmtDate(w.startDate)}, ${imgs.length} ảnh`}</Muted>
                 <Chip label={WOUND_STATUS[w.status].label} tone={WOUND_STATUS[w.status].tone} />
               </View>
               <Ionicons name="chevron-forward" size={18} color={C.textFaint} />

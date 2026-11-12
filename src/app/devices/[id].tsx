@@ -15,7 +15,8 @@ export default function DeviceScreen() {
   const allowed =
     !!d && !!me &&
     (me.role === 'admin' || (me.role === 'doctor' && owner?.doctorId === me.id) || (me.role === 'patient' && me.patientId === owner?.id));
-  if (!d || !allowed) return <NoAccess />;
+  if (!d) return <NoAccess notFound />;
+  if (!allowed) return <NoAccess />;
   return (
     <Screen header={<Header back title="Thiết bị và nhật ký" subtitle={d.code} />}>
       <DeviceView device={d} level={me!.role === 'admin' ? 'tech' : me!.role === 'doctor' ? 'doctor' : 'patient'} />

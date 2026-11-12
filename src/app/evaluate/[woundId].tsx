@@ -40,7 +40,8 @@ export default function Evaluate() {
   const [visible, setVisible] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  if (!w || !p || !canView || me?.role !== 'doctor') return <NoAccess />;
+  if (!w || !p) return <NoAccess notFound />;
+  if (!canView || me?.role !== 'doctor') return <NoAccess />;
 
   const save = () => {
     const aErr = assessmentError(a);
