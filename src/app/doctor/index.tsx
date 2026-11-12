@@ -44,6 +44,8 @@ export default function DoctorHome() {
       )}
 
       <SectionTitle action="Danh sách" onAction={() => router.navigate('/doctor/patients')}>Bệnh nhân</SectionTitle>
+      {/* PP-10: nêu tiêu chí xếp, theo đúng thứ tự trọng số trong src/lib/attention.ts (không đổi cách xếp). */}
+      <Muted>Xếp theo mức cần xử lý: báo cáo chưa xử lý, mức độ bác sĩ đánh giá, buổi bỏ lỡ trong 7 ngày, chưa có dữ liệu hôm nay.</Muted>
       <ListCard>
         {ranked.map((a) => {
           const p = mine.find((x) => x.id === a.patientId);
