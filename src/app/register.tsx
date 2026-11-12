@@ -41,11 +41,11 @@ export default function Register() {
         <Text style={{ fontWeight: '700', fontSize: 18 }}>Bạn sử dụng ứng dụng với vai trò</Text>
         <Choices<Role> value={role} onChange={setRole} options={[{ value: 'patient', label: 'Bệnh nhân' }, { value: 'doctor', label: 'Bác sĩ' }, { value: 'admin', label: 'Quản trị viên' }]} />
         {role !== 'patient' && <Muted>Tài khoản chuyên môn cần quản trị duyệt; quyền nghiên cứu được cấp riêng.</Muted>}
-        <Field label="Họ và tên" accessibilityLabel="Họ và tên" value={name} onChangeText={setName} placeholder="Nguyễn Văn A" />
+        <Field label="Họ và tên" accessibilityLabel="Họ và tên" value={name} onChangeText={setName} />
         <Field label="Tên đăng nhập" accessibilityLabel="Tên đăng nhập" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} placeholder="Tối thiểu 4 ký tự, không dấu" />
         <Field label="Số điện thoại" accessibilityLabel="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="09xxxxxxxx" />
         {role === 'patient' && <>
-          <Field label="Năm sinh" accessibilityLabel="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" placeholder="1990" />
+          <Field label="Năm sinh" accessibilityLabel="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" />
           <Choices value={sex} onChange={setSex} options={[{ value: 'Nam', label: 'Nam' }, { value: 'Nữ', label: 'Nữ' }]} />
         </>}
         <Field label="Mật khẩu" accessibilityLabel="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry placeholder="Ít nhất 8 ký tự" />

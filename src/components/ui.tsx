@@ -13,7 +13,7 @@ import { MONO, Text, TextInput } from '@/components/Text';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useStore } from '@/lib/store';
 import type { Role, WoundImage } from '@/lib/types';
-import { bar, C, cardShape, elevation, G, radius, radiusExtra, semantic, type Semantic, shadow, size, type GradientName, T, type Tone } from '@/theme';
+import { bar, C, cardShape, elevation, G, radius, interaction, radiusExtra, semantic, type Semantic, shadow, size, type GradientName, T, type Tone, typeScale } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -35,10 +35,11 @@ export function Header({
         {me && !back ? <RoleAvatar role={me.role} /> : null}
         <View style={{ flex: 1, paddingHorizontal: back ? 4 : 10 }}>
           <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
+          {/* Biểu tượng vai trò không đứng một mình (V21): màn không có dòng phụ thì ghi tên vai trò cạnh biểu tượng. */}
           {(me && back) || subtitle ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
               {me && back ? <View accessible accessibilityLabel={`Vai trò: ${ROLE_BADGE[me.role].label}`}><Ionicons name={ROLE_BADGE[me.role].icon} size={14} color={C.textSoft} /></View> : null}
-              {subtitle ? <Text style={[s.headerSub, { marginTop: 0, flexShrink: 1 }]} numberOfLines={1}>{subtitle}</Text> : null}
+              <Text style={[s.headerSub, { marginTop: 0, flexShrink: 1 }]} numberOfLines={1}>{subtitle || (me ? ROLE_BADGE[me.role].label : '')}</Text>
             </View>
           ) : null}
         </View>
@@ -239,28 +240,37 @@ export function IconBadge({ icon, tone = 'blue', size = 40 }: { icon: IconName; 
 }
 
 export function Button({
-  label, onPress, icon, variant = 'primary', disabled, loading, style,
+  label, onPress, icon, variant = 'primary', disabled, loading, style, reason,
 }: {
   /** dangerSolid: hành động dừng hoặc nguy hiểm cần thấy ngay (Dừng chiếu ở T02), nền đỏ đặc, cao size.buttonDanger. */
   label: string; onPress: () => void; icon?: IconName; variant?: 'primary' | 'secondary' | 'danger' | 'dangerSolid' | 'ghost';
   disabled?: boolean; loading?: boolean; style?: StyleProp<ViewStyle>;
+  /** Lý do nút đang khóa, hiện ngay dưới nút (V20). Chỉ hiện khi disabled. */
+  reason?: string;
 }) {
-  const fg = { primary: C.onPrimary, secondary: C.primary, danger: C.red, dangerSolid: C.onPrimary, ghost: C.primary }[variant];
+  const off = !!disabled && !loading;
+  const fg = off ? interaction.disabled.fg : { primary: C.onPrimary, secondary: C.primary, danger: C.red, dangerSolid: C.onPrimary, ghost: C.primary }[variant];
   const inner = (
     <>
       {loading ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={18} color={fg} /> : null}
       <Text style={[s.btnText, { color: fg }]}>{label}</Text>
     </>
   );
-  return (
+  const btn = (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityHint={off ? reason : undefined}
       accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
       onPress={onPress}
       disabled={disabled || loading}
-      style={({ pressed }) => [{ opacity: disabled ? 0.45 : pressed ? 0.8 : 1 }, variant === 'primary' && s.btnShadow, style]}>
-      {variant === 'primary' ? (
+      style={({ pressed }) => [{ opacity: pressed && !off ? interaction.pressedOpacity : 1 }, variant === 'primary' && !off && s.btnShadow, !reason && style]}>
+      {/* Nút khóa: nền neutral, chữ textSoft (6,58:1), không bóng; bản cũ giảm độ mờ còn 2,2:1. */}
+      {off ? (
+        <View style={[s.btn, { backgroundColor: variant === 'ghost' ? 'transparent' : interaction.disabled.bg }, variant === 'dangerSolid' && { minHeight: size.buttonDanger }]}>
+          {inner}
+        </View>
+      ) : variant === 'primary' ? (
         <LinearGradient colors={G.fab} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.btn}>
           {inner}
         </LinearGradient>
@@ -271,13 +281,25 @@ export function Button({
       )}
     </Pressable>
   );
+  if (!reason) return btn;
+  return (
+    <View style={[{ gap: 6 }, style]}>
+      {btn}
+      {off ? <Text style={s.hint}>{reason}</Text> : null}
+    </View>
+  );
 }
 
-export function Field({ label, hint, error, ...props }: TextInputProps & { label: string; hint?: string; error?: string | null }) {
+/** optional: ghi "(không bắt buộc)" sau nhãn (V13). Viền theo interaction.inputBorder: nghỉ, đang nhập, lỗi. */
+export function Field({ label, hint, error, optional, ...props }: TextInputProps & { label: string; hint?: string; error?: string | null; optional?: boolean }) {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={{ gap: 6 }}>
-      <Text style={s.label}>{label}</Text>
-      <TextInput accessibilityLabel={label} placeholderTextColor={C.textFaint} {...props} style={[s.input, props.multiline && { minHeight: 80, textAlignVertical: 'top' }, error ? { borderColor: C.red } : null, props.style]} />
+      <Text style={s.label}>{label}{optional ? <Text style={{ color: C.textSoft, fontWeight: '400' }}> (không bắt buộc)</Text> : null}</Text>
+      <TextInput accessibilityLabel={optional ? `${label}, không bắt buộc` : label} placeholderTextColor={C.textFaint} {...props}
+        onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
+        onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
+        style={[s.input, props.multiline && { minHeight: 80, textAlignVertical: 'top' }, focused && { borderColor: interaction.inputBorder.focus, borderWidth: 2, paddingHorizontal: 13, paddingVertical: 11 }, error ? { borderColor: interaction.inputBorder.error } : null, props.style]} />
       {error ? <Text style={s.error} accessibilityLiveRegion="polite">{error}</Text> : hint ? <Text style={s.hint}>{hint}</Text> : null}
     </View>
   );
@@ -343,7 +365,7 @@ export function StatGrid({ items }: { items: { label: string; value: string | nu
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {items.map((it) => (
         <View key={it.label} accessible accessibilityLabel={`${it.label}: ${it.value}`} style={{ flexGrow: 1, flexBasis: '45%', padding: 10, borderRadius: radius.m, backgroundColor: it.tone === 'amber' ? C.amberSoft : it.tone === 'red' ? C.redSoft : it.tone === 'green' ? C.greenSoft : C.surfaceMuted }}>
-          <Text style={{ fontSize: T.stat, fontWeight: '700', color: it.tone === 'amber' ? C.amber : it.tone === 'red' ? C.red : C.text }}>{it.value}</Text>
+          <Text style={{ fontSize: typeScale.stat.size, lineHeight: typeScale.stat.line, fontWeight: '700', color: it.tone === 'amber' ? C.amber : it.tone === 'red' ? C.red : C.text }}>{it.value}</Text>
           <Text style={{ fontSize: T.small, color: C.textSoft }}>{it.label}</Text>
         </View>
       ))}
@@ -511,14 +533,14 @@ export const s = StyleSheet.create({
   card: { backgroundColor: C.card, padding: 16, gap: 10 },
   cardFlat: { borderWidth: 1, borderColor: C.cardBorder },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginTop: 4 },
-  sectionTitle: { color: C.text, fontSize: T.cardTitle, fontWeight: '700', letterSpacing: 0.2, flexShrink: 1 },
+  sectionTitle: { color: C.text, fontSize: typeScale.sectionTitle.size, lineHeight: typeScale.sectionTitle.line, fontWeight: '700', letterSpacing: 0.2, flexShrink: 1 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, alignSelf: 'flex-start' },
   chipText: { fontSize: T.caption, fontWeight: '600' },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 24 },
   btnShadow: { ...elevation[2], borderRadius: radiusExtra.button },
   btnText: { fontSize: T.body, fontWeight: '500', letterSpacing: 0.3 },
   label: { color: C.grey, fontSize: T.label, fontWeight: '500' },
-  input: { backgroundColor: C.surfaceMuted, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: T.body, color: C.text },
+  input: { backgroundColor: C.surfaceMuted, borderWidth: 1, borderColor: interaction.inputBorder.rest, borderRadius: radiusExtra.input, minHeight: size.input, paddingHorizontal: 14, paddingVertical: 12, fontSize: T.body, color: C.text },
   hint: { color: C.textFaint, fontSize: T.caption },
   error: { color: C.red, fontSize: T.caption, fontWeight: '500' },
   choice: { paddingHorizontal: 14, paddingVertical: 8, minHeight: 44, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: C.border, backgroundColor: C.card },

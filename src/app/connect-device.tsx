@@ -157,7 +157,8 @@ export default function ConnectDevice() {
       {/* Một nút chính mỗi bước (V04): trước khi máy nhận là "Nạp liệu trình vào máy"; sau ACK là "Theo dõi phiên điều trị",
           còn nạp lại thành liên kết chữ. */}
       {result?.kind !== 'acked' && (
-        <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={send} disabled={!canSend} loading={sending} />
+        <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={send} disabled={!canSend} loading={sending}
+          reason={link.state !== 'connected' ? 'Kết nối máy bằng cáp USB trước.' : !cfg || errors.length > 0 ? 'Đợt điều trị chưa sẵn sàng, xem thông báo ở trên.' : 'Máy chưa sẵn sàng nhận liệu trình, xem thông báo ở trên.'} />
       )}
       {result && (
         <Notice tone={semantic[SEND_RESULT[result.kind].role].tone} icon={SEND_RESULT[result.kind].icon as IconName}>

@@ -242,7 +242,7 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
             <Choices<PlanStatus> value={status} onChange={setStatus} options={(['draft', 'active', 'paused', 'ended'] as const).map((v) => ({ value: v, label: PLAN_STATUS[v].label }))} />
         <Field label="Lịch tái khám" value={review} onChangeText={setReview} placeholder="Ví dụ: tái đánh giá mỗi 7 ngày" />
         <Field label="Ghi chú" value={notes} onChangeText={setNotes} multiline />
-        <Field label="Lý do thay đổi" value={reason} onChangeText={setReason} placeholder="Bắt buộc" />
+        <Field label="Lý do thay đổi" value={reason} onChangeText={setReason} placeholder="Ví dụ: vết thương cải thiện, giảm còn 3 buổi mỗi tuần" />
         <SwitchRow label="Bác sĩ xác nhận đợt điều trị" detail="Bệnh nhân sẽ xem được đợt này" value={confirmed} onChange={setConfirmed} />
             <Button label="Lưu phiên bản mới" icon="save-outline" onPress={save} />
           </>

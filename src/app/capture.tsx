@@ -57,7 +57,7 @@ export default function Capture() {
           </View>
         </Card>
       )}
-      <Button label="Chụp có hướng dẫn" icon="camera" disabled={!woundId} onPress={go} />
+      <Button label="Chụp có hướng dẫn" icon="camera" disabled={!woundId} onPress={go} reason="Chọn bệnh nhân và vết thương trước." />
       <Muted>Mở bước chụp để dùng camera hoặc chọn ảnh từ thư viện, rồi kiểm tra trước khi lưu.</Muted>
     </Screen>
   );

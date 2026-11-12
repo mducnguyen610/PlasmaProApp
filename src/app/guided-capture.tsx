@@ -264,7 +264,7 @@ export default function GuidedCapture() {
           {estimate.cosTilt !== null ? <InfoRow label="Góc nghiêng" value={`${Math.round(Math.acos(Math.min(1, estimate.cosTilt)) * 180 / Math.PI)}°`} /> : null}
           <Muted>Ước lượng từ vùng khoanh, khoảng cách và thông số camera của phiên AR. Chưa kiểm chứng lâm sàng; bác sĩ sửa số nếu đo thực tế khác.</Muted>
         </> : <Muted>{photo.ar ? 'Chưa ước lượng được vì chưa khoanh được vết thương hoặc chưa đo được khoảng cách.' : 'Không có dữ liệu AR nên app không ước lượng diện tích. Nhập số đo của bác sĩ.'}</Muted>}
-        <Field label="Diện tích xác nhận (cm²)" value={areaText} onChangeText={setAreaText} keyboardType="decimal-pad" placeholder="Ví dụ 12,5 — để trống nếu chưa đo" />
+        <Field label="Diện tích xác nhận (cm²)" value={areaText} onChangeText={setAreaText} keyboardType="decimal-pad" placeholder="Ví dụ: 12,5. Để trống nếu chưa đo" />
         <Choices value={method} options={[...(estimate ? [METHOD_AR] : []), ...METHODS].map(m => ({ value: m, label: m }))} onChange={setMethod} />
         <CheckRow checked={reviewed} onChange={setReviewed} label="Đã xem ảnh: rõ nét, đủ sáng, thấy toàn bộ vết thương" />
       </Card>

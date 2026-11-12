@@ -35,7 +35,7 @@ export default function Activate() {
     <Screen header={<Header back title="Kích hoạt tài khoản" subtitle="Dùng mã bác sĩ đưa khi tạo hồ sơ" />}>
       <Card style={{ width: '100%', maxWidth: 600, alignSelf: 'center', gap: 16 }}>
         <Muted>Tên đăng nhập là mã hồ sơ (ví dụ bn004). Mã kích hoạt gồm 6 chữ số, chỉ dùng một lần.</Muted>
-        <Field label="Tên đăng nhập" accessibilityLabel="Tên đăng nhập" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} placeholder="bn004" />
+        <Field label="Tên đăng nhập" accessibilityLabel="Tên đăng nhập" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} placeholder="Ví dụ: bn004" />
         <Field label="Mã kích hoạt" accessibilityLabel="Mã kích hoạt" value={code} onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" placeholder="6 chữ số" />
         <Field label="Mật khẩu mới" accessibilityLabel="Mật khẩu mới" value={password} onChangeText={setPassword} secureTextEntry placeholder="Ít nhất 8 ký tự" />
         <Field label="Nhập lại mật khẩu" accessibilityLabel="Nhập lại mật khẩu" value={repeat} onChangeText={setRepeat} secureTextEntry />

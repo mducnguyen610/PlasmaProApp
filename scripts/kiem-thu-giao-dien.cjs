@@ -175,7 +175,7 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     await p.getByText('1. Lịch').click(); await p.waitForTimeout(300);
     await p.getByPlaceholder('dd/mm/yyyy').first().fill('');
     await p.getByText('3. Xác nhận').click(); await p.waitForTimeout(300);
-    await p.getByPlaceholder('Bắt buộc').fill('Kiểm thử');
+    await p.getByLabel('Lý do thay đổi').fill('Kiểm thử');
     await p.getByText('Lưu phiên bản mới').click(); await p.waitForTimeout(400);
     const e2 = await visible(p, 'Giai đoạn 1: ngày theo dạng dd/mm/yyyy.');
     const back = await visible(p, 'Lịch theo giai đoạn');
