@@ -305,13 +305,13 @@ export function Field({ label, hint, error, optional, ...props }: TextInputProps
   );
 }
 
-export function Choices<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
+export function Choices<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string; a11y?: string }[]; onChange: (v: T) => void }) {
   return (
     <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {options.map((o) => {
         const on = o.value === value;
         return (
-          <Pressable key={o.value} onPress={() => onChange(o.value)} accessibilityRole="radio" accessibilityLabel={o.label} accessibilityState={{ checked: on, selected: on }} style={[s.choice, on && { backgroundColor: C.primary, borderColor: C.primary }]}>
+          <Pressable key={o.value} onPress={() => onChange(o.value)} accessibilityRole="radio" accessibilityLabel={o.a11y ?? o.label} accessibilityState={{ checked: on, selected: on }} style={[s.choice, on && { backgroundColor: C.primary, borderColor: C.primary }]}>
             <Text style={{ color: on ? C.onPrimary : C.grey, fontWeight: '500', fontSize: T.label }}>{o.label}</Text>
           </Pressable>
         );

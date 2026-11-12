@@ -107,7 +107,7 @@ export default function PatientDetail() {
         )}
         {/* Ô số: tiến độ đợt (neutral) và kênh Wi-Fi của thiết bị (tông theo CLOUD_LINK, V02, V07), chạm để mở. */}
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <NumberTile icon="flash-outline" tone="gray" value={pr ? `${pr.done}/${pr.total}` : plan ? `v${plan.version}` : '—'} label={plan ? `Buổi · ${PLAN_STATUS[plan.status].label}` : 'Chưa lập đợt'}
+          <NumberTile icon="flash-outline" tone="gray" value={pr ? `${pr.done}/${pr.total}` : plan ? `v${plan.version}` : '—'} label={pr && plan?.status === 'active' ? 'Buổi đã làm' : plan ? PLAN_STATUS[plan.status].label : 'Chưa lập đợt'}
             onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id } })} />
           <NumberTile icon={(cloud ? cloud.icon : 'hardware-chip-outline') as IconName} tone={cloud ? semantic[cloud.role].tone : 'amber'} value={dev?.code ?? '—'} label={cloud ? cloud.label : 'Chưa gán thiết bị'}
             onPress={dev ? () => router.push({ pathname: '/devices/[id]', params: { id: dev.id } }) : undefined} />
@@ -146,23 +146,6 @@ export default function PatientDetail() {
         </Disclosure>
       </Card>
 
-      <Button
-        label="Xuất báo cáo theo dõi (PDF)"
-        icon="document-attach-outline"
-        variant="secondary"
-        loading={reporting}
-        onPress={async () => {
-          setReporting(true);
-          try {
-            const where = await shareReport(await buildReportHtml(data, p.id, me?.name ?? ''), p.code);
-            notify('Đã tạo báo cáo', `Lưu tại: ${where}`);
-          } catch (e) {
-            notify('Chưa tạo được báo cáo', String(e));
-          } finally {
-            setReporting(false);
-          }
-        }}
-      />
 
       <SectionTitle icon="bandage-outline">Vết thương</SectionTitle>
       <ListCard>
@@ -221,6 +204,25 @@ export default function PatientDetail() {
           </View>
         ))}
       </Card>}
+
+      {/* Xuất PDF đặt cuối màn để không giành chú ý với nội dung lâm sàng (V28). */}
+      <Button
+        label="Xuất báo cáo theo dõi (PDF)"
+        icon="document-attach-outline"
+        variant="secondary"
+        loading={reporting}
+        onPress={async () => {
+          setReporting(true);
+          try {
+            const where = await shareReport(await buildReportHtml(data, p.id, me?.name ?? ''), p.code);
+            notify('Đã tạo báo cáo', `Lưu tại: ${where}`);
+          } catch (e) {
+            notify('Chưa tạo được báo cáo', String(e));
+          } finally {
+            setReporting(false);
+          }
+        }}
+      />
     </Screen>
   );
 }

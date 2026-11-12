@@ -151,7 +151,7 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     const dates1 = await p.getByText(/^Chụp \d/).count();
     rec('TC08b', 'Album mặc định 2 ngày, "Xem tất cả" mở đủ', dates0 === 2 && dates1 > 2, `${dates0} → ${dates1}`);
     const hidden0 = await visible(p, 'Mỗi ngày');
-    await p.getByText(/^Giai đoạn \d\/\d · mức/).first().click(); await p.waitForTimeout(300);
+    await p.getByText(/^Giai đoạn \d trên \d$/).first().click(); await p.waitForTimeout(300);
     const shown1 = await visible(p, 'Mỗi ngày');
     const missed = await visible(p, /Bỏ lỡ/, false);
     rec('TC08c', 'Chi tiết đợt ẩn mặc định, mở được; số buổi bỏ lỡ vẫn hiện ở dòng tóm tắt', !hidden0 && shown1, `ẩn trước: ${!hidden0}; hiện sau: ${shown1}`);

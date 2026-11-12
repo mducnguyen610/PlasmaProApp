@@ -8,7 +8,7 @@ import { MONO, Text } from '@/components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Field, Header, InfoRow, Muted, Screen, SectionTitle, Segmented, StatusChip, WoundPhoto } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Field, Header, InfoRow, Muted, Screen, SectionTitle, Segmented, StatusChip, WoundPhoto } from '@/components/ui';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { buildFilename, checkFullFilename, formatAreaDisplay, formatAreaForName, parseArea, type AreaUnit } from '@/lib/naming';
@@ -125,18 +125,21 @@ export default function ImageDetail() {
           <Chip label={LABEL_STATUS[im.status].label} tone={LABEL_STATUS[im.status].tone} />
           {im.retakeRequested && <Chip label="Đã yêu cầu chụp lại" tone="red" icon="refresh" />}
         </View>
-        <Text style={{ color: C.textSoft, fontSize: 13 }}>Tên hiện tại</Text>
-        <Text selectable style={{ fontFamily: MONO, fontSize: 14, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{im.filename}</Text>
         <InfoRow label="Diện tích bác sĩ đã đo" value={formatAreaDisplay(im.areaCm2)} />
         {im.areaCm2 !== null && <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />}
         {im.measureMethod ? <InfoRow label="Phương pháp đo" value={im.measureMethod} /> : null}
-        <InfoRow label="Mã bệnh nhân" value={p.code} />
-        <InfoRow label="Mã vết thương" value={w.code} />
-        <InfoRow label="Mã ảnh (cố định)" value={im.id} />
         <InfoRow label="Ngày chụp" value={im.capture?.sourceDateKnown === false ? 'Chưa xác định (ảnh thư viện)' : fmtDate(im.captureDate)} />
         <InfoRow label="Ngày tải lên" value={fmtDate(im.uploadDate)} />
         <InfoRow label="Người tải" value={im.source === 'demo' ? 'Dữ liệu mô phỏng' : account(im.uploadedBy)?.name ?? '—'} />
         {im.excludeReason ? <InfoRow label="Lý do loại" value={im.excludeReason} /> : null}
+        {/* Tên tệp và mã định danh là thông tin kỹ thuật: thu gọn để không chen vào số đo (V30). */}
+        <Disclosure icon="document-text-outline" title="Chi tiết kỹ thuật" summary="Tên tệp, mã bệnh nhân, vết thương, ảnh">
+          <Text style={{ color: C.textSoft, fontSize: 13 }}>Tên tệp hiện tại</Text>
+          <Text selectable style={{ fontFamily: MONO, fontSize: 14, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{im.filename}</Text>
+          <InfoRow label="Mã bệnh nhân" value={p.code} />
+          <InfoRow label="Mã vết thương" value={w.code} />
+          <InfoRow label="Mã ảnh (cố định)" value={im.id} />
+        </Disclosure>
       </Card>
 
       {/* Kết quả nhận diện tách khỏi số đo của bác sĩ, luôn ghi nguồn và độ tin cậy (V06). Chỉ hiển thị, không ghi đè số đo. */}
