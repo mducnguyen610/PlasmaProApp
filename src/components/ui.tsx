@@ -18,8 +18,8 @@ import { bar, C, cardShape, elevation, G, radius, interaction, radiusExtra, sema
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export function Header({
-  title, subtitle, back, right, children,
-}: { title: string; subtitle?: string; back?: boolean; right?: ReactNode; children?: ReactNode }) {
+  title, subtitle, back, right, children, titleLines = 1,
+}: { title: string; subtitle?: string; back?: boolean; right?: ReactNode; children?: ReactNode; titleLines?: number }) {
   const insets = useSafeAreaInsets();
   const { me } = useStore();
   return (
@@ -34,7 +34,8 @@ export function Header({
             Màn có nút quay lại dùng biểu tượng nhỏ trước dòng phụ để không chật. Tiêu đề và dòng phụ chỉ còn hai dòng. */}
         {me && !back ? <RoleAvatar role={me.role} /> : null}
         <View style={{ flex: 1, paddingHorizontal: back ? 4 : 10 }}>
-          <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
+          {/* titleLines (PP-15, tùy chọn, mặc định 1): màn có tiêu đề dài cho xuống dòng thay vì cắt. */}
+          <Text style={s.headerTitle} numberOfLines={titleLines}>{title}</Text>
           {/* Biểu tượng vai trò không đứng một mình (V21): màn không có dòng phụ thì ghi tên vai trò cạnh biểu tượng. */}
           {(me && back) || subtitle ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>

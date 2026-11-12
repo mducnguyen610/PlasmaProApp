@@ -15,6 +15,7 @@ type Step = { icon: IconName; tone: string; soft: string; title: string; points:
 // Hướng dẫn lần đầu cho bệnh nhân (đề xuất 3 của bản đánh giá trải nghiệm), 5 màn (thêm màn nạp liệu trình bằng USB, V19):
 // thiết bị là gì, mỗi ngày làm gì, báo triệu chứng ở đâu, gọi ai khi khẩn cấp.
 // Nội dung y khoa trong các màn này là bản nháp cho demo, cần bác sĩ trong nhóm duyệt.
+// Đợt 5 (PP-13): câu chữ viết lại theo bảng đã duyệt C01 đến C18 (DOT5_BANG_CAU_CHU.md), dùng "điều trị" thay "chiếu".
 export default function Onboarding() {
   const { review } = useLocalSearchParams<{ review?: string }>();
   const { me, finishOnboarding } = useStore();
@@ -32,9 +33,9 @@ export default function Onboarding() {
       icon: 'pulse', tone: C.primary, soft: C.primarySoft,
       title: 'Thiết bị Plasma Pro là gì',
       points: [
-        'Thiết bị cầm tay phát plasma lạnh, dùng hỗ trợ điều trị vết thương theo liệu trình bác sĩ đặt.',
-        'Sau mỗi lần dùng, thiết bị tự gửi số lần điều trị qua Wi-Fi về ứng dụng để bác sĩ theo dõi.',
-        'Ứng dụng không tự chẩn đoán. Đánh giá vết thương do bác sĩ nhập.',
+        'Plasma Pro là máy cầm tay phát plasma lạnh. Máy hỗ trợ điều trị vết thương theo liệu trình bác sĩ đặt.',
+        'Sau mỗi lần dùng, máy tự gửi số lần điều trị qua Wi-Fi. Bác sĩ xem số này để theo dõi.',
+        'Ứng dụng không tự chẩn đoán. Chỉ bác sĩ đánh giá vết thương.',
       ],
     },
     {
@@ -42,11 +43,11 @@ export default function Onboarding() {
       title: 'Đợt điều trị gồm những gì',
       points: [
         active
-          ? `Đợt điều trị theo lịch bác sĩ đặt: ${phases.map((ph) => phaseLabel(ph).toLowerCase()).join(', sau đó ')}. Có những ngày nghỉ theo lịch, không phải ngày nào cũng chiếu.`
-          : 'Điều trị theo lịch bác sĩ dặn. Đợt điều trị của bạn chưa được bác sĩ xác nhận trong ứng dụng.',
-        'Đầu Trang chủ cho biết hôm nay có buổi chiếu hay nghỉ, và buổi tiếp theo vào ngày nào.',
-        'Thiết bị đã khóa mức năng lượng và thời gian theo y lệnh. Thiết bị không phát vào ngày nghỉ hoặc khi đã đủ số lần.',
-        'Đợt kết thúc khi bác sĩ xác nhận vết thương đã liền, sau đó bạn chỉ cần tái khám theo lịch kiểm tra.',
+          ? `Bạn điều trị theo lịch bác sĩ đặt: ${phases.map((ph) => phaseLabel(ph).toLowerCase()).join(', sau đó ')}. Lịch có ngày nghỉ, nên không phải ngày nào cũng điều trị.`
+          : 'Bạn điều trị theo lịch bác sĩ dặn. Bác sĩ chưa xác nhận đợt điều trị của bạn trong ứng dụng.',
+        'Xem đầu Trang chủ để biết hôm nay điều trị hay nghỉ. Ở đó cũng ghi ngày điều trị tiếp theo.',
+        'Máy đã khóa sẵn mức năng lượng và thời gian theo chỉ định của bác sĩ. Máy không phát vào ngày nghỉ hoặc khi đã đủ số lần.',
+        'Đợt kết thúc khi bác sĩ xác nhận vết thương đã liền. Sau đó, bạn chỉ cần tái khám theo lịch kiểm tra.',
       ],
     },
     {
@@ -54,27 +55,27 @@ export default function Onboarding() {
       icon: 'git-commit', tone: C.teal, soft: C.tealSoft,
       title: 'Nạp liệu trình bằng cáp USB',
       points: [
-        'Ngày có buổi chiếu, Trang chủ có nút "Nạp liệu trình vào máy".',
-        '1. Kết nối máy: cắm cáp USB từ điện thoại vào thiết bị, chạm Kết nối.',
-        '2. Nạp liệu trình: kiểm tra mức, chế độ, thời gian rồi chạm "Nạp liệu trình vào máy". Chờ dòng "Máy đã nhận cấu hình".',
-        '3. Chiếu: chạm "Theo dõi phiên điều trị" và giữ màn hình mở tới khi xong buổi để buổi được ghi vào nhật ký.',
+        'Vào ngày có buổi điều trị, chạm nút "Nạp liệu trình vào máy" trên Trang chủ.',
+        '1. Kết nối máy: cắm cáp USB từ điện thoại vào máy. Chạm "Kết nối".',
+        '2. Nạp liệu trình: xem lại mức năng lượng, chế độ và thời gian. Chạm "Nạp liệu trình vào máy". Chờ dòng "Máy đã nhận liệu trình".',
+        '3. Điều trị: chạm "Theo dõi phiên điều trị". Giữ màn hình mở tới khi xong buổi. Như vậy buổi điều trị mới được ghi vào nhật ký.',
       ],
     },
     {
       icon: 'medkit', tone: C.amber, soft: C.amberSoft,
       title: 'Báo triệu chứng ở đâu',
       points: [
-        'Trên Trang chủ, chạm nút "Báo triệu chứng hoặc sự cố" để báo đau, rát, chảy dịch hoặc sốt.',
-        'Thiết bị không bật được hoặc mất Wi-Fi: vào tab Thiết bị, chạm "Báo sự cố thiết bị".',
-        `Báo cáo được gửi cho ${doctor ?? 'bác sĩ phụ trách'}. Bác sĩ chỉ xem được khi mở ứng dụng, nên không có thời gian trả lời cố định.`,
+        'Khi bị đau, rát, chảy dịch hoặc sốt, chạm "Báo triệu chứng hoặc sự cố" trên Trang chủ.',
+        'Khi máy không bật được hoặc mất Wi-Fi, vào tab Thiết bị và chạm "Báo sự cố thiết bị".',
+        `Báo cáo được gửi cho ${doctor ?? 'bác sĩ phụ trách'}. Bác sĩ chỉ thấy báo cáo khi mở ứng dụng. Vì vậy không có giờ trả lời cố định.`,
       ],
     },
     {
       icon: 'call', tone: C.red, soft: C.redSoft,
       title: 'Khi khẩn cấp',
       points: [
-        'Nếu đau tăng nhiều, sốt, chảy máu hoặc mủ nhiều, hãy gọi 115 hoặc đến cơ sở y tế gần nhất.',
-        'Không chờ phản hồi trong ứng dụng. Ứng dụng không thay thế cấp cứu và không được theo dõi liên tục.',
+        'Hãy gọi 115 hoặc đến cơ sở y tế gần nhất nếu bạn đau tăng nhiều, sốt, chảy máu hoặc mủ nhiều.',
+        'Đừng chờ trả lời trong ứng dụng. Ứng dụng không thay thế cấp cứu. Không có ai theo dõi ứng dụng liên tục.',
       ],
       emergency: true,
     },
@@ -119,7 +120,7 @@ export default function Onboarding() {
       </Card>
       <Button label={last ? 'Bắt đầu sử dụng' : 'Tiếp'} icon={last ? 'checkmark' : 'arrow-forward'} onPress={last ? done : () => setI(i + 1)} />
       {i > 0 && <Button label="Quay lại" variant="ghost" onPress={() => setI(i - 1)} />}
-      <Muted>Có thể xem lại hướng dẫn này trong Tài khoản.</Muted>
+      <Muted>Bạn có thể xem lại hướng dẫn này trong Tài khoản.</Muted>
     </Screen>
   );
 }
