@@ -1,13 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 
 import { Button, Card, Field, Header, Muted, Screen, Segmented } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { C, size } from '@/theme';
 
 // Báo triệu chứng / sự cố gửi cho người phụ trách (đặc tả mục 6).
 // Ngưỡng đau 7/10 để hiện cảnh báo là đề xuất cho bản demo, cần bác sĩ xác nhận.
@@ -18,6 +18,10 @@ export default function Report() {
   const [kind, setKind] = useState<'symptom' | 'device'>(params.kind === 'device' ? 'device' : 'symptom');
   const [content, setContent] = useState('');
   const [pain, setPain] = useState<number | null>(null);
+  // Máy hẹp (dưới 380 px) chia 3 hàng 4 ô để mỗi ô vẫn rộng ít nhất 44 px (A04, audit lần 2).
+  const { width } = useWindowDimensions();
+  const rows = width < 380 ? [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10]] : [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10]];
+  const perRow = rows[0].length;
   if (!me?.patientId) return <NoAccess />;
 
   // Luồng an toàn (UR4): chọn mức đau là đủ để gửi, không bắt gõ chữ.
@@ -42,16 +46,16 @@ export default function Report() {
         {kind === 'symptom' && (
           <>
             <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Mức đau</Text>
-            {/* Hai hàng đều cột 0 đến 5 và 6 đến 10, chữ mốc ở hai đầu thang (V18). */}
+            {/* Các hàng đều cột, chữ mốc ở hai đầu thang (V18); số hàng theo độ rộng màn (A04). */}
             <View accessibilityRole="radiogroup" accessibilityLabel="Mức đau" style={{ gap: 6 }}>
-              {[[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10]].map((row) => (
+              {rows.map((row) => (
                 <View key={row[0]} style={{ flexDirection: 'row', gap: 6 }}>
                   {row.map((i) => (
-                    <Pressable key={i} onPress={() => setPain(i)} accessibilityRole="radio" accessibilityLabel={`Mức đau ${i}${i === 0 ? ', không đau' : i === 10 ? ', đau nhất' : ''}`} accessibilityState={{ checked: pain === i, selected: pain === i }} style={{ flex: 1, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: pain === i ? C.primary : C.surfaceMuted, borderWidth: 1, borderColor: pain === i ? C.primary : C.cardBorder }}>
+                    <Pressable key={i} onPress={() => setPain(i)} accessibilityRole="radio" accessibilityLabel={`Mức đau ${i}${i === 0 ? ', không đau' : i === 10 ? ', đau nhất' : ''}`} accessibilityState={{ checked: pain === i, selected: pain === i }} style={{ flex: 1, minWidth: size.touch, height: size.touch, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: pain === i ? C.primary : C.surfaceMuted, borderWidth: 1, borderColor: pain === i ? C.primary : C.cardBorder }}>
                       <Text style={{ color: pain === i ? C.onPrimary : C.text, fontWeight: '700' }}>{i}</Text>
                     </Pressable>
                   ))}
-                  {row.length < 6 && <View style={{ flex: 1 }} />}
+                  {Array.from({ length: perRow - row.length }, (_, k) => <View key={`pad-${k}`} style={{ flex: 1, minWidth: size.touch }} />)}
                 </View>
               ))}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>

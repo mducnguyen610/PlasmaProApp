@@ -4,11 +4,12 @@ import { View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Choices, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, type IconName } from '@/components/ui';
+import { UsbLinkStatus } from '@/components/UsbLinkStatus';
+import { Button, Card, Choices, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, type IconName } from '@/components/ui';
 import { fmtDuration } from '@/lib/course';
 import { modeLabel } from '@/lib/device/capabilities';
 import { planToConfig, PROTOCOL } from '@/lib/device';
-import { CONFIG_ERROR_LABEL, LINK_LABEL, MISSING_LABEL, nakHint, sendResultLabel } from '@/lib/device/labels';
+import { CONFIG_ERROR_LABEL, MISSING_LABEL, nakHint, sendResultLabel } from '@/lib/device/labels';
 import { configToWire, validateConfig } from '@/lib/device/protocol';
 import type { SendResult } from '@/lib/device/sender';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
@@ -89,10 +90,7 @@ export default function ConnectDevice() {
       {!PROTOCOL.confirmed && !isPatient && <Notice>Giao thức chưa được firmware xác nhận.</Notice>}
 
       <Card>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={{ fontWeight: '700', color: C.text, flex: 1 }}>{LINK_LABEL[link.state]}</Text>
-          {link.kind === 'simulated' && <Chip label="Thiết bị giả lập" tone="amber" icon="flask-outline" />}
-        </View>
+        <UsbLinkStatus state={link.state} simulated={link.kind === 'simulated'} />
         {link.detail ? <Muted>{link.detail}</Muted> : null}
         {link.state === 'connected' && !isPatient && (
           <>

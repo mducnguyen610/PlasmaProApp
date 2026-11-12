@@ -142,6 +142,58 @@ export default function ImageDetail() {
         </Disclosure>
       </Card>
 
+      {/* Đo diện tích là việc chính của màn: đặt ngay dưới thẻ số đo, trước thẻ AI và thẻ chia sẻ (A02, audit lần 2). */}
+      {isDoctor && !editing && <Button label={im.areaCm2 === null ? "Nhập diện tích bác sĩ đã đo" : "Sửa số đo / tên ảnh"} icon="create-outline" onPress={startEdit} />}
+
+      {isDoctor && editing && (
+        <Card style={{ borderWidth: 1.5, borderColor: C.primary }}>
+          <SectionTitle icon="create-outline">Sửa tên theo diện tích đã đo</SectionTitle>
+          <Muted>Ứng dụng không tự đo diện tích. Nhập số đo bác sĩ đã đo bên ngoài; ứng dụng ghép thành tên đúng quy ước.</Muted>
+          <Segmented<Mode> value={mode} onChange={setMode} options={[{ value: 'area', label: 'Nhập diện tích' }, { value: 'full', label: 'Sửa tên đầy đủ' }]} />
+          {mode === 'area' ? (
+            <>
+              <Field
+                label="Diện tích bác sĩ đã đo"
+                value={areaText}
+                onChangeText={setAreaText}
+                keyboardType="decimal-pad"
+                autoFocus
+                error={error}
+                // Không đặt số mẫu trong ô: placeholder dạng số dễ bị đọc nhầm là giá trị đã nhập (A03, audit lần 2).
+                hint="Ví dụ: 12,5. Có thể dùng dấu phẩy hoặc dấu chấm."
+              />
+              <Segmented<AreaUnit> value={unit} onChange={setUnit} options={[{ value: 'cm2', label: 'cm²' }, { value: 'mm2', label: 'mm² (quy đổi sang cm²)' }]} />
+            </>
+          ) : (
+            <Field label="Tên tệp đầy đủ" value={fullName} onChangeText={setFullName} autoCapitalize="none" autoCorrect={false} error={error} hint="Chỉ sửa phần số sau area_; mã và đuôi tệp phải giữ nguyên." />
+          )}
+          <Field label={im.capture ? "Phương pháp đo (bắt buộc)" : "Phương pháp đo (khuyến nghị)"} value={method} onChangeText={setMethod} placeholder="Ví dụ: thước giấy kẻ ô, phần mềm đo trên máy tính…" />
+          <View style={{ gap: 4 }}>
+            <Text style={{ color: C.textSoft, fontSize: 13 }}>Xem trước tên sẽ lưu</Text>
+            <Text style={{ fontFamily: MONO, fontSize: 14, color: preview ? C.green : C.textFaint, backgroundColor: preview ? C.greenSoft : C.surfaceMuted, padding: 10, borderRadius: 10 }}>
+              {preview ?? '—'}
+            </Text>
+            {preview && newArea !== null && <Muted>Diện tích lưu trong hồ sơ: {formatAreaDisplay(newArea)}</Muted>}
+            {warning && <Text accessibilityLiveRegion="polite" style={{ color: C.amber, fontSize: 14, fontWeight: '600' }}>{warning}</Text>}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Button style={{ flex: 1 }} label="Hủy" variant="secondary" onPress={() => setEditing(false)} />
+            <Button style={{ flex: 1 }} label="Lưu" icon="checkmark" disabled={!preview} onPress={save} />
+          </View>
+          {im.areaCm2 !== null && (
+            <Pressable
+              onPress={() =>
+                confirm('Gỡ nhãn diện tích', 'Ảnh sẽ trở về trạng thái "Chưa có nhãn diện tích" (không đặt thành 0).', () => {
+                  labelImage(im.id, null, undefined, 'Gỡ nhãn');
+                  setEditing(false);
+                })
+              }>
+              <Text style={{ color: C.red, fontWeight: '600', textAlign: 'center' }}>Gỡ nhãn diện tích</Text>
+            </Pressable>
+          )}
+        </Card>
+      )}
+
       {/* Kết quả nhận diện tách khỏi số đo của bác sĩ, luôn ghi nguồn và độ tin cậy (V06). Chỉ hiển thị, không ghi đè số đo. */}
       {isDoctor && <AiResultCard wound={im.capture?.wound} arArea={im.capture?.automaticMeasurement.areaCm2 ?? null} />}
 
@@ -178,57 +230,6 @@ export default function ImageDetail() {
           })} />
         {!p.researchConsent && <Muted>Bệnh nhân chưa đồng ý sử dụng ảnh cho nghiên cứu.</Muted>}
       </Card>}
-      {isDoctor && !editing && <Button label={im.areaCm2 === null ? "Nhập diện tích bác sĩ đã đo" : "Sửa số đo / tên ảnh"} icon="create-outline" onPress={startEdit} />}
-
-      {isDoctor && editing && (
-        <Card style={{ borderWidth: 1.5, borderColor: C.primary }}>
-          <SectionTitle icon="create-outline">Sửa tên theo diện tích đã đo</SectionTitle>
-          <Muted>Ứng dụng không tự đo diện tích. Nhập số đo bác sĩ đã đo bên ngoài; ứng dụng ghép thành tên đúng quy ước.</Muted>
-          <Segmented<Mode> value={mode} onChange={setMode} options={[{ value: 'area', label: 'Nhập diện tích' }, { value: 'full', label: 'Sửa tên đầy đủ' }]} />
-          {mode === 'area' ? (
-            <>
-              <Field
-                label="Diện tích bác sĩ đã đo"
-                value={areaText}
-                onChangeText={setAreaText}
-                keyboardType="decimal-pad"
-                placeholder="12,5"
-                autoFocus
-                error={error}
-                hint="Có thể dùng dấu phẩy hoặc dấu chấm."
-              />
-              <Segmented<AreaUnit> value={unit} onChange={setUnit} options={[{ value: 'cm2', label: 'cm²' }, { value: 'mm2', label: 'mm² (quy đổi sang cm²)' }]} />
-            </>
-          ) : (
-            <Field label="Tên tệp đầy đủ" value={fullName} onChangeText={setFullName} autoCapitalize="none" autoCorrect={false} error={error} hint="Chỉ sửa phần số sau area_; mã và đuôi tệp phải giữ nguyên." />
-          )}
-          <Field label={im.capture ? "Phương pháp đo (bắt buộc)" : "Phương pháp đo (khuyến nghị)"} value={method} onChangeText={setMethod} placeholder="Ví dụ: thước giấy kẻ ô, phần mềm đo trên máy tính…" />
-          <View style={{ gap: 4 }}>
-            <Text style={{ color: C.textSoft, fontSize: 13 }}>Xem trước tên sẽ lưu</Text>
-            <Text style={{ fontFamily: MONO, fontSize: 14, color: preview ? C.green : C.textFaint, backgroundColor: preview ? C.greenSoft : C.surfaceMuted, padding: 10, borderRadius: 10 }}>
-              {preview ?? '—'}
-            </Text>
-            {preview && newArea !== null && <Muted>Diện tích lưu trong hồ sơ: {formatAreaDisplay(newArea)}</Muted>}
-            {warning && <Text accessibilityLiveRegion="polite" style={{ color: C.amber, fontSize: 14, fontWeight: '600' }}>{warning}</Text>}
-          </View>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Button style={{ flex: 1 }} label="Hủy" variant="secondary" onPress={() => setEditing(false)} />
-            <Button style={{ flex: 1 }} label="Lưu" icon="checkmark" disabled={!preview} onPress={save} />
-          </View>
-          {im.areaCm2 !== null && (
-            <Pressable
-              onPress={() =>
-                confirm('Gỡ nhãn diện tích', 'Ảnh sẽ trở về trạng thái "Chưa có nhãn diện tích" (không đặt thành 0).', () => {
-                  labelImage(im.id, null, undefined, 'Gỡ nhãn');
-                  setEditing(false);
-                })
-              }>
-              <Text style={{ color: C.red, fontWeight: '600', textAlign: 'center' }}>Gỡ nhãn diện tích</Text>
-            </Pressable>
-          )}
-        </Card>
-      )}
-
       {isDoctor && (
         <Card>
           <SectionTitle icon="options-outline">Thao tác khác</SectionTitle>

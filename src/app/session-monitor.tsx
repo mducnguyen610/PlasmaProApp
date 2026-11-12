@@ -5,8 +5,9 @@ import { View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Header, InfoRow, Muted, Notice, Screen } from '@/components/ui';
-import { fmtRemaining, LINK_LABEL, SESSION_LABEL } from '@/lib/device/labels';
+import { UsbLinkStatus } from '@/components/UsbLinkStatus';
+import { Button, Card, Header, InfoRow, Muted, Notice, Screen } from '@/components/ui';
+import { fmtRemaining, SESSION_LABEL } from '@/lib/device/labels';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
 import { fmtDateTime } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
@@ -61,10 +62,7 @@ export default function SessionMonitor() {
   return (
     <Screen header={<Header back title="Theo dõi phiên điều trị" subtitle={p.code} />}>
       <Card>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={{ fontWeight: '700', color: C.text, flex: 1 }}>{LINK_LABEL[link.state]}</Text>
-          {link.kind === 'simulated' && <Chip label="Thiết bị giả lập" tone="amber" icon="flask-outline" />}
-        </View>
+        <UsbLinkStatus state={link.state} simulated={link.kind === 'simulated'} />
         {link.state !== 'connected' && <Button label="Kết nối" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />}
       </Card>
       {lost && st?.state === 'running' && <Notice tone="red">Mất kết nối với máy trong lúc phiên đang chạy. Hãy cắm lại cáp.</Notice>}

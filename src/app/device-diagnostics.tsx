@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
+import { UsbLinkStatus } from '@/components/UsbLinkStatus';
 import { Button, Card, Chip, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
 import { PROTOCOL, setTransportPreference, transportPreference, usbAndroidAvailable } from '@/lib/device';
 import { LINK_LABEL, sendResultLabel } from '@/lib/device/labels';
@@ -59,6 +60,7 @@ export default function DeviceDiagnostics() {
 
       <Card>
         <Text style={{ fontWeight: '700', color: C.text }}>Đường truyền</Text>
+        <UsbLinkStatus state={link.state} simulated={link.kind === 'simulated'} />
         <InfoRow label="Đang dùng" value={link.kind === 'usb-android' ? 'USB thật (Android)' : link.kind === 'simulated' ? 'Thiết bị giả lập' : link.kind} />
         {link.detail ? <Muted>{link.detail}</Muted> : null}
         {usbAndroidAvailable() ? (
