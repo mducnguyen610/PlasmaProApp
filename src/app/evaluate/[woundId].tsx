@@ -1,18 +1,18 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, View } from 'react-native';
+import { Pressable, View, type HostInstance, type ScrollViewInstance } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Choices, Disclosure, Field, Header, InfoRow, Muted, Screen, SwitchRow } from '@/components/ui';
+import { Button, Card, Choices, Disclosure, Divider, Field, Header, InfoRow, Muted, Screen, SwitchRow } from '@/components/ui';
 import { SEVERITY } from '@/lib/access';
 import { assessmentError, EXUDATE, HELP, INFECTION, PERCENT_BANDS, PRESSURE, PRESSURE_STAGES, WOUND_TYPES, woundAge } from '@/lib/assessment';
 import { TREND } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { todayIso, useLookups, useStore } from '@/lib/store';
 import type { Severity, Trend, WoundAssessment } from '@/lib/types';
-import { C } from '@/theme';
+import { C, size, space, T } from '@/theme';
 
 // BS06 – Đánh giá tình trạng: nhận xét của bác sĩ, tách riêng với việc đặt tên ảnh (đặc tả 3.2).
 export default function Evaluate() {
@@ -29,7 +29,7 @@ export default function Evaluate() {
   // Lấy sẵn loại và giai đoạn của lần đánh giá trước (như Swift), bác sĩ chỉ sửa khi thay đổi.
   const prev = data.evaluations.filter((e) => e.woundId === woundId && e.assessment).sort((a, b) => b.date.localeCompare(a.date))[0]?.assessment;
   const [a, setA] = useState<Partial<WoundAssessment>>({ woundType: prev?.woundType, pressureStage: prev?.pressureStage });
-  const set = (k: keyof WoundAssessment) => (v: string) => setA((x) => ({ ...x, [k]: v, ...(k === 'woundType' && v !== PRESSURE ? { pressureStage: undefined } : {}) }));
+  const set = (k: keyof WoundAssessment) => (v: string) => { setA((x) => ({ ...x, [k]: v, ...(k === 'woundType' && v !== PRESSURE ? { pressureStage: undefined } : {}) })); clearErr(k as FieldKey); };
   const [characteristics, setCharacteristics] = useState('');
   const [symptoms, setSymptoms] = useState(openReports.map((r) => r.content).join(' '));
   const [symptomSource, setSymptomSource] = useState(openReports.length ? 'Bệnh nhân báo qua ứng dụng' : 'Bác sĩ hỏi trực tiếp');
@@ -39,6 +39,25 @@ export default function Evaluate() {
   const [nextReview, setNextReview] = useState('');
   const [visible, setVisible] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  // Bổ sung Đợt 4: nhóm đang mở do màn điều khiển, để khi lưu thiếu trường thì mở đúng nhóm và đưa tới trường lỗi.
+  const [openGroups, setOpenGroups] = useState<[boolean, boolean, boolean]>([true, false, false]);
+  const [fieldErr, setFieldErr] = useState<{ key: FieldKey; msg: string; at: number } | null>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  // Bảng nút của các trường bắt buộc và hàm gắn nút, tạo một lần (không đọc trong lúc render).
+  const [fieldNodes] = useState(() => new Map<FieldKey, HostInstance>());
+  const [anchors] = useState(() => Object.fromEntries(FIELD_KEYS.map((k) => [k, (el: HostInstance | null) => { if (el) fieldNodes.set(k, el); else fieldNodes.delete(k); }])) as Record<FieldKey, (el: HostInstance | null) => void>);
+  const clearErr = (k: FieldKey) => setFieldErr((f) => (f?.key === k ? null : f));
+  // Cuộn tới trường lỗi một lần cho mỗi lần bấm Lưu (phụ thuộc fieldErr.at), sau khi nhóm đã mở và trường đã hiện.
+  useEffect(() => {
+    if (!fieldErr) return;
+    const id = requestAnimationFrame(() => {
+      const node = fieldNodes.get(fieldErr.key);
+      const inner = scrollRef.current?.getInnerViewRef?.();
+      if (!node || !inner) return;
+      try { node.measureLayout(inner as never, (_x: number, y: number) => scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true }), () => {}); } catch { /* không cuộn được thì vẫn có lỗi tại trường và trên nút Lưu */ }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [fieldErr?.at]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!w || !p) return <NoAccess notFound />;
   if (!canView || me?.role !== 'doctor') return <NoAccess />;
@@ -55,16 +74,27 @@ export default function Evaluate() {
   const g3 = { done: [trend, instructions, nextReview].filter(filled).length, total: 3, missing: [] as string[] };
   const groupSummary = (g: { done: number; total: number; missing: string[] }) =>
     `Đã điền ${g.done}/${g.total}${g.missing.length ? ` · còn ${g.missing.length} mục bắt buộc` : ''}`;
+  const toggle = (g: 0 | 1 | 2) => (next: boolean) => setOpenGroups((o) => o.map((v, i) => (i === g ? next : v)) as [boolean, boolean, boolean]);
+  const errOf = (k: FieldKey) => (fieldErr?.key === k ? fieldErr.msg : undefined);
+  const anchor = (k: FieldKey) => anchors[k];
 
+  // Quy tắc và câu báo lỗi giữ nguyên; chỉ thêm việc chỉ ra trường lỗi (mở nhóm, cuộn tới, ghi lỗi tại trường).
+  const fail = (msg: string, key?: FieldKey) => {
+    setErr(msg);
+    if (!key) return;
+    const g = GROUP_OF[key];
+    setOpenGroups((o) => (o[g] ? o : (o.map((v, i) => v || i === g) as [boolean, boolean, boolean])));
+    setFieldErr((f) => ({ key, msg, at: (f?.at ?? 0) + 1 }));
+  };
   const save = () => {
     const aErr = assessmentError(a);
-    if (aErr) return setErr(aErr);
-    if (!severity) return setErr('Hãy chọn mức Nhẹ, Trung bình hoặc Nặng.');
-    if (nextReview && !/^\d{2}\/\d{2}\/\d{4}$/.test(nextReview)) return setErr('Ngày tái đánh giá theo dạng dd/mm/yyyy.');
+    if (aErr) return fail(aErr, ASSESSMENT_FIELD[aErr]);
+    if (!severity) return fail('Hãy chọn mức Nhẹ, Trung bình hoặc Nặng.', 'severity');
+    if (nextReview && !/^\d{2}\/\d{2}\/\d{4}$/.test(nextReview)) return fail('Ngày tái đánh giá theo dạng dd/mm/yyyy.', 'nextReview');
     const [d, m, y] = nextReview.split('/');
     if (nextReview) {
       const date = new Date(Number(y), Number(m) - 1, Number(d));
-      if (date.getFullYear() !== Number(y) || date.getMonth() !== Number(m) - 1 || date.getDate() !== Number(d)) return setErr('Ngày tái đánh giá không tồn tại.');
+      if (date.getFullYear() !== Number(y) || date.getMonth() !== Number(m) - 1 || date.getDate() !== Number(d)) return fail('Ngày tái đánh giá không tồn tại.', 'nextReview');
     }
     addEvaluation({
       woundId: w.id, imageId: img?.id, date: todayIso(), areaCm2: img?.areaCm2 ?? null,
@@ -76,45 +106,54 @@ export default function Evaluate() {
   };
 
   return (
-    <Screen header={<Header back title="Đánh giá tình trạng" subtitle={`${p.name} · ${w.code} · ${w.location}`} />}>
+    <Screen scrollRef={scrollRef} header={<Header back title="Đánh giá tình trạng" subtitle={`${p.name} · ${w.code} · ${w.location}`} />}>
       <Card>
         <InfoRow label="Ảnh tham chiếu" value={img?.id ?? 'Không có'} />
         <InfoRow label="Diện tích (bác sĩ đã nhập qua đổi tên ảnh)" value={formatAreaDisplay(img?.areaCm2 ?? null)} />
         <Muted>Ứng dụng chỉ lưu nhận định của bác sĩ; không tự suy luận tình trạng hay đề xuất liệu trình.</Muted>
       </Card>
       {/* PP-09: ba nhóm Disclosure theo thứ tự trường cũ; nhóm đầu mở sẵn. Giá trị nằm ở state của màn nên đóng mở nhóm không mất dữ liệu.
-          Tóm tắt mỗi nhóm nêu số mục đã điền và mục bắt buộc còn thiếu; cách kiểm tra khi lưu giữ nguyên. */}
+          Bổ sung Đợt 4: ba nhóm chung một thẻ, tách bằng đường kẻ, khoảng cách trong nhóm 8 (thang space) để màn ngắn hơn; nhóm do màn điều khiển. */}
       <Card>
-        <Disclosure title="Phân loại vết thương" summary={groupSummary(g1)} summaryTone={g1.missing.length ? C.amber : undefined} initiallyOpen>
-          <InfoRow label="Tuổi vết thương (tự tính)" value={`${woundAge(w.startDate, todayIso())}, từ ${w.startDate.split('-').reverse().join('/')}`} />
-          <Q label="Loại vết thương" required help={HELP.woundType}><Choices value={a.woundType ?? ''} onChange={set('woundType')} options={WOUND_TYPES.map((v) => ({ value: v, label: v }))} /></Q>
-          {a.woundType === PRESSURE && (
-            <Q label="Giai đoạn (NPIAP)" required help={HELP.pressureStage}><Choices value={a.pressureStage ?? ''} onChange={set('pressureStage')} options={PRESSURE_STAGES.map((v) => ({ value: v, label: v }))} /></Q>
-          )}
-          <Q label="Mô hạt" help={HELP.granulation}><Choices value={a.granulation ?? ''} onChange={set('granulation')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
-          <Q label="Biểu mô hóa" help={HELP.epithelial}><Choices value={a.epithelial ?? ''} onChange={set('epithelial')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
-          <Q label="Dịch tiết" required help={HELP.exudate}><Choices value={a.exudate ?? ''} onChange={set('exudate')} options={EXUDATE.map((v) => ({ value: v, label: v }))} /></Q>
-          <Q label="Dấu hiệu nhiễm trùng" required help={HELP.infection}><Choices value={a.infection ?? ''} onChange={set('infection')} options={INFECTION.map((v) => ({ value: v, label: v }))} /></Q>
-          <Muted>Danh mục là bản nháp cho demo, cần bác sĩ trong nhóm chọn thang đánh giá chính thức.</Muted>
+        <Disclosure title="Phân loại vết thương" summary={groupSummary(g1)} summaryTone={g1.missing.length ? C.amber : undefined} open={openGroups[0]} onToggle={toggle(0)}>
+          <View style={{ gap: space.s }}>
+            <InfoRow label="Tuổi vết thương (tự tính)" value={`${woundAge(w.startDate, todayIso())}, từ ${w.startDate.split('-').reverse().join('/')}`} />
+            <Q label="Loại vết thương" required help={HELP.woundType} error={errOf('woundType')} anchor={anchor('woundType')}><Choices value={a.woundType ?? ''} onChange={set('woundType')} options={WOUND_TYPES.map((v) => ({ value: v, label: v }))} /></Q>
+            {a.woundType === PRESSURE && (
+              <Q label="Giai đoạn (NPIAP)" required help={HELP.pressureStage} error={errOf('pressureStage')} anchor={anchor('pressureStage')}><Choices value={a.pressureStage ?? ''} onChange={set('pressureStage')} options={PRESSURE_STAGES.map((v) => ({ value: v, label: v }))} /></Q>
+            )}
+            <Q label="Mô hạt" help={HELP.granulation}><Choices value={a.granulation ?? ''} onChange={set('granulation')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
+            <Q label="Biểu mô hóa" help={HELP.epithelial}><Choices value={a.epithelial ?? ''} onChange={set('epithelial')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
+            <Q label="Dịch tiết" required help={HELP.exudate} error={errOf('exudate')} anchor={anchor('exudate')}><Choices value={a.exudate ?? ''} onChange={set('exudate')} options={EXUDATE.map((v) => ({ value: v, label: v }))} /></Q>
+            <Q label="Dấu hiệu nhiễm trùng" required help={HELP.infection} error={errOf('infection')} anchor={anchor('infection')}><Choices value={a.infection ?? ''} onChange={set('infection')} options={INFECTION.map((v) => ({ value: v, label: v }))} /></Q>
+            <Muted>Danh mục là bản nháp cho demo, cần bác sĩ trong nhóm chọn thang đánh giá chính thức.</Muted>
+          </View>
         </Disclosure>
-      </Card>
-      <Card>
-        <Disclosure title="Mức độ và triệu chứng" summary={groupSummary(g2)} summaryTone={g2.missing.length ? C.amber : undefined}>
-          <Text style={{ fontWeight: '700', fontSize: 17 }}>Mức độ vết thương</Text>
-          <Choices<Severity | ''> value={severity} onChange={setSeverity} options={(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))} />
-          <Muted>Bác sĩ chọn mức độ sau khi đánh giá; mức độ không tự tính từ diện tích hay diễn biến.</Muted>
-          <Field optional label="Đặc điểm vết thương" value={characteristics} onChangeText={setCharacteristics} multiline placeholder="Nền, bờ, da xung quanh, dịch tiết, mô hạt…" />
-          <Field optional label="Triệu chứng" value={symptoms} onChangeText={setSymptoms} multiline placeholder="Đau, khó chịu…" />
-          <Field optional label="Nguồn thông tin triệu chứng" value={symptomSource} onChangeText={setSymptomSource} />
+        <Divider />
+        <Disclosure title="Mức độ và triệu chứng" summary={groupSummary(g2)} summaryTone={g2.missing.length ? C.amber : undefined} open={openGroups[1]} onToggle={toggle(1)}>
+          <View style={{ gap: space.s }}>
+            <View ref={anchor('severity')} style={{ gap: space.xs }}>
+              <Text style={{ fontWeight: '700', fontSize: 17 }}>Mức độ vết thương</Text>
+              {errOf('severity') ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600', fontSize: T.caption }}>{errOf('severity')}</Text> : null}
+              <Choices<Severity | ''> value={severity} onChange={(v) => { setSeverity(v); clearErr('severity'); }} options={(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))} />
+            </View>
+            <Muted>Bác sĩ chọn mức độ sau khi đánh giá; mức độ không tự tính từ diện tích hay diễn biến.</Muted>
+            <Field optional label="Đặc điểm vết thương" value={characteristics} onChangeText={setCharacteristics} multiline placeholder="Nền, bờ, da xung quanh, dịch tiết, mô hạt…" />
+            <Field optional label="Triệu chứng" value={symptoms} onChangeText={setSymptoms} multiline placeholder="Đau, khó chịu…" />
+            <Field optional label="Nguồn thông tin triệu chứng" value={symptomSource} onChangeText={setSymptomSource} />
+          </View>
         </Disclosure>
-      </Card>
-      <Card>
-        <Disclosure title="Diễn biến và hướng dẫn" summary={groupSummary(g3)}>
-          <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
-          <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
-          <Field optional label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
-          <Field optional label="Ngày tái đánh giá" value={nextReview} onChangeText={setNextReview} placeholder="dd/mm/yyyy" />
-          <SwitchRow label="Công bố cho bệnh nhân xem" value={visible} onChange={setVisible} />
+        <Divider />
+        <Disclosure title="Diễn biến và hướng dẫn" summary={groupSummary(g3)} open={openGroups[2]} onToggle={toggle(2)}>
+          <View style={{ gap: space.s }}>
+            <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
+            <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
+            <Field optional label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
+            <View ref={anchor('nextReview')}>
+              <Field optional label="Ngày tái đánh giá" value={nextReview} onChangeText={(v) => { setNextReview(v); clearErr('nextReview'); }} placeholder="dd/mm/yyyy" error={errOf('nextReview')} />
+            </View>
+            <SwitchRow label="Công bố cho bệnh nhân xem" value={visible} onChange={setVisible} />
+          </View>
         </Disclosure>
       </Card>
       {err ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{err}</Text> : null}
@@ -123,21 +162,37 @@ export default function Evaluate() {
   );
 }
 
-/** Nhãn câu hỏi kèm nút (i) mở giải thích ngắn. Chỉ ghi "(không bắt buộc)" cho câu không bắt buộc, cùng quy ước với Field (A05). */
-function Q({ label, required, help, children }: { label: string; required?: boolean; help: string; children: React.ReactNode }) {
+/** Nhãn câu hỏi kèm nút (i) mở giải thích ngắn. Chỉ ghi "(không bắt buộc)" cho câu không bắt buộc, cùng quy ước với Field (A05).
+ *  Bổ sung Đợt 4: `error` hiện lỗi ngay dưới nhãn; `anchor` để màn cuộn tới câu hỏi khi lưu thiếu. Khoảng cách nhãn và chip giữ 6 để nút (i) không chồng lên chip. */
+function Q({ label, required, help, error, anchor, children }: { label: string; required?: boolean; help: string; error?: string; anchor?: (el: HostInstance | null) => void; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <View style={{ gap: 6 }}>
+    <View ref={anchor} style={{ gap: 6 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>
           {label}{required ? null : <Text style={{ color: C.textSoft, fontWeight: '400' }}> (không bắt buộc)</Text>}
         </Text>
-        <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityLabel={`Giải thích: ${label}`} accessibilityState={{ expanded: open }} hitSlop={10} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+        {/* Bổ sung Đợt 4: vùng bấm thật 44x44 (size.touch) trên mọi nền tảng; lề âm 6 giữ chỗ chiếm trong hàng 32x32 như cũ.
+            Bỏ hitSlop vì bản web không áp dụng hitSlop, và trên máy thật vùng hitSlop 10 chồng lên chip bên dưới. */}
+        <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityLabel={`Giải thích: ${label}`} accessibilityState={{ expanded: open }} style={{ width: size.touch, height: size.touch, margin: -(size.touch - 32) / 2, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name={open ? 'information-circle' : 'information-circle-outline'} size={18} color={C.primary} />
         </Pressable>
       </View>
       {open && <Muted>{help}</Muted>}
+      {error ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600', fontSize: T.caption }}>{error}</Text> : null}
       {children}
     </View>
   );
 }
+
+const FIELD_KEYS = ['woundType', 'pressureStage', 'exudate', 'infection', 'severity', 'nextReview'] as const;
+type FieldKey = (typeof FIELD_KEYS)[number];
+/** Nhóm chứa từng trường bắt buộc hoặc có kiểm tra (0, 1, 2 theo thứ tự Disclosure). */
+const GROUP_OF: Record<FieldKey, 0 | 1 | 2> = { woundType: 0, pressureStage: 0, exudate: 0, infection: 0, severity: 1, nextReview: 2 };
+/** Câu lỗi của assessmentError (assessment.ts, không sửa) ứng với trường nào. Câu không có trong bảng thì chỉ báo trên nút Lưu như cũ. */
+const ASSESSMENT_FIELD: Record<string, FieldKey | undefined> = {
+  'Hãy chọn loại vết thương.': 'woundType',
+  'Loét do tì đè cần chọn giai đoạn.': 'pressureStage',
+  'Hãy chọn mức dịch tiết.': 'exudate',
+  'Hãy chọn dấu hiệu nhiễm trùng.': 'infection',
+};
