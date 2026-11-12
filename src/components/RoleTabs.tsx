@@ -9,7 +9,7 @@ import { Text } from '@/components/Text';
 import { FAB_RISE, TAB_BAR_HEIGHT, type IconName } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import type { Role } from '@/lib/types';
-import { C, G, radius } from '@/theme';
+import { C, G, radius, T } from '@/theme';
 
 type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 type TabDef = { name: string; title: string; icon: IconName; iconOn: IconName; badge?: number };
@@ -46,7 +46,7 @@ function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarPro
           <Ionicons name={on ? x.def.iconOn : x.def.icon} size={25} color={on ? C.primary : C.textFaint} />
           {x.def.badge ? (
             <View style={{ position: 'absolute', top: -4, right: -10, minWidth: 20, height: 20, borderRadius: 10, backgroundColor: C.red, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
-              <Text style={{ color: C.onPrimary, fontSize: 13, fontWeight: '700' }}>{x.def.badge}</Text>
+              <Text style={{ color: C.onPrimary, fontSize: T.caption, fontWeight: '700' }}>{x.def.badge}</Text>
             </View>
           ) : null}
         </View>

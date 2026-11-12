@@ -64,8 +64,8 @@ export default function PatientHome() {
       <Card hero style={{ padding: 20, gap: 14 }}>
         {treating && (
           <Pressable onPress={() => router.push('/schedule')} accessibilityRole="button" accessibilityLabel="Xem lịch trình của đợt" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 }}>
-            <Text style={{ flex: 1, color: C.textSoft, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>Đợt điều trị {treating.w.code}</Text>
-            <Text style={{ color: C.primary, fontSize: 14 }}>Lịch trình</Text>
+            <Text style={{ flex: 1, color: C.textSoft, fontSize: T.small, fontWeight: '600' }} numberOfLines={1}>Đợt điều trị {treating.w.code}</Text>
+            <Text style={{ color: C.primary, fontSize: T.small }}>Lịch trình</Text>
             <Ionicons name="chevron-forward" size={16} color={C.primary} />
           </Pressable>
         )}
@@ -88,7 +88,7 @@ export default function PatientHome() {
                 accessibilityLabel="Chưa đồng bộ hôm nay. Chạm để xem chi tiết"
                 style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: size.touch, paddingHorizontal: 12, borderRadius: 999, backgroundColor: C.amberSoft }}>
                 <Ionicons name="cloud-offline-outline" size={18} color={C.amber} />
-                <Text style={{ color: C.amber, fontWeight: '600', fontSize: 14 }}>Chưa đồng bộ hôm nay</Text>
+                <Text style={{ color: C.amber, fontWeight: '600', fontSize: T.small }}>Chưa đồng bộ hôm nay</Text>
                 <Ionicons name="information-circle-outline" size={18} color={C.amber} />
               </Pressable>
             )}
@@ -102,7 +102,7 @@ export default function PatientHome() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Ionicons name="checkmark-done-circle" size={30} color={C.green} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: C.green }}>Vết thương {followUp.w.code} đã liền</Text>
+                <Text style={{ fontSize: T.screenTitle, fontWeight: '700', color: C.green }}>Vết thương {followUp.w.code} đã liền</Text>
                 <Text style={{ color: C.textSoft }}>Đợt điều trị đã kết thúc. Không cần chiếu plasma nữa.</Text>
               </View>
             </View>
@@ -122,7 +122,7 @@ export default function PatientHome() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Ionicons name="hourglass-outline" size={30} color={C.primary} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: C.primary }}>Đã dừng chiếu, chờ bác sĩ xác nhận liền</Text>
+                <Text style={{ fontSize: T.screenTitle, fontWeight: '700', color: C.primary }}>Đã dừng chiếu, chờ bác sĩ xác nhận liền</Text>
                 <Text style={{ color: C.textSoft }}>Bác sĩ ghi nhận vết thương {awaiting.w.code} đã khép ngày {fmtDate(awaiting.w.closureCheck1)}. Cần một lần khám nữa sau 2 tuần để xác nhận.</Text>
               </View>
             </View>
@@ -136,7 +136,7 @@ export default function PatientHome() {
           {/* Gộp vào thẻ Hôm nay. Thu gọn mặc định: một dòng có số bước đã tích. Mở ra khi cần. */}
           <Pressable onPress={() => setOpenSteps(!openSteps)} accessibilityRole="button" accessibilityState={{ expanded: openSteps }} accessibilityLabel={`${status?.kind === 'treat' ? 'Trước khi chiếu' : 'Sau khi chiếu'}, đã làm ${steps.filter((t) => checked[t]).length} trên ${steps.length} bước`} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Ionicons name="list" size={26} color={C.primary} />
-            <Text style={{ flex: 1, fontSize: 18, fontWeight: '700', color: C.text }}>{status?.kind === 'treat' ? 'Trước khi chiếu' : 'Sau khi chiếu'}</Text>
+            <Text style={{ flex: 1, fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{status?.kind === 'treat' ? 'Trước khi chiếu' : 'Sau khi chiếu'}</Text>
             <Text style={{ color: steps.every((t) => checked[t]) ? C.green : C.textSoft, fontWeight: '700' }}>{steps.filter((t) => checked[t]).length}/{steps.length}</Text>
             <Ionicons name={openSteps ? 'chevron-up' : 'chevron-down'} size={22} color={C.textSoft} />
           </Pressable>
@@ -156,7 +156,7 @@ export default function PatientHome() {
         {/* Lịch hẹn gần nhất gộp vào thẻ Hôm nay thay cho một thẻ riêng; danh sách đầy đủ ở Lịch trình. */}
         <Divider />
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ flex: 1, color: C.textSoft, fontSize: 14, fontWeight: '600' }}>Lịch hẹn gần nhất</Text>
+          <Text style={{ flex: 1, color: C.textSoft, fontSize: T.small, fontWeight: '600' }}>Lịch hẹn gần nhất</Text>
           {upcoming.length > 1 && <TextLink label={`Tất cả (${upcoming.length})`} accessibilityLabel={`Xem tất cả ${upcoming.length} lịch hẹn`} onPress={() => router.push('/schedule')} />}
         </View>
         {next ? (
@@ -202,7 +202,7 @@ export default function PatientHome() {
         const rv = treating && treating.w.id === w.id ? review : null;
         return (
           <Card key={w.id}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{w.code}: {w.location}</Text>
+            <Text style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{w.code}: {w.location}</Text>
             {/* Yêu cầu chụp lại nằm trong thẻ vết thương thay cho một thẻ viền đỏ riêng. */}
             {retakes.filter((im) => im.woundId === w.id).map((im) => (
               <TaskRow key={im.id} icon="camera-outline" tone="red" title={`Cần hẹn bác sĩ chụp lại ảnh ${im.capture?.sourceDateKnown === false ? 'chưa rõ ngày' : fmtDate(im.captureDate)}`} detail={im.retakeRequested!} onPress={() => router.push('/schedule')} />
@@ -211,8 +211,8 @@ export default function PatientHome() {
               <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4 }}>
-                    <Text style={{ fontSize: 32, fontWeight: '600', color: C.primary }}>{formatAreaForName(img.areaCm2!).replace('.', ',')}</Text>
-                    <Text style={{ fontSize: 18, fontWeight: '500', color: C.primary, marginBottom: 5 }}>cm²</Text>
+                    <Text style={{ fontSize: T.display, fontWeight: '600', color: C.primary }}>{formatAreaForName(img.areaCm2!).replace('.', ',')}</Text>
+                    <Text style={{ fontSize: T.cardTitle, fontWeight: '500', color: C.primary, marginBottom: 5 }}>cm²</Text>
                   </View>
                   {/* PP-01: nguồn số đo cạnh số diện tích. */}
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -237,7 +237,7 @@ export default function PatientHome() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Ionicons name="chatbubble-ellipses" size={20} color={C.primary} />
                   <Text style={{ flex: 1, color: C.text, fontWeight: '600' }}>Lời dặn của bác sĩ</Text>
-                  <Text style={{ color: C.textSoft, fontSize: 14 }}>{fmtDate(ev.date).slice(0, 5)}</Text>
+                  <Text style={{ color: C.textSoft, fontSize: T.small }}>{fmtDate(ev.date).slice(0, 5)}</Text>
                 </View>
                 {/* Hai dòng đầu, chạm để đọc hết. */}
                 <Text numberOfLines={openNote ? undefined : 2} style={{ color: C.text, lineHeight: 24 }}>{ev.instructions || ev.characteristics}</Text>

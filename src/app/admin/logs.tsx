@@ -4,7 +4,7 @@ import { Text } from '@/components/Text';
 import { ListCard, Chip, Empty, Header, Screen } from '@/components/ui';
 import { fmtDateTime } from '@/lib/format';
 import { useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 
 // Quản trị: xem lỗi đồng bộ / lỗi hệ thống.
 export default function AdminLogs() {
@@ -17,7 +17,7 @@ export default function AdminLogs() {
       {list.map((e) => (
         <View key={e.id} style={{ gap: 6, paddingVertical: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ color: C.textSoft, fontSize: 13, flex: 1 }}>{fmtDateTime(e.at)}</Text>
+            <Text style={{ color: C.textSoft, fontSize: T.caption, flex: 1 }}>{fmtDateTime(e.at)}</Text>
             <Chip label={e.resolved ? 'Đã xử lý' : 'Chưa xử lý'} tone={e.resolved ? 'green' : 'red'} />
           </View>
           <Text style={{ color: C.text }}>{e.message}</Text>

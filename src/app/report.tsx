@@ -7,7 +7,7 @@ import { Text } from '@/components/Text';
 import { Button, Card, Field, Header, Muted, Screen, Segmented } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { useStore } from '@/lib/store';
-import { C, size } from '@/theme';
+import { C, size, T } from '@/theme';
 
 // Báo triệu chứng / sự cố gửi cho người phụ trách (đặc tả mục 6).
 // Ngưỡng đau 7/10 để hiện cảnh báo là đề xuất cho bản demo, cần bác sĩ xác nhận.
@@ -46,7 +46,7 @@ export default function Report() {
         <Segmented value={kind} onChange={setKind} options={[{ value: 'symptom', label: 'Triệu chứng' }, { value: 'device', label: 'Sự cố thiết bị' }]} />
         {kind === 'symptom' && (
           <>
-            <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Mức đau</Text>
+            <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Mức đau</Text>
             {/* Các hàng đều cột, chữ mốc ở hai đầu thang (V18); số hàng theo độ rộng màn (A04). */}
             <View accessibilityRole="radiogroup" accessibilityLabel="Mức đau" style={{ gap: 6 }}>
               {rows.map((row) => (
@@ -60,8 +60,8 @@ export default function Report() {
                 </View>
               ))}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ color: C.textSoft, fontSize: 14 }}>0: không đau</Text>
-                <Text style={{ color: C.textSoft, fontSize: 14 }}>10: đau nhất</Text>
+                <Text style={{ color: C.textSoft, fontSize: T.small }}>0: không đau</Text>
+                <Text style={{ color: C.textSoft, fontSize: T.small }}>10: đau nhất</Text>
               </View>
             </View>
             {pain !== null && pain >= HIGH_PAIN && (

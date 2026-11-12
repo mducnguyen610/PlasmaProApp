@@ -9,7 +9,7 @@ import { courseProgress, courseStatus, localDay, phasesOf } from '@/lib/course';
 import { fmtDate, PLAN_STATUS } from '@/lib/format';
 import { computeReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 
 export default function Schedule() {
   const { data, me } = useStore();
@@ -36,9 +36,9 @@ export default function Schedule() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           {pr && <Ring size={88} value={pr.done} max={pr.total} label={`${pr.done}/${pr.total}`} sub="đã xong" />}
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ color: C.textSoft, fontSize: 14, fontWeight: '600' }}>{plan.status === 'active' ? `Đợt điều trị ${course!.w.code}` : `Đợt ${PLAN_STATUS[plan.status].label.toLowerCase()}, vết thương ${course!.w.code}`}</Text>
+            <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '600' }}>{plan.status === 'active' ? `Đợt điều trị ${course!.w.code}` : `Đợt ${PLAN_STATUS[plan.status].label.toLowerCase()}, vết thương ${course!.w.code}`}</Text>
             {plan.status === 'active' && st ? <>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{st.title}</Text>
+              <Text style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{st.title}</Text>
               <Muted>{st.detail}</Muted>
             </> : <Muted>Lịch dưới đây để xem lại.</Muted>}
           </View>
@@ -61,7 +61,7 @@ export default function Schedule() {
           <DateTile date={r.date} today={today} />
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={{ color: C.text, fontWeight: '600' }}>{r.title}</Text>
-            <Text style={{ color: C.textSoft, fontSize: 14 }} numberOfLines={1}>{r.body}</Text>
+            <Text style={{ color: C.textSoft, fontSize: T.small }} numberOfLines={1}>{r.body}</Text>
           </View>
         </View>
       ))}

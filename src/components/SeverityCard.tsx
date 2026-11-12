@@ -4,12 +4,12 @@ import { Card, Chip, Muted } from './ui';
 import { SEVERITY } from '@/lib/access';
 import { fmtDate } from '@/lib/format';
 import type { Evaluation } from '@/lib/types';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 
 export function SeverityCard({ title, evaluation, doctor }: { title: string; evaluation?: Evaluation; doctor?: string }) {
   const level = evaluation?.severity;
   return <Card>
-    <Text style={{ fontSize: 16, fontWeight: '700' }}>{title}</Text>
+    <Text style={{ fontSize: T.body, fontWeight: '700' }}>{title}</Text>
     <View style={{ flexDirection: 'row', gap: 8 }}>
       {(['mild', 'moderate', 'severe'] as const).map(value => {
         // Mức không được chọn: làm mờ vạch màu, còn chữ chuyển sang Chip xám để vẫn đạt tương phản 4,5:1.

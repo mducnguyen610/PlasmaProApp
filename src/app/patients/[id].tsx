@@ -12,7 +12,7 @@ import { confirm, notify } from '@/lib/dialog';
 import { buildReportHtml, shareReport } from '@/lib/report';
 import { fmtDate, fmtDateTime, PLAN_STATUS, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore, type Activation } from '@/lib/store';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 import { CLOUD_LINK, WOUND, cloudState } from '@/theme.status';
 import { courseProgress, localDay } from '@/lib/course';
 
@@ -77,8 +77,8 @@ export default function PatientDetail() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconBadge icon="person-outline" size={48} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{p.name}</Text>
-            <Text style={{ color: C.textSoft, fontSize: 14 }}>{p.code} · {p.sex}, {p.birthYear}</Text>
+            <Text style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{p.name}</Text>
+            <Text style={{ color: C.textSoft, fontSize: T.small }}>{p.code} · {p.sex}, {p.birthYear}</Text>
           </View>
         </View>
         <Divider />
@@ -191,7 +191,7 @@ export default function PatientDetail() {
               <Chip label={r.kind === 'device' ? 'Sự cố thiết bị' : 'Triệu chứng'} tone={r.kind === 'device' ? 'teal' : 'red'} />
               {r.painLevel !== undefined && <Chip label={`Mức đau ${r.painLevel}/10`} tone="gray" />}
               <View style={{ flex: 1 }} />
-              <Text style={{ color: C.textFaint, fontSize: 13 }}>{fmtDateTime(r.date)}</Text>
+              <Text style={{ color: C.textFaint, fontSize: T.caption }}>{fmtDateTime(r.date)}</Text>
             </View>
             <Text style={{ color: C.text }}>{r.content}</Text>
             <Muted>Nguồn: bệnh nhân báo qua ứng dụng</Muted>
@@ -236,7 +236,7 @@ function LinkRow({ icon, tone, title, sub, right, below, onPress }: { icon: Icon
       <IconBadge icon={icon} tone={tone} size={36} />
       <View style={{ flex: 1 }}>
         <Text style={{ fontWeight: '700', color: C.text }}>{title}</Text>
-        {sub ? <Text style={{ color: C.textSoft, fontSize: 14 }}>{sub}</Text> : null}
+        {sub ? <Text style={{ color: C.textSoft, fontSize: T.small }}>{sub}</Text> : null}
         {below ? <View style={{ flexDirection: 'row', marginTop: 4 }}>{below}</View> : null}
       </View>
       {right}

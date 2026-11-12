@@ -16,7 +16,7 @@ import { areaWarning, previousArea } from '@/lib/plausibility';
 import { previousMethod } from '@/lib/measureMethod';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 import { AI_CONFIDENCE, LABEL, SOURCE, aiConfidenceLevel } from '@/theme.status';
 
 type Mode = 'area' | 'full';
@@ -117,7 +117,7 @@ export default function ImageDetail() {
         <WoundPhoto image={im} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 20 }} />
         <View style={{ position: 'absolute', right: 10, bottom: 10, backgroundColor: C.scrim, borderRadius: 10, padding: 6, flexDirection: 'row', gap: 4, alignItems: 'center' }}>
           <Ionicons name="expand" size={14} color={C.onPrimary} />
-          <Text style={{ color: C.onPrimary, fontSize: 13 }}>Phóng to</Text>
+          <Text style={{ color: C.onPrimary, fontSize: T.caption }}>Phóng to</Text>
         </View>
         {im.source === 'demo' && (
           <View style={{ position: 'absolute', left: 10, bottom: 10 }}>
@@ -141,8 +141,8 @@ export default function ImageDetail() {
         {im.excludeReason ? <InfoRow label="Lý do loại" value={im.excludeReason} /> : null}
         {/* Tên tệp và mã định danh là thông tin kỹ thuật: thu gọn để không chen vào số đo (V30). */}
         <Disclosure icon="document-text-outline" title="Chi tiết kỹ thuật" summary="Tên tệp, mã bệnh nhân, vết thương, ảnh">
-          <Text style={{ color: C.textSoft, fontSize: 13 }}>Tên tệp hiện tại</Text>
-          <Text selectable style={{ fontFamily: MONO, fontSize: 14, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{im.filename}</Text>
+          <Text style={{ color: C.textSoft, fontSize: T.caption }}>Tên tệp hiện tại</Text>
+          <Text selectable style={{ fontFamily: MONO, fontSize: T.small, color: C.text, backgroundColor: C.surfaceMuted, padding: 10, borderRadius: 10 }}>{im.filename}</Text>
           <InfoRow label="Mã bệnh nhân" value={p.code} />
           <InfoRow label="Mã vết thương" value={w.code} />
           <InfoRow label="Mã ảnh (cố định)" value={im.id} />
@@ -178,12 +178,12 @@ export default function ImageDetail() {
             hint={methodFrom ? `Điền sẵn theo lần đo trước (${methodFrom.imageId}, ${fmtDate(methodFrom.captureDate)}). Sửa nếu lần này đo cách khác.` : im.capture ? undefined : "Nên ghi để so sánh được giữa các lần đo."}
             value={method} onChangeText={(v) => { setMethod(v); setMethodFrom(null); }} placeholder="Ví dụ: thước giấy kẻ ô, phần mềm đo trên máy tính…" />
           <View style={{ gap: 4 }}>
-            <Text style={{ color: C.textSoft, fontSize: 13 }}>Xem trước tên sẽ lưu</Text>
-            <Text style={{ fontFamily: MONO, fontSize: 14, color: preview ? C.green : C.textFaint, backgroundColor: preview ? C.greenSoft : C.surfaceMuted, padding: 10, borderRadius: 10 }}>
+            <Text style={{ color: C.textSoft, fontSize: T.caption }}>Xem trước tên sẽ lưu</Text>
+            <Text style={{ fontFamily: MONO, fontSize: T.small, color: preview ? C.green : C.textFaint, backgroundColor: preview ? C.greenSoft : C.surfaceMuted, padding: 10, borderRadius: 10 }}>
               {preview ?? '—'}
             </Text>
             {preview && newArea !== null && <Muted>Diện tích lưu trong hồ sơ: {formatAreaDisplay(newArea)}</Muted>}
-            {warning && <Text accessibilityLiveRegion="polite" style={{ color: C.amber, fontSize: 14, fontWeight: '600' }}>{warning}</Text>}
+            {warning && <Text accessibilityLiveRegion="polite" style={{ color: C.amber, fontSize: T.small, fontWeight: '600' }}>{warning}</Text>}
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Button style={{ flex: 1 }} label="Hủy" variant="secondary" onPress={() => setEditing(false)} />
@@ -293,11 +293,11 @@ export default function ImageDetail() {
           {im.history.length === 0 && <Muted>Chưa có thay đổi.</Muted>}
           {[...im.history].reverse().map((h, i) => (
             <View key={i} style={{ gap: 2, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border }}>
-              <Text style={{ color: C.text, fontWeight: '600', fontSize: 14 }}>
+              <Text style={{ color: C.text, fontWeight: '600', fontSize: T.small }}>
                 {fmtDateTime(h.at)} · {account(h.by)?.name ?? 'Dữ liệu mô phỏng'}
               </Text>
               <Muted>{formatAreaDisplay(h.fromArea)} → {formatAreaDisplay(h.toArea)}</Muted>
-              <Text style={{ fontFamily: MONO, fontSize: 13, color: C.textFaint }}>{h.toName}</Text>
+              <Text style={{ fontFamily: MONO, fontSize: T.caption, color: C.textFaint }}>{h.toName}</Text>
               {h.note ? <Muted>{h.note}</Muted> : null}
             </View>
           ))}
@@ -316,7 +316,7 @@ export default function ImageDetail() {
           <Pressable onPress={() => setZoom(false)} style={{ position: 'absolute', top: insets.top + 12, right: 16, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: 8 }} accessibilityLabel="Đóng">
             <Ionicons name="close" size={24} color={C.onPrimary} />
           </Pressable>
-          <Text style={{ position: 'absolute', bottom: insets.bottom + 16, alignSelf: 'center', color: C.onDarkSoft, fontSize: 13 }}>Chụm hai ngón để phóng to</Text>
+          <Text style={{ position: 'absolute', bottom: insets.bottom + 16, alignSelf: 'center', color: C.onDarkSoft, fontSize: T.caption }}>Chụm hai ngón để phóng to</Text>
         </View>
       </Modal>
     </Screen>

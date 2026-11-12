@@ -7,7 +7,7 @@ import { Text } from '@/components/Text';
 
 import { Button, Card, Field, Header, Muted, Screen, Segmented } from '@/components/ui';
 import { useStore, type Activation } from '@/lib/store';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 import { localDay } from '@/lib/course';
 
 export default function NewPatient() {
@@ -60,7 +60,7 @@ export default function NewPatient() {
       <Card>
         <Field label="Họ và tên" value={name} onChangeText={setName} />
         <Field label="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" />
-        <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Giới tính</Text>
+        <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Giới tính</Text>
         <Segmented value={sex} onChange={setSex} options={[{ value: 'Nam', label: 'Nam' }, { value: 'Nữ', label: 'Nữ' }]} />
         <Field label="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <Field label="Vị trí vết thương đầu tiên" optional value={wound} onChangeText={setWound} placeholder="Ví dụ: Cẳng chân trái" hint="Tạo sẵn vết thương VT01" />

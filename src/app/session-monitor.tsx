@@ -11,7 +11,7 @@ import { fmtRemaining, SESSION_LABEL } from '@/lib/device/labels';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
 import { fmtDateTime } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
-import { C, semantic } from '@/theme';
+import { C, semantic, typeScale } from '@/theme';
 
 /**
  * Theo dõi phiên điều trị qua bản tin trạng thái máy phát mỗi giây.
@@ -70,14 +70,14 @@ export default function SessionMonitor() {
       <Card>
         {st && st.state !== 'stopped' && st.state !== 'error' && st.remainingSec != null ? (
           <View accessible accessibilityLabel={`${SESSION_LABEL[st.state]}, còn ${fmtRemaining(st.remainingSec)}`} style={{ alignItems: 'center', gap: 2, paddingVertical: 8 }}>
-            <Text style={{ fontSize: 44, fontWeight: '700', color: st.state === 'running' ? C.primary : C.text, fontVariant: ['tabular-nums'] }}>{fmtRemaining(st.remainingSec)}</Text>
+            <Text style={{ fontSize: typeScale.timer.size, fontWeight: typeScale.timer.weight, color: st.state === 'running' ? C.primary : C.text, fontVariant: ['tabular-nums'] }}>{fmtRemaining(st.remainingSec)}</Text>
             <Text style={{ color: C.textSoft }}>{`${SESSION_LABEL[st.state]}, còn lại`}</Text>
           </View>
         ) : (
           // Chưa nhận STA, hoặc phiên đã dừng, lỗi: không hiện số giây cũ dễ gây hiểu nhầm.
           <View accessible accessibilityLabel={st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'} style={{ alignItems: 'center', gap: 6, paddingVertical: 12 }}>
             <Ionicons name={!st ? 'radio-outline' : st.state === 'error' ? 'warning-outline' : 'stop-circle-outline'} size={36} color={st?.state === 'error' ? C.red : C.textSoft} />
-            <Text style={{ fontSize: 20, fontWeight: '700', color: C.text }}>{st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'}</Text>
+            <Text style={{ fontSize: typeScale.sectionTitle.size, fontWeight: '700', color: C.text }}>{st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'}</Text>
           </View>
         )}
         <InfoRow label="Nhận lần cuối" value={link.lastStatusAt ? fmtDateTime(link.lastStatusAt) : '–'} />

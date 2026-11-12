@@ -17,7 +17,7 @@ import { fmtDate, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
 import { assessmentSummary } from '@/lib/assessment';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 
 // BS04 – Chi tiết vết thương: vị trí, ngày bắt đầu, album ảnh theo ngày, diện tích đã nhập, lịch sử đánh giá.
 export default function WoundDetail() {
@@ -103,7 +103,7 @@ export default function WoundDetail() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconBadge icon="body-outline" tone="teal" size={44} />
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontWeight: '700', fontSize: 18, color: C.text }}>{w.location}</Text>
+            <Text style={{ fontWeight: '700', fontSize: T.cardTitle, color: C.text }}>{w.location}</Text>
             {w.group ? <Text style={{ color: C.textSoft }}>{w.group}</Text> : null}
           </View>
         </View>
@@ -222,7 +222,7 @@ export default function WoundDetail() {
       {images.length === 0 && <Muted>{isDoctor ? 'Chưa có ảnh. Chụp hoặc tải ảnh lên để bắt đầu.' : 'Chưa có ảnh do bác sĩ chụp.'}</Muted>}
       {shownDates.map(([date, ims]) => (
         <View key={date} style={{ gap: 8 }}>
-          <Text style={{ color: C.textSoft, fontWeight: '700', fontSize: 14 }}>Chụp {fmtDate(date)}</Text>
+          <Text style={{ color: C.textSoft, fontWeight: '700', fontSize: T.small }}>Chụp {fmtDate(date)}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
             {ims.map((im) => (
               <ImageTile key={im.id} image={im} width={160} />

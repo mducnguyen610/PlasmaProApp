@@ -5,7 +5,7 @@ import { Text } from './Text';
 import { Card, Muted } from './ui';
 import { observeSteady } from '@/lib/capture/observeSteady';
 import { advanceHold, emptyHold, MAX_SAMPLE_AGE, type SteadySample, type SteadySource } from '@/lib/capture/steady';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 
 export interface GuideStatus { text: string; progress: number }
 export function AutoCaptureGuide({ onCapture, onStatus }: { onCapture: (source: SteadySource) => void; onStatus: (status: GuideStatus) => void }) {
@@ -34,7 +34,7 @@ export function AutoCaptureGuide({ onCapture, onStatus }: { onCapture: (source: 
     return () => clearInterval(timer);
   }, [confirmed]);
   return <Card>
-    <Text style={{ color: C.text, fontSize: 16, fontWeight: '700' }}>Căn khung → Giữ yên → Tự chụp</Text>
+    <Text style={{ color: C.text, fontSize: T.body, fontWeight: '700' }}>Căn khung → Giữ yên → Tự chụp</Text>
     <CheckRow checked={confirmed} onChange={setConfirmed} label="Đã căn đủ vết thương, đủ sáng và nhìn rõ chi tiết" />
     <Text accessibilityLiveRegion="polite" style={{ color: C.primary, fontWeight: '700' }}>{status.text}</Text>
     <View style={{ height: 6, borderRadius: 6, backgroundColor: C.border, overflow: 'hidden' }}>

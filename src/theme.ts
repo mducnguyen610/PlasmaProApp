@@ -151,6 +151,9 @@ export const radiusExtra = { pill: 999, button: 24, input: radius.m } as const;
  */
 export const typeScale = {
   display: { size: 40, line: 48, weight: '700' },
+  // PP-17: đồng hồ đếm ngược T02 giữ cỡ 44 đang hiển thị (display 40 sẽ làm nhỏ đồng hồ). Không khai báo line:
+  // đồng hồ chưa đặt lineHeight, thêm vào sẽ đổi chiều cao khối.
+  timer: { size: 44, weight: '700' },
   screenTitle: { size: T.screenTitle, line: 28, weight: '700' },
   sectionTitle: { size: 20, line: 26, weight: '700' },
   // cardTitle theo T.cardTitle (18) đang dùng ở mọi thẻ; statCompact cho số trong vòng tiến độ và StatGrid (A11, audit lần 2).

@@ -5,7 +5,7 @@ import { Text } from '@/components/Text';
 import { Button, Card, Choices, Field, Header, Muted, Screen, Segmented } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import type { Role } from '@/lib/types';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 
 export default function Register() {
   const { register } = useStore();
@@ -34,11 +34,11 @@ export default function Register() {
   return <Screen header={<Header back title="Tạo tài khoản" subtitle="Bắt đầu cùng Plasma Pro" />}>
     <Card style={{ width: '100%', maxWidth: 600, alignSelf: 'center', gap: 16 }}>
       {done ? <>
-        <Text style={{ fontSize: 22, fontWeight: '700', color: C.green }}>Đăng ký thành công</Text>
+        <Text style={{ fontSize: T.screenTitle, fontWeight: '700', color: C.green }}>Đăng ký thành công</Text>
         <Muted>{role === 'patient' ? 'Hồ sơ của bạn đã được tạo. Bạn có thể đăng nhập ngay; quản trị sẽ phân công bác sĩ.' : 'Yêu cầu đã được lưu. Quản trị cần duyệt trước khi bạn đăng nhập bằng vai trò này.'}</Muted>
         <Button label="Về đăng nhập" onPress={() => router.replace('/')} />
       </> : <>
-        <Text style={{ fontWeight: '700', fontSize: 18 }}>Bạn sử dụng ứng dụng với vai trò</Text>
+        <Text style={{ fontWeight: '700', fontSize: T.cardTitle }}>Bạn sử dụng ứng dụng với vai trò</Text>
         <Choices<Role> value={role} onChange={setRole} options={[{ value: 'patient', label: 'Bệnh nhân' }, { value: 'doctor', label: 'Bác sĩ' }, { value: 'admin', label: 'Quản trị viên' }]} />
         {role !== 'patient' && <Muted>Tài khoản chuyên môn cần quản trị duyệt; quyền nghiên cứu được cấp riêng.</Muted>}
         <Field label="Họ và tên" accessibilityLabel="Họ và tên" value={name} onChangeText={setName} />
@@ -46,7 +46,7 @@ export default function Register() {
         <Field label="Số điện thoại" accessibilityLabel="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="09xxxxxxxx" />
         {role === 'patient' && <>
           <Field label="Năm sinh" accessibilityLabel="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" />
-          <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Giới tính</Text>
+          <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Giới tính</Text>
           <Segmented value={sex} onChange={setSex} options={[{ value: 'Nam', label: 'Nam' }, { value: 'Nữ', label: 'Nữ' }]} />
         </>}
         <Field label="Mật khẩu" accessibilityLabel="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry placeholder="Ít nhất 8 ký tự" />
