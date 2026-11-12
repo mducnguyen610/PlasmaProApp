@@ -10,7 +10,7 @@ import { ImageTile } from '@/components/items';
 import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, TextLink, StatusChip } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
-import { WOUND } from '@/theme.status';
+import { SEVERITY_ROLE, SOURCE, TREND_ROLE, WOUND } from '@/theme.status';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
 import { areaReview, courseProgress, followUpDates, phasesOf, localDay } from '@/lib/course';
 import { fmtDate, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
@@ -73,7 +73,8 @@ export default function WoundDetail() {
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <StatusChip status={WOUND[w.status]} label={WOUND_STATUS[w.status].label} />
-          <Chip label={sev ? `Mức độ ${SEVERITY[sev].label.toLowerCase()}` : 'Chưa đánh giá mức độ'} tone={sev ? SEVERITY[sev].tone : 'gray'} />
+          {/* PP-07: chip mức độ và xu hướng do bác sĩ đánh giá lấy biểu tượng từ SEVERITY_ROLE, TREND_ROLE; tông giữ nguyên. */}
+          {sev ? <StatusChip status={SEVERITY_ROLE[sev]} label={`Mức độ ${SEVERITY[sev].label.toLowerCase()}`} /> : <Chip label="Chưa đánh giá mức độ" tone="gray" />}
           {isDoctor && retakes.length > 0 && (
             <Pressable accessibilityRole="button" hitSlop={10} onPress={() => notify(`Đã yêu cầu chụp lại ${retakes.length} ảnh`, retakes.map((im) => `${im.id}: ${im.retakeRequested}`).join('\n'))}>
               <Chip icon="camera-reverse-outline" tone="red" label={`Chụp lại ${retakes.length} ảnh`} />
@@ -90,6 +91,8 @@ export default function WoundDetail() {
               <Muted>{fmtDate(latest.captureDate)}</Muted>
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {/* PP-01: nguồn số đo đặt ngay cạnh số diện tích, thay cho câu chú thích cuối biểu đồ. */}
+              {latest.areaCm2 !== null && <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />}
               {review && review.reduction != null && (
                 <Chip icon={review.reduction >= 0 ? 'trending-down' : 'trending-up'} tone={review.reduction >= 0 ? 'green' : 'amber'} label={`${review.reduction >= 0 ? 'Giảm' : 'Tăng'} ${pctOf(review.reduction)} từ đầu đợt`} />
               )}
@@ -146,7 +149,7 @@ export default function WoundDetail() {
             {i > 0 && <Divider />}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text style={{ fontWeight: '700', color: C.text, flex: 1 }}>{fmtDate(e.date)} · {account(e.doctorId)?.name}</Text>
-              <Chip label={TREND[e.trend].label} tone={TREND[e.trend].tone} />
+              <StatusChip status={TREND_ROLE[e.trend]} label={TREND[e.trend].label} />
             </View>
             {!full ? (
               <>

@@ -8,13 +8,14 @@ import { areaReview, courseProgress, courseStatus, followUpDates, localDay } fro
 import { DateBadge } from '@/components/DateBadge';
 import { DateTile, TaskRow } from '@/components/items';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Divider, Header, Muted, Ring, Screen, SectionTitle, SimBadge, TextLink, WoundPhoto } from '@/components/ui';
+import { Button, Card, Chip, Divider, Header, Muted, Ring, Screen, SectionTitle, SimBadge, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, TREND } from '@/lib/format';
 import { formatAreaForName } from '@/lib/naming';
 import { computeReminders, scheduleReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
 import { C, radius, size, T, typeScale } from '@/theme';
+import { SEVERITY_ROLE, SOURCE, TREND_ROLE } from '@/theme.status';
 
 // Việc trước và sau mỗi lần chiếu (slide 34: chiếu sau chăm sóc thường quy; S2k 2022: loại dịch tiết, không làm khô vết).
 // Nội dung là bản nháp cho demo, cần bác sĩ trong nhóm duyệt.
@@ -213,6 +214,10 @@ export default function PatientHome() {
                     <Text style={{ fontSize: 32, fontWeight: '600', color: C.primary }}>{formatAreaForName(img.areaCm2!).replace('.', ',')}</Text>
                     <Text style={{ fontSize: 18, fontWeight: '500', color: C.primary, marginBottom: 5 }}>cm²</Text>
                   </View>
+                  {/* PP-01: nguồn số đo cạnh số diện tích. */}
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />
+                  </View>
                   {rv && rv.state !== 'no_data' && rv.reduction != null ? (
                     <View style={{ flexDirection: 'row' }}>
                       <Chip icon={rv.reduction >= 0 ? 'trending-down' : 'trending-up'} tone={rv.reduction >= 0 ? 'green' : 'amber'} label={`${rv.reduction >= 0 ? 'Giảm' : 'Tăng'} ${Math.round(Math.abs(rv.reduction) * 100)}% từ đầu đợt`} />
@@ -224,8 +229,8 @@ export default function PatientHome() {
               </View>
             ) : <Muted>Chưa có số đo do bác sĩ nhập.</Muted>}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {ev?.severity && <Chip label={`Mức độ: ${SEVERITY[ev.severity].label}`} tone={SEVERITY[ev.severity].tone} />}
-              {ev && !(rv && rv.state !== 'no_data') && <Chip label={TREND[ev.trend].label} tone={TREND[ev.trend].tone} />}
+              {ev?.severity && <StatusChip status={SEVERITY_ROLE[ev.severity]} label={`Mức độ: ${SEVERITY[ev.severity].label}`} />}
+              {ev && !(rv && rv.state !== 'no_data') && <StatusChip status={TREND_ROLE[ev.trend]} label={TREND[ev.trend].label} />}
             </View>
             {ev ? (
               <View style={{ gap: 4, padding: 12, borderRadius: radius.m, backgroundColor: C.surfaceMuted }}>

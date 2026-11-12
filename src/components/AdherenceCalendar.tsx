@@ -11,7 +11,8 @@ import { fmtDate } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import type { Reminder } from '@/lib/reminders';
 import type { DeviceSession, SessionNote, TreatmentPlan } from '@/lib/types';
-import { C, radius, T, space } from '@/theme';
+import { C, radius, semantic, T, space } from '@/theme';
+import { ADHERENCE_DAY } from '@/theme.status';
 
 // Ngưỡng cảnh báo đau giống màn Báo triệu chứng; đề xuất cho demo, cần bác sĩ xác nhận.
 const HIGH_PAIN = 7;
@@ -22,14 +23,17 @@ const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
  * Chú giải chỉ có 5 nhóm cho bệnh nhân: Đã điều trị, Có lịch, Nghỉ, Lệch lịch, Chưa có dữ liệu.
  * "Lệch lịch" gộp bỏ lỡ, thiếu lần và chiếu ngoài lịch; chữ trong ô và trình đọc màn hình vẫn nói rõ từng loại (`detail`).
  */
+// PP-07: năm trạng thái có vai trò khớp màu cũ lấy màu từ ADHERENCE_DAY qua semantic. Nghỉ, Có lịch, Hôm nay giữ màu riêng
+// (bảng ADHERENCE_DAY ghi neutral/info, màu hiện tại là textFaint/primary); đổi theo bảng sẽ đổi giao diện nên chưa làm.
+const tone = (k: 'met' | 'partial' | 'over' | 'none' | 'unsynced') => ({ color: semantic[ADHERENCE_DAY[k].role].fg, bg: semantic[ADHERENCE_DAY[k].role].bg });
 const KIND: Record<Exclude<DayKind, 'outside'>, { label: string; detail?: string; color: string; bg: string; icon?: 'checkmark' | 'alert' }> = {
-  met: { label: 'Đã điều trị', color: C.green, bg: C.greenSoft, icon: 'checkmark' },
-  partial: { label: 'Lệch lịch', detail: 'Thiếu lần', color: C.amber, bg: C.amberSoft },
-  over: { label: 'Lệch lịch', detail: 'Chiếu ngoài lịch hoặc thừa lần', color: C.amber, bg: C.amberSoft, icon: 'alert' },
-  none: { label: 'Lệch lịch', detail: 'Bỏ lỡ', color: C.amber, bg: C.amberSoft },
+  met: { label: 'Đã điều trị', ...tone('met'), icon: 'checkmark' },
+  partial: { label: 'Lệch lịch', detail: 'Thiếu lần', ...tone('partial') },
+  over: { label: 'Lệch lịch', detail: 'Chiếu ngoài lịch hoặc thừa lần', ...tone('over'), icon: 'alert' },
+  none: { label: 'Lệch lịch', detail: 'Bỏ lỡ', ...tone('none') },
   rest: { label: 'Nghỉ', color: C.textFaint, bg: C.card },
   planned: { label: 'Có lịch', color: C.primary, bg: C.primarySoft },
-  unsynced: { label: 'Chưa có dữ liệu', color: C.textSoft, bg: C.neutralSoft },
+  unsynced: { label: 'Chưa có dữ liệu', ...tone('unsynced') },
   today: { label: 'Hôm nay', color: C.primary, bg: C.primarySoft },
 };
 
