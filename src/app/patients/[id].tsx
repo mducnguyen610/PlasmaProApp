@@ -6,13 +6,13 @@ import { Text } from '@/components/Text';
 
 import { ActivationCode } from '@/components/ActivationCode';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, ListCard, Muted, NumberTile, Screen, SectionTitle, WoundPhoto, SwitchRow, type IconName, StatusChip, Empty } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, ListCard, Muted, Screen, SectionTitle, WoundPhoto, SwitchRow, type IconName, StatusChip, Empty } from '@/components/ui';
 import { isPendingActivation } from '@/lib/auth';
 import { confirm, notify } from '@/lib/dialog';
 import { buildReportHtml, shareReport } from '@/lib/report';
 import { fmtDate, fmtDateTime, PLAN_STATUS, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore, type Activation } from '@/lib/store';
-import { C, semantic } from '@/theme';
+import { C } from '@/theme';
 import { CLOUD_LINK, WOUND, cloudState } from '@/theme.status';
 import { courseProgress, localDay } from '@/lib/course';
 
@@ -85,7 +85,7 @@ export default function PatientDetail() {
         {isDoctor && (
           <>
             <LinkRow icon="key-outline" tone={pending ? 'amber' : 'green'} title="Tài khoản" sub={login ? `@${login.username}` : 'Chưa có tài khoản'}
-              right={<Chip label={!pending ? 'Đã kích hoạt' : codeLive ? 'Chờ kích hoạt' : 'Chưa kích hoạt'} tone={!pending ? 'green' : 'amber'} />} />
+              right={<StatusChip status={{ role: !pending ? 'success' : 'warning', icon: !pending ? 'checkmark-circle-outline' : 'time-outline' }} label={!pending ? 'Đã kích hoạt' : codeLive ? 'Chờ kích hoạt' : 'Chưa kích hoạt'} />} />
             {activation && <ActivationCode activation={activation} />}
             {pending && !activation && (
               <>
@@ -105,13 +105,11 @@ export default function PatientDetail() {
             )}
           </>
         )}
-        {/* Ô số: tiến độ đợt (neutral) và kênh Wi-Fi của thiết bị (tông theo CLOUD_LINK, V02, V07), chạm để mở. */}
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <NumberTile icon="flash-outline" tone="gray" value={pr ? `${pr.done}/${pr.total}` : plan ? `v${plan.version}` : '—'} label={pr && plan?.status === 'active' ? 'Buổi đã làm' : plan ? PLAN_STATUS[plan.status].label : 'Chưa lập đợt'}
-            onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id } })} />
-          <NumberTile icon={(cloud ? cloud.icon : 'hardware-chip-outline') as IconName} tone={cloud ? semantic[cloud.role].tone : 'amber'} value={dev?.code ?? '—'} label={cloud ? cloud.label : 'Chưa gán thiết bị'}
-            onPress={dev ? () => router.push({ pathname: '/devices/[id]', params: { id: dev.id } }) : undefined} />
-        </View>
+        {/* PP-14: thiết bị và đợt thành dòng như Tài khoản (thay hai ô số), để mã máy không bị cắt ở 320 px (N-03) và
+            trạng thái tài khoản, kênh đồng bộ, giao máy đọc liền trong một thẻ. Giữ nguyên dữ liệu, màu theo CLOUD_LINK và nơi chạm mở. */}
+        <LinkRow icon="hardware-chip-outline" tone="teal" title="Thiết bị" sub={dev ? dev.code : 'Chưa gán thiết bị'}
+          below={cloud ? <StatusChip status={cloud} label={`Wi-Fi: ${cloud.label}`} /> : null}
+          onPress={dev ? () => router.push({ pathname: '/devices/[id]', params: { id: dev.id } }) : undefined} />
         {/* Giao máy, thu hồi thuộc bác sĩ phụ trách (UR11). */}
         {isDoctor && (
           <Disclosure icon="hardware-chip-outline" title="Giao máy" summary={dev ? `Đang giữ ${dev.code}` : freeDevices.length ? `${freeDevices.length} máy sẵn sàng` : 'Không có máy sẵn sàng'}>
@@ -124,6 +122,9 @@ export default function PatientDetail() {
             )}
           </Disclosure>
         )}
+        <LinkRow icon="flash-outline" tone="violet" title="Đợt điều trị"
+          sub={plan ? `${pr ? `${pr.done}/${pr.total} buổi đã làm` : `Phiên bản ${plan.version}`}${pr && plan.status === 'active' ? '' : ` · ${PLAN_STATUS[plan.status].label}`}` : 'Chưa lập đợt'}
+          onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id } })} />
         <Divider />
         <Disclosure title="Thông tin hồ sơ" summary={`${account(p.doctorId)?.name ?? 'Chưa có bác sĩ'} · ${p.researchConsent ? 'đồng ý nghiên cứu' : 'chưa đồng ý nghiên cứu'}`}>
           <InfoRow label="SĐT" value={p.phone || '—'} />
@@ -228,7 +229,7 @@ export default function PatientDetail() {
 }
 
 /** Một dòng trong thẻ hồ sơ: biểu tượng, tên, phụ đề, giá trị bên phải; có mũi tên khi chạm được. */
-function LinkRow({ icon, tone, title, sub, right, onPress }: { icon: IconName; tone: 'violet' | 'teal' | 'amber' | 'green'; title: string; sub?: string; right?: React.ReactNode; onPress?: () => void }) {
+function LinkRow({ icon, tone, title, sub, right, below, onPress }: { icon: IconName; tone: 'violet' | 'teal' | 'amber' | 'green'; title: string; sub?: string; right?: React.ReactNode; below?: React.ReactNode; onPress?: () => void }) {
   return (
     <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}
       style={({ pressed }) => ({ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.7 : 1 })}>
@@ -236,6 +237,7 @@ function LinkRow({ icon, tone, title, sub, right, onPress }: { icon: IconName; t
       <View style={{ flex: 1 }}>
         <Text style={{ fontWeight: '700', color: C.text }}>{title}</Text>
         {sub ? <Text style={{ color: C.textSoft, fontSize: 14 }}>{sub}</Text> : null}
+        {below ? <View style={{ flexDirection: 'row', marginTop: 4 }}>{below}</View> : null}
       </View>
       {right}
       {onPress ? <Ionicons name="chevron-forward" size={18} color={C.textFaint} /> : null}

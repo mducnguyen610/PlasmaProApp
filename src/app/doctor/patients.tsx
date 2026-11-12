@@ -5,7 +5,7 @@ import { PatientCard } from '@/components/items';
 import { useRankedPatients } from '@/components/useRankedPatients';
 import { patientSeverity, SEVERITY } from '@/lib/access';
 import type { Severity } from '@/lib/types';
-import { Choices, Empty, Header, HeaderButton, ListCard, Screen, SearchField } from '@/components/ui';
+import { Choices, Empty, Header, HeaderButton, ListCard, Muted, Screen, SearchField } from '@/components/ui';
 import { useStore } from '@/lib/store';
 
 // BS02 – Danh sách bệnh nhân: tìm theo tên/mã, thêm mới, mở hồ sơ.
@@ -29,6 +29,8 @@ export default function PatientList() {
       <SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã bệnh nhân…" />
       <Choices<Severity | 'all'> value={level} onChange={setLevel} options={[{ value: 'all', label: 'Tất cả' }, ...(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))]} />
       {list.length === 0 && <Empty icon="search" text="Không tìm thấy bệnh nhân phù hợp." />}
+      {/* PP-10: cùng tiêu chí xếp với trang chủ (src/lib/attention.ts). */}
+      {list.length > 0 && <Muted>Xếp theo mức cần xử lý: báo cáo chưa xử lý, mức độ bác sĩ đánh giá, buổi bỏ lỡ trong 7 ngày, chưa có dữ liệu hôm nay.</Muted>}
       <ListCard>
         {list.map((p) => <PatientCard key={p.id} patient={p} attention={attentionOf.get(p.id)} />)}
       </ListCard>

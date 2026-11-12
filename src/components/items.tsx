@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { patientSeverity, SEVERITY } from '@/lib/access';
+import { latestAreaIncrease } from '@/lib/areaChange';
 import { Chip, IconBadge, StatusChip, WoundPhoto, type IconName } from '@/components/ui';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
@@ -51,9 +52,17 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
   const unlabeled = data.images.filter((i) => i.patientId === patient.id && i.status === 'unlabeled').length;
   const severity = patientSeverity(data, patient.id);
   const active = wounds.some((w) => w.status === 'active');
+  // PP-06: vết thương đang điều trị có số đo bác sĩ nhập lần sau lớn hơn lần trước. Chỉ nêu hai con số, không kết luận lâm sàng.
+  const increases = wounds.filter((w) => w.status === 'active')
+    .map((w) => ({ w, inc: latestAreaIncrease(data.images.filter((i) => i.woundId === w.id)) }))
+    .filter((x): x is { w: typeof x.w; inc: NonNullable<typeof x.inc> } => !!x.inc);
+  const incText = increases.map(({ w, inc }) => `${w.code}: số đo ${fmtDate(inc.latestDate).slice(0, 5)} lớn hơn lần trước (${formatAreaDisplay(inc.previous)} → ${formatAreaDisplay(inc.latest)})`);
+  // PP-10: ngày đánh giá gần nhất của bác sĩ trên mọi vết thương của bệnh nhân (dữ liệu đánh giá, khác số đo).
+  const woundIds = new Set(wounds.map((w) => w.id));
+  const lastEval = data.evaluations.filter((e) => woundIds.has(e.woundId)).map((e) => e.date).sort().pop();
   // Một dòng trong ListCard (không còn thẻ riêng cho mỗi bệnh nhân). Bản rút gọn (08/11/2026): một dòng tên, một dòng mã; mức độ là điểm neo bên phải; chỉ hiện việc cần làm khi có.
   return (
-    <Pressable onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityRole="button" style={({ pressed }) => ({ paddingVertical: 12, gap: space.s, opacity: pressed ? 0.7 : 1 })} accessibilityLabel={`${patient.name}, ${patient.code}${severity ? `, mức độ ${SEVERITY[severity].label}` : ''}${unlabeled ? `, ${unlabeled} ảnh chưa đo` : ''}`}>
+    <Pressable onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityRole="button" style={({ pressed }) => ({ paddingVertical: 12, gap: space.s, opacity: pressed ? 0.7 : 1 })} accessibilityLabel={`${patient.name}, ${patient.code}${severity ? `, mức độ ${SEVERITY[severity].label}` : ''}${unlabeled ? `, ${unlabeled} ảnh chưa đo` : ''}${incText.length ? `, ${incText.join('; ')}` : ''}${lastEval ? `, đánh giá lần cuối ${fmtDate(lastEval)}` : ''}`}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
         <IconBadge icon="person-outline" />
         <View style={{ flex: 1 }}>
@@ -77,6 +86,13 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
           {[unlabeled > 0 ? `${unlabeled} ảnh chưa đo` : null, !active ? 'không có vết thương đang điều trị' : null].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}
         </Text>
       )}
+      {incText.map((t) => (
+        <View key={t} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', paddingLeft: 52 }}>
+          <Ionicons name="trending-up" size={16} color={C.amber} />
+          <Text style={{ color: C.amber, fontSize: T.caption, fontWeight: '600', flexShrink: 1 }}>{t}</Text>
+        </View>
+      ))}
+      {lastEval ? <Text style={{ color: C.textSoft, fontSize: T.caption, paddingLeft: 52 }}>Đánh giá lần cuối: {fmtDate(lastEval)}</Text> : null}
     </Pressable>
   );
 }
