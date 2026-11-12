@@ -5,7 +5,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Choices, Field, Header, InfoRow, Muted, Screen, SwitchRow } from '@/components/ui';
+import { Button, Card, Choices, Disclosure, Field, Header, InfoRow, Muted, Screen, SwitchRow } from '@/components/ui';
 import { SEVERITY } from '@/lib/access';
 import { assessmentError, EXUDATE, HELP, INFECTION, PERCENT_BANDS, PRESSURE, PRESSURE_STAGES, WOUND_TYPES, woundAge } from '@/lib/assessment';
 import { TREND } from '@/lib/format';
@@ -43,6 +43,19 @@ export default function Evaluate() {
   if (!w || !p) return <NoAccess notFound />;
   if (!canView || me?.role !== 'doctor') return <NoAccess />;
 
+  // PP-09: đếm mục đã điền cho dòng tóm tắt của từng nhóm (chỉ hiển thị, không thay cho kiểm tra khi lưu).
+  const filled = (v: unknown) => typeof v === 'string' ? v.trim() !== '' : v != null;
+  const isPressure = a.woundType === PRESSURE;
+  const g1 = {
+    done: [a.woundType, ...(isPressure ? [a.pressureStage] : []), a.granulation, a.epithelial, a.exudate, a.infection].filter(filled).length,
+    total: isPressure ? 6 : 5,
+    missing: [!filled(a.woundType) && 'loại vết thương', isPressure && !filled(a.pressureStage) && 'giai đoạn', !filled(a.exudate) && 'dịch tiết', !filled(a.infection) && 'dấu hiệu nhiễm trùng'].filter(Boolean) as string[],
+  };
+  const g2 = { done: [severity, characteristics, symptoms, symptomSource].filter(filled).length, total: 4, missing: severity ? [] : ['mức độ'] };
+  const g3 = { done: [trend, instructions, nextReview].filter(filled).length, total: 3, missing: [] as string[] };
+  const groupSummary = (g: { done: number; total: number; missing: string[] }) =>
+    `Đã điền ${g.done}/${g.total}${g.missing.length ? ` · còn ${g.missing.length} mục bắt buộc` : ''}`;
+
   const save = () => {
     const aErr = assessmentError(a);
     if (aErr) return setErr(aErr);
@@ -69,31 +82,40 @@ export default function Evaluate() {
         <InfoRow label="Diện tích (bác sĩ đã nhập qua đổi tên ảnh)" value={formatAreaDisplay(img?.areaCm2 ?? null)} />
         <Muted>Ứng dụng chỉ lưu nhận định của bác sĩ; không tự suy luận tình trạng hay đề xuất liệu trình.</Muted>
       </Card>
+      {/* PP-09: ba nhóm Disclosure theo thứ tự trường cũ; nhóm đầu mở sẵn. Giá trị nằm ở state của màn nên đóng mở nhóm không mất dữ liệu.
+          Tóm tắt mỗi nhóm nêu số mục đã điền và mục bắt buộc còn thiếu; cách kiểm tra khi lưu giữ nguyên. */}
       <Card>
-        <Text style={{ fontWeight: '700', fontSize: 17 }}>Phân loại vết thương</Text>
-        <InfoRow label="Tuổi vết thương (tự tính)" value={`${woundAge(w.startDate, todayIso())}, từ ${w.startDate.split('-').reverse().join('/')}`} />
-        <Q label="Loại vết thương" required help={HELP.woundType}><Choices value={a.woundType ?? ''} onChange={set('woundType')} options={WOUND_TYPES.map((v) => ({ value: v, label: v }))} /></Q>
-        {a.woundType === PRESSURE && (
-          <Q label="Giai đoạn (NPIAP)" required help={HELP.pressureStage}><Choices value={a.pressureStage ?? ''} onChange={set('pressureStage')} options={PRESSURE_STAGES.map((v) => ({ value: v, label: v }))} /></Q>
-        )}
-        <Q label="Mô hạt" help={HELP.granulation}><Choices value={a.granulation ?? ''} onChange={set('granulation')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
-        <Q label="Biểu mô hóa" help={HELP.epithelial}><Choices value={a.epithelial ?? ''} onChange={set('epithelial')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
-        <Q label="Dịch tiết" required help={HELP.exudate}><Choices value={a.exudate ?? ''} onChange={set('exudate')} options={EXUDATE.map((v) => ({ value: v, label: v }))} /></Q>
-        <Q label="Dấu hiệu nhiễm trùng" required help={HELP.infection}><Choices value={a.infection ?? ''} onChange={set('infection')} options={INFECTION.map((v) => ({ value: v, label: v }))} /></Q>
-        <Muted>Danh mục là bản nháp cho demo, cần bác sĩ trong nhóm chọn thang đánh giá chính thức.</Muted>
+        <Disclosure title="Phân loại vết thương" summary={groupSummary(g1)} summaryTone={g1.missing.length ? C.amber : undefined} initiallyOpen>
+          <InfoRow label="Tuổi vết thương (tự tính)" value={`${woundAge(w.startDate, todayIso())}, từ ${w.startDate.split('-').reverse().join('/')}`} />
+          <Q label="Loại vết thương" required help={HELP.woundType}><Choices value={a.woundType ?? ''} onChange={set('woundType')} options={WOUND_TYPES.map((v) => ({ value: v, label: v }))} /></Q>
+          {a.woundType === PRESSURE && (
+            <Q label="Giai đoạn (NPIAP)" required help={HELP.pressureStage}><Choices value={a.pressureStage ?? ''} onChange={set('pressureStage')} options={PRESSURE_STAGES.map((v) => ({ value: v, label: v }))} /></Q>
+          )}
+          <Q label="Mô hạt" help={HELP.granulation}><Choices value={a.granulation ?? ''} onChange={set('granulation')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
+          <Q label="Biểu mô hóa" help={HELP.epithelial}><Choices value={a.epithelial ?? ''} onChange={set('epithelial')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
+          <Q label="Dịch tiết" required help={HELP.exudate}><Choices value={a.exudate ?? ''} onChange={set('exudate')} options={EXUDATE.map((v) => ({ value: v, label: v }))} /></Q>
+          <Q label="Dấu hiệu nhiễm trùng" required help={HELP.infection}><Choices value={a.infection ?? ''} onChange={set('infection')} options={INFECTION.map((v) => ({ value: v, label: v }))} /></Q>
+          <Muted>Danh mục là bản nháp cho demo, cần bác sĩ trong nhóm chọn thang đánh giá chính thức.</Muted>
+        </Disclosure>
       </Card>
       <Card>
-        <Text style={{ fontWeight: '700', fontSize: 17 }}>Mức độ vết thương</Text>
-        <Choices<Severity | ''> value={severity} onChange={setSeverity} options={(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))} />
-        <Muted>Bác sĩ chọn mức độ sau khi đánh giá; mức độ không tự tính từ diện tích hay diễn biến.</Muted>
-        <Field optional label="Đặc điểm vết thương" value={characteristics} onChangeText={setCharacteristics} multiline placeholder="Nền, bờ, da xung quanh, dịch tiết, mô hạt…" />
-        <Field optional label="Triệu chứng" value={symptoms} onChangeText={setSymptoms} multiline placeholder="Đau, khó chịu…" />
-        <Field optional label="Nguồn thông tin triệu chứng" value={symptomSource} onChangeText={setSymptomSource} />
-        <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
-        <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
-        <Field optional label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
-        <Field optional label="Ngày tái đánh giá" value={nextReview} onChangeText={setNextReview} placeholder="dd/mm/yyyy" />
-        <SwitchRow label="Công bố cho bệnh nhân xem" value={visible} onChange={setVisible} />
+        <Disclosure title="Mức độ và triệu chứng" summary={groupSummary(g2)} summaryTone={g2.missing.length ? C.amber : undefined}>
+          <Text style={{ fontWeight: '700', fontSize: 17 }}>Mức độ vết thương</Text>
+          <Choices<Severity | ''> value={severity} onChange={setSeverity} options={(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))} />
+          <Muted>Bác sĩ chọn mức độ sau khi đánh giá; mức độ không tự tính từ diện tích hay diễn biến.</Muted>
+          <Field optional label="Đặc điểm vết thương" value={characteristics} onChangeText={setCharacteristics} multiline placeholder="Nền, bờ, da xung quanh, dịch tiết, mô hạt…" />
+          <Field optional label="Triệu chứng" value={symptoms} onChangeText={setSymptoms} multiline placeholder="Đau, khó chịu…" />
+          <Field optional label="Nguồn thông tin triệu chứng" value={symptomSource} onChangeText={setSymptomSource} />
+        </Disclosure>
+      </Card>
+      <Card>
+        <Disclosure title="Diễn biến và hướng dẫn" summary={groupSummary(g3)}>
+          <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
+          <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
+          <Field optional label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
+          <Field optional label="Ngày tái đánh giá" value={nextReview} onChangeText={setNextReview} placeholder="dd/mm/yyyy" />
+          <SwitchRow label="Công bố cho bệnh nhân xem" value={visible} onChange={setVisible} />
+        </Disclosure>
       </Card>
       {err ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{err}</Text> : null}
       <Button label="Lưu đánh giá" icon="save-outline" onPress={save} />
