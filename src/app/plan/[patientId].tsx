@@ -7,14 +7,14 @@ import { DoseRows, PhaseList } from '@/components/CourseCard';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { CheckRow } from '@/components/Consent';
 import { PLAN } from '@/theme.status';
-import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
 import { capabilitiesFor, modeLabel } from '@/lib/device/capabilities';
-import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, suggestDurationSec } from '@/lib/course';
+import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, phasesOf, suggestDurationSec } from '@/lib/course';
 import { notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, maskDateInput, PLAN_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import type { CoursePhase, PhasePattern, PlanStatus, TreatmentPlan } from '@/lib/types';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 
 // Điều xảy ra khi lưu với từng trạng thái; nội dung theo quy tắc lưu hiện có (đợt "Đang áp dụng" cần mức, thời gian và xác nhận).
 const STATUS_EFFECT: Record<PlanStatus, string> = {
@@ -55,6 +55,36 @@ function PlanCard({ plan, editorName }: { plan: TreatmentPlan; editorName?: stri
       <Muted>Sửa bởi {editorName ?? '—'} lúc {fmtDateTime(plan.editedAt)} · Lý do: {plan.reason || '—'}</Muted>
       <Chip label={plan.confirmed ? 'Bác sĩ đã xác nhận' : 'Chưa xác nhận'} tone={plan.confirmed ? 'green' : 'gray'} />
     </Card>
+  );
+}
+
+/** Một dòng của bảng kiểm tra (R-02): giá trị phiên bản đang so sánh và giá trị sắp lưu. Chỉ hiển thị, không tạo giá trị thiếu. */
+interface ReviewRow { label: string; before?: string; after: string; step: 0 | 1 }
+// Khoảng ngày gọn cho bảng: bỏ năm ở ngày đầu khi cùng năm với ngày cuối.
+const range = (from: string, to: string) => (from.slice(6) === to.slice(6) && from.length === 10 ? `${from.slice(0, 5)}–${to}` : `${from || '?'}–${to || '?'}`);
+const phaseText = (p: CoursePhase) => `${phaseLabel(p)}, ${range(fmtDate(p.from), fmtDate(p.to))}`;
+
+function ReviewTable({ rows, baseTitle }: { rows: ReviewRow[]; baseTitle?: string }) {
+  const cell = { flex: 1, paddingVertical: 8, paddingHorizontal: 6 } as const;
+  const head = { fontSize: T.small, fontWeight: '700' as const, color: C.textSoft };
+  return (
+    <View style={{ borderTopWidth: 1, borderColor: C.border }}>
+      <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: C.border }}>
+        <View style={cell}><Text style={head}>Thông số</Text></View>
+        {baseTitle ? <View style={cell}><Text style={head}>{baseTitle}</Text></View> : null}
+        <View style={cell}><Text style={head}>Phiên bản mới</Text></View>
+      </View>
+      {rows.map((r) => {
+        const changed = baseTitle !== undefined && r.before !== r.after;
+        return (
+          <View key={r.label} accessible accessibilityLabel={`${r.label}: ${baseTitle ? `hiện tại ${r.before}, ` : ''}mới ${r.after}${changed ? ', đã thay đổi' : ''}`} style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: C.border }}>
+            <View style={cell}><Text style={{ color: C.textSoft }}>{r.label}</Text></View>
+            {baseTitle ? <View style={cell}><Text style={{ color: C.text }}>{r.before}</Text></View> : null}
+            <View style={[cell, changed ? { backgroundColor: C.amberSoft } : null]}><Text style={{ color: C.text, fontWeight: changed ? '700' : '400' }}>{r.after}</Text></View>
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -122,6 +152,26 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   }
 
   const suggestion = suggestDurationSec(lastArea?.areaCm2, numOrNull(spc));
+  // R-02 (Đợt 10): so với phiên bản đang áp dụng; chưa có thì so với phiên bản gần nhất; lần lập đầu chỉ một cột.
+  const base = plans.find((x) => x.status === 'active') ?? latest;
+  const baseTitle = base ? (base.status === 'active' ? `Đang áp dụng (v${base.version})` : `Phiên bản ${base.version} (${PLAN_STATUS[base.status].label})`) : undefined;
+  // Số phiên bản sắp tạo, cùng cách đánh số của savePlan (theo từng vết thương).
+  const nextVersion = data.plans.filter((x) => x.patientId === patientId && (x.woundId ?? null) === (woundId ?? null)).reduce((m, x) => Math.max(m, x.version), 0) + 1;
+  const dash = (v: string | null | undefined) => (v == null || v === '' ? '—' : v);
+  const durText = (v: number | null | undefined) => (v == null ? '—' : fmtDuration(v));
+  const draftPhase = (ph: PhaseDraft) => `${phaseLabel({ from: '', to: '', pattern: ph.pattern, n: Number(ph.n) || 1 })}, ${range(ph.from, ph.to)}`;
+  const showMode = (caps?.treatmentModes.length ?? 0) > 0 || !!mode || !!base?.treatmentMode;
+  const showGap = gap.trim() !== '' || base?.minIntervalMin != null;
+  const reviewRows: ReviewRow[] = [
+    { label: 'Lịch', before: base ? phasesOf(base).map(phaseText).join('\n') : undefined, after: phases.map(draftPhase).join('\n'), step: 0 },
+    { label: 'Mức năng lượng', before: base ? dash(base.doseLevel?.toString()) : undefined, after: dash(level), step: 1 },
+    ...(showMode ? [{ label: 'Chế độ', before: base ? dash(base.treatmentMode ? modeLabel(base.treatmentMode) : null) : undefined, after: dash(mode ? modeLabel(mode) : null), step: 1 as const }] : []),
+    { label: 'Thời gian mỗi lần', before: base ? durText(base.durationSec) : undefined, after: durText(numOrNull(duration)), step: 1 },
+    { label: 'Số lần mỗi buổi', before: base ? String(base.sessionsPerDay ?? 1) : undefined, after: dash(perVisit), step: 1 },
+    ...(showGap ? [{ label: 'Giãn cách', before: base ? dash(base.minIntervalMin != null ? `${base.minIntervalMin} phút` : null) : undefined, after: dash(gap.trim() ? `${gap.trim()} phút` : null), step: 1 as const }] : []),
+    { label: 'Mốc xem lại', before: base ? `Ngày thứ ${base.reviewAtDay ?? DEFAULT_REVIEW_DAY}` : undefined, after: reviewDay.trim() ? `Ngày thứ ${reviewDay.trim()}` : '—', step: 1 },
+  ];
+  const changedCount = base ? reviewRows.filter((r) => r.before !== r.after).length : 0;
   /** Bỏ dấu xác nhận khi lịch hoặc liều đổi (UX-02); ghi lại để báo bác sĩ ở bước Xác nhận. */
   const unconfirm = () => {
     if (confirmed) setClearedByEdit(true);
@@ -152,11 +202,16 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
     if (!reason.trim()) return fail(2, 'Nhập lý do thay đổi để lưu vết phiên bản.');
     if (status === 'active' && !confirmed) return fail(2, 'Đợt "Đang áp dụng" cần bác sĩ xác nhận.');
     setErr(null);
+    try {
     savePlan({
       patientId: p.id, woundId, status, phases: parsed, sessionsPerDay: nums[0] ?? 1, minIntervalMin: nums[1], targetEnergyWh: null,
       doseLevel: nums[2], treatmentMode: caps && mode ? mode : null, durationSec: nums[3], secondsPerCm2: nums[4], areaAtStart: lastArea?.areaCm2 ?? null, reviewAtDay: nums[5] ?? DEFAULT_REVIEW_DAY,
       startDate: parsed[0].from, endDate: parsed[parsed.length - 1].to, reviewSchedule: review.trim(), notes: notes.trim(), reason: reason.trim(), confirmed,
     });
+    } catch (e) {
+      // Lưu thất bại: giữ nguyên dữ liệu đã nhập và dấu xác nhận để bác sĩ thử lại.
+      return fail(2, `Chưa lưu được phiên bản: ${e instanceof Error ? e.message : 'lỗi không xác định'}. Dữ liệu vẫn còn, hãy thử lại.`);
+    }
     setReason('');
     setConfirmed(false);
     setClearedByEdit(false);
@@ -218,12 +273,9 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         )}
         {step === 1 && (
           <>
-        <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Liều mỗi lần điều trị</Text>
+        {/* R-02, UX-14 (Đợt 10): nhóm liều khóa trên máy lên đầu; công cụ gợi ý thời gian vào mục thu gọn. Trường và quy tắc giữ nguyên. */}
+        <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Liều khóa trên máy</Text>
         <Muted>Thiết bị tại nhà bị khóa ở mức và thời gian này; bệnh nhân không đổi được.</Muted>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          {!caps && <View style={{ flex: 1 }}><Field label="Mức năng lượng" value={level} onChangeText={edit(setLevel)} keyboardType="number-pad" hint="Ví dụ: 8" /></View>}
-          <View style={{ flex: 1 }}><Field label="Thời gian mỗi lần điều trị (giây)" value={duration} onChangeText={edit(setDuration)} keyboardType="number-pad" hint={numOrNull(duration) != null ? fmtDuration(numOrNull(duration)) : undefined} /></View>
-        </View>
         {caps ? (
           <>
             <Text style={{ fontWeight: '700', color: C.text }}>Mức năng lượng</Text>
@@ -237,8 +289,13 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
             {!caps.confirmed && <Muted>Danh sách mức và chế độ chưa được firmware xác nhận.</Muted>}
           </>
         ) : (
-          <Muted>Chưa có danh sách mức và chế độ cho mẫu thiết bị này.</Muted>
+          <>
+            <Field label="Mức năng lượng" value={level} onChangeText={edit(setLevel)} keyboardType="number-pad" hint="Ví dụ: 8" />
+            <Muted>Chưa có danh sách mức và chế độ cho mẫu thiết bị này.</Muted>
+          </>
         )}
+        <Field label="Thời gian mỗi lần điều trị (giây)" value={duration} onChangeText={edit(setDuration)} keyboardType="number-pad" hint={numOrNull(duration) != null ? fmtDuration(numOrNull(duration)) : undefined} />
+        <Disclosure title="Công cụ gợi ý thời gian" summary="Theo diện tích đo gần nhất · không bắt buộc">
         <View style={{ gap: 8, padding: 10, borderRadius: 10, backgroundColor: C.primarySoft }}>
           <Text style={{ fontWeight: '700', color: C.text }}>Gợi ý thời gian theo diện tích</Text>
           <Field label="Hệ số (giây cho mỗi cm²)" value={spc} onChangeText={setSpc} keyboardType="decimal-pad" hint="Chờ nhóm phần cứng xác nhận theo mật độ công suất đầu phát. Tài liệu tham khảo dùng 30 đến 45 giây/cm² cho thiết bị khác." />
@@ -251,6 +308,8 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
           {suggestion != null && <Button label={`Dùng gợi ý ${fmtDuration(suggestion)}`} icon="calculator-outline" variant="secondary" onPress={() => edit(setDuration)(String(suggestion))} />}
           <Muted>Chỉ là gợi ý. Bác sĩ quyết định thời gian cuối cùng.</Muted>
         </View>
+        </Disclosure>
+        <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Số lần và mốc xem lại</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1 }}><Field label="Số lần mỗi buổi" value={perVisit} onChangeText={edit(setPerVisit)} keyboardType="number-pad" /></View>
           <View style={{ flex: 1 }}><Field label="Giãn cách (phút)" value={gap} onChangeText={edit(setGap)} keyboardType="number-pad" hint="Chỉ khi nhiều lần mỗi buổi." /></View>
@@ -260,19 +319,28 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         )}
         {step === 2 && (
           <>
-            <Text style={{ fontWeight: '700', color: C.text }}>Tóm tắt</Text>
-            <Muted>{phases.map((ph, i) => `Giai đoạn ${i + 1}: ${phaseLabel({ from: '', to: '', pattern: ph.pattern, n: Number(ph.n) || 1 }).toLowerCase()} (${ph.from || '?'} đến ${ph.to || '?'})`).join('; ')}. Mức {level || '?'}{mode ? `, chế độ ${modeLabel(mode)}` : ''}, {duration ? fmtDuration(numOrNull(duration)) : '? giây'}, {perVisit || 1} lần mỗi buổi.</Muted>
+            {/* R-02, UX-10 (Đợt 10): màn kiểm tra trước khi lưu. Bảng so với phiên bản đang áp dụng, trường đổi tô vàng; sửa thì quay về đúng bước. */}
+            <Text style={{ fontWeight: '700', color: C.text, fontSize: T.cardTitle }}>Kiểm tra lịch và liều trước khi lưu</Text>
+            <ReviewTable rows={reviewRows} baseTitle={baseTitle} />
+            <Muted>{!base ? 'Lần lập đầu cho vết thương này.' : changedCount ? `${changedCount} thay đổi được tô vàng.` : 'Không có thay đổi lịch hoặc liều so với phiên bản đang so sánh.'}</Muted>
+            <View style={{ flexDirection: 'row', gap: 16, flexWrap: 'wrap' }}>
+              <TextLink label="Sửa lịch" accessibilityLabel="Sửa lịch, quay về bước Lịch" onPress={() => setStep(0)} />
+              <TextLink label="Sửa liều" accessibilityLabel="Sửa liều, quay về bước Liều" onPress={() => setStep(1)} />
+            </View>
+            <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Trạng thái sau khi lưu</Text>
             <Choices<PlanStatus> value={status} onChange={setStatus} options={(['draft', 'active', 'paused', 'ended'] as const).map((v) => ({ value: v, label: PLAN_STATUS[v].label }))} />
-            {/* Hậu quả của trạng thái đang chọn (V12). */}
-            <Muted>{STATUS_EFFECT[status]}</Muted>
-        <Field label="Lịch tái khám" value={review} onChangeText={setReview} placeholder="Ví dụ: tái đánh giá mỗi 7 ngày" />
-        <Field label="Ghi chú" value={notes} onChangeText={setNotes} multiline />
+        <Disclosure title="Lịch tái khám, ghi chú" summary={review.trim() || notes.trim() ? 'Đã nhập' : 'Không bắt buộc'}>
+          <Field label="Lịch tái khám" value={review} onChangeText={setReview} placeholder="Ví dụ: tái đánh giá mỗi 7 ngày" />
+          <Field label="Ghi chú" value={notes} onChangeText={setNotes} multiline />
+        </Disclosure>
         <Field label="Lý do thay đổi" value={reason} onChangeText={setReason} placeholder="Ví dụ: vết thương cải thiện, giảm còn 3 buổi mỗi tuần" />
         {clearedByEdit && !confirmed && (
           <Notice icon="alert-circle-outline">Dấu xác nhận đã được bỏ vì lịch hoặc liều vừa thay đổi. Kiểm tra lại tóm tắt ở trên rồi tích lại.</Notice>
         )}
         <CheckRow checked={confirmed} onChange={(v) => { setConfirmed(v); if (v) setClearedByEdit(false); }} label="Tôi xác nhận liều và lịch này. Bệnh nhân sẽ xem được đợt và nạp liệu trình xuống máy." />
-            <Button label="Lưu phiên bản mới" icon="save-outline" onPress={save} />
+            {/* Hậu quả của trạng thái đang chọn (V12), đặt sát nút Lưu. */}
+            <Notice tone="blue" icon="information-circle-outline">{STATUS_EFFECT[status]}</Notice>
+            <Button label={`Lưu phiên bản ${nextVersion}`} icon="save-outline" onPress={save} />
           </>
         )}
         <View style={{ flexDirection: 'row', gap: 10 }}>
