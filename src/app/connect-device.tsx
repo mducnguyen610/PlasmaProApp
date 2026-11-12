@@ -13,11 +13,13 @@ import { CONFIG_ERROR_LABEL, MISSING_LABEL, nakHint, sendResultLabel } from '@/l
 import { configToWire, validateConfig } from '@/lib/device/protocol';
 import type { SendResult } from '@/lib/device/sender';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
+import { PATIENT_CONFIG_ERROR, PATIENT_MISSING_LABEL, PATIENT_UNIDENTIFIED, patientIncompatible, patientSendResultLabel } from '@/lib/patientDeviceText';
 import { useLookups, useStore } from '@/lib/store';
 import { C, semantic } from '@/theme';
 import { SEND_RESULT } from '@/theme.status';
 
-/** Nạp liệu trình bác sĩ đã xác nhận xuống máy qua USB/UART (giai đoạn 1: thiết bị giả lập). */
+/** Nạp liệu trình bác sĩ đã xác nhận xuống máy qua USB/UART (giai đoạn 1: thiết bị giả lập).
+ *  Đợt 5 (PP-13): bệnh nhân thấy câu chữ theo bảng đã duyệt C30 đến C66 (DOT5_BANG_CAU_CHU.md); bác sĩ và quản trị viên giữ câu cũ. */
 export default function ConnectDevice() {
   const params = useLocalSearchParams<{ patientId?: string; woundId?: string }>();
   const { me, recordDeviceLink } = useStore();
@@ -86,7 +88,7 @@ export default function ConnectDevice() {
 
   return (
     <Screen header={<Header back title="Nạp liệu trình" subtitle={`${p.name} · ${p.code}`} />}>
-      <StepRow steps={STEPS} step={step} />
+      <StepRow steps={isPatient ? PATIENT_STEPS : STEPS} step={step} />
       {!PROTOCOL.confirmed && !isPatient && <Notice>Giao thức chưa được firmware xác nhận.</Notice>}
 
       <Card>
@@ -102,22 +104,22 @@ export default function ConnectDevice() {
         )}
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {link.state === 'connected' ? (
-            <Button label="Ngắt" variant="secondary" icon="close-circle-outline" onPress={link.disconnect} style={{ flex: 1 }} />
+            <Button label={isPatient ? 'Ngắt kết nối' : 'Ngắt'} variant="secondary" icon="close-circle-outline" onPress={link.disconnect} style={{ flex: 1 }} />
           ) : (
             <Button label="Kết nối" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} style={{ flex: 1 }} />
           )}
         </View>
       </Card>
-      {noDevice && <Notice tone="red">Hồ sơ chưa được giao máy. Bác sĩ phụ trách cần giao máy trên hồ sơ bệnh nhân trước khi nạp liệu trình.</Notice>}
-      {unidentified && <Notice tone="red">Máy chưa trả lời lệnh hỏi thông tin nên chưa kiểm được phiên bản giao thức. Hãy ngắt rồi kết nối lại.</Notice>}
+      {noDevice && <Notice tone="red">{isPatient ? 'Hồ sơ của bạn chưa có máy. Bác sĩ phụ trách cần giao máy cho bạn trước.' : 'Hồ sơ chưa được giao máy. Bác sĩ phụ trách cần giao máy trên hồ sơ bệnh nhân trước khi nạp liệu trình.'}</Notice>}
+      {unidentified && <Notice tone="red">{isPatient ? PATIENT_UNIDENTIFIED : 'Máy chưa trả lời lệnh hỏi thông tin nên chưa kiểm được phiên bản giao thức. Hãy ngắt rồi kết nối lại.'}</Notice>}
       {versionMismatch && idInfo && (
-        <Notice tone="red">{`Máy dùng giao thức phiên bản ${idInfo.protocolVersion}, ứng dụng dùng phiên bản ${PROTOCOL.protocolVersion}, cần cập nhật ứng dụng hoặc firmware.`}</Notice>
+        <Notice tone="red">{isPatient ? patientIncompatible(idInfo.protocolVersion, PROTOCOL.protocolVersion) : `Máy dùng giao thức phiên bản ${idInfo.protocolVersion}, ứng dụng dùng phiên bản ${PROTOCOL.protocolVersion}, cần cập nhật ứng dụng hoặc firmware.`}</Notice>
       )}
 
       <SectionTitle>Đợt điều trị</SectionTitle>
       {courses.length === 0 ? (
         <Card>
-          <Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted>
+          <Muted>{isPatient ? 'Bác sĩ chưa xác nhận đợt điều trị nào cho bạn.' : 'Chưa có đợt điều trị được bác sĩ xác nhận.'}</Muted>
         </Card>
       ) : (
         <>
@@ -125,9 +127,11 @@ export default function ConnectDevice() {
             <Choices<string> value={chosen} onChange={setChosen} options={courses.map((c) => ({ value: c.wound.id, label: `${c.wound.code}: ${c.wound.location}` }))} />
           )}
           {!selected ? (
-            <Muted>Chọn vết thương để xem cấu hình sẽ gửi.</Muted>
+            <Muted>{isPatient ? 'Chọn vết thương để xem liệu trình sẽ nạp.' : 'Chọn vết thương để xem cấu hình sẽ gửi.'}</Muted>
           ) : prepared && 'missing' in prepared ? (
-            <Notice tone="red">{`Đợt điều trị còn thiếu ${prepared.missing.map((m) => MISSING_LABEL[m]).join(', ')}. Bác sĩ cần lưu phiên bản mới.`}</Notice>
+            <Notice tone="red">{isPatient
+              ? `Đợt điều trị còn thiếu ${prepared.missing.map((m) => PATIENT_MISSING_LABEL[m]).join(', ')}. Bác sĩ cần cập nhật đợt điều trị. Hãy báo bác sĩ.`
+              : `Đợt điều trị còn thiếu ${prepared.missing.map((m) => MISSING_LABEL[m]).join(', ')}. Bác sĩ cần lưu phiên bản mới.`}</Notice>
           ) : (
             <Card>
               <Text style={{ fontWeight: '700', color: C.text }}>Liệu trình sẽ nạp xuống máy</Text>
@@ -136,7 +140,7 @@ export default function ConnectDevice() {
               {cfg && <InfoRow label="Mức năng lượng" value={`Mức ${cfg.energyLevel}`} />}
               {cfg && <InfoRow label="Chế độ điều trị" value={modeLabel(cfg.treatmentMode)} />}
               {cfg && <InfoRow label="Thời gian mỗi lần chiếu" value={fmtDuration(cfg.minTreatmentTimeSec)} />}
-              {plan && <InfoRow label="Đợt điều trị" value={`Phiên bản ${plan.version}, bác sĩ đã xác nhận`} />}
+              {plan && <InfoRow label="Đợt điều trị" value={isPatient ? `Bác sĩ đã xác nhận (phiên bản ${plan.version})` : `Phiên bản ${plan.version}, bác sĩ đã xác nhận`} />}
               {/* Bệnh nhân vẫn xem được, nhưng tiêu đề bằng lời thường; mã trường CFG chỉ nằm bên trong phần thu gọn (A12). */}
               {wire ? (
                 <Disclosure title={isPatient ? 'Dữ liệu gửi xuống máy' : 'Chi tiết kỹ thuật'} summary={isPatient ? 'Chỉ cần khi kỹ thuật viên hỏi' : 'Các trường gói CFG gửi qua USB/UART'} icon="code-slash-outline">
@@ -145,7 +149,7 @@ export default function ConnectDevice() {
               ) : (
                 errors.map((e) => (
                   <Text key={e} style={{ color: C.red }}>
-                    {CONFIG_ERROR_LABEL[e]}
+                    {isPatient ? PATIENT_CONFIG_ERROR[e] : CONFIG_ERROR_LABEL[e]}
                   </Text>
                 ))
               )}
@@ -158,11 +162,11 @@ export default function ConnectDevice() {
           còn nạp lại thành liên kết chữ. */}
       {result?.kind !== 'acked' && (
         <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={send} disabled={!canSend} loading={sending}
-          reason={link.state !== 'connected' ? 'Kết nối máy bằng cáp USB trước.' : !cfg || errors.length > 0 ? 'Đợt điều trị chưa sẵn sàng, xem thông báo ở trên.' : 'Máy chưa sẵn sàng nhận liệu trình, xem thông báo ở trên.'} />
+          reason={link.state !== 'connected' ? 'Kết nối máy bằng cáp USB trước.' : !cfg || errors.length > 0 ? (isPatient ? 'Đợt điều trị chưa sẵn sàng. Xem thông báo ở trên.' : 'Đợt điều trị chưa sẵn sàng, xem thông báo ở trên.') : isPatient ? 'Máy chưa sẵn sàng nhận liệu trình. Xem thông báo ở trên.' : 'Máy chưa sẵn sàng nhận liệu trình, xem thông báo ở trên.'} />
       )}
       {result && (
         <Notice tone={semantic[SEND_RESULT[result.kind].role].tone} icon={SEND_RESULT[result.kind].icon as IconName}>
-          {sendResultLabel(result)}
+          {isPatient ? patientSendResultLabel(result) : sendResultLabel(result)}
         </Notice>
       )}
       {result && result.kind !== 'acked' && canSend && !noRetry && <Button label="Gửi lại" variant="secondary" icon="refresh-outline" onPress={send} />}
@@ -179,3 +183,5 @@ export default function ConnectDevice() {
 }
 
 const STEPS = ['Kết nối máy', 'Nạp liệu trình', 'Chiếu'];
+/** Bệnh nhân: "điều trị" thay "chiếu" (duyệt 12/11/2026, C40). */
+const PATIENT_STEPS = ['Kết nối máy', 'Nạp liệu trình', 'Điều trị'];

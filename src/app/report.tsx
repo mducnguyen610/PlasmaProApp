@@ -31,15 +31,16 @@ export default function Report() {
   const send = () => {
     addReport({ patientId: me.patientId!, kind, content: content.trim() || `Mức đau ${pain}/10`, painLevel: kind === 'symptom' && pain !== null ? pain : undefined });
     // Không hứa thời gian phản hồi: bản demo lưu cục bộ, bác sĩ chỉ thấy khi mở ứng dụng.
-    notify('Đã ghi nhận', 'Bác sĩ phụ trách sẽ xem khi mở ứng dụng. Nếu đau tăng, sốt, chảy máu hoặc mủ nhiều, hãy gọi 115 hoặc đến cơ sở y tế, không chờ phản hồi trong ứng dụng.');
+    notify('Đã ghi nhận', 'Bác sĩ phụ trách sẽ xem khi mở ứng dụng. Nếu đau tăng, sốt, chảy máu hoặc mủ nhiều, hãy gọi 115 hoặc đến cơ sở y tế. Đừng chờ trả lời trong ứng dụng.');
     router.back();
   };
 
+  // PP-15: ở 320 px tiêu đề một dòng bị cắt; cho xuống 2 dòng, giữ chữ. Câu chữ theo bảng đã duyệt C21 đến C24 (Đợt 5).
   return (
-    <Screen header={<Header back title="Báo triệu chứng / sự cố" />}>
+    <Screen header={<Header back title="Báo triệu chứng / sự cố" titleLines={2} />}>
       <Card style={{ backgroundColor: C.redSoft }}>
-        <Text style={{ color: C.red, fontWeight: '700' }}>Trường hợp khẩn cấp hãy gọi 115 hoặc đến cơ sở y tế gần nhất.</Text>
-        <Muted>Ứng dụng không thay thế cấp cứu và không được theo dõi liên tục.</Muted>
+        <Text style={{ color: C.red, fontWeight: '700' }}>Khi khẩn cấp, hãy gọi 115 hoặc đến cơ sở y tế gần nhất.</Text>
+        <Muted>Ứng dụng không thay thế cấp cứu. Không có ai theo dõi ứng dụng liên tục.</Muted>
       </Card>
       <Card>
         <Segmented value={kind} onChange={setKind} options={[{ value: 'symptom', label: 'Triệu chứng' }, { value: 'device', label: 'Sự cố thiết bị' }]} />
@@ -65,7 +66,7 @@ export default function Report() {
             </View>
             {pain !== null && pain >= HIGH_PAIN && (
               <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '700' }}>
-                Mức đau {pain}/10 là cao. Hãy gọi bác sĩ hoặc đến cơ sở y tế ngay, đồng thời gửi báo cáo này.
+                Mức đau {pain}/10 là cao. Hãy gọi bác sĩ hoặc đến cơ sở y tế ngay. Đồng thời, gửi báo cáo này.
               </Text>
             )}
           </>

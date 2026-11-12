@@ -13,6 +13,7 @@ import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { buildFilename, checkFullFilename, formatAreaDisplay, formatAreaForName, parseArea, type AreaUnit } from '@/lib/naming';
 import { areaWarning, previousArea } from '@/lib/plausibility';
+import { previousMethod } from '@/lib/measureMethod';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
@@ -39,6 +40,8 @@ export default function ImageDetail() {
   const [unit, setUnit] = useState<AreaUnit>('cm2');
   const [fullName, setFullName] = useState('');
   const [method, setMethod] = useState('');
+  // PP-11: nguồn của giá trị điền sẵn; null khi bác sĩ tự gõ hoặc ảnh đã có phương pháp riêng.
+  const [methodFrom, setMethodFrom] = useState<{ imageId: string; captureDate: string } | null>(null);
   const [retakeNote, setRetakeNote] = useState('');
   const [excludeReason, setExcludeReason] = useState('');
 
@@ -81,7 +84,10 @@ export default function ImageDetail() {
     setUnit('cm2');
     setAreaText(im.areaCm2 !== null ? formatAreaForName(im.areaCm2).replace('.', ',') : '');
     setFullName(im.areaCm2 !== null ? im.filename : `${p.code}_${w.code}_${im.id}_area__cm2.${im.ext}`);
-    setMethod(im.measureMethod ?? '');
+    // PP-11: ảnh chưa ghi phương pháp thì điền sẵn phương pháp của lần đo trước cùng vết thương (chỉ gợi ý, chưa lưu).
+    const ref = im.measureMethod ? null : previousMethod(data.images, im);
+    setMethod(im.measureMethod ?? ref?.method ?? '');
+    setMethodFrom(ref ? { imageId: ref.imageId, captureDate: ref.captureDate } : null);
   };
 
   const doSave = () => {
@@ -168,7 +174,9 @@ export default function ImageDetail() {
           ) : (
             <Field label="Tên tệp đầy đủ" value={fullName} onChangeText={setFullName} autoCapitalize="none" autoCorrect={false} error={error} hint="Chỉ sửa phần số sau area_; mã và đuôi tệp phải giữ nguyên." />
           )}
-          <Field label="Phương pháp đo" optional={!im.capture} hint={im.capture ? undefined : "Nên ghi để so sánh được giữa các lần đo."} value={method} onChangeText={setMethod} placeholder="Ví dụ: thước giấy kẻ ô, phần mềm đo trên máy tính…" />
+          <Field label="Phương pháp đo" optional={!im.capture}
+            hint={methodFrom ? `Điền sẵn theo lần đo trước (${methodFrom.imageId}, ${fmtDate(methodFrom.captureDate)}). Sửa nếu lần này đo cách khác.` : im.capture ? undefined : "Nên ghi để so sánh được giữa các lần đo."}
+            value={method} onChangeText={(v) => { setMethod(v); setMethodFrom(null); }} placeholder="Ví dụ: thước giấy kẻ ô, phần mềm đo trên máy tính…" />
           <View style={{ gap: 4 }}>
             <Text style={{ color: C.textSoft, fontSize: 13 }}>Xem trước tên sẽ lưu</Text>
             <Text style={{ fontFamily: MONO, fontSize: 14, color: preview ? C.green : C.textFaint, backgroundColor: preview ? C.greenSoft : C.surfaceMuted, padding: 10, borderRadius: 10 }}>
