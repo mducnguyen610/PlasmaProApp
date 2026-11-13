@@ -11,17 +11,20 @@ import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, Info
 import { isPendingActivation } from '@/lib/auth';
 import { confirm, notify } from '@/lib/dialog';
 import { buildReportHtml, shareReport } from '@/lib/report';
-import { fmtDate, fmtDateTime, PLAN_STATUS, WOUND_STATUS } from '@/lib/format';
+import { fmtDate, fmtDateTime, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
+import { formatAreaDisplay } from '@/lib/naming';
+import { woundSummary } from '@/lib/woundSummary';
+import type { TreatmentPlan } from '@/lib/types';
 import { useLookups, useStore, type Activation } from '@/lib/store';
 import { C, T } from '@/theme';
-import { CLOUD_LINK, WOUND, cloudState } from '@/theme.status';
+import { CLOUD_LINK, SOURCE, WOUND, cloudState } from '@/theme.status';
 import { courseProgress, localDay, sessionsForWound } from '@/lib/course';
 
 // BS03 – Hồ sơ bệnh nhân: thông tin, bác sĩ phụ trách, thiết bị, liệu trình, vết thương.
 export default function PatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, me, updatePatient, addWound, setReportHandled, issueActivation, assignDevice, setLifecycle } = useStore();
-  const { patient, account, device, woundsOf, imagesOf, activePlan, sessionsOf } = useLookups();
+  const { patient, account, device, woundsOf, imagesOf, sessionsOf, coursePlan } = useLookups();
   const p = patient(id);
   const canView = useCanView(p);
   const [newWound, setNewWound] = useState('');
@@ -35,11 +38,16 @@ export default function PatientDetail() {
   const isDoctor = me?.role === 'doctor';
   const dev = device(p.deviceId);
   const cloud = dev ? CLOUD_LINK[cloudState(dev.online, dev.lastSync, now)] : null;
-  const plan = isDoctor ? activePlan(p.id) : data.plans.filter(x => x.patientId === p.id && x.confirmed && x.status !== 'draft').sort((a,b) => b.version - a.version)[0];
   const wounds = woundsOf(p.id);
-  // UX-18: cùng bộ lọc phiên với B05 (phiên của vết thương mà đợt này thuộc về; đợt cũ không ghi vết thì là vết đầu tiên).
-  const pr = plan && dev ? courseProgress(plan, sessionsForWound(sessionsOf(dev.id), plan.woundId ?? wounds[0]?.id), localDay(), dev.lastSync ? localDay(dev.lastSync) : null) : null;
+  // P1-02a: mỗi vết một dòng đợt. Cùng cách chọn với B05 (coursePlan); bác sĩ thấy thêm bản nháp khi vết chưa có đợt nào khác.
+  // UX-18: tiến độ dùng cùng bộ lọc phiên với B05 (sessionsForWound).
+  const planOf = (woundId: string): TreatmentPlan | undefined => coursePlan(woundId, { patientView: !isDoctor })
+    ?? (isDoctor ? data.plans.filter((x) => x.patientId === p.id && (x.woundId ?? wounds[0]?.id) === woundId).sort((a, b) => b.version - a.version)[0] : undefined);
+  const progressOf = (plan: TreatmentPlan, woundId: string) => (dev ? courseProgress(plan, sessionsForWound(sessionsOf(dev.id), woundId), localDay(), dev.lastSync ? localDay(dev.lastSync) : null) : null);
   const reports = data.reports.filter((r) => r.patientId === p.id);
+  // P1-02a (A-11): báo cáo chưa xử lý trước, đã xử lý thu gọn.
+  const openReports = reports.filter((r) => !r.handled);
+  const doneReports = reports.filter((r) => r.handled);
   // UX-09 a (Đợt 11): ghi chú sau buổi điều trị có đau từ 7, đỏ da hoặc sưng hiện cùng khối báo cáo. Chỉ hiển thị;
   // không tính vào điểm chú ý, không tạo báo cáo (QĐ-3 chưa đổi).
   const flaggedNotes = dev ? sessionsOf(dev.id)
@@ -87,102 +95,44 @@ export default function PatientDetail() {
 
   return (
     <Screen header={<Header back title="Hồ sơ bệnh nhân" subtitle={`${p.name} · ${p.code}`} />}>
-      {/* Một thẻ hồ sơ: đầu thẻ, các dòng chạm được (tài khoản, liệu trình, thiết bị), thông tin hành chính thu gọn. */}
+      {/* P1-02a: thứ tự theo việc lâm sàng: định danh, vết thương, cần xử lý, đợt điều trị, rồi thiết bị và tài khoản, thông tin hồ sơ. */}
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconBadge icon="person-outline" size={48} />
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{p.name}</Text>
-            <Text style={{ color: C.textSoft, fontSize: T.small }}>{p.code} · {p.sex}, {p.birthYear}</Text>
+            {/* P1-07a: cùng định dạng với thanh ngữ cảnh và thẻ B02. */}
+            <Text style={{ color: C.textSoft, fontSize: T.small }}>{`${p.code} · sinh ${p.birthYear} · ${p.sex}`}</Text>
           </View>
         </View>
-        <Divider />
-        {isDoctor && (
-          <>
-            <LinkRow icon="key-outline" tone={pending ? 'amber' : 'green'} title="Tài khoản" sub={login ? `@${login.username}` : 'Chưa có tài khoản'}
-              right={<StatusChip status={{ role: !pending ? 'success' : 'warning', icon: !pending ? 'checkmark-circle-outline' : 'time-outline' }} label={!pending ? 'Đã kích hoạt' : codeLive ? 'Chờ kích hoạt' : 'Chưa kích hoạt'} />} />
-            {activation && <ActivationCode activation={activation} />}
-            {pending && !activation && (
-              <>
-                <Muted>
-                  {codeLive
-                    ? `Đã cấp mã, hết hạn ${fmtDate(login!.activationExpiresAt!.slice(0, 10))}. Mã không hiện lại; nếu bệnh nhân làm mất, cấp mã mới (mã cũ hết hiệu lực).`
-                    : 'Bệnh nhân chưa đăng nhập được. Cấp mã kích hoạt để bệnh nhân tự đặt mật khẩu.'}
-                </Muted>
-                <Button
-                  label={codeLive ? 'Cấp lại mã kích hoạt' : 'Cấp mã kích hoạt'}
-                  icon="key-outline"
-                  variant="secondary"
-                  loading={issuing}
-                  onPress={() => (codeLive ? confirm('Cấp lại mã', 'Mã cũ sẽ hết hiệu lực ngay.', issue) : issue())}
-                />
-              </>
-            )}
-          </>
-        )}
-        {/* PP-14: thiết bị và đợt thành dòng như Tài khoản (thay hai ô số), để mã máy không bị cắt ở 320 px (N-03) và
-            trạng thái tài khoản, kênh đồng bộ, giao máy đọc liền trong một thẻ. Giữ nguyên dữ liệu, màu theo CLOUD_LINK và nơi chạm mở. */}
-        <LinkRow icon="hardware-chip-outline" tone="teal" title="Thiết bị" sub={dev ? dev.code : 'Chưa gán thiết bị'}
-          below={cloud ? <StatusChip status={cloud} label={`Wi-Fi: ${cloud.label}`} /> : null}
-          onPress={dev ? () => router.push({ pathname: '/devices/[id]', params: { id: dev.id } }) : undefined} />
-        {/* Giao máy, thu hồi thuộc bác sĩ phụ trách (UR11). */}
-        {isDoctor && (
-          <Disclosure icon="hardware-chip-outline" title="Giao máy" summary={dev ? `Đang giữ ${dev.code}` : freeDevices.length ? `${freeDevices.length} máy sẵn sàng` : 'Không có máy sẵn sàng'}>
-            {dev ? (
-              <Button label={`Thu hồi ${dev.code}`} variant="secondary" icon="return-down-back-outline" onPress={takeBack} />
-            ) : freeDevices.length === 0 ? (
-              <Muted>Chưa có máy nào đã khử khuẩn và kiểm tra xong. Quản trị kỹ thuật cập nhật vòng đời máy.</Muted>
-            ) : (
-              freeDevices.map((d) => <Button key={d.id} label={`Giao ${d.code}`} variant="secondary" icon="arrow-forward-circle-outline" onPress={() => giveDevice(d.id, d.code)} />)
-            )}
-          </Disclosure>
-        )}
-        {/* P0 bổ sung PX-01: dòng tóm tắt đợt của vết nào thì mở B06 đúng vết đó (cùng loại ID-02). */}
-        <LinkRow icon="flash-outline" tone="violet" title="Đợt điều trị"
-          sub={plan ? `${wounds.length > 1 && plan.woundId ? `${wounds.find((x) => x.id === plan.woundId)?.code ?? ''} · ` : ''}${pr ? `${pr.done}/${pr.total} buổi đã làm` : `Phiên bản ${plan.version}`}${pr && plan.status === 'active' ? '' : ` · ${PLAN_STATUS[plan.status].label}`}` : 'Chưa lập đợt'}
-          onPress={() => router.push({ pathname: '/plan/[patientId]', params: plan?.woundId ? { patientId: p.id, woundId: plan.woundId } : { patientId: p.id } })} />
-        <Divider />
-        <Disclosure title="Thông tin hồ sơ" summary={`${account(p.doctorId)?.name ?? 'Chưa có bác sĩ'} · ${p.researchConsent ? 'đồng ý nghiên cứu' : 'chưa đồng ý nghiên cứu'}`}>
-          <InfoRow label="SĐT" value={p.phone || '—'} />
-          <InfoRow label="Bác sĩ phụ trách" value={account(p.doctorId)?.name ?? '—'} />
-          <InfoRow label="Ngày tạo hồ sơ" value={fmtDate(p.createdAt)} />
-          <SwitchRow
-            muted
-            label="Đồng ý dùng ảnh cho nghiên cứu"
-            detail={p.researchConsent ? `Ghi nhận ngày ${fmtDate(p.consentDate)}` : 'Chưa đồng ý: ảnh không được đưa vào bộ dữ liệu xuất'}
-            disabled={!isDoctor}
-            value={p.researchConsent}
-            onChange={(v) =>
-              confirm(
-                v ? 'Ghi nhận đồng ý' : 'Rút lại đồng ý',
-                v ? 'Xác nhận bệnh nhân đã đồng ý bằng văn bản cho việc dùng ảnh (đã mã hóa) để nghiên cứu.' : 'Ảnh của bệnh nhân sẽ không còn được xuất vào bộ dữ liệu.',
-                () => updatePatient(p.id, { researchConsent: v, consentDate: v ? localDay() : undefined }),
-              )
-            }
-          />
-        </Disclosure>
       </Card>
 
-
-      <SectionTitle icon="bandage-outline">Vết thương</SectionTitle>
+      <SectionTitle icon="bandage-outline">Vết thương đang quản lý</SectionTitle>
       <ListCard>
       {wounds.map((w) => {
         const imgs = imagesOf(w.id);
         const last = imgs[imgs.length - 1];
+        const sum = woundSummary(imgs, data.evaluations.filter((e) => isDoctor || e.visibleToPatient), w.id);
+        const areaLine = sum.latest ? `Diện tích ${formatAreaDisplay(sum.latest.areaCm2)} · chụp ${fmtDate(sum.latest.captureDate)} · ${SOURCE.doctor.label}` : 'Chưa có số đo';
+        const evalLine = sum.lastEval ? `Đánh giá ${fmtDate(sum.lastEval.date)} · ${TREND[sum.lastEval.trend].label} (bác sĩ đánh giá)` : 'Chưa có đánh giá';
         return (
-          <Pressable key={w.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/wounds/[id]', params: { id: w.id } })} style={({ pressed }) => ({ paddingVertical: 12, opacity: pressed ? 0.7 : 1 })}>
+          <Pressable key={w.id} testID="dong-vet" accessibilityRole="button" accessibilityLabel={`${w.code}, ${w.location}, ${WOUND_STATUS[w.status].label}. ${areaLine}. ${evalLine}.${isDoctor && sum.newerUnmeasured.length ? ` Có ${sum.newerUnmeasured.length} ảnh mới chưa đo.` : ''}`}
+            onPress={() => router.push({ pathname: '/wounds/[id]', params: { id: w.id } })} style={({ pressed }) => ({ paddingVertical: 12, opacity: pressed ? 0.7 : 1 })}>
             <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
               {last ? <WoundPhoto image={last} style={{ width: 64, height: 64, borderRadius: 12 }} /> : <IconBadge icon="image-outline" size={64} tone="gray" />}
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={{ fontWeight: '700', color: C.text }}>{w.code} · {w.location}</Text>
-                <Muted>Theo dõi từ {fmtDate(w.startDate)} · {imgs.length} ảnh</Muted>
                 <StatusChip status={WOUND[w.status]} label={WOUND_STATUS[w.status].label} />
+                <Text style={{ color: C.text, fontSize: T.small }}>{areaLine}</Text>
+                <Muted>{evalLine}</Muted>
+                {isDoctor && sum.newerUnmeasured.length > 0 ? <Text style={{ color: C.amber, fontSize: T.small, fontWeight: '600' }}>{`Có ${sum.newerUnmeasured.length} ảnh mới chưa đo`}</Text> : null}
               </View>
               <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
             </View>
           </Pressable>
         );
       })}
+      {wounds.length === 0 && <Muted>Chưa có vết thương.</Muted>}
       {isDoctor && <View style={{ paddingVertical: 4 }}><Disclosure icon="add-circle-outline" title="Thêm vết thương">
         <Field label="Vị trí vết thương" value={newWound} onChangeText={setNewWound} placeholder="Ví dụ: Gót chân phải" />
         <Button
@@ -212,26 +162,92 @@ export default function PatientDetail() {
         ))}
       </Card>}
       {reports.length === 0 ? (flaggedNotes.length ? null : <Empty icon="chatbubble-ellipses-outline" text="Bệnh nhân chưa gửi báo cáo triệu chứng hay sự cố nào." />) : <Card>
-        {reports.map((r) => (
-          <View key={r.id} style={{ gap: 4, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border }}>
-            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-              <Chip label={r.kind === 'device' ? 'Sự cố thiết bị' : 'Triệu chứng'} tone={r.kind === 'device' ? 'teal' : 'red'} />
-              {r.painLevel !== undefined && <Chip label={`Mức đau ${r.painLevel}/10`} tone="gray" />}
-              <View style={{ flex: 1 }} />
-              <Text style={{ color: C.textFaint, fontSize: T.caption }}>{fmtDateTime(r.date)}</Text>
-            </View>
-            <Text style={{ color: C.text }}>{r.content}</Text>
-            <Muted>Nguồn: bệnh nhân báo qua ứng dụng</Muted>
-            {r.handled ? (
-              <Chip label="Đã xử lý" tone="green" icon="checkmark" />
-            ) : isDoctor ? (
-              <Pressable onPress={() => setReportHandled(r.id)}>
-                <Text style={{ color: C.primary, fontWeight: '600' }}>Đánh dấu đã xử lý</Text>
-              </Pressable>
-            ) : <Chip label="Đang chờ bác sĩ" tone="amber" />}
-          </View>
-        ))}
+        {openReports.length === 0 ? <Muted>Không có báo cáo chưa xử lý.</Muted> : openReports.map((r) => <ReportRow key={r.id} r={r} isDoctor={isDoctor} onHandle={() => setReportHandled(r.id)} />)}
+        {doneReports.length > 0 && (
+          <Disclosure title={`Đã xử lý (${doneReports.length})`} summary="Báo cáo bác sĩ đã đánh dấu">
+            {doneReports.map((r) => <ReportRow key={r.id} r={r} isDoctor={isDoctor} />)}
+          </Disclosure>
+        )}
       </Card>}
+
+      {/* P1-02a: mỗi vết một dòng đợt; chạm mở B06 đúng vết của dòng (cùng quy tắc PX-01). */}
+      <SectionTitle icon="flash-outline">Đợt điều trị</SectionTitle>
+      <Card>
+        {wounds.length === 0 ? <Muted>Thêm vết thương trước khi lập đợt.</Muted> : wounds.map((w) => {
+          const plan = planOf(w.id);
+          const pr = plan ? progressOf(plan, w.id) : null;
+          return (
+            <LinkRow key={w.id} icon="flash-outline" tone="violet" title={`${w.code} · ${w.location}`}
+              sub={plan ? `${pr ? `${pr.done}/${pr.total} buổi đã làm` : `Phiên bản ${plan.version}`}${pr && plan.status === 'active' ? '' : ` · ${PLAN_STATUS[plan.status].label}`}` : 'Chưa lập đợt'}
+              onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />
+          );
+        })}
+      </Card>
+
+      {/* P1-02a: thiết bị và tài khoản, mở sẵn khi còn việc (chưa kích hoạt hoặc chưa giao máy). */}
+      <Card>
+        <Disclosure icon="hardware-chip-outline" title="Thiết bị và tài khoản" initiallyOpen={isDoctor && (pending || !dev)}
+          summary={`${dev ? dev.code : 'Chưa gán thiết bị'}${isDoctor ? ` · ${!pending ? 'đã kích hoạt' : codeLive ? 'chờ kích hoạt' : 'chưa kích hoạt'}` : ''}`}>
+        {isDoctor && (
+          <>
+            <LinkRow icon="key-outline" tone={pending ? 'amber' : 'green'} title="Tài khoản" sub={login ? `@${login.username}` : 'Chưa có tài khoản'}
+              right={<StatusChip status={{ role: !pending ? 'success' : 'warning', icon: !pending ? 'checkmark-circle-outline' : 'time-outline' }} label={!pending ? 'Đã kích hoạt' : codeLive ? 'Chờ kích hoạt' : 'Chưa kích hoạt'} />} />
+            {activation && <ActivationCode activation={activation} />}
+            {pending && !activation && (
+              <>
+                <Muted>
+                  {codeLive
+                    ? `Đã cấp mã, hết hạn ${fmtDate(login!.activationExpiresAt!.slice(0, 10))}. Mã không hiện lại; nếu bệnh nhân làm mất, cấp mã mới (mã cũ hết hiệu lực).`
+                    : 'Bệnh nhân chưa đăng nhập được. Cấp mã kích hoạt để bệnh nhân tự đặt mật khẩu.'}
+                </Muted>
+                <Button
+                  label={codeLive ? 'Cấp lại mã kích hoạt' : 'Cấp mã kích hoạt'}
+                  icon="key-outline"
+                  variant="secondary"
+                  loading={issuing}
+                  onPress={() => (codeLive ? confirm('Cấp lại mã', 'Mã cũ sẽ hết hiệu lực ngay.', issue) : issue())}
+                />
+              </>
+            )}
+          </>
+        )}
+        <LinkRow icon="hardware-chip-outline" tone="teal" title="Thiết bị" sub={dev ? dev.code : 'Chưa gán thiết bị'}
+          below={cloud ? <StatusChip status={cloud} label={`Wi-Fi: ${cloud.label}`} /> : null}
+          onPress={dev ? () => router.push({ pathname: '/devices/[id]', params: { id: dev.id } }) : undefined} />
+        {/* Giao máy, thu hồi thuộc bác sĩ phụ trách (UR11). */}
+        {isDoctor && (
+          <Disclosure icon="hardware-chip-outline" title="Giao máy" summary={dev ? `Đang giữ ${dev.code}` : freeDevices.length ? `${freeDevices.length} máy sẵn sàng` : 'Không có máy sẵn sàng'}>
+            {dev ? (
+              <Button label={`Thu hồi ${dev.code}`} variant="secondary" icon="return-down-back-outline" onPress={takeBack} />
+            ) : freeDevices.length === 0 ? (
+              <Muted>Chưa có máy nào đã khử khuẩn và kiểm tra xong. Quản trị kỹ thuật cập nhật vòng đời máy.</Muted>
+            ) : (
+              freeDevices.map((d) => <Button key={d.id} label={`Giao ${d.code}`} variant="secondary" icon="arrow-forward-circle-outline" onPress={() => giveDevice(d.id, d.code)} />)
+            )}
+          </Disclosure>
+        )}
+        </Disclosure>
+        <Divider />
+        <Disclosure title="Thông tin hồ sơ" summary={`${account(p.doctorId)?.name ?? 'Chưa có bác sĩ'} · ${p.researchConsent ? 'đồng ý nghiên cứu' : 'chưa đồng ý nghiên cứu'}`}>
+          <InfoRow label="SĐT" value={p.phone || '—'} />
+          <InfoRow label="Bác sĩ phụ trách" value={account(p.doctorId)?.name ?? '—'} />
+          <InfoRow label="Ngày tạo hồ sơ" value={fmtDate(p.createdAt)} />
+          <SwitchRow
+            muted
+            label="Đồng ý dùng ảnh cho nghiên cứu"
+            detail={p.researchConsent ? `Ghi nhận ngày ${fmtDate(p.consentDate)}` : 'Chưa đồng ý: ảnh không được đưa vào bộ dữ liệu xuất'}
+            disabled={!isDoctor}
+            value={p.researchConsent}
+            onChange={(v) =>
+              confirm(
+                v ? 'Ghi nhận đồng ý' : 'Rút lại đồng ý',
+                v ? 'Xác nhận bệnh nhân đã đồng ý bằng văn bản cho việc dùng ảnh (đã mã hóa) để nghiên cứu.' : 'Ảnh của bệnh nhân sẽ không còn được xuất vào bộ dữ liệu.',
+                () => updatePatient(p.id, { researchConsent: v, consentDate: v ? localDay() : undefined }),
+              )
+            }
+          />
+        </Disclosure>
+      </Card>
 
       {/* Xuất PDF đặt cuối màn để không giành chú ý với nội dung lâm sàng (V28). */}
       <Button
@@ -269,5 +285,28 @@ function LinkRow({ icon, tone, title, sub, right, below, onPress }: { icon: Icon
       {right}
       {onPress ? <Ionicons name="chevron-forward" size={18} color={C.textFaint} /> : null}
     </Pressable>
+  );
+}
+
+/** Một báo cáo của bệnh nhân. Nội dung và nút giữ như trước P1-02a; chỉ tách nhóm chưa xử lý và đã xử lý. */
+function ReportRow({ r, isDoctor, onHandle }: { r: { id: string; kind: 'symptom' | 'device'; painLevel?: number; date: string; content: string; handled: boolean }; isDoctor: boolean; onHandle?: () => void }) {
+  return (
+    <View testID={r.handled ? 'bao-cao-da-xu-ly' : 'bao-cao-chua-xu-ly'} style={{ gap: 4, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border }}>
+      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+        <Chip label={r.kind === 'device' ? 'Sự cố thiết bị' : 'Triệu chứng'} tone={r.kind === 'device' ? 'teal' : 'red'} />
+        {r.painLevel !== undefined && <Chip label={`Mức đau ${r.painLevel}/10`} tone="gray" />}
+        <View style={{ flex: 1 }} />
+        <Text style={{ color: C.textFaint, fontSize: T.caption }}>{fmtDateTime(r.date)}</Text>
+      </View>
+      <Text style={{ color: C.text }}>{r.content}</Text>
+      <Muted>Nguồn: bệnh nhân báo qua ứng dụng</Muted>
+      {r.handled ? (
+        <Chip label="Đã xử lý" tone="green" icon="checkmark" />
+      ) : isDoctor ? (
+        <Pressable onPress={onHandle}>
+          <Text style={{ color: C.primary, fontWeight: '600' }}>Đánh dấu đã xử lý</Text>
+        </Pressable>
+      ) : <Chip label="Đang chờ bác sĩ" tone="amber" />}
+    </View>
   );
 }
