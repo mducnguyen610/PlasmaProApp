@@ -69,7 +69,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const n0 = (await imgs(p)).length;
     await openB10(p); await pick(p);
     rec('D9-01', 'Mở B10 có AR: số AR hiện, có nhãn tham khảo, ô diện tích trống',
-      await has(p, 'Ước lượng AR (tham khảo)') && await has(p, '11,8 cm²') && await has(p, 'AI ước lượng · chưa kiểm chứng') && (await areaVal(p)) === '',
+      await has(p, 'Ước lượng AR (tham khảo)') && await has(p, /^11,8\d* cm² \(chưa kiểm chứng\)$/, false) && await has(p, 'Gợi ý của AI') /* P1-07d: nhãn AI thống nhất với B11 */ && (await areaVal(p)) === '',
       `ô "${await areaVal(p)}"`);
     await p.waitForTimeout(3000);
     rec('D9-02', 'Chờ thêm 3 giây sau khi phân tích xong: số AR không bị chép vào ô', (await areaVal(p)) === '');

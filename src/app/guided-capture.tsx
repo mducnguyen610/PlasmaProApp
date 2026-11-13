@@ -4,14 +4,14 @@ import * as Crypto from 'expo-crypto';
 import { Image } from 'expo-image';
 import { router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Platform, View } from 'react-native';
+import { AppState, Platform, useWindowDimensions, View } from 'react-native';
 import { ARCameraView, arViewInBuild, type ARCameraHandle } from '@/components/ARCameraView';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { CheckRow } from '@/components/Consent';
 import { CaptureQualityCard } from '@/components/CaptureQualityCard';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, StatusChip, StepRow } from '@/components/ui';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { WoundOutline, WoundOverlay } from '@/components/WoundOverlay';
 import { getRecognizer, type RecognitionResult } from '@/lib/ai';
@@ -24,16 +24,20 @@ import { useWoundTracker } from '@/lib/capture/useWoundTracker';
 import { waitForFrame } from '@/lib/capture/waitForFrame';
 import { coverMap } from '@/lib/capture/woundDetect';
 import { confirm } from '@/lib/dialog';
-import { parseArea } from '@/lib/naming';
+import { orderChecks } from '@/lib/checkOrder';
+import { MEASURE_METHODS } from '@/lib/measureMethod';
+import { formatAreaDisplay, parseArea } from '@/lib/naming';
 import { pickPhoto, type PickedPhoto } from '@/lib/photos';
 import { useLookups, useStore } from '@/lib/store';
 import { bar, C } from '@/theme';
+import { SOURCE } from '@/theme.status';
 import { localDay } from '@/lib/course';
 
 type Photo = PickedPhoto & { imageSource: 'live_camera' | 'gallery'; takenAt: string | null; ar?: ARCaptureData; manualOverride?: boolean };
 const TONE_COLOR: Record<ARTone, string> = { green: C.green, amber: C.amber, red: C.red, gray: C.textSoft };
 // P0 DS-01 (QĐ-P0-1 phương án B): bỏ lựa chọn "Ước lượng AR, bác sĩ đã xem lại"; phương pháp chỉ còn các cách bác sĩ đo, không chọn sẵn.
-const METHODS = ['Thước đo trên vết thương', 'Phần mềm đo trên ảnh'];
+// P1-07c: danh sách chuyển sang measureMethod.ts để B11 dùng chung, nội dung không đổi.
+const METHODS = MEASURE_METHODS;
 
 function roiFrom(detection: RecognitionResult | null): Roi {
   if (!detection?.found || !detection.box) return DEFAULT_ROI;
@@ -54,7 +58,7 @@ function estimateFor(photo: Photo | null, found: RecognitionResult | null) {
 
 function CheckList({ checks }: { checks: LiveCheck[] }) {
   return <View style={{ gap: 8 }}>
-    {checks.map(c => {
+    {orderChecks(checks).map(c => {
       const color = c.ok === true ? TONE_COLOR.green : c.ok === false ? TONE_COLOR.amber : TONE_COLOR.gray;
       return <View key={c.key} style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
         <Ionicons name={c.ok === true ? 'checkmark-circle' : c.ok === false ? 'alert-circle' : 'ellipsis-horizontal-circle'} size={22} color={color} />
@@ -96,6 +100,9 @@ export default function GuidedCapture() {
   const [tracking, setTracking] = useState<{ event: ARTrackingEvent; at: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [view, setView] = useState({ width: 0, height: 0 });
+  // P1-05b: khung camera cao theo màn (tối đa 440 như trước, tối thiểu 280) để dòng trạng thái và nút Chụp nằm trong màn đầu.
+  const { height: winH } = useWindowDimensions();
+  const cameraH = Math.max(280, Math.min(440, Math.round(winH * 0.5)));
 
   const arAvailable = arViewInBuild && capabilities?.arAdapter === 'available';
   const useAr = arAvailable && cameraMode === 'ar';
@@ -271,17 +278,23 @@ export default function GuidedCapture() {
       <Chip label={photo?.imageSource === 'gallery' ? 'Ảnh từ thư viện' : 'Tự khoanh vết thương'} />
     </View>
     {photo ? <>
+      {/* P1-05c: thanh bước chỉ để hiển thị, không chặn thao tác. Chỉ hiện sau khi có ảnh để màn chụp giữ nút Mở camera trong màn đầu ở 320x640. */}
+      <StepRow steps={['Chụp', 'Kiểm tra ảnh', 'Nhập số đo']} step={reviewed ? 3 : 2} />
       <View style={{ width: '100%', aspectRatio: photo.width / photo.height, backgroundColor: C.text, borderRadius: 18, overflow: 'hidden' }}>
         <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
         {photoWound?.found ? <WoundOutline hull={photoWound.hull} color={bar.green} /> : null}
       </View>
       <Muted>{analyzing ? 'Đang khoanh vết thương trên ảnh…' : photoWound?.found ? 'Viền xanh là vùng vết thương ứng dụng tự khoanh theo màu (thử nghiệm). Bác sĩ kiểm tra lại trước khi xác nhận diện tích.' : 'Chưa khoanh được vết thương trên ảnh này. Bác sĩ vẫn có thể nhập diện tích đã đo.'}</Muted>
 
+      {/* P1-05c: kiểm ảnh trước (chất lượng, ô "Đã xem ảnh"), nhập số sau. Không bỏ bước nào; QĐ-1 giữ nguyên: ô diện tích trống, số AR không tự điền. */}
+      <CaptureQualityCard quality={quality} busy={analyzing} />
+      <CheckRow checked={reviewed} onChange={setReviewed} label="Đã xem ảnh: rõ nét, đủ sáng, thấy toàn bộ vết thương" />
       <Card>
         <SectionTitle>Diện tích vết thương</SectionTitle>
         {estimate ? <>
-          <View style={{ flexDirection: 'row' }}><Chip label="AI ước lượng · chưa kiểm chứng" tone="violet" icon="sparkles-outline" /></View>
-          <InfoRow label="Ước lượng AR (tham khảo)" value={`${String(estimate.areaCm2).replace('.', ',')} cm²`} />
+          {/* P1-07d: cùng nhãn nguồn AI với B11 (SOURCE.ai) và cùng dòng "Ước lượng AR (tham khảo)". */}
+          <View style={{ flexDirection: 'row' }}><StatusChip status={SOURCE.ai} label={SOURCE.ai.label} /></View>
+          <InfoRow label="Ước lượng AR (tham khảo)" value={`${formatAreaDisplay(estimate.areaCm2)} (chưa kiểm chứng)`} />
           <InfoRow label="Khoảng cách tới vết thương" value={`${Math.round(hit!.centerDistanceM * 100)} cm (${HIT_SOURCE_LABEL[hit!.centerSource]})`} />
           {estimate.cosTilt !== null ? <InfoRow label="Góc nghiêng" value={`${Math.round(Math.acos(Math.min(1, estimate.cosTilt)) * 180 / Math.PI)}°`} /> : null}
           <Muted>Ước lượng từ vùng khoanh, khoảng cách và thông số camera của phiên AR. Chưa kiểm chứng lâm sàng. Số này chỉ để tham khảo, không tự điền vào ô bên dưới và không được ghi thành số đo của bác sĩ.</Muted>
@@ -289,13 +302,11 @@ export default function GuidedCapture() {
         <Field label="Diện tích bác sĩ đo (cm²)" value={areaText} onChangeText={setAreaText} keyboardType="decimal-pad" placeholder="Ví dụ: 12,5. Để trống nếu chưa đo" />
         <Text style={{ color: C.text, fontWeight: '600' }}>{`Phương pháp bác sĩ đã dùng để đo${areaText.trim() ? '' : ' (khi có số đo)'}`}</Text>
         <Choices value={method} options={METHODS.map(m => ({ value: m, label: m }))} onChange={setMethod} />
-        <CheckRow checked={reviewed} onChange={setReviewed} label="Đã xem ảnh: rõ nét, đủ sáng, thấy toàn bộ vết thương" />
       </Card>
-      <CaptureQualityCard quality={quality} busy={analyzing} />
       <Button label={areaText.trim() ? 'Lưu ảnh và số đo bác sĩ' : 'Lưu ảnh (chưa có số đo)'} icon="save-outline" loading={busy} disabled={analyzing || !capabilities} onPress={save} />
       <Button label="Chụp / chọn lại" variant="secondary" disabled={busy} onPress={retake} />
     </> : <>
-      <View onLayout={e => setView({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} style={{ height: 440, backgroundColor: C.text, borderRadius: 24, overflow: 'hidden' }}>
+      <View onLayout={e => setView({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} style={{ height: cameraH, backgroundColor: C.text, borderRadius: 24, overflow: 'hidden' }}>
         {liveVisible ? useAr
           ? <ARCameraView ref={arCamera} style={{ flex: 1 }} focusPoint={focusPoint} onTracking={onTracking} onError={onARError} />
           : <CameraView ref={camera} style={{ flex: 1 }} facing="back" flash="off" enableTorch={false} animateShutter={false} onCameraReady={onCameraReady} onMountError={onCameraError} />
@@ -315,14 +326,17 @@ export default function GuidedCapture() {
           </View>
         )}
       </View>
-      {liveVisible && ready && <Card>
-        <SectionTitle>Kiểm tra trước khi chụp</SectionTitle>
-        <CheckList checks={readiness.checks} />
-      </Card>}
+      {/* P1-05b: mục chưa đạt đầu tiên nằm ngay dưới khung, sát nút Chụp; danh sách đủ ở dưới nút. */}
+      {liveVisible && ready && !readiness.ready && (() => { const first = orderChecks(readiness.checks)[0]; return first && first.ok !== true
+        ? <Text accessibilityLiveRegion="polite" style={{ color: first.ok === false ? C.amber : C.textSoft, fontWeight: '700' }}>{`${first.ok === false ? 'Chưa đạt' : 'Đang kiểm tra'}: ${first.label}`}</Text> : null; })()}
       {live
         ? <Button label={readiness.ready ? 'Chụp ảnh' : useAr ? 'Chờ đạt yêu cầu để chụp' : 'Chụp ảnh'} icon="camera" loading={busy} disabled={!ready || !readiness.ready} onPress={() => void take()} />
         : <Button label={useAr ? 'Mở camera AR' : 'Mở camera'} icon="camera" loading={busy} onPress={start} />}
       {live && !useAr && ready && !readiness.ready && <Button label="Vẫn chụp (bỏ qua kiểm tra)" variant="ghost" disabled={busy} onPress={() => void take(true)} />}
+      {liveVisible && ready && <Card>
+        <SectionTitle>Kiểm tra trước khi chụp</SectionTitle>
+        <CheckList checks={readiness.checks} />
+      </Card>}
       {arAvailable && <Button label={useAr ? 'Dùng camera thường (không có AR)' : 'Dùng camera AR'} icon="swap-horizontal" variant="ghost" disabled={busy} onPress={() => { generation.current++; setLive(false); setReady(false); setTracking(null); setCameraMode(useAr ? 'standard' : 'ar'); }} />}
       <Button label="Chọn ảnh có sẵn" icon="images-outline" variant="secondary" disabled={busy} onPress={fromLibrary} />
       <Muted>{useAr

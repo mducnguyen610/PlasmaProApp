@@ -15,14 +15,15 @@ import { SOURCE } from '@/theme.status';
 
 // So sánh ảnh trước và sau của cùng một vết thương (đặc tả mục 8).
 export default function Compare() {
-  const { woundId } = useLocalSearchParams<{ woundId: string }>();
+  // P1-06b: B11 mở B08 với ảnh đang xem làm ảnh "Sau" (chỉ nhận khi ảnh thuộc đúng vết).
+  const { woundId, sau } = useLocalSearchParams<{ woundId: string; sau?: string }>();
   const { wound, patient, imagesOf, account } = useLookups();
   const w = wound(woundId);
   const p = patient(w?.patientId);
   const canView = useCanView(p);
   const images = w ? imagesOf(w.id) : [];
   const [a, setA] = useState(images[0]?.id ?? '');
-  const [b, setB] = useState(images[images.length - 1]?.id ?? '');
+  const [b, setB] = useState((sau && images.some((i) => i.id === sau) ? sau : images[images.length - 1]?.id) ?? '');
   // P1-04b: bộ chọn đang mở (0 = ảnh trước, 1 = ảnh sau), danh sách hiện ngay dưới hai dòng chọn.
   const [picking, setPicking] = useState<0 | 1 | null>(null);
   if (!w || !p || !canView || images.length === 0) return <NoAccess />;
