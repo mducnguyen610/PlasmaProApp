@@ -4,7 +4,7 @@ import { Text } from '@/components/Text';
 
 import { Card, Chip, Header, Muted, Screen, SectionTitle, TextLink } from '@/components/ui';
 import { HARDWARE_STANDARDS, LEGAL_GROUPS } from '@/lib/compliance';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 
 export default function Compliance() {
   return (
@@ -17,7 +17,7 @@ export default function Compliance() {
           <SectionTitle icon="document-text-outline">{g.group}</SectionTitle>
           {g.items.map((it) => (
             <Card key={it.id}>
-              <Text style={{ fontWeight: '800', color: C.text, fontSize: 15 }}>{it.id}</Text>
+              <Text style={{ fontWeight: '800', color: C.text, fontSize: T.label }}>{it.id}</Text>
               <Text style={{ color: C.text }}>{it.title}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 <Chip label={`${it.issuer} · ${it.issued}`} tone="blue" />

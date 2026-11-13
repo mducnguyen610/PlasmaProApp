@@ -8,7 +8,7 @@ import { confirm } from '@/lib/dialog';
 import { localDay } from '@/lib/course';
 import { fmtDate } from '@/lib/format';
 import { useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 
 
 /** Một dòng cài đặt: biểu tượng, tên, giá trị ngắn, mũi tên. Cao tối thiểu 52. */
@@ -19,7 +19,7 @@ function SettingRow({ icon, title, value, onPress, last }: { icon: IconName; tit
       <Ionicons name={icon} size={22} color={C.primary} />
       <View style={{ flex: 1 }}>
         <Text style={{ color: C.text, fontWeight: '600' }}>{title}</Text>
-        {value ? <Text style={{ color: C.textSoft, fontSize: 14 }}>{value}</Text> : null}
+        {value ? <Text style={{ color: C.textSoft, fontSize: T.small }}>{value}</Text> : null}
       </View>
       <Ionicons name="chevron-forward" size={20} color={C.textFaint} />
     </Pressable>

@@ -146,7 +146,7 @@ export default function Evaluate() {
         <Divider />
         <Disclosure title="Diễn biến và hướng dẫn" summary={groupSummary(g3)} open={openGroups[2]} onToggle={toggle(2)}>
           <View style={{ gap: space.s }}>
-            <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
+            <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
             <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
             <Field optional label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
             <View ref={anchor('nextReview')}>
@@ -169,7 +169,7 @@ function Q({ label, required, help, error, anchor, children }: { label: string; 
   return (
     <View ref={anchor} style={{ gap: 6 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-        <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>
+        <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>
           {label}{required ? null : <Text style={{ color: C.textSoft, fontWeight: '400' }}> (không bắt buộc)</Text>}
         </Text>
         {/* Bổ sung Đợt 4: vùng bấm thật 44x44 (size.touch) trên mọi nền tảng; lề âm 6 giữ chỗ chiếm trong hàng 32x32 như cũ.

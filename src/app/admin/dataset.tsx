@@ -9,7 +9,7 @@ import { buildCsv, exportDataset } from '@/lib/export';
 import { formatAreaDisplay } from '@/lib/naming';
 import { researchFilename, researchPhoto } from '@/lib/research';
 import { useStore } from '@/lib/store';
-import { C, radius } from '@/theme';
+import { C, radius, typeScale, T } from '@/theme';
 
 export default function TechnicalDataset() {
   const { me, data } = useStore();
@@ -22,7 +22,7 @@ export default function TechnicalDataset() {
   return <Screen header={<Header title="Kho dữ liệu kỹ thuật" subtitle="Ảnh và diện tích do bác sĩ cung cấp" />}>
     <Card hero>
       <Chip label={me.researchAccess ? 'Đã cấp quyền nghiên cứu' : 'Chưa có quyền nghiên cứu'} tone={me.researchAccess ? 'green' : 'amber'} />
-      <Text style={{ fontSize: 28, fontWeight: '700' }}>{eligible.length} ảnh sẵn sàng</Text>
+      <Text style={{ fontSize: typeScale.stat.size, fontWeight: '700' }}>{eligible.length} ảnh sẵn sàng</Text>
       <Muted>Chỉ gồm ảnh được bác sĩ kiểm tra và bệnh nhân đồng ý nghiên cứu. Dùng mã nghiên cứu; không hiển thị họ tên, số điện thoại, năm sinh hay hồ sơ lâm sàng.</Muted>
       <Muted>Bản ảnh nghiên cứu đã bỏ metadata. Nội dung ảnh được bác sĩ kiểm tra trước khi chia sẻ.</Muted>
     </Card>
@@ -33,18 +33,18 @@ export default function TechnicalDataset() {
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
       {shown.map(im => <Card key={im.id} style={{ flexBasis: '45%', flexGrow: 1, maxWidth: 360, padding: 10, gap: 6 }}>
         <WoundPhoto image={researchPhoto(im)} style={{ width: '100%', aspectRatio: 1, borderRadius: 12 }} />
-        <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }}>{data.patients.find(p => p.id === im.patientId)!.researchCode!}</Text>
-        <Text style={{ fontSize: 14, color: C.textSoft }}>{formatAreaDisplay(im.areaCm2)}</Text>
-        <Text selectable numberOfLines={1} ellipsizeMode="middle" style={{ fontSize: 13, color: C.textFaint }}>{researchFilename(data, im)}</Text>
+        <Text style={{ fontSize: T.label, fontWeight: '700', color: C.text }}>{data.patients.find(p => p.id === im.patientId)!.researchCode!}</Text>
+        <Text style={{ fontSize: T.small, color: C.textSoft }}>{formatAreaDisplay(im.areaCm2)}</Text>
+        <Text selectable numberOfLines={1} ellipsizeMode="middle" style={{ fontSize: T.caption, color: C.textFaint }}>{researchFilename(data, im)}</Text>
       </Card>)}
     </View>
     <Card>
       <Text style={{ fontWeight: '700' }}>Tải dữ liệu theo bộ lọc</Text>
       <Muted>ZIP gồm {shown.length} ảnh PNG và labels.csv. Ảnh cùng một người được giữ trong cùng tập train/validation/test.</Muted>
-      <Text style={{ color: C.textSoft, fontSize: 13 }}>Xem trước labels.csv (4 dòng đầu)</Text>
+      <Text style={{ color: C.textSoft, fontSize: T.caption }}>Xem trước labels.csv (4 dòng đầu)</Text>
       {/* Mỗi dòng CSV giữ nguyên trên một dòng, cuộn ngang trong khối thay vì bẻ giữa tên tệp (A22). */}
       <ScrollView horizontal style={{ backgroundColor: C.surfaceMuted, borderRadius: radius.s }} contentContainerStyle={{ padding: 10 }}>
-        <Text selectable style={{ fontFamily: MONO, fontSize: 13, color: C.text }}>{buildCsv(data, shown).split('\n').slice(0, 4).join('\n')}</Text>
+        <Text selectable style={{ fontFamily: MONO, fontSize: T.caption, color: C.text }}>{buildCsv(data, shown).split('\n').slice(0, 4).join('\n')}</Text>
       </ScrollView>
       <Button label={'Tải bộ dữ liệu (' + shown.length + ' ảnh)'} icon="download-outline" disabled={!shown.length || !me.researchAccess} loading={busy} onPress={async () => {
         setBusy(true);

@@ -7,7 +7,7 @@ import { Text } from '@/components/Text';
 import { Button, Card, Choices, Header, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
 import { fmtDate } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 
 // Nút giữa thanh tab của bác sĩ: chọn bệnh nhân, vết thương rồi chụp/tải ảnh, sau đó mở ngay màn đổi tên (BS05).
 export default function Capture() {
@@ -51,8 +51,8 @@ export default function Capture() {
             <WoundPhoto image={last} style={{ width: 96, height: 72, borderRadius: 8 }} />
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={{ color: C.textSoft, fontWeight: '500' }}>Ảnh gần nhất</Text>
-              <Text style={{ color: C.text, fontWeight: '700', fontSize: 16 }}>{last.id}</Text>
-              <Text style={{ color: C.textSoft, fontSize: 13 }}>{last.capture?.sourceDateKnown === false ? 'Thêm' : 'Chụp'} {fmtDate(last.captureDate)} · giữ góc và khoảng cách tương tự</Text>
+              <Text style={{ color: C.text, fontWeight: '700', fontSize: T.body }}>{last.id}</Text>
+              <Text style={{ color: C.textSoft, fontSize: T.caption }}>{last.capture?.sourceDateKnown === false ? 'Thêm' : 'Chụp'} {fmtDate(last.captureDate)} · giữ góc và khoảng cách tương tự</Text>
             </View>
           </View>
         </Card>

@@ -70,7 +70,8 @@ Một họ chữ: Google Sans Flex (Regular, Medium, Bold; `src/components/Text.
 
 | Bậc | Cỡ / dòng | Đậm | Dùng cho | Hiện tại |
 | --- | --- | --- | --- | --- |
-| `display` | 40 / 48 | 700 | Một số chính của màn: đồng hồ T02, diện tích B05, N05 | Nhiều cỡ khác nhau |
+| `display` | 40 / 48 | 700 | Một số chính của màn: diện tích B05, N05 | Nhiều cỡ khác nhau |
+| `timer` | 44 / (không đặt) | 700 | Đồng hồ đếm ngược T02 (PP-17, giữ cỡ đang hiển thị) | Đúng |
 | `screenTitle` | 22 / 28 | 700 | Tiêu đề thanh trên | Đúng |
 | `sectionTitle` | 20 / 26 | 700 | Tiêu đề mục (`SectionTitle`) | 18, trùng tiêu đề thẻ (V23) |
 | `cardTitle` | 18 / 24 | 700 | Tiêu đề thẻ (bằng `T.cardTitle`) | Đúng |

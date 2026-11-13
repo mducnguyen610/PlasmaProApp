@@ -6,7 +6,7 @@ import { Text } from '@/components/Text';
 import { Button, Disclosure, Field, Header, ListCard, Muted, Screen, SimBadge, StatusChip } from '@/components/ui';
 import { fmtDateTime } from '@/lib/format';
 import { useStore } from '@/lib/store';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 import { CLOUD_LINK, cloudState } from '@/theme.status';
 
 // Quản trị: đăng ký mã thiết bị và xem máy đang giao cho ai. Giao máy và thu hồi do bác sĩ phụ trách làm trên hồ sơ người bệnh (UR11).
@@ -48,7 +48,7 @@ export default function AdminDevices() {
           <Disclosure icon="hardware-chip-outline" title={d.code} summary={`${data.patients.find((p) => p.id === d.patientId)?.code ?? 'Chưa gán'} · đồng bộ ${d.lastSync ? fmtDateTime(d.lastSync) : 'chưa từng'}`}
             below={<StatusChip status={CLOUD_LINK[cloudState(d.online, d.lastSync, now)]} label={CLOUD_LINK[cloudState(d.online, d.lastSync, now)].label} />}>
           <Muted>Firmware {d.firmware}</Muted>
-          <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>Đang giao cho: {data.patients.find((p) => p.id === d.patientId)?.code ?? 'chưa giao'}</Text>
+          <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Đang giao cho: {data.patients.find((p) => p.id === d.patientId)?.code ?? 'chưa giao'}</Text>
           <Muted>Bác sĩ phụ trách giao và thu hồi máy trên hồ sơ bệnh nhân.</Muted>
           <Button label="Xem nhật ký" variant="ghost" icon="list-outline" onPress={() => router.push({ pathname: '/devices/[id]', params: { id: d.id } })} />
           </Disclosure>

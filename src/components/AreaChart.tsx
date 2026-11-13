@@ -4,7 +4,7 @@ import { Text } from '@/components/Text';
 import { fmtDate } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import type { WoundImage } from '@/lib/types';
-import { C, typeScale } from '@/theme';
+import { C, typeScale, T } from '@/theme';
 
 /** Mốc bắt đầu đợt điều trị vẽ thành vạch dọc giữa các cột (PP-08). Chỉ là mốc thời gian, không mang ý nghĩa đánh giá. */
 export type ChartMarker = { date: string; label: string };
@@ -54,7 +54,7 @@ export function AreaChart({ images, markers = [] }: { images: WoundImage[]; mark
           <Text key={'m' + x.m.date} style={{ width: MARKER_W, textAlign: 'center', fontSize: LABEL, color: C.textSoft }}>{fmtDate(x.m.date).slice(0, 5)}</Text>
         ))}
       </View>
-      <Text style={{ fontSize: 13, color: C.textFaint }}>Đơn vị cm². Không dùng ảnh chưa rõ ngày chụp. Số đo lấy bên ngoài ứng dụng.{sorted.length > 0 ? ' Vạch đứt là ngày bắt đầu đợt điều trị.' : ''}</Text>
+      <Text style={{ fontSize: T.caption, color: C.textFaint }}>Đơn vị cm². Không dùng ảnh chưa rõ ngày chụp. Số đo lấy bên ngoài ứng dụng.{sorted.length > 0 ? ' Vạch đứt là ngày bắt đầu đợt điều trị.' : ''}</Text>
     </View>
   );
 }

@@ -9,7 +9,7 @@ import { Text } from '@/components/Text';
 import { Button, Card, Field, Muted, Choices } from '@/components/ui';
 import { DEMO_PASSWORD, isSampleAccount } from '@/lib/auth';
 import { TermsRequiredError, useStore } from '@/lib/store';
-import { C, cardShape, G } from '@/theme';
+import { C, cardShape, G, T } from '@/theme';
 
 const HOME = { doctor: '/doctor', patient: '/patient', admin: '/admin' } as const;
 export default function Login() {
@@ -38,7 +38,7 @@ export default function Login() {
       <Ionicons name="pulse" size={36} color={C.onPrimary} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ color: C.onPrimary, fontSize: 26, fontWeight: '700' }}>Plasma Pro</Text>
-        <Text style={{ color: C.onPrimarySoft, fontSize: 15, lineHeight: 22 }}>Kết nối chăm sóc. Theo dõi mỗi ngày.</Text>
+        <Text style={{ color: C.onPrimarySoft, fontSize: T.label, lineHeight: 22 }}>Kết nối chăm sóc. Theo dõi mỗi ngày.</Text>
       </View>
     </LinearGradient>
     <View style={{ gap: 5 }}><Text style={{ fontSize: 25, fontWeight: '700' }}>Chào mừng trở lại</Text><Muted>Đăng nhập để tiếp tục theo dõi và chăm sóc.</Muted></View>
