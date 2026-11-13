@@ -22,7 +22,7 @@ export interface AttentionInput {
 
 export interface Attention { patientId: string; state: TodayState; score: number; reasons: string[] }
 
-export const TODAY_LABEL: Record<TodayState, string> = { treated: 'Đã chiếu', missed: 'Bỏ lỡ', due: 'Cần chiếu', no_data: 'Chưa có dữ liệu', rest: 'Ngày nghỉ', no_plan: 'Chưa có đợt' };
+export const TODAY_LABEL: Record<TodayState, string> = { treated: 'Đã điều trị', missed: 'Bỏ lỡ', due: 'Cần điều trị', no_data: 'Chưa có dữ liệu', rest: 'Ngày nghỉ', no_plan: 'Chưa có đợt' };
 
 export function classifyToday(i: AttentionInput): TodayState {
   if (!i.hasActivePlan) return 'no_plan';

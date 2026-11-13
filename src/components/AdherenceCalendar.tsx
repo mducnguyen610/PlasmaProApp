@@ -29,7 +29,7 @@ const tone = (k: 'met' | 'partial' | 'over' | 'none' | 'unsynced') => ({ color: 
 const KIND: Record<Exclude<DayKind, 'outside'>, { label: string; detail?: string; color: string; bg: string; icon?: 'checkmark' | 'alert' }> = {
   met: { label: 'Đã điều trị', ...tone('met'), icon: 'checkmark' },
   partial: { label: 'Lệch lịch', detail: 'Thiếu lần', ...tone('partial') },
-  over: { label: 'Lệch lịch', detail: 'Chiếu ngoài lịch hoặc thừa lần', ...tone('over'), icon: 'alert' },
+  over: { label: 'Lệch lịch', detail: 'Điều trị ngoài lịch hoặc thừa lần', ...tone('over'), icon: 'alert' },
   none: { label: 'Lệch lịch', detail: 'Bỏ lỡ', ...tone('none') },
   rest: { label: 'Nghỉ', color: C.textFaint, bg: C.card },
   planned: { label: 'Có lịch', color: C.primary, bg: C.primarySoft },
@@ -151,7 +151,7 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
             </View>
           ))}
         </View>
-        {!plan && <Muted>Chưa có đợt điều trị, lịch chỉ hiện số lần đã chiếu.</Muted>}
+        {!plan && <Muted>Chưa có đợt điều trị, lịch chỉ hiện số lần đã điều trị.</Muted>}
       </Card>
 
       {selected && (
@@ -168,13 +168,13 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
           ))}
           {selected > today && !reminders.some((r) => r.date === selected) && <Muted>Chưa có lịch hẹn ngày này.</Muted>}
           {selectedCell?.kind === 'unsynced' && <Muted>Thiết bị chưa gửi dữ liệu ngày này. Số phiên sẽ hiện khi thiết bị kết nối Wi-Fi.</Muted>}
-          {selectedCell?.kind === 'none' && <Muted>Ngày có lịch nhưng thiết bị không ghi nhận phiên chiếu nào.</Muted>}
-          {selectedCell?.kind === 'over' && <Muted>Có phiên chiếu ngoài lịch hoặc nhiều hơn số lần của buổi. Hãy báo bác sĩ phụ trách.</Muted>}
-          {selectedCell?.kind === 'partial' && <Muted>Chưa chiếu đủ số lần của buổi.</Muted>}
+          {selectedCell?.kind === 'none' && <Muted>Ngày có lịch nhưng thiết bị không ghi nhận phiên điều trị nào.</Muted>}
+          {selectedCell?.kind === 'over' && <Muted>Có phiên điều trị ngoài lịch hoặc nhiều hơn số lần của buổi. Hãy báo bác sĩ phụ trách.</Muted>}
+          {selectedCell?.kind === 'partial' && <Muted>Chưa điều trị đủ số lần của buổi.</Muted>}
           {selectedCell?.kind === 'rest' && <Muted>Ngày nghỉ theo lịch của đợt. Thiết bị không phát vào ngày này.</Muted>}
           {selectedCell?.kind === 'planned' && <Muted>Có buổi điều trị theo lịch.</Muted>}
           {/* Hôm nay chưa có phiên: nói rõ là có buổi và dữ liệu có thể chưa về, không ghi "Không có phiên" (cùng ý với cảnh báo đồng bộ ở Trang chủ). */}
-          {selectedCell?.kind === 'today' && daySessions.length === 0 && <Muted>{lastSyncDay !== today ? 'Hôm nay có buổi điều trị. Số lần chiếu sẽ hiện khi thiết bị gửi dữ liệu.' : 'Hôm nay có buổi điều trị, thiết bị chưa ghi nhận lần chiếu nào.'}</Muted>}
+          {selectedCell?.kind === 'today' && daySessions.length === 0 && <Muted>{lastSyncDay !== today ? 'Hôm nay có buổi điều trị. Số lần điều trị sẽ hiện khi thiết bị gửi dữ liệu.' : 'Hôm nay có buổi điều trị, thiết bị chưa ghi nhận lần điều trị nào.'}</Muted>}
           {daySessions.length === 0 && !['unsynced', 'rest', 'planned', 'today'].includes(selectedCell?.kind ?? '') && selected <= today && <Muted>Không có phiên điều trị.</Muted>}
           {daySessions.map((s) => {
             const n = note(s.sessionId);
@@ -200,7 +200,7 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
                     <PainRow label="Đau trước phiên" value={before} onChange={setBefore} />
                     <PainRow label="Đau sau phiên" value={after} onChange={setAfter} />
                     <Muted>0 = không đau, 10 = đau nhất. Có thể bỏ trống một trong hai.</Muted>
-                    <Text style={{ fontSize: T.small, fontWeight: '600', color: C.text }}>Trong lúc chiếu</Text>
+                    <Text style={{ fontSize: T.small, fontWeight: '600', color: C.text }}>Trong lúc điều trị</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
                       <Toggle label="Nóng rát" on={!!flags.burning} onPress={() => setFlags({ ...flags, burning: !flags.burning })} />
                       <Toggle label="Châm chích" on={!!flags.stinging} onPress={() => setFlags({ ...flags, stinging: !flags.stinging })} />
@@ -232,7 +232,7 @@ export function noteText(n: SessionNote): string {
   const parts: string[] = [];
   if (n.painBefore !== undefined || n.painAfter !== undefined) parts.push(`Đau ${n.painBefore ?? '–'} → ${n.painAfter ?? '–'}/10`);
   const t = [n.burning && 'nóng rát', n.stinging && 'châm chích'].filter(Boolean);
-  if (t.length) parts.push(`Khi chiếu: ${t.join(', ')}`);
+  if (t.length) parts.push(`Khi điều trị: ${t.join(', ')}`);
   const r = [n.rednessNextDay && 'đỏ da', n.swellingNextDay && 'sưng'].filter(Boolean);
   if (r.length) parts.push(`Hôm sau: ${r.join(', ')}`);
   return parts.length ? parts.join('. ') : 'Không ghi nhận khó chịu';

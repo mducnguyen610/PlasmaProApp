@@ -8,16 +8,16 @@ import type { ConfigMissing } from './index';
 
 export const LINK_LABEL: Record<LinkState, string> = { disconnected: 'Chưa kết nối', connecting: 'Đang kết nối', connected: 'Đã kết nối', error: 'Lỗi kết nối' };
 
-export const SESSION_LABEL: Record<SessionState, string> = { idle: 'Chờ', running: 'Đang chiếu', done: 'Đã xong', stopped: 'Đã dừng', error: 'Lỗi trên máy' };
+export const SESSION_LABEL: Record<SessionState, string> = { idle: 'Chờ', running: 'Đang điều trị', done: 'Đã xong', stopped: 'Đã dừng', error: 'Lỗi trên máy' };
 
-export const MISSING_LABEL: Record<ConfigMissing, string> = { duration: 'thời gian chiếu', energy: 'mức năng lượng', mode: 'chế độ điều trị' };
+export const MISSING_LABEL: Record<ConfigMissing, string> = { duration: 'thời gian điều trị', energy: 'mức năng lượng', mode: 'chế độ điều trị' };
 
 export const CONFIG_ERROR_LABEL: Record<ConfigError, string> = {
   patient_id_empty: 'Hồ sơ chưa có mã.',
   patient_id_too_long: 'Mã hồ sơ dài hơn giới hạn của máy.',
   patient_id_charset: 'Mã hồ sơ có ký tự máy không nhận.',
-  time_invalid: 'Thời gian chiếu phải là số giây nguyên dương.',
-  time_out_of_range: 'Thời gian chiếu nằm ngoài khoảng máy cho phép.',
+  time_invalid: 'Thời gian điều trị phải là số giây nguyên dương.',
+  time_out_of_range: 'Thời gian điều trị nằm ngoài khoảng máy cho phép.',
   energy_invalid: 'Mức năng lượng phải là số nguyên.',
   energy_not_allowed: 'Mức năng lượng của đợt không có trong danh sách của máy, bác sĩ cần lưu phiên bản mới.',
   mode_not_allowed: 'Chế độ điều trị của đợt không có trên máy này, bác sĩ cần lưu phiên bản mới.',
@@ -33,7 +33,7 @@ export const CONFIG_ERROR_LABEL: Record<ConfigError, string> = {
 export const NAK_HINT: Record<string, { text: string; retry: boolean }> = {
   BAD_CHECKSUM: { text: 'Dữ liệu bị lỗi trên đường truyền. Kiểm tra cáp đã cắm chặt rồi bấm Gửi lại.', retry: true },
   BAD_FIELDS: { text: 'Máy không nhận giá trị của đợt điều trị. Gửi lại sẽ vẫn lỗi, hãy báo bác sĩ.', retry: false },
-  BUSY: { text: 'Máy đang chiếu hoặc đang bận. Chờ máy xong rồi bấm Gửi lại.', retry: true },
+  BUSY: { text: 'Máy đang điều trị hoặc đang bận. Chờ máy xong rồi bấm Gửi lại.', retry: true },
 };
 
 export function nakHint(code: string): { text: string; retry: boolean } {

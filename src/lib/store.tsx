@@ -496,7 +496,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Thiết bị tại nhà bị khóa thông số theo y lệnh (slide 24): không có đợt đang áp dụng, ngày nghỉ theo lịch
     // hoặc đã đủ số lần của buổi thì thiết bị không phát.
     let status: 'completed' | 'over_limit' = 'completed';
-    let message = `Thiết bị đã chiếu ở mức ${plan?.doseLevel ?? '—'} trong ${plan?.durationSec != null ? Math.round(plan.durationSec / 6) / 10 : '—'} phút và gửi phiên hoàn tất.`;
+    let message = `Thiết bị đã điều trị ở mức ${plan?.doseLevel ?? '—'} trong ${plan?.durationSec != null ? Math.round(plan.durationSec / 6) / 10 : '—'} phút và gửi phiên hoàn tất.`;
     if (!plan) {
       status = 'over_limit';
       message = 'Chưa có đợt điều trị đang áp dụng: thiết bị không phát.';

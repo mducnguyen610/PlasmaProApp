@@ -139,7 +139,7 @@ export default function ConnectDevice() {
               {/* Cùng tên và thứ tự nhãn với DoseRows (B05, N03, N06) để một thông số chỉ có một tên (A10). */}
               {cfg && <InfoRow label="Mức năng lượng" value={`Mức ${cfg.energyLevel}`} />}
               {cfg && <InfoRow label="Chế độ điều trị" value={modeLabel(cfg.treatmentMode)} />}
-              {cfg && <InfoRow label="Thời gian mỗi lần chiếu" value={fmtDuration(cfg.minTreatmentTimeSec)} />}
+              {cfg && <InfoRow label="Thời gian mỗi lần điều trị" value={fmtDuration(cfg.minTreatmentTimeSec)} />}
               {plan && <InfoRow label="Đợt điều trị" value={isPatient ? `Bác sĩ đã xác nhận (phiên bản ${plan.version})` : `Phiên bản ${plan.version}, bác sĩ đã xác nhận`} />}
               {/* Bệnh nhân vẫn xem được, nhưng tiêu đề bằng lời thường; mã trường CFG chỉ nằm bên trong phần thu gọn (A12). */}
               {wire ? (
@@ -182,6 +182,6 @@ export default function ConnectDevice() {
   );
 }
 
-const STEPS = ['Kết nối máy', 'Nạp liệu trình', 'Chiếu'];
+const STEPS = ['Kết nối máy', 'Nạp liệu trình', 'Điều trị'];
 /** Bệnh nhân: "điều trị" thay "chiếu" (duyệt 12/11/2026, C40). */
 const PATIENT_STEPS = ['Kết nối máy', 'Nạp liệu trình', 'Điều trị'];

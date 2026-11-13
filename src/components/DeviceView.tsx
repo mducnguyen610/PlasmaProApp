@@ -100,7 +100,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         {patientView && (
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
             <Text style={{ fontSize: T.display, fontWeight: '700', color: C.primary }}>{restToday ? 'Nghỉ' : plan ? `${todayN}/${plan.sessionsPerDay ?? 1}` : todayN}</Text>
-            <Text style={{ fontSize: T.body, color: C.textSoft, marginBottom: 6 }}>{restToday ? 'theo lịch hôm nay' : lastSyncDay === today ? 'lần chiếu hôm nay' : 'lần chiếu đã nhận hôm nay'}</Text>
+            <Text style={{ fontSize: T.body, color: C.textSoft, marginBottom: 6 }}>{restToday ? 'theo lịch hôm nay' : lastSyncDay === today ? 'lần điều trị hôm nay' : 'lần điều trị đã nhận hôm nay'}</Text>
           </View>
         )}
         {patientView
@@ -152,7 +152,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
               {c.item.doneBy === 'patient' ? `Đến lúc ${c.item.label.toLowerCase()}` : `Cần ${c.item.label.toLowerCase()}`}
             </Text>
           </View>
-          <Muted>{c.item.everySessions === 1 ? 'Sau mỗi lần chiếu.' : c.remaining > 0 ? `Còn khoảng ${c.remaining} lần dùng.` : 'Đã đến hạn.'} {c.item.howTo}</Muted>
+          <Muted>{c.item.everySessions === 1 ? 'Sau mỗi lần điều trị.' : c.remaining > 0 ? `Còn khoảng ${c.remaining} lần dùng.` : 'Đã đến hạn.'} {c.item.howTo}</Muted>
           {c.item.doneBy === 'patient'
             ? <Button label="Tôi đã làm xong" icon="checkmark" variant="secondary" onPress={() => doCare(c.item.id, c.item.label)} />
             : <Muted>Kỹ thuật viên sẽ làm khi tái khám. Bạn vẫn dùng thiết bị bình thường.</Muted>}
@@ -232,7 +232,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         {unsyncedDays.length > 0 && (
           <Notice icon="cloud-offline-outline">{unsyncedText}</Notice>
         )}
-        {/* Ô biểu tượng thay chữ lặp từng dòng: thanh màu = đã chiếu, trăng = nghỉ theo lịch, chấm than = bỏ lỡ. */}
+        {/* Ô biểu tượng thay chữ lặp từng dòng: thanh màu = đã điều trị, trăng = nghỉ theo lịch, chấm than = bỏ lỡ. */}
         {syncedDays.map(({ d, n }) => {
           const rest = !!plan && !isScheduled(plan, d);
           const kind = n > 0 ? `${n} lần` : rest ? 'Nghỉ theo lịch' : plan ? 'Bỏ lỡ' : 'Không sử dụng';
@@ -248,7 +248,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           );
         })}
         <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={{ flexDirection: 'row', gap: 14, flexWrap: 'wrap' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}><View style={{ width: 14, height: 10, borderRadius: 3, backgroundColor: C.primary }} /><Text style={{ fontSize: T.caption, color: C.textSoft }}>Đã chiếu</Text></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}><View style={{ width: 14, height: 10, borderRadius: 3, backgroundColor: C.primary }} /><Text style={{ fontSize: T.caption, color: C.textSoft }}>Đã điều trị</Text></View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}><Ionicons name="moon-outline" size={14} color={C.textFaint} /><Text style={{ fontSize: T.caption, color: C.textSoft }}>Nghỉ</Text></View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}><Ionicons name="alert-circle" size={14} color={C.amber} /><Text style={{ fontSize: T.caption, color: C.textSoft }}>Bỏ lỡ</Text></View>
         </View>
