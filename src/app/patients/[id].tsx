@@ -137,9 +137,10 @@ export default function PatientDetail() {
             )}
           </Disclosure>
         )}
+        {/* P0 bổ sung PX-01: dòng tóm tắt đợt của vết nào thì mở B06 đúng vết đó (cùng loại ID-02). */}
         <LinkRow icon="flash-outline" tone="violet" title="Đợt điều trị"
-          sub={plan ? `${pr ? `${pr.done}/${pr.total} buổi đã làm` : `Phiên bản ${plan.version}`}${pr && plan.status === 'active' ? '' : ` · ${PLAN_STATUS[plan.status].label}`}` : 'Chưa lập đợt'}
-          onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id } })} />
+          sub={plan ? `${wounds.length > 1 && plan.woundId ? `${wounds.find((x) => x.id === plan.woundId)?.code ?? ''} · ` : ''}${pr ? `${pr.done}/${pr.total} buổi đã làm` : `Phiên bản ${plan.version}`}${pr && plan.status === 'active' ? '' : ` · ${PLAN_STATUS[plan.status].label}`}` : 'Chưa lập đợt'}
+          onPress={() => router.push({ pathname: '/plan/[patientId]', params: plan?.woundId ? { patientId: p.id, woundId: plan.woundId } : { patientId: p.id } })} />
         <Divider />
         <Disclosure title="Thông tin hồ sơ" summary={`${account(p.doctorId)?.name ?? 'Chưa có bác sĩ'} · ${p.researchConsent ? 'đồng ý nghiên cứu' : 'chưa đồng ý nghiên cứu'}`}>
           <InfoRow label="SĐT" value={p.phone || '—'} />

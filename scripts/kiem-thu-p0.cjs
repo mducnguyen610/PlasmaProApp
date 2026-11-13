@@ -353,6 +353,66 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     rec('TP-AL-02', 'Không tràn ngang ở 320, 360, 390, 768 px trên 8 màn P0', bad.length === 0, bad.join(', '));
   }
 
+  {
+    // P0 bổ sung PX-01: B04 dòng "Đợt điều trị" mở B06 đúng vết của đợt đang tóm tắt.
+    const p = await newPage(); await login(p);
+    await go(p, '/doctor');
+    await mutate(p, `
+      if (!d.wounds.some((w) => w.id === 'w-px')) d.wounds.push({ id: 'w-px', patientId: 'p-1', code: 'VT02', location: 'Mu bàn chân phải (PX)', startDate: d.wounds[0].startDate, status: 'active' });
+      const src = d.plans.filter((x) => x.patientId === 'p-1').sort((a, b) => b.version - a.version)[0];
+      d.plans.push({ ...src, id: 'pl-px', woundId: 'w-px', status: 'paused', version: 9, reason: 'Kiểm thử PX-01' });`);
+    await go(p, '/patients/p-1');
+    const subShowsVt02 = await has(p, /^VT02 · (\d+\/\d+ buổi|Phiên bản)/, false);
+    for (const wd of [320, 390]) { await p.setViewportSize({ width: wd, height: 844 }); await p.waitForTimeout(200); await p.screenshot({ path: path.join(OUT, `px01-b04-${wd}.png`), fullPage: true }); }
+    await p.setViewportSize({ width: 390, height: 844 });
+    await p.getByText('Đợt điều trị', { exact: true }).click(); await p.waitForTimeout(1500);
+    const url = p.url();
+    const ctx = await p.getByTestId('clinical-context').innerText();
+    rec('PX-01', 'B04 có 2 vết, đợt mới nhất thuộc VT02: dòng ghi VT02, mở B06 kèm woundId của VT02, thanh ngữ cảnh ghi VT02', subShowsVt02 && url.includes('woundId=w-px') && ctx.includes('VT02'), `dòng ${subShowsVt02}; url ${url.split('/').pop()}; ngữ cảnh ${ctx.replace(/\n/g, ' ').slice(0, 80)}`);
+    await p.context().close();
+  }
+  {
+    // P0 bổ sung PX-02: B10 hỏi trước khi bỏ ảnh chưa lưu.
+    const p = await newPage(); await login(p);
+    await go(p, '/wounds/w-1');
+    await go(p, '/guided-capture?woundId=w-1');
+    const pick = async () => { const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.getByText('Chọn ảnh có sẵn', { exact: true }).click()]); await fc.setFiles(PHOTO); await p.waitForTimeout(3000); };
+    await pick();
+    await p.getByRole('textbox').first().fill('6,1');
+    // Chụp / chọn lại, chọn "Ở lại": ảnh và số còn nguyên.
+    p.answer = false; let n = p.dialogs.length;
+    await p.getByText('Chụp / chọn lại', { exact: true }).click(); await p.waitForTimeout(500);
+    const asked = p.dialogs.slice(n).some((d) => d.includes('Bỏ ảnh vừa chụp?') && d.includes('số đo đang nhập'));
+    const kept = await has(p, 'Kiểm tra ảnh và nhập số đo') && (await p.getByRole('textbox').first().inputValue()) === '6,1';
+    rec('PX-02a', 'B10 có ảnh và số chưa lưu, bấm "Chụp / chọn lại", chọn Ở lại: có hỏi, ảnh và số còn nguyên', asked && kept, `hỏi ${asked}; còn ${kept}`);
+    // Quay lại, chọn "Ở lại": vẫn ở B10.
+    n = p.dialogs.length;
+    await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(800);
+    const askedBack = p.dialogs.slice(n).some((d) => d.includes('Bỏ dữ liệu chưa lưu?'));
+    const stayed = await has(p, 'Kiểm tra ảnh và nhập số đo');
+    rec('PX-02b', 'B10 có ảnh chưa lưu, bấm quay lại, chọn Ở lại: có hỏi, vẫn ở B10', askedBack && stayed, `hỏi ${askedBack}; ở lại ${stayed}`);
+    // Chụp / chọn lại, đồng ý bỏ: về màn chụp.
+    p.answer = true;
+    await p.getByText('Chụp / chọn lại', { exact: true }).click(); await p.waitForTimeout(500);
+    const reset = await has(p, 'Chọn ảnh có sẵn');
+    rec('PX-02c', 'B10 đồng ý bỏ: về bước chụp', reset, '');
+    // Chọn ảnh, lưu: sang B11, không hỏi bỏ dữ liệu.
+    await pick();
+    n = p.dialogs.length;
+    const n0 = (await store(p)).images.length;
+    await p.getByText('Lưu ảnh (chưa có số đo)', { exact: true }).click(); await p.waitForTimeout(2500);
+    const noAsk = !p.dialogs.slice(n).some((d) => d.includes('Bỏ dữ liệu chưa lưu?') || d.includes('Bỏ ảnh vừa chụp?'));
+    const savedOne = (await store(p)).images.length === n0 + 1 && /\/images\//.test(p.url());
+    rec('PX-02d', 'B10 lưu ảnh: sang B11, không hiện hộp hỏi bỏ dữ liệu, đúng 1 ảnh mới', noAsk && savedOne, `không hỏi ${noAsk}; lưu ${savedOne}`);
+    // Ảnh chưa chụp: quay lại không hỏi.
+    await go(p, '/wounds/w-1'); await go(p, '/guided-capture?woundId=w-1');
+    n = p.dialogs.length;
+    await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(800);
+    rec('PX-02e', 'B10 chưa có ảnh: quay lại không hỏi', !p.dialogs.slice(n).some((d) => d.includes('Bỏ')), '');
+    rec('PX-02z', 'Không có lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+
   fs.writeFileSync(path.join(OUT, 'ket-qua-p0.json'), JSON.stringify(results, null, 2));
   const c = (r) => results.filter((x) => x.result === r).length;
   console.log(`\nTổng: ĐẠT ${c('ĐẠT')}, LỖI ${c('LỖI')}, GHI NHẬN ${c('GHI NHẬN')}`);
