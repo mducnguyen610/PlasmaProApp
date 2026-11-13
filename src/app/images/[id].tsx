@@ -12,6 +12,7 @@ import { NoAccess, useCanView } from '@/components/Guard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { Button, Card, Chip, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, Segmented, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
 import { confirm, notify } from '@/lib/dialog';
+import { measurementSource } from '@/lib/measurementSource';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { buildFilename, checkFullFilename, formatAreaDisplay, formatAreaForName, parseArea, type AreaUnit } from '@/lib/naming';
 import { areaWarning, previousArea } from '@/lib/plausibility';
@@ -182,9 +183,8 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
   const aiBlock = isDoctor ? <AiBlock wound={im.capture?.wound} arArea={arArea} /> : null;
 
   // P0 DS-02: người nhập và thời điểm của số bác sĩ hiện tại, chỉ lấy từ dữ liệu đã lưu; không có thì nói không có.
-  const ref = im.capture?.manualReference;
-  const lastSet = [...im.history].reverse().find((h) => h.toArea === im.areaCm2);
-  const enteredBy = ref && ref.areaCm2 === im.areaCm2 && ref.confirmedBy ? { by: ref.confirmedBy, at: ref.confirmedAt } : lastSet ? { by: lastSet.by, at: lastSet.at } : null;
+  // P1-07b: cùng quy tắc, chuyển sang hàm dùng chung với B08.
+  const enteredBy = measurementSource(im);
   const enteredText = enteredBy ? `${account(enteredBy.by)?.name ?? 'Tài khoản không còn trong danh sách'}${enteredBy.at ? ` lúc ${fmtDateTime(enteredBy.at)}` : ''}` : 'Chưa có thông tin người nhập';
   // P0 SV-03: số mới sẽ thay số đã có.
   const replacing = editing && im.areaCm2 !== null && newArea !== null && newArea !== im.areaCm2;

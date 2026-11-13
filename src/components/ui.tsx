@@ -422,11 +422,12 @@ export function Empty({ icon = 'file-tray-outline', text }: { icon?: IconName; t
   );
 }
 
-export function WoundPhoto({ image, style }: { image: WoundImage; style?: StyleProp<ViewStyle> }) {
+/** fit: mặc định 'cover' như mọi màn; B08 dùng 'contain' để thấy đủ khung ảnh gốc, không cắt mép (P1-04b). */
+export function WoundPhoto({ image, style, fit = 'cover' }: { image: WoundImage; style?: StyleProp<ViewStyle>; fit?: 'cover' | 'contain' }) {
   const source = image.uri ? { uri: image.uri } : DEMO_ASSETS[image.demoAsset ?? 1];
   return (
     <View style={[{ overflow: 'hidden', backgroundColor: C.photoPlaceholder }, style]}>
-      <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+      <Image source={source} style={StyleSheet.absoluteFill} contentFit={fit} transition={150} />
     </View>
   );
 }
