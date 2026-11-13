@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
@@ -143,6 +143,8 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   const [initial, setInitial] = useState(snapshot);
   const dirty = snapshot !== initial;
   useDiscardGuard(dirty);
+  // CR-01: lưu chờ ghi bộ nhớ xong; chặn bấm lặp trong lúc chờ để không tạo hai phiên bản.
+  const saving = useRef(false);
 
   if (!p) return <NoAccess notFound />;
   if (!canView) return <NoAccess />;
@@ -208,7 +210,8 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   const setPhase = (i: number, patch: Partial<PhaseDraft>) => editPhases(phases.map((x, k) => (k === i ? { ...x, ...patch } : x)));
 
   const fail = (st: number, msg: string) => { setStep(st); setErr(msg); };
-  const save = () => {
+  const save = async () => {
+    if (saving.current) return;
     const parsed: CoursePhase[] = [];
     for (const [i, ph] of phases.entries()) {
       const from = fromVn(ph.from);
@@ -228,8 +231,9 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
     if (!reason.trim()) return fail(2, 'Nhập lý do thay đổi để lưu vết phiên bản.');
     if (status === 'active' && !confirmed) return fail(2, 'Đợt "Đang áp dụng" cần bác sĩ xác nhận.');
     setErr(null);
+    saving.current = true;
     try {
-    savePlan({
+    await savePlan({
       patientId: p.id, woundId, status, phases: parsed, sessionsPerDay: nums[0] ?? 1, minIntervalMin: nums[1], targetEnergyWh: null,
       doseLevel: nums[2], treatmentMode: caps && mode ? mode : null, durationSec: nums[3], secondsPerCm2: nums[4], areaAtStart: lastArea?.areaCm2 ?? null, reviewAtDay: nums[5] ?? DEFAULT_REVIEW_DAY,
       startDate: parsed[0].from, endDate: parsed[parsed.length - 1].to, reviewSchedule: review.trim(), notes: notes.trim(), reason: reason.trim(), confirmed,
@@ -237,6 +241,8 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
     } catch (e) {
       // Lưu thất bại: giữ nguyên dữ liệu đã nhập và dấu xác nhận để bác sĩ thử lại.
       return fail(2, `Chưa lưu được phiên bản: ${e instanceof Error ? e.message : 'lỗi không xác định'}. Dữ liệu vẫn còn, hãy thử lại.`);
+    } finally {
+      saving.current = false;
     }
     setReason('');
     setConfirmed(false);

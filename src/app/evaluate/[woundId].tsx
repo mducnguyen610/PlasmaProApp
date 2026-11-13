@@ -114,7 +114,7 @@ export default function Evaluate() {
     setOpenGroups((o) => (o[g] ? o : (o.map((v, i) => v || i === g) as [boolean, boolean, boolean])));
     setScrollTo((x) => ({ key, at: (x?.at ?? 0) + 1 }));
   };
-  const save = () => {
+  const save = async () => {
     const aErr = assessmentError(a);
     if (aErr) return fail(aErr, ASSESSMENT_FIELD[aErr]);
     if (!severity) return fail('Hãy chọn mức Nhẹ, Trung bình hoặc Nặng.', 'severity');
@@ -130,7 +130,7 @@ export default function Evaluate() {
     // Báo cáo đã được điền vào ô Triệu chứng (nội dung còn nằm trong ô lúc lưu).
     const filledReports = openReports.filter((r) => r.content.trim() && symptoms.includes(r.content.trim())).map((r) => r.id);
     try {
-    addEvaluation({
+    await addEvaluation({
       woundId: w.id, imageId: img?.id, date: todayIso(), areaCm2: img?.areaCm2 ?? null,
       characteristics: characteristics.trim(), symptoms: symptoms.trim(), symptomSource: symptomSource.trim(),
       severity, trend, instructions: instructions.trim(), nextReview: nextReview ? `${y}-${m}-${d}` : undefined, visibleToPatient: visible,

@@ -32,10 +32,10 @@ export default function SessionMonitor() {
   // kind: 'done' buổi đủ thời gian, 'interrupted' buổi dừng giữa chừng hoặc lỗi, 'fail' chưa ghi được (V03: mỗi sự kiện một thông báo).
   const [saved, setSaved] = useState<{ kind: 'done' | 'interrupted' | 'fail'; text: string; startedAt?: string } | null>(null);
   const link = useDeviceLink({
-    onSessionEnd: (done) => {
+    onSessionEnd: async (done) => {
       if (!p) return;
       try {
-        const ok = recordDeviceSession({ patientId: p.id, woundId: params.woundId, startedAt: done.startedAt.toISOString(), durationSec: done.durationSec, outcome: done.outcome });
+        const ok = await recordDeviceSession({ patientId: p.id, woundId: params.woundId, startedAt: done.startedAt.toISOString(), durationSec: done.durationSec, outcome: done.outcome });
         setSaved(ok
           ? done.outcome === 'done'
             ? { kind: 'done', text: `Đã ghi phiên điều trị ${Math.round(done.durationSec / 6) / 10} phút vào nhật ký.`, startedAt: done.startedAt.toISOString() }
