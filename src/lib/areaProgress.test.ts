@@ -1,7 +1,7 @@
 // Chạy: node src/lib/areaProgress.test.ts
 // Ca C01 đến C16 trong PLASMA_PRO_P2_TEST_PLAN. Dữ liệu chỉ dùng cho kiểm thử (minh họa), không vào seed.
 import assert from 'node:assert/strict';
-import { addMonths, chartLabel, excludedText, fmtPct, inRange, niceAxis, progressInput, progressSummary, rangeOptions, splitByMethod, summaryText, xScale } from './areaProgress.ts';
+import { addMonths, changeLine, chartLabel, excludedText, fmtPct, inRange, niceAxis, progressInput, progressSummary, rangeOptions, splitByMethod, summaryText, xScale } from './areaProgress.ts';
 import { measurementSource } from './measurementSource.ts';
 import { chartPoints } from './woundSummary.ts';
 
@@ -94,4 +94,9 @@ for (const w of ['lành', 'hồi phục', 'tốt lên', 'xấu đi', 'cải thi�
   assert.ok(!lbl.includes(w));
   for (const s of [s5, c3, c10, m2, one]) { const t = summaryText(s); assert.ok(!`${t.headline} ${t.detail}`.includes(w), w); }
 }
+// Dòng thay đổi ở thẻ trang chủ (P2-01a).
+assert.equal(changeLine(c15), '↓ Giảm 32,8% so với lần đo 01/10');
+assert.equal(changeLine(progressSummary(pts([I('A', '2026-10-01', 8), I('B', '2026-10-29', 9)]))), '↑ Tăng 12,5% so với lần đo 01/10');
+assert.equal(changeLine(progressSummary(pts([I('A', '2026-10-01', 8), I('B', '2026-10-29', 8)]))), 'Không đổi so với lần đo 01/10');
+assert.equal(changeLine(one), null); assert.equal(changeLine(m2), null); assert.equal(changeLine(c10), null);
 console.log('areaProgress: ok');
