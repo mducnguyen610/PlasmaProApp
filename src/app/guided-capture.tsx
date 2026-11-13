@@ -24,6 +24,7 @@ import { useWoundTracker } from '@/lib/capture/useWoundTracker';
 import { waitForFrame } from '@/lib/capture/waitForFrame';
 import { coverMap } from '@/lib/capture/woundDetect';
 import { confirm } from '@/lib/dialog';
+import { orderChecks } from '@/lib/checkOrder';
 import { MEASURE_METHODS } from '@/lib/measureMethod';
 import { formatAreaDisplay, parseArea } from '@/lib/naming';
 import { pickPhoto, type PickedPhoto } from '@/lib/photos';
@@ -53,12 +54,6 @@ function estimateFor(photo: Photo | null, found: RecognitionResult | null) {
     intrinsics: photo.ar.intrinsics, distanceM: hit.centerDistanceM, point: found.center,
     planeNormal: hit.planeNormal, cameraForward: photo.ar.cameraForward,
   });
-}
-
-/** P1-05a: chỉ đổi thứ tự hiển thị: chưa đạt, chưa biết, đạt; giữ thứ tự gốc trong cùng nhóm. Không đổi mảng gốc hay `ready`. */
-function orderChecks(checks: LiveCheck[]): LiveCheck[] {
-  const rank = (c: LiveCheck) => (c.ok === false ? 0 : c.ok === null ? 1 : 2);
-  return checks.map((c, i) => ({ c, i })).sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i).map((x) => x.c);
 }
 
 function CheckList({ checks }: { checks: LiveCheck[] }) {
@@ -282,9 +277,9 @@ export default function GuidedCapture() {
       <Chip label={useAr ? (capabilities?.arFramework === 'arcore' ? 'ARCore' : 'ARKit') : 'Không có AR'} tone={useAr ? 'teal' : 'gray'} />
       <Chip label={photo?.imageSource === 'gallery' ? 'Ảnh từ thư viện' : 'Tự khoanh vết thương'} />
     </View>
-    {/* P1-05c: thanh bước chỉ để hiển thị, không chặn thao tác. */}
-    <StepRow steps={['Chụp', 'Kiểm tra ảnh', 'Nhập số đo']} step={!photo ? 1 : reviewed ? 3 : 2} />
     {photo ? <>
+      {/* P1-05c: thanh bước chỉ để hiển thị, không chặn thao tác. Chỉ hiện sau khi có ảnh để màn chụp giữ nút Mở camera trong màn đầu ở 320x640. */}
+      <StepRow steps={['Chụp', 'Kiểm tra ảnh', 'Nhập số đo']} step={reviewed ? 3 : 2} />
       <View style={{ width: '100%', aspectRatio: photo.width / photo.height, backgroundColor: C.text, borderRadius: 18, overflow: 'hidden' }}>
         <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
         {photoWound?.found ? <WoundOutline hull={photoWound.hull} color={bar.green} /> : null}
