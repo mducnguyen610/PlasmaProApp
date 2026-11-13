@@ -15,7 +15,7 @@ import { fmtDate, fmtDateTime, PLAN_STATUS, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore, type Activation } from '@/lib/store';
 import { C, T } from '@/theme';
 import { CLOUD_LINK, WOUND, cloudState } from '@/theme.status';
-import { courseProgress, localDay } from '@/lib/course';
+import { courseProgress, localDay, sessionsForWound } from '@/lib/course';
 
 // BS03 – Hồ sơ bệnh nhân: thông tin, bác sĩ phụ trách, thiết bị, liệu trình, vết thương.
 export default function PatientDetail() {
@@ -36,8 +36,9 @@ export default function PatientDetail() {
   const dev = device(p.deviceId);
   const cloud = dev ? CLOUD_LINK[cloudState(dev.online, dev.lastSync, now)] : null;
   const plan = isDoctor ? activePlan(p.id) : data.plans.filter(x => x.patientId === p.id && x.confirmed && x.status !== 'draft').sort((a,b) => b.version - a.version)[0];
-  const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id), localDay(), dev.lastSync ? localDay(dev.lastSync) : null) : null;
   const wounds = woundsOf(p.id);
+  // UX-18: cùng bộ lọc phiên với B05 (phiên của vết thương mà đợt này thuộc về; đợt cũ không ghi vết thì là vết đầu tiên).
+  const pr = plan && dev ? courseProgress(plan, sessionsForWound(sessionsOf(dev.id), plan.woundId ?? wounds[0]?.id), localDay(), dev.lastSync ? localDay(dev.lastSync) : null) : null;
   const reports = data.reports.filter((r) => r.patientId === p.id);
   // UX-09 a (Đợt 11): ghi chú sau buổi điều trị có đau từ 7, đỏ da hoặc sưng hiện cùng khối báo cáo. Chỉ hiển thị;
   // không tính vào điểm chú ý, không tạo báo cáo (QĐ-3 chưa đổi).
@@ -182,7 +183,7 @@ export default function PatientDetail() {
         );
       })}
       {isDoctor && <View style={{ paddingVertical: 4 }}><Disclosure icon="add-circle-outline" title="Thêm vết thương">
-        <Field label="Thêm vết thương" value={newWound} onChangeText={setNewWound} placeholder="Vị trí, ví dụ: Gót chân phải" />
+        <Field label="Vị trí vết thương" value={newWound} onChangeText={setNewWound} placeholder="Ví dụ: Gót chân phải" />
         <Button
           label="Thêm vết thương"
           variant="secondary"

@@ -7,6 +7,10 @@ import { Card, Header, ListCard, Muted, NumberTile, Screen, SectionTitle, SimBad
 import { useRankedPatients } from '@/components/useRankedPatients';
 import { useLookups, useStore } from '@/lib/store';
 
+// Mốc riêng cho mỗi lần chạm ô, để màn đích lọc lại kể cả khi tab đã mở sẵn (UX-17).
+let tapCount = 0;
+const tapStamp = () => String(++tapCount);
+
 type Task = { key: string; icon: IconName; tone: 'amber' | 'red' | 'blue' | 'violet'; count: number; label: string; onPress: () => void };
 
 // BS01 – Trang chủ bác sĩ: danh sách việc cần làm rồi danh sách bệnh nhân; số liệu tổng hợp chuyển sang quản trị kỹ thuật.
@@ -25,8 +29,8 @@ export default function DoctorHome() {
   const offline = mine.map((p) => device(p.deviceId)).filter((d) => d && !d.online);
   // Chỉ hiện việc đang có; số liệu tổng hợp (tỉ lệ gán nhãn, thống kê) nằm ở màn hình quản trị kỹ thuật.
   const candidates: (Task | false)[] = [
-    reports.length > 0 && { key: 'reports', icon: 'medkit-outline', tone: 'red', count: reports.length, label: 'Báo cáo mới', onPress: () => router.push({ pathname: '/patients/[id]', params: { id: reports[0].patientId } }) },
-    unlabeled.length > 0 && { key: 'unlabeled', icon: 'pricetag-outline', tone: 'amber', count: unlabeled.length, label: 'Ảnh chưa đo', onPress: () => router.push({ pathname: '/images/[id]', params: { id: unlabeled[0].id } }) },
+    reports.length > 0 && { key: 'reports', icon: 'medkit-outline', tone: 'red', count: reports.length, label: 'Báo cáo mới', onPress: () => router.navigate({ pathname: '/doctor/patients', params: { loc: 'bao-cao', t: tapStamp() } }) },
+    unlabeled.length > 0 && { key: 'unlabeled', icon: 'pricetag-outline', tone: 'amber', count: unlabeled.length, label: 'Ảnh chưa đo', onPress: () => router.navigate({ pathname: '/doctor/dataset', params: { loc: 'chua-do', t: tapStamp() } }) },
     retakes.length > 0 && { key: 'retakes', icon: 'camera-outline', tone: 'amber', count: retakes.length, label: 'Ảnh cần chụp lại', onPress: () => router.push({ pathname: '/images/[id]', params: { id: retakes[0].id } }) },
     drafts.length > 0 && { key: 'drafts', icon: 'flash-outline', tone: 'amber', count: drafts.length, label: 'Đợt nháp chờ xác nhận', onPress: () => router.push({ pathname: '/plan/[patientId]', params: { patientId: drafts[0].patientId } }) },
     offline.length > 0 && { key: 'offline', icon: 'cloud-offline-outline', tone: 'blue', count: offline.length, label: 'Thiết bị chưa đồng bộ', onPress: () => router.push({ pathname: '/devices/[id]', params: { id: offline[0]!.id } }) },
@@ -36,7 +40,7 @@ export default function DoctorHome() {
   return (
     <Screen header={<Header title="Trang chủ" subtitle={`Xin chào, ${me?.name ?? ''}`} right={<DateBadge />} />}>
       <SectionTitle>Việc cần làm</SectionTitle>
-      {/* Ô số lớn làm điểm neo: bác sĩ thấy ngay có bao nhiêu việc, chạm để mở việc đầu tiên. */}
+      {/* Ô số lớn làm điểm neo. UX-17 (Đợt 12): "Báo cáo mới" mở B02 lọc "Có báo cáo", "Ảnh chưa đo" mở B12 lọc "Chưa đo"; các ô khác mở việc đầu tiên như cũ. */}
       {tasks.length === 0 ? <Card><Muted>Không có việc nào đang chờ.</Muted></Card> : (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {tasks.map((t) => <NumberTile key={t.key} value={t.count} label={t.label} icon={t.icon} tone={t.tone} onPress={t.onPress} />)}

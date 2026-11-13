@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -16,6 +17,10 @@ export default function Dataset() {
   const [wf, setWf] = useState('all');
   const [range, setRange] = useState<'7' | '30' | 'all'>('all');
   const [since, setSince] = useState('');
+  // UX-17: mở từ ô "Ảnh chưa đo" ở B01 thì về nhóm "Chưa đo", bỏ các bộ lọc đang chọn để thấy đủ ảnh chưa đo.
+  const { loc, t } = useLocalSearchParams<{ loc?: string; t?: string }>();
+  const [seen, setSeen] = useState<string | undefined>(undefined);
+  if (loc === 'chua-do' && `${loc}:${t}` !== seen) { setSeen(`${loc}:${t}`); setFilter('unlabeled'); setPf('all'); setWf('all'); setRange('all'); setSince(''); }
   const mine = new Set(data.patients.filter((p) => p.doctorId === me?.id).map((p) => p.id));
   const images = data.images.filter((i) => mine.has(i.patientId));
   const count = (s: LabelStatus) => images.filter((i) => i.status === s).length;
