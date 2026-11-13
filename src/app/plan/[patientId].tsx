@@ -283,7 +283,8 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         {/* Biểu mẫu chia 3 bước (đề xuất 8): Lịch, Liều, Xác nhận. Lỗi đưa người dùng về đúng bước. */}
         {/* Cùng kiểu thanh bước với T01 (V10); vẫn chạm được để chuyển bước như trước. */}
         <StepRow steps={['Lịch', 'Liều', 'Xác nhận']} step={step + 1} onStep={(n) => setStep(n - 1)} />
-        {err ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{err}</Text> : null}
+        {/* P1-03d: mỗi lỗi một dòng riêng. */}
+        {err ? err.split('\n').map((line) => <Text key={line} accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{line}</Text>) : null}
         {step === 0 && (
           <>
         <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Lịch theo giai đoạn</Text>
