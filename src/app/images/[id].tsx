@@ -302,6 +302,7 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
               </>
             )}
             {/* P1-07c (QĐ-P1-3 A): cùng hai lựa chọn với B10 cộng "Khác (ghi rõ)"; ô chữ bên dưới vẫn là giá trị được lưu. */}
+            <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Cách bác sĩ đã đo</Text>
             <Choices<string> value={methodChoice} onChange={(v) => { if (v === 'khac') { setOtherMethod(true); if ((MEASURE_METHODS as readonly string[]).includes(method.trim())) setMethod(''); } else { setOtherMethod(false); setMethod(v); } setMethodFrom(null); }}
               options={[...MEASURE_METHODS.map((m) => ({ value: m as string, label: m as string })), { value: 'khac', label: 'Khác (ghi rõ)' }]} />
             <Field label="Phương pháp đo" optional={!im.capture}
