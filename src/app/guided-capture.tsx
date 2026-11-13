@@ -12,6 +12,7 @@ import { CaptureQualityCard } from '@/components/CaptureQualityCard';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle } from '@/components/ui';
+import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { WoundOutline, WoundOverlay } from '@/components/WoundOverlay';
 import { getRecognizer, type RecognitionResult } from '@/lib/ai';
 import { analyzeImage } from '@/lib/capture/analyzeImage';
@@ -22,6 +23,7 @@ import type { CaptureMetadata, CaptureQuality, DeviceCapabilities, Roi } from '@
 import { useWoundTracker } from '@/lib/capture/useWoundTracker';
 import { waitForFrame } from '@/lib/capture/waitForFrame';
 import { coverMap } from '@/lib/capture/woundDetect';
+import { confirm } from '@/lib/dialog';
 import { parseArea } from '@/lib/naming';
 import { pickPhoto, type PickedPhoto } from '@/lib/photos';
 import { useLookups, useStore } from '@/lib/store';
@@ -168,6 +170,12 @@ export default function GuidedCapture() {
     generation.current++; setAnalyzing(true); setPhoto(value); setLive(false); setReady(false); setQuality(unknownQuality());
     setPhotoWound(null); setReviewed(false); setAreaText(''); setMethod(''); setError('');
   };
+  // P0 bổ sung PX-02: ảnh đã chụp nhưng chưa lưu (kèm số đo đang nhập) thì hỏi trước khi rời màn. Không tự lưu.
+  const allowLeave = useDiscardGuard(photo !== null);
+  const retake = () => {
+    const reset = () => { generation.current++; setPhoto(null); setQuality(unknownQuality()); setPhotoWound(null); setError(''); };
+    confirm('Bỏ ảnh vừa chụp?', `Ảnh này${areaText.trim() ? ' và số đo đang nhập' : ''} chưa được lưu và sẽ bị bỏ khi chụp hoặc chọn lại.`, reset, 'Bỏ và chụp lại', 'Ở lại');
+  };
   if (!p || !w) return <NoAccess notFound />;
   if (!canView || me?.role !== 'doctor') return <NoAccess />;
 
@@ -243,10 +251,12 @@ export default function GuidedCapture() {
       if (area?.ok) {
         try { await labelImage(image.id, area.value, method); }
         catch (e) {
+          allowLeave();
           router.replace({ pathname: '/images/[id]', params: { id: image.id, nhapLai: areaText.trim(), phuongPhap: method, loi: e instanceof Error ? e.message : String(e) } });
           return;
         }
       }
+      allowLeave();
       router.replace({ pathname: '/images/[id]', params: { id: image.id } });
     } catch (e) { setError(e instanceof Error ? e.message : 'Chưa lưu được ảnh. Ảnh vẫn ở đây để thử lại.'); }
     finally { setBusy(false); }
@@ -283,7 +293,7 @@ export default function GuidedCapture() {
       </Card>
       <CaptureQualityCard quality={quality} busy={analyzing} />
       <Button label={areaText.trim() ? 'Lưu ảnh và số đo bác sĩ' : 'Lưu ảnh (chưa có số đo)'} icon="save-outline" loading={busy} disabled={analyzing || !capabilities} onPress={save} />
-      <Button label="Chụp / chọn lại" variant="secondary" disabled={busy} onPress={() => { generation.current++; setPhoto(null); setQuality(unknownQuality()); setPhotoWound(null); setError(''); }} />
+      <Button label="Chụp / chọn lại" variant="secondary" disabled={busy} onPress={retake} />
     </> : <>
       <View onLayout={e => setView({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} style={{ height: 440, backgroundColor: C.text, borderRadius: 24, overflow: 'hidden' }}>
         {liveVisible ? useAr
