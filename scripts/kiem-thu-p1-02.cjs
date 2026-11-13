@@ -141,10 +141,13 @@ const VT02 = `
     const prev = pts[pts.length - 2];
     const prevTxt = `${String(prev.areaCm2).replace('.', ',')}`;
     const prevRow = await p.getByText(new RegExp(`^${prevTxt}\\d* cm² · chụp \\d{2}/\\d{2}/\\d{4}$`)).count();
-    const bars = await p.getByText(new RegExp(`^${prevTxt}`)).count();
+    // P2-02: biểu đồ đường chỉ ghi số trên điểm đầu và cuối; kiểm "Lần đo trước" là dòng thứ hai (mới trước) của danh sách "Các lần đo".
+    await p.getByText(/^Các lần đo \(\d+\)$/).last().click(); await p.waitForTimeout(300);
+    const rows = await p.getByRole('button', { name: /^\d\d\/\d\d\/\d{4}, \d+,\d cm², / }).evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
+    const bars = rows[1]?.startsWith(`${prev.captureDate.slice(8, 10)}/${prev.captureDate.slice(5, 7)}/${prev.captureDate.slice(0, 4)}, ${prevTxt}`) ? 2 : 0;
     const by = (await p.locator('text=Nhập bởi').first().locator('xpath=..').innerText()).replace(/\s+/g, ' ');
     const notice = await has(p, /^Có 1 ảnh mới hơn chưa đo \(IMG0004, chụp \d{2}\/\d{2}\/\d{4}\)/, false);
-    rec('TP1-06', 'B05 "Lần đo trước" là điểm áp chót của biểu đồ (số và ngày)', prevRow === 1 && bars >= 2, `${prev.id} ${prev.areaCm2}; dòng ${prevRow}, xuất hiện ${bars}`);
+    rec('TP1-06', 'B05 "Lần đo trước" là điểm áp chót của biểu đồ (số và ngày; P2-02 so với danh sách Các lần đo)', prevRow === 1 && bars >= 2, `${prev.id} ${prev.areaCm2}; dòng ${prevRow}, xuất hiện ${bars}`);
     await go(p, '/images/IMG0003');
     const by11 = (await p.locator('text=Nhập bởi').first().locator('xpath=..').innerText()).replace(/\s+/g, ' ');
     rec('TP1-02b-nguoi-nhap', 'B05 "Nhập bởi" trùng dòng "Nhập bởi" của B11 cùng ảnh', by === by11 && by.length > 9, `${by} | ${by11}`);
