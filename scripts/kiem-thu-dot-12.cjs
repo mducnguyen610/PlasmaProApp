@@ -275,7 +275,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     rec('D12-22', 'Đang ở nhóm "Đã đo", chạm lại ô "Ảnh chưa đo" ở B01: B12 về nhóm "Chưa đo"', tiles.length > 0 && tiles.every((t) => ['IMG0004', 'IMG0006', 'IMG0097', 'IMG0098'].includes(t)), tiles.join(','));
     // UX-18: B04 và B05 VT02 cùng số buổi.
     await go(p, '/patients/p-1');
-    const b04 = (await p.getByText(/\d+\/\d+ buổi đã làm/).first().textContent().catch(() => '')).match(/(\d+)\/(\d+)/)?.[0];
+    const b04 = (await p.getByRole('button', { name: /VT02 ·.*\d+\/\d+ buổi đã làm/ }).first().textContent().catch(() => '')).match(/(\d+)\/(\d+)/)?.[0];
     await go(p, '/wounds/w-test2');
     const b05 = (await p.getByText(/Đã xong \d+\/\d+ buổi/).first().textContent().catch(() => '')).match(/(\d+)\/(\d+)/)?.[0];
     rec('D12-23', 'UX-18: đợt của VT02 (BN001 có 2 vết): tiến độ ở B04 bằng ở B05', !!b04 && b04 === b05, `B04 ${b04}, B05 ${b05}`);

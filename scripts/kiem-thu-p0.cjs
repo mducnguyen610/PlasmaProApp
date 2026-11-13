@@ -364,10 +364,12 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
       const src = d.plans.filter((x) => x.patientId === 'p-1').sort((a, b) => b.version - a.version)[0];
       d.plans.push({ ...src, id: 'pl-px', woundId: 'w-px', status: 'paused', version: 9, reason: 'Kiểm thử PX-01' });`);
     await go(p, '/patients/p-1');
-    const subShowsVt02 = await has(p, /^VT02 · (\d+\/\d+ buổi|Phiên bản)/, false);
+    // Từ P1-02, B04 có một dòng đợt cho mỗi vết: dòng của VT02 ghi tiến độ hoặc phiên bản của đợt VT02.
+    const rowPx = p.getByRole('button', { name: /VT02 · Mu bàn chân phải \(PX\).*(\d+\/\d+ buổi|Phiên bản)/ });
+    const subShowsVt02 = (await rowPx.count()) > 0;
     for (const wd of [320, 390]) { await p.setViewportSize({ width: wd, height: 844 }); await p.waitForTimeout(200); await p.screenshot({ path: path.join(OUT, `px01-b04-${wd}.png`), fullPage: true }); }
     await p.setViewportSize({ width: 390, height: 844 });
-    await p.getByText('Đợt điều trị', { exact: true }).click(); await p.waitForTimeout(1500);
+    await rowPx.first().click(); await p.waitForTimeout(1500);
     const url = p.url();
     const ctx = await p.getByTestId('clinical-context').innerText();
     rec('PX-01', 'B04 có 2 vết, đợt mới nhất thuộc VT02: dòng ghi VT02, mở B06 kèm woundId của VT02, thanh ngữ cảnh ghi VT02', subShowsVt02 && url.includes('woundId=w-px') && ctx.includes('VT02'), `dòng ${subShowsVt02}; url ${url.split('/').pop()}; ngữ cảnh ${ctx.replace(/\n/g, ' ').slice(0, 80)}`);
