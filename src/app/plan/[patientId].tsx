@@ -210,26 +210,41 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   const setPhase = (i: number, patch: Partial<PhaseDraft>) => editPhases(phases.map((x, k) => (k === i ? { ...x, ...patch } : x)));
 
   const fail = (st: number, msg: string) => { setStep(st); setErr(msg); };
+  const STEP_NAME = ['Lịch', 'Liều', 'Xác nhận'];
   const save = async () => {
     if (saving.current) return;
+    // P1-03d: cùng các câu kiểm tra như trước, nhưng gom hết lỗi; đưa về bước có lỗi đầu tiên và nêu mọi lỗi của bước đó,
+    // kèm số lỗi còn ở bước khác. Mỗi giai đoạn vẫn chỉ báo lỗi đầu tiên của giai đoạn đó (thứ tự kiểm tra giữ nguyên).
+    const errs: { st: 0 | 1 | 2; msg: string }[] = [];
     const parsed: CoursePhase[] = [];
+    let prevTo: string | null = null;
     for (const [i, ph] of phases.entries()) {
       const from = fromVn(ph.from);
       const to = fromVn(ph.to);
       const n = ph.pattern === 'daily' ? 1 : Number(ph.n);
-      if (!from || !to) return fail(0, `Giai đoạn ${i + 1}: ngày theo dạng dd/mm/yyyy.`);
-      if (to < from) return fail(0, `Giai đoạn ${i + 1}: ngày kết thúc phải sau ngày bắt đầu.`);
-      if (i > 0 && from <= parsed[i - 1].to) return fail(0, `Giai đoạn ${i + 1} phải bắt đầu sau giai đoạn ${i}.`);
-      if (!Number.isInteger(n) || n < 1 || (ph.pattern === 'n_per_week' && n > 7)) return fail(0, `Giai đoạn ${i + 1}: N phải là số nguyên${ph.pattern === 'n_per_week' ? ' từ 1 đến 7' : ' từ 1'}.`);
-      parsed.push({ from, to, pattern: ph.pattern, n });
+      const e = !from || !to ? `Giai đoạn ${i + 1}: ngày theo dạng dd/mm/yyyy.`
+        : to < from ? `Giai đoạn ${i + 1}: ngày kết thúc phải sau ngày bắt đầu.`
+        // Giai đoạn trước có lỗi thì không so thứ tự với nó (trước đây đã dừng ở lỗi đầu tiên).
+        : i > 0 && prevTo !== null && from <= prevTo ? `Giai đoạn ${i + 1} phải bắt đầu sau giai đoạn ${i}.`
+        : !Number.isInteger(n) || n < 1 || (ph.pattern === 'n_per_week' && n > 7) ? `Giai đoạn ${i + 1}: N phải là số nguyên${ph.pattern === 'n_per_week' ? ' từ 1 đến 7' : ' từ 1'}.`
+        : null;
+      if (e) { errs.push({ st: 0, msg: e }); prevTo = null; continue; }
+      prevTo = to;
+      parsed.push({ from: from!, to: to!, pattern: ph.pattern, n });
     }
     const nums = [perVisit, gap, level, duration, spc, reviewDay].map(numOrNull);
-    if (nums.some((n) => n !== null && (!Number.isFinite(n) || n < 0))) return fail(1, 'Thông số phải là số không âm.');
-    if (status === 'active' && (nums[2] === null || nums[3] === null)) return fail(1, 'Đợt "Đang áp dụng" cần mức năng lượng và thời gian điều trị để khóa trên thiết bị.');
-    if (caps && nums[2] !== null && !caps.energyLevels.includes(nums[2])) return fail(1, 'Mức năng lượng phải thuộc danh sách của mẫu thiết bị.');
-    if (caps && status === 'active' && caps.treatmentModes.length > 0 && !mode) return fail(1, 'Đợt "Đang áp dụng" cần chọn chế độ điều trị.');
-    if (!reason.trim()) return fail(2, 'Nhập lý do thay đổi để lưu vết phiên bản.');
-    if (status === 'active' && !confirmed) return fail(2, 'Đợt "Đang áp dụng" cần bác sĩ xác nhận.');
+    if (nums.some((n) => n !== null && (!Number.isFinite(n) || n < 0))) errs.push({ st: 1, msg: 'Thông số phải là số không âm.' });
+    if (status === 'active' && (nums[2] === null || nums[3] === null)) errs.push({ st: 1, msg: 'Đợt "Đang áp dụng" cần mức năng lượng và thời gian điều trị để khóa trên thiết bị.' });
+    if (caps && nums[2] !== null && !caps.energyLevels.includes(nums[2])) errs.push({ st: 1, msg: 'Mức năng lượng phải thuộc danh sách của mẫu thiết bị.' });
+    if (caps && status === 'active' && caps.treatmentModes.length > 0 && !mode) errs.push({ st: 1, msg: 'Đợt "Đang áp dụng" cần chọn chế độ điều trị.' });
+    if (!reason.trim()) errs.push({ st: 2, msg: 'Nhập lý do thay đổi để lưu vết phiên bản.' });
+    if (status === 'active' && !confirmed) errs.push({ st: 2, msg: 'Đợt "Đang áp dụng" cần bác sĩ xác nhận.' });
+    if (errs.length) {
+      const st = errs[0].st;
+      const here = errs.filter((e) => e.st === st).map((e) => e.msg);
+      const other = ([0, 1, 2] as const).filter((k) => k !== st).map((k) => ({ k, n: errs.filter((e) => e.st === k).length })).filter((x) => x.n > 0);
+      return fail(st, [...here, ...other.map((x) => `Bước ${STEP_NAME[x.k]} còn ${x.n} lỗi.`)].join('\n'));
+    }
     setErr(null);
     saving.current = true;
     try {
