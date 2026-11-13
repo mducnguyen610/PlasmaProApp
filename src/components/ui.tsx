@@ -94,7 +94,11 @@ export const FAB_RISE = 30;
 /** Vai trò có thanh tab nổi ở đáy (RoleTabs); màn hình trong các nhóm này cần chừa chỗ cho thanh tab. */
 const TAB_GROUPS = ['patient', 'doctor', 'admin'];
 
-export function Screen({ children, header, padded = true, scrollRef }: { children: ReactNode; header?: ReactNode; padded?: boolean; scrollRef?: React.Ref<ScrollViewInstance> }) {
+/**
+ * Màn có thanh tiêu đề và vùng cuộn. `footer` (tùy chọn, giao diện theo tác vụ GĐ-0): vùng nút cố định ở đáy, ngoài vùng cuộn.
+ * Màn không truyền `footer` hiển thị như trước. Chỉ dùng `footer` ở màn không có thanh tab; màn có ô nhập cần thêm xử lý bàn phím trước khi dùng.
+ */
+export function Screen({ children, header, padded = true, scrollRef, footer }: { children: ReactNode; header?: ReactNode; padded?: boolean; scrollRef?: React.Ref<ScrollViewInstance>; footer?: ReactNode }) {
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
   const hasTabBar = TAB_GROUPS.includes(segments[0] ?? '');
@@ -102,7 +106,8 @@ export function Screen({ children, header, padded = true, scrollRef }: { childre
   // Kéo hết trang: mục cuối dừng ngay trên thanh tab (và trên phần nút giữa nhô lên, kể cả viền 4, nếu vai trò có nút giữa), chỉ chừa 8.
   // Quản trị không có nút giữa nên không cộng FAB_RISE. Màn không có thanh tab chỉ chừa vùng an toàn và 16.
   const hasFab = segments[0] === 'patient' || segments[0] === 'doctor';
-  const bottom = hasTabBar ? TAB_BAR_HEIGHT + (hasFab ? FAB_RISE + 4 : 0) + insets.bottom + 8 : insets.bottom + 16;
+  // Có footer: vùng an toàn đáy do footer chừa, nội dung chỉ cần khoảng thở 16 trên footer.
+  const bottom = footer ? 16 : hasTabBar ? TAB_BAR_HEIGHT + (hasFab ? FAB_RISE + 4 : 0) + insets.bottom + 8 : insets.bottom + 16;
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, width: '100%', maxWidth: 1080, alignSelf: 'center' }}>
       {header}
@@ -110,6 +115,11 @@ export function Screen({ children, header, padded = true, scrollRef }: { childre
       <ScrollView ref={scrollRef} contentContainerStyle={[padded && { paddingHorizontal: 20, paddingTop: 18, gap: space.l }, { paddingBottom: bottom, width: '100%', maxWidth: size.maxContent + 40, alignSelf: 'center' }]} keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>
+      {footer ? (
+        <View testID="screen-footer" style={[s.footer, { paddingBottom: insets.bottom + 12 }]}>
+          <View style={{ width: '100%', maxWidth: size.maxContent, alignSelf: 'center' }}>{footer}</View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -562,6 +572,26 @@ export function ListCard({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Một dòng lối vào: biểu tượng, tên, phụ đề, nội dung phụ bên phải hoặc bên dưới; có mũi tên khi chạm được.
+ * Chuyển từ B04 (patients/[id].tsx) sang đây để B05 dùng chung (giao diện theo tác vụ, giai đoạn 1); hiển thị giữ nguyên.
+ */
+export function LinkRow({ icon, tone, title, sub, right, below, onPress, accessibilityLabel, testID }: { icon: IconName; tone: Tone; title: string; sub?: string; right?: ReactNode; below?: ReactNode; onPress?: () => void; accessibilityLabel?: string; testID?: string }) {
+  return (
+    <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={accessibilityLabel} testID={testID}
+      style={({ pressed }) => ({ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.7 : 1 })}>
+      <IconBadge icon={icon} tone={tone} size={36} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontWeight: '700', color: C.text }}>{title}</Text>
+        {sub ? <Text style={{ color: C.textSoft, fontSize: T.small }}>{sub}</Text> : null}
+        {below ? <View style={{ flexDirection: 'row', marginTop: 4 }}>{below}</View> : null}
+      </View>
+      {right}
+      {onPress ? <Ionicons name="chevron-forward" size={18} color={C.textFaint} /> : null}
+    </Pressable>
+  );
+}
+
 /** Ô số lớn làm điểm neo (đếm việc, tổng quan). Bấm được nếu có onPress. */
 export function NumberTile({ value, label, tone = 'blue', icon, onPress }: { value: string | number; label: string; tone?: Tone; icon?: IconName; onPress?: () => void }) {
   const [bg, fg] = TONES[tone];
@@ -613,6 +643,7 @@ export const s = StyleSheet.create({
   hint: { color: C.textFaint, fontSize: T.caption },
   error: { color: C.red, fontSize: T.caption, fontWeight: '500' },
   choice: { paddingHorizontal: 14, paddingVertical: 8, minHeight: size.touch, minWidth: size.touch, alignItems: 'center', justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: C.border, backgroundColor: C.card },
+  footer: { backgroundColor: C.card, borderTopWidth: 1, borderTopColor: C.border, paddingHorizontal: 20, paddingTop: 12 },
   seg: { flexDirection: 'row', backgroundColor: C.card, borderRadius: 24, padding: 4, gap: space.xs, ...shadow },
   segItem: { flex: 1, paddingVertical: 9, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
   segItemOn: { backgroundColor: C.primary },

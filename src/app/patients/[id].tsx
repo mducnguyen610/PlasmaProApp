@@ -7,7 +7,7 @@ import { Text } from '@/components/Text';
 import { ActivationCode } from '@/components/ActivationCode';
 import { noteNeedsAttention, noteText } from '@/components/AdherenceCalendar';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, ListCard, Muted, Screen, SectionTitle, WoundPhoto, SwitchRow, type IconName, StatusChip, Empty } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, LinkRow, ListCard, Muted, Screen, SectionTitle, WoundPhoto, SwitchRow, StatusChip, Empty } from '@/components/ui';
 import { isPendingActivation } from '@/lib/auth';
 import { confirm, notify } from '@/lib/dialog';
 import { buildReportHtml, shareReport } from '@/lib/report';
@@ -105,6 +105,16 @@ export default function PatientDetail() {
             <Text style={{ color: C.textSoft, fontSize: T.small }}>{`${p.code} · sinh ${p.birthYear} · ${p.sex}`}</Text>
           </View>
         </View>
+        {/* Giai đoạn 1 giao diện theo tác vụ: trạng thái cần biết ngay ở thẻ định danh (máy và kết nối, việc chờ xử lý).
+            Chỉ đếm và hiển thị dữ liệu sẵn có; nội dung báo cáo vẫn ở mục "Triệu chứng và sự cố" bên dưới. */}
+        <View testID="trang-thai-ho-so" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {dev && cloud ? <StatusChip status={cloud} label={`${dev.code} · ${cloud.label}`} /> : <Chip label="Chưa gán thiết bị" tone="gray" icon="hardware-chip-outline" />}
+          {/* Tài khoản chỉ hiện khi còn việc (chưa kích hoạt); trạng thái đầy đủ ở mục "Thiết bị và tài khoản". */}
+          {isDoctor && pending && <StatusChip status={{ role: 'warning', icon: 'time-outline' }} label={codeLive ? 'Chờ kích hoạt' : 'Chưa kích hoạt'} />}
+          {/* Một chip đếm việc chờ; nội dung ở mục "Triệu chứng và sự cố" bên dưới. */}
+          {openReports.length + flaggedNotes.length > 0 && <Chip tone="amber" icon="alert-circle-outline"
+            label={`Cần xem: ${[openReports.length ? `${openReports.length} báo cáo` : '', flaggedNotes.length ? `${flaggedNotes.length} ghi chú` : ''].filter(Boolean).join(', ')}`} />}
+        </View>
       </Card>
 
       <SectionTitle icon="bandage-outline">Vết thương đang quản lý</SectionTitle>
@@ -186,6 +196,15 @@ export default function PatientDetail() {
 
       {/* P1-02a: thiết bị và tài khoản, mở sẵn khi còn việc (chưa kích hoạt hoặc chưa giao máy). */}
       <Card>
+        {/* Lối vào lịch sử điều trị: nhật ký thiết bị và buổi điều trị (B13), luôn hiện thay vì nằm trong mục thu gọn. */}
+        {/* Chỉ hiện khi đã gán máy; chưa gán thì mục "Thiết bị và tài khoản" bên dưới đã nói rõ. */}
+        {dev && (
+          <>
+            <LinkRow icon="time-outline" tone="teal" title="Lịch sử điều trị" sub={`${dev.code} · buổi điều trị, tiến độ`}
+              onPress={() => router.push({ pathname: '/devices/[id]', params: { id: dev.id } })} />
+            <Divider />
+          </>
+        )}
         <Disclosure icon="hardware-chip-outline" title="Thiết bị và tài khoản" initiallyOpen={isDoctor && (pending || !dev)}
           summary={`${dev ? dev.code : 'Chưa gán thiết bị'}${isDoctor ? ` · ${!pending ? 'đã kích hoạt' : codeLive ? 'chờ kích hoạt' : 'chưa kích hoạt'}` : ''}`}>
         {isDoctor && (
@@ -211,9 +230,6 @@ export default function PatientDetail() {
             )}
           </>
         )}
-        <LinkRow icon="hardware-chip-outline" tone="teal" title="Thiết bị" sub={dev ? dev.code : 'Chưa gán thiết bị'}
-          below={cloud ? <StatusChip status={cloud} label={`Wi-Fi: ${cloud.label}`} /> : null}
-          onPress={dev ? () => router.push({ pathname: '/devices/[id]', params: { id: dev.id } }) : undefined} />
         {/* Giao máy, thu hồi thuộc bác sĩ phụ trách (UR11). */}
         {isDoctor && (
           <Disclosure icon="hardware-chip-outline" title="Giao máy" summary={dev ? `Đang giữ ${dev.code}` : freeDevices.length ? `${freeDevices.length} máy sẵn sàng` : 'Không có máy sẵn sàng'}>
@@ -268,23 +284,6 @@ export default function PatientDetail() {
         }}
       />
     </Screen>
-  );
-}
-
-/** Một dòng trong thẻ hồ sơ: biểu tượng, tên, phụ đề, giá trị bên phải; có mũi tên khi chạm được. */
-function LinkRow({ icon, tone, title, sub, right, below, onPress }: { icon: IconName; tone: 'violet' | 'teal' | 'amber' | 'green'; title: string; sub?: string; right?: React.ReactNode; below?: React.ReactNode; onPress?: () => void }) {
-  return (
-    <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}
-      style={({ pressed }) => ({ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.7 : 1 })}>
-      <IconBadge icon={icon} tone={tone} size={36} />
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontWeight: '700', color: C.text }}>{title}</Text>
-        {sub ? <Text style={{ color: C.textSoft, fontSize: T.small }}>{sub}</Text> : null}
-        {below ? <View style={{ flexDirection: 'row', marginTop: 4 }}>{below}</View> : null}
-      </View>
-      {right}
-      {onPress ? <Ionicons name="chevron-forward" size={18} color={C.textFaint} /> : null}
-    </Pressable>
   );
 }
 

@@ -281,11 +281,13 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     rec('D12-23', 'UX-18: đợt của VT02 (BN001 có 2 vết): tiến độ ở B04 bằng ở B05', !!b04 && b04 === b05, `B04 ${b04}, B05 ${b05}`);
     // UX-29
     await go(p, '/wounds/w-1');
-    const ev = p.getByRole('button', { name: 'Ghi đánh giá', exact: true }); const pl = p.getByRole('button', { name: 'Đợt điều trị', exact: true });
-    const gb = await p.getByRole('button', { name: 'Chụp ảnh có hướng dẫn' }).boundingBox(); const eb = await ev.boundingBox();
+    // Giai đoạn 1 giao diện theo tác vụ: "Ghi đánh giá" và "Chụp ảnh" ở vùng nút cố định cuối màn (cùng hàng); "Đợt điều trị" là lối vào trong "Việc với vết thương".
+    const ev = p.getByRole('button', { name: 'Ghi đánh giá', exact: true }); const pl = p.getByRole('button', { name: /^Đợt điều trị, / });
+    const gb = await p.getByRole('button', { name: 'Chụp ảnh', exact: true }).boundingBox(); const eb = await ev.boundingBox();
     await ev.click(); await p.waitForTimeout(1000); const onEval = p.url().includes('/evaluate/w-1');
     await go(p, '/wounds/w-1'); await pl.click(); await p.waitForTimeout(1000); const onPlan = p.url().includes('/plan/p-1');
-    rec('D12-24', 'UX-29: B05 có nút phụ "Ghi đánh giá", "Đợt điều trị" ngay dưới nút chính "Chụp ảnh có hướng dẫn", mở đúng màn', !!gb && !!eb && eb.y > gb.y && eb.y - gb.y < 120 && onEval && onPlan, `y chụp ${gb?.y | 0}, y nút phụ ${eb?.y | 0}`);
+    const vh = p.viewportSize().height;
+    rec('D12-24', 'UX-29: B05 "Ghi đánh giá" cạnh "Chụp ảnh" trong vùng nút cố định (thấy ngay), "Đợt điều trị" là lối vào riêng; mở đúng màn', !!gb && !!eb && Math.abs(eb.y - gb.y) < 4 && gb.y + gb.height <= vh && onEval && onPlan, `y chụp ${gb?.y | 0}, y đánh giá ${eb?.y | 0}, cao cửa sổ ${vh}`);
     // UX-27
     await go(p, '/patients/p-1');
     await p.getByRole('button', { name: 'Thêm vết thương' }).first().click(); await p.waitForTimeout(200);

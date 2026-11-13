@@ -141,13 +141,15 @@ const VT02 = `
     const prev = pts[pts.length - 2];
     const prevTxt = `${String(prev.areaCm2).replace('.', ',')}`;
     const prevRow = await p.getByText(new RegExp(`^${prevTxt}\\d* cm² · chụp \\d{2}/\\d{2}/\\d{4}$`)).count();
+    const by = (await p.locator('text=Nhập bởi').first().locator('xpath=..').innerText()).replace(/\s+/g, ' ');
+    const notice = await has(p, /^Có 1 ảnh mới hơn chưa đo \(IMG0004, chụp \d{2}\/\d{2}\/\d{4}\)/, false);
     // P2-02: biểu đồ đường chỉ ghi số trên điểm đầu và cuối; kiểm "Lần đo trước" là dòng thứ hai (mới trước) của danh sách "Các lần đo".
+    // Giai đoạn 1 giao diện theo tác vụ: biểu đồ của bác sĩ ở màn "Tiến triển và lịch sử" (wound-history), thẻ Diện tích.
+    await go(p, '/wound-history/w-1?tab=dien-tich');
     await p.getByText(/^Các lần đo \(\d+\)$/).last().click(); await p.waitForTimeout(300);
     const rows = await p.getByRole('button', { name: /^\d\d\/\d\d\/\d{4}, \d+,\d cm², / }).evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
     const bars = rows[1]?.startsWith(`${prev.captureDate.slice(8, 10)}/${prev.captureDate.slice(5, 7)}/${prev.captureDate.slice(0, 4)}, ${prevTxt}`) ? 2 : 0;
-    const by = (await p.locator('text=Nhập bởi').first().locator('xpath=..').innerText()).replace(/\s+/g, ' ');
-    const notice = await has(p, /^Có 1 ảnh mới hơn chưa đo \(IMG0004, chụp \d{2}\/\d{2}\/\d{4}\)/, false);
-    rec('TP1-06', 'B05 "Lần đo trước" là điểm áp chót của biểu đồ (số và ngày; P2-02 so với danh sách Các lần đo)', prevRow === 1 && bars >= 2, `${prev.id} ${prev.areaCm2}; dòng ${prevRow}, xuất hiện ${bars}`);
+    rec('TP1-06', 'B05 "Lần đo trước" là điểm áp chót của biểu đồ (số và ngày; so với danh sách Các lần đo ở màn Tiến triển và lịch sử)', prevRow === 1 && bars >= 2, `${prev.id} ${prev.areaCm2}; dòng ${prevRow}, xuất hiện ${bars}`);
     await go(p, '/images/IMG0003');
     const by11 = (await p.locator('text=Nhập bởi').first().locator('xpath=..').innerText()).replace(/\s+/g, ' ');
     rec('TP1-02b-nguoi-nhap', 'B05 "Nhập bởi" trùng dòng "Nhập bởi" của B11 cùng ảnh', by === by11 && by.length > 9, `${by} | ${by11}`);
@@ -171,12 +173,14 @@ const VT02 = `
     const d = await store(p);
     const seen = new Set(); const all = d.sessions.filter((s) => s.deviceId === 'd-1' && !seen.has(s.sessionId) && seen.add(s.sessionId));
     const expect = all.filter((s) => !s.woundId || s.woundId === 'w-1').length;
-    const head = p.getByRole('button', { name: /^Buổi điều trị gần đây \(\d+\)/ });
+    // Giai đoạn 1 giao diện theo tác vụ: B05 có lối vào "Lịch sử điều trị, n buổi"; danh sách ở thẻ "Buổi điều trị" của wound-history.
+    const head = p.getByRole('button', { name: /^Lịch sử điều trị, \d+ buổi/ });
     const label = await head.getAttribute('aria-label');
-    await head.click(); await p.waitForTimeout(300);
+    await head.click(); await p.waitForTimeout(1200);
+    const onTab = p.url().includes('/wound-history/w-1') && p.url().includes('tab=buoi');
     const shown = await p.getByTestId('buoi-dieu-tri').count();
     const has9 = await has(p, '9 phút');
-    rec('TP1-02c', 'B05 "Buổi điều trị gần đây (n)": n bằng số buổi của vết (sessionsForWound), hiện 5, không có buổi 9 phút của VT02', label.startsWith(`Buổi điều trị gần đây (${expect})`) && shown === Math.min(5, expect) && !has9, `${label}; mong đợi ${expect}; hiện ${shown}`);
+    rec('TP1-02c', 'B05 "Lịch sử điều trị, n buổi": n bằng số buổi của vết (sessionsForWound); thẻ Buổi điều trị hiện tối đa 30, không có buổi 9 phút của VT02', label.startsWith(`Lịch sử điều trị, ${expect} buổi`) && onTab && shown === Math.min(30, expect) && !has9, `${label}; mong đợi ${expect}; hiện ${shown}; ${p.url().replace(BASE, '')}`);
     await p.context().close();
   }
 

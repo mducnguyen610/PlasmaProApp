@@ -304,16 +304,22 @@ GROUPS['p2-2'] = async (b, h) => {
     await p.context().close();
   }
   // G20: B05 bác sĩ cùng biểu đồ đường, vạch đợt, ReviewNote và chip đầu đợt giữ nguyên.
+  // Giao diện theo tác vụ, giai đoạn 1: biểu đồ bác sĩ chuyển từ B05 sang "Tiến triển và lịch sử" (wound-history, thẻ Diện tích);
+  // chip đầu đợt và mốc 50% vẫn ở B05. Cùng các ca, chỉ đổi màn kiểm.
   for (const w of WIDTHS) {
     const p = await newPage(w); await login(p, 'bacsi'); await go(p, '/wounds/w-1');
-    const m = await marks(p);
-    rec(`P22-33-${w}`, `B05 ${w}px (G20): biểu đồ đường 3 điểm, vạch "Đợt 1"`, !!m && m.pts.length === 3 && m.labels.includes('Đợt 1'));
     rec(`P22-34-${w}`, `B05 ${w}px: chip "Giảm 33% từ đầu đợt" và mốc 50% của bác sĩ giữ nguyên`, await has(p, 'Giảm 33% từ đầu đợt') && await has(p, /^Mốc \d\d\/\d\d\/\d{4}: chưa tới 50%$/, false));
     rec(`P22-35-${w}`, `B05 ${w}px: không tràn ngang, không lỗi JS`, (await overflow(p)) === 0 && p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
     if (w === 390) {
+      // ReviewNote nằm trong thẻ đợt điều trị, vẫn ở B05.
       await p.getByText(/^Giai đoạn \d trên \d$/).first().click(); await p.waitForTimeout(300);
       rec('P22-36', 'G20: ReviewNote cùng chữ, cùng số như trước', await has(p, 'Diện tích 12,5 → 8,4 cm², giảm 33% so với đầu đợt.'));
-      rec('P22-37', 'B05: "Đo 1 ảnh chưa đo" mở ảnh chưa đo mới nhất', (await p.getByRole('button', { name: 'Đo 1 ảnh chưa đo' }).count()) === 1);
+    }
+    await go(p, '/wound-history/w-1?tab=dien-tich');
+    const m = await marks(p);
+    rec(`P22-33-${w}`, `Lịch sử VT01 ${w}px (G20): biểu đồ đường 3 điểm, vạch "Đợt 1"`, !!m && m.pts.length === 3 && m.labels.includes('Đợt 1'));
+    if (w === 390) {
+      rec('P22-37', 'Lịch sử VT01: "Đo 1 ảnh chưa đo" mở ảnh chưa đo mới nhất', (await p.getByRole('button', { name: 'Đo 1 ảnh chưa đo' }).count()) === 1);
       await p.getByTestId('bieu-do-dien-tich').scrollIntoViewIfNeeded();
       const box = await p.getByTestId('bieu-do-dien-tich').boundingBox();
       await p.mouse.click(box.x + m.pts[2].x, box.y + 100); await p.waitForTimeout(300);
@@ -376,7 +382,8 @@ GROUPS['p2-3'] = async (b, h) => {
   }
   {
     const p = await newPage(); await login(p, 'bacsi'); await go(p, '/wounds/w-1');
-    rec('P23-15', 'B05 bác sĩ giữ Album ảnh, không có dải ảnh và lịch sử mới', await has(p, 'Album ảnh') && !(await has(p, 'Ảnh theo thời gian')) && !(await p.getByText(/^Lịch sử vết thương/).count()));
+    // Giai đoạn 1 giao diện theo tác vụ: album bác sĩ chuyển sang wound-history thẻ Ảnh; B05 vẫn không có dải ảnh và lịch sử của bệnh nhân.
+    rec('P23-15', 'B05 bác sĩ không có dải ảnh và lịch sử bệnh nhân; album ở "Tiến triển và lịch sử"', !(await has(p, 'Ảnh theo thời gian')) && !(await p.getByText(/^Lịch sử vết thương/).count()) && (await p.getByRole('button', { name: /^Ảnh và số đo, / }).count()) === 1);
     await p.context().close();
   }
 };
