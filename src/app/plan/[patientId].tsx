@@ -7,7 +7,7 @@ import { DoseRows, PhaseList } from '@/components/CourseCard';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { CheckRow } from '@/components/Consent';
 import { PLAN } from '@/theme.status';
-import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
+import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
 import { capabilitiesFor, modeLabel } from '@/lib/device/capabilities';
 import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, suggestDurationSec } from '@/lib/course';
 import { notify } from '@/lib/dialog';
@@ -101,6 +101,9 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   const [notes, setNotes] = useState(latest?.notes ?? '');
   const [reason, setReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  // UX-02 (Đợt 8): dấu xác nhận chỉ ứng với bộ lịch và liều lúc bác sĩ tích. Đổi một trường của bước Lịch hoặc Liều,
+  // hoặc lưu xong, thì dấu xác nhận trở về trống. Quy tắc lưu (đợt "Đang áp dụng" cần xác nhận) giữ nguyên.
+  const [clearedByEdit, setClearedByEdit] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [step, setStep] = useState(0);
 
@@ -119,7 +122,14 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   }
 
   const suggestion = suggestDurationSec(lastArea?.areaCm2, numOrNull(spc));
-  const setPhase = (i: number, patch: Partial<PhaseDraft>) => setPhases(phases.map((x, k) => (k === i ? { ...x, ...patch } : x)));
+  /** Bỏ dấu xác nhận khi lịch hoặc liều đổi (UX-02); ghi lại để báo bác sĩ ở bước Xác nhận. */
+  const unconfirm = () => {
+    if (confirmed) setClearedByEdit(true);
+    setConfirmed(false);
+  };
+  const edit = <T,>(set: (v: T) => void) => (v: T) => { set(v); unconfirm(); };
+  const editPhases = (next: PhaseDraft[]) => { setPhases(next); unconfirm(); };
+  const setPhase = (i: number, patch: Partial<PhaseDraft>) => editPhases(phases.map((x, k) => (k === i ? { ...x, ...patch } : x)));
 
   const fail = (st: number, msg: string) => { setStep(st); setErr(msg); };
   const save = () => {
@@ -148,6 +158,8 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
       startDate: parsed[0].from, endDate: parsed[parsed.length - 1].to, reviewSchedule: review.trim(), notes: notes.trim(), reason: reason.trim(), confirmed,
     });
     setReason('');
+    setConfirmed(false);
+    setClearedByEdit(false);
     notify('Đã lưu phiên bản mới', 'Bệnh nhân nạp mức, chế độ và thời gian xuống máy qua cáp USB ở màn Thiết bị (bản demo: thiết bị giả lập).');
   };
 
@@ -175,7 +187,7 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
           <View key={i} style={{ gap: 8, padding: 10, borderRadius: 10, backgroundColor: C.surfaceMuted }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ flex: 1, fontWeight: '700', color: C.text }}>Giai đoạn {i + 1}</Text>
-              {phases.length > 1 && <TextLink label="Xóa" tone={C.red} accessibilityLabel={`Xóa giai đoạn ${i + 1}`} onPress={() => setPhases(phases.filter((_, k) => k !== i))} />}
+              {phases.length > 1 && <TextLink label="Xóa" tone={C.red} accessibilityLabel={`Xóa giai đoạn ${i + 1}`} onPress={() => editPhases(phases.filter((_, k) => k !== i))} />}
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1 }}><Field label="Từ ngày" value={ph.from} onChangeText={(v) => setPhase(i, { from: maskDateInput(v) })} keyboardType="number-pad" maxLength={10} placeholder="dd/mm/yyyy" /></View>
@@ -198,7 +210,7 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
             label="Thêm giai đoạn"
             icon="add"
             variant="ghost"
-            onPress={() => setPhases([...phases, { from: '', to: '', pattern: 'n_per_week', n: '3' }])}
+            onPress={() => editPhases([...phases, { from: '', to: '', pattern: 'n_per_week', n: '3' }])}
           />
         )}
 
@@ -209,17 +221,17 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Liều mỗi lần điều trị</Text>
         <Muted>Thiết bị tại nhà bị khóa ở mức và thời gian này; bệnh nhân không đổi được.</Muted>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          {!caps && <View style={{ flex: 1 }}><Field label="Mức năng lượng" value={level} onChangeText={setLevel} keyboardType="number-pad" hint="Ví dụ: 8" /></View>}
-          <View style={{ flex: 1 }}><Field label="Thời gian mỗi lần điều trị (giây)" value={duration} onChangeText={setDuration} keyboardType="number-pad" hint={numOrNull(duration) != null ? fmtDuration(numOrNull(duration)) : undefined} /></View>
+          {!caps && <View style={{ flex: 1 }}><Field label="Mức năng lượng" value={level} onChangeText={edit(setLevel)} keyboardType="number-pad" hint="Ví dụ: 8" /></View>}
+          <View style={{ flex: 1 }}><Field label="Thời gian mỗi lần điều trị (giây)" value={duration} onChangeText={edit(setDuration)} keyboardType="number-pad" hint={numOrNull(duration) != null ? fmtDuration(numOrNull(duration)) : undefined} /></View>
         </View>
         {caps ? (
           <>
             <Text style={{ fontWeight: '700', color: C.text }}>Mức năng lượng</Text>
-            <Choices<string> value={level} onChange={setLevel} options={caps.energyLevels.map((e) => ({ value: String(e), label: String(e) }))} />
+            <Choices<string> value={level} onChange={edit(setLevel)} options={caps.energyLevels.map((e) => ({ value: String(e), label: String(e) }))} />
             {caps.treatmentModes.length > 0 && (
               <>
                 <Text style={{ fontWeight: '700', color: C.text }}>Chế độ điều trị</Text>
-                <Choices<string> value={mode} onChange={setMode} options={caps.treatmentModes} />
+                <Choices<string> value={mode} onChange={edit(setMode)} options={caps.treatmentModes} />
               </>
             )}
             {!caps.confirmed && <Muted>Danh sách mức và chế độ chưa được firmware xác nhận.</Muted>}
@@ -236,14 +248,14 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
               {suggestion != null ? ` × ${spc} giây = ${fmtDuration(suggestion)}.` : '.'}
             </Text>
           ) : <Muted>Chưa có diện tích đã đo cho vết thương này.</Muted>}
-          {suggestion != null && <Button label={`Dùng gợi ý ${fmtDuration(suggestion)}`} icon="calculator-outline" variant="secondary" onPress={() => setDuration(String(suggestion))} />}
+          {suggestion != null && <Button label={`Dùng gợi ý ${fmtDuration(suggestion)}`} icon="calculator-outline" variant="secondary" onPress={() => edit(setDuration)(String(suggestion))} />}
           <Muted>Chỉ là gợi ý. Bác sĩ quyết định thời gian cuối cùng.</Muted>
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}><Field label="Số lần mỗi buổi" value={perVisit} onChangeText={setPerVisit} keyboardType="number-pad" /></View>
-          <View style={{ flex: 1 }}><Field label="Giãn cách (phút)" value={gap} onChangeText={setGap} keyboardType="number-pad" hint="Chỉ khi nhiều lần mỗi buổi." /></View>
+          <View style={{ flex: 1 }}><Field label="Số lần mỗi buổi" value={perVisit} onChangeText={edit(setPerVisit)} keyboardType="number-pad" /></View>
+          <View style={{ flex: 1 }}><Field label="Giãn cách (phút)" value={gap} onChangeText={edit(setGap)} keyboardType="number-pad" hint="Chỉ khi nhiều lần mỗi buổi." /></View>
         </View>
-        <Field label="Mốc xem lại hiệu quả (ngày thứ)" value={reviewDay} onChangeText={setReviewDay} keyboardType="number-pad" hint="So diện tích với đầu đợt; mặc định ngày 28 (Sheehan 2003)." />
+        <Field label="Mốc xem lại hiệu quả (ngày thứ)" value={reviewDay} onChangeText={edit(setReviewDay)} keyboardType="number-pad" hint="So diện tích với đầu đợt; mặc định ngày 28 (Sheehan 2003)." />
           </>
         )}
         {step === 2 && (
@@ -256,7 +268,10 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         <Field label="Lịch tái khám" value={review} onChangeText={setReview} placeholder="Ví dụ: tái đánh giá mỗi 7 ngày" />
         <Field label="Ghi chú" value={notes} onChangeText={setNotes} multiline />
         <Field label="Lý do thay đổi" value={reason} onChangeText={setReason} placeholder="Ví dụ: vết thương cải thiện, giảm còn 3 buổi mỗi tuần" />
-        <CheckRow checked={confirmed} onChange={setConfirmed} label="Tôi xác nhận liều và lịch này. Bệnh nhân sẽ xem được đợt và nạp liệu trình xuống máy." />
+        {clearedByEdit && !confirmed && (
+          <Notice icon="alert-circle-outline">Dấu xác nhận đã được bỏ vì lịch hoặc liều vừa thay đổi. Kiểm tra lại tóm tắt ở trên rồi tích lại.</Notice>
+        )}
+        <CheckRow checked={confirmed} onChange={(v) => { setConfirmed(v); if (v) setClearedByEdit(false); }} label="Tôi xác nhận liều và lịch này. Bệnh nhân sẽ xem được đợt và nạp liệu trình xuống máy." />
             <Button label="Lưu phiên bản mới" icon="save-outline" onPress={save} />
           </>
         )}

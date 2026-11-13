@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
@@ -9,6 +9,7 @@ import { UsbLinkStatus } from '@/components/UsbLinkStatus';
 import { Button, Card, Header, InfoRow, Muted, Notice, Screen } from '@/components/ui';
 import { fmtRemaining, SESSION_LABEL } from '@/lib/device/labels';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
+import { confirm } from '@/lib/dialog';
 import { fmtDateTime } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import { C, semantic, typeScale } from '@/theme';
@@ -50,6 +51,24 @@ export default function SessionMonitor() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // UX-03 (Đợt 8): khi máy đang điều trị, rời màn này (nút quay lại, cử chỉ, phím quay lại) thì phiên sẽ không được ghi.
+  // Chỉ hỏi lại, không đổi cách ghi phiên, không chặn nút Dừng điều trị. Hết "Đang điều trị" thì không hỏi nữa.
+  const running = link.lastStatus?.state === 'running';
+  // Người dùng đã chọn "Vẫn rời màn": tắt chặn để không hỏi lại lần nữa (tránh vòng lặp xác nhận).
+  const [leaving, setLeaving] = useState(false);
+  usePreventRemove(running && !leaving, ({ repeat }) => {
+    const patientView = me?.role === 'patient';
+    confirm(
+      'Rời màn theo dõi?',
+      patientView
+        ? 'Máy vẫn đang điều trị. Nếu rời màn này, buổi điều trị hôm nay sẽ không được ghi lại và bác sĩ sẽ thấy là bỏ lỡ.'
+        : 'Phiên đang chạy. Nếu rời màn này, phiên sẽ không được ghi vào nhật ký.',
+      () => { setLeaving(true); repeat(); },
+      'Vẫn rời màn',
+      'Ở lại màn theo dõi',
+    );
+  });
 
   if (!p || !canView) return <NoAccess />;
 

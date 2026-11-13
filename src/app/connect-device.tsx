@@ -174,6 +174,12 @@ export default function ConnectDevice() {
       {noRetry && isPatient && <Button label="Báo sự cố cho bác sĩ" variant="secondary" icon="chatbubble-ellipses-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'device' } })} />}
       {result?.kind === 'acked' && (
         <>
+          {/* UX-03 (Đợt 8): phiên chỉ được ghi khi màn Theo dõi đang mở (session-monitor.tsx), nên nói thứ tự hai thao tác ngay tại đây. */}
+          <Card>
+            <Text style={{ fontWeight: '700', color: C.text }}>Bước tiếp theo</Text>
+            <Text style={{ color: C.text }}>{isPatient ? '1. Chạm "Theo dõi phiên điều trị".\n2. Sau đó mới bấm nút bắt đầu trên máy.' : '1. Mở "Theo dõi phiên điều trị".\n2. Sau đó mới bắt đầu phiên trên máy.'}</Text>
+            <Muted>{isPatient ? 'Buổi điều trị chỉ được ghi lại khi màn theo dõi đang mở.' : 'Phiên chỉ được ghi vào nhật ký khi màn theo dõi đang mở.'}</Muted>
+          </Card>
           <Button label="Theo dõi phiên điều trị" icon="pulse-outline" onPress={() => router.push({ pathname: '/session-monitor', params: { patientId: p.id, woundId: selected?.wound.id } })} />
           {canSend && <View style={{ alignItems: 'center' }}><TextLink label="Nạp lại liệu trình" onPress={send} /></View>}
         </>

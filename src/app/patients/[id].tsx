@@ -43,13 +43,20 @@ export default function PatientDetail() {
   const codeLive = !!login?.activationHash && !!login.activationExpiresAt && login.activationExpiresAt > new Date().toISOString();
   // Máy rảnh để giao: chưa gán ai và đã qua khử khuẩn, kiểm tra (vòng đời sẵn sàng).
   const freeDevices = data.devices.filter((d) => !d.patientId && (d.lifecycle ?? 'ready') === 'ready');
-  const giveDevice = (deviceId: string) => {
-    try {
-      assignDevice(deviceId, p.id);
-    } catch (e) {
-      notify('Chưa giao được máy', e instanceof Error ? e.message : String(e));
-    }
-  };
+  // UX-07 (Đợt 8): giao máy cần xác nhận, nêu mã máy và hồ sơ, vì giao nhầm thì thu hồi kéo theo khử khuẩn. Quy tắc giao giữ nguyên.
+  const giveDevice = (deviceId: string, code: string) =>
+    confirm(
+      `Giao ${code} cho ${p.name}?`,
+      `Mã hồ sơ ${p.code}. Liệu trình nạp xuống máy và các phiên điều trị sẽ gắn với hồ sơ này. Nếu giao nhầm, thu hồi sẽ chuyển máy sang chờ khử khuẩn.`,
+      () => {
+        try {
+          assignDevice(deviceId, p.id);
+        } catch (e) {
+          notify('Chưa giao được máy', e instanceof Error ? e.message : String(e));
+        }
+      },
+      `Giao ${code}`,
+    );
   const takeBack = () =>
     confirm('Thu hồi máy', 'Gỡ máy khỏi bệnh nhân và bỏ đầu phát đang dùng. Máy chuyển sang chờ khử khuẩn.', () => {
       try {
@@ -118,7 +125,7 @@ export default function PatientDetail() {
             ) : freeDevices.length === 0 ? (
               <Muted>Chưa có máy nào đã khử khuẩn và kiểm tra xong. Quản trị kỹ thuật cập nhật vòng đời máy.</Muted>
             ) : (
-              freeDevices.map((d) => <Button key={d.id} label={`Giao ${d.code}`} variant="secondary" icon="arrow-forward-circle-outline" onPress={() => giveDevice(d.id)} />)
+              freeDevices.map((d) => <Button key={d.id} label={`Giao ${d.code}`} variant="secondary" icon="arrow-forward-circle-outline" onPress={() => giveDevice(d.id, d.code)} />)
             )}
           </Disclosure>
         )}
