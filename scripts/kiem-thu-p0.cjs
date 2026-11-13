@@ -167,11 +167,13 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     // B08: phương pháp khác nhau, thứ tự ngày ngược.
     await mutate(p, `d.images.forEach((i) => { if (i.id === 'IMG0001') i.measureMethod = 'Thước giấy kẻ ô'; if (i.id === 'IMG0003') i.measureMethod = 'Phần mềm đo trên ảnh'; });`);
     await go(p, '/compare/w-1');
-    await p.getByRole('radio', { name: /^Ảnh IMG0003/ }).last().click(); await p.waitForTimeout(300);
+    // P1-04b: hai dãy chip thay bằng dòng "Đổi ảnh trước/sau" mở một danh sách.
+    const pickB08 = async (side, id) => { await p.getByRole('button', { name: new RegExp(`^Đổi ảnh ${side}`) }).click(); await p.waitForTimeout(200); await p.getByRole('radio', { name: new RegExp(`^Ảnh ${id}`) }).click(); await p.waitForTimeout(300); };
+    await pickB08('sau', 'IMG0003');
     const methodWarn = await has(p, /^Hai số đo dùng phương pháp khác nhau/, false);
     const srcChip = (await p.getByText('Bác sĩ nhập', { exact: true }).count()) >= 2;
-    await p.getByRole('radio', { name: /^Ảnh IMG0003/ }).first().click(); await p.waitForTimeout(300);
-    await p.getByRole('radio', { name: /^Ảnh IMG0001/ }).last().click(); await p.waitForTimeout(300);
+    await pickB08('trước', 'IMG0003');
+    await pickB08('sau', 'IMG0001');
     rec('TP-DS-04b', 'B08: nguồn "Bác sĩ nhập" và phương pháp mỗi ảnh; cảnh báo khác phương pháp; cảnh báo "Trước" chụp sau "Sau"', methodWarn && srcChip && await has(p, /^Ảnh "Trước" .* chụp sau ảnh "Sau"/, false), `cảnh báo PP ${methodWarn}, chip ${srcChip}`);
     // B10: không còn lựa chọn AR, không chọn sẵn, bắt buộc chọn khi có số.
     await go(p, '/guided-capture?woundId=w-1');
