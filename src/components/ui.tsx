@@ -460,7 +460,10 @@ export function SwitchRow({ label, detail, value, onChange, disabled, muted }: {
         <Text style={{ color: C.text, fontWeight: detail ? '600' : '400' }}>{label}</Text>
         {detail ? <Text style={{ color: C.textSoft, fontSize: T.small, lineHeight: 21 }}>{detail}</Text> : null}
       </View>
-      <Switch value={value} onValueChange={onChange} disabled={disabled} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden />
+      {/* P2-08 (A29): công tắc trần 40 × 20 chỉ để nhìn; vùng chạm và trình đọc màn hình dùng cả dòng (cao tối thiểu 48), không có đích phụ. */}
+      <View pointerEvents="none" aria-hidden importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        <Switch value={value} disabled={disabled} focusable={false} />
+      </View>
     </Pressable>
   );
 }

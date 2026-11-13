@@ -407,6 +407,42 @@ GROUPS['p2-4'] = async (b, h) => {
   }
 };
 
+// PR-P2-7: điều hướng và trợ năng, kiểm mọi màn bệnh nhân ở 320 đến 768 px.
+GROUPS['p2-7'] = async (b, h) => {
+  const { newPage, login, go, has, overflow } = h;
+  // Đích chạm nhỏ hơn 44 px, bỏ qua phần tử trong vùng aria-hidden (chỉ để nhìn).
+  const tiny = (p) => p.evaluate(() => [...document.querySelectorAll('[role="button"],[role="radio"],[role="tab"],[role="link"],[role="switch"],[role="checkbox"]')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && (r.height < 44 || r.width < 44) && !e.closest('[aria-hidden="true"]'); }).map((e) => `${(e.getAttribute('aria-label') || e.textContent || '').slice(0, 30)} ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`));
+  const minFont = (p) => p.evaluate(() => Math.min(...[...document.querySelectorAll('div,span')].filter((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && !/ionicons/i.test(getComputedStyle(e).fontFamily)).map((e) => parseFloat(getComputedStyle(e).fontSize))));
+  const cut = (p) => p.evaluate(() => [...document.querySelectorAll('[role="heading"]')].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent.slice(0, 30)));
+  for (const w of WIDTHS) {
+    const p = await newPage(w); await login(p, 'benhnhan');
+    await go(p, '/patient/history');
+    rec(`P27-01-${w}`, `N04 ${w}px: tiêu đề "Lịch sử và hồ sơ" (khớp tab Lịch sử)`, await has(p, 'Lịch sử và hồ sơ') && !(await has(p, 'Hồ sơ và lịch sử')));
+    await go(p, '/patient/account');
+    const t9 = await tiny(p);
+    rec(`P27-02-${w}`, `N09 ${w}px (A29): không còn đích chạm 40×20`, t9.length === 0, t9.join(', '));
+    for (const [code, url] of SCREENS.benhnhan) {
+      await go(p, url);
+      const o = await overflow(p), f = await minFont(p), c = await cut(p), t = code === 'n03' ? [] : await tiny(p);
+      rec(`P27-03-${code}-${w}`, `${code.toUpperCase()} ${w}px: không tràn ngang, chữ ≥ 12 px, tiêu đề không cắt, đích chạm ≥ 44 px`, o === 0 && f >= 12 && c.length === 0 && t.length === 0, `tràn ${o}, chữ nhỏ nhất ${f}, cắt ${c.join('/')}, nhỏ ${t.slice(0, 3).join(', ')}`);
+    }
+    rec(`P27-04-${w}`, `${w}px: không lỗi JS`, p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+  {
+    const p = await newPage(320); await login(p, 'benhnhan'); await go(p, '/schedule');
+    const days = await p.evaluate(() => [...document.querySelectorAll('[role="button"]')].filter((e) => /^Ngày \d+ tháng/.test(e.getAttribute('aria-label') || '')).map((e) => Math.round(e.getBoundingClientRect().width)));
+    rec('P27-05', 'N03 320 px: ô ngày của lịch tháng (có sẵn từ trước P2) rộng dưới 44 px, ghi nhận để xử lý sau', 'note', `rộng ${Math.min(...days)} px, cao 52 px`);
+    await go(p, '/patient/account');
+    const sw = p.getByRole('switch', { name: 'Dùng ảnh cho nghiên cứu' });
+    const on = () => p.evaluate(() => document.querySelector('input[role="switch"]')?.checked);
+    const before = await on(); await sw.click(); await p.waitForTimeout(500);
+    const after = await on();
+    rec('P27-06', 'N09: công tắc vẫn bật tắt được bằng chạm cả dòng (dòng cao ≥ 48 px)', (await sw.boundingBox()).height >= 48 && (p.dialogs.length > 0 || after !== before), `${before} → ${after}; hộp thoại ${p.dialogs.join(' / ').slice(0, 80)}`);
+    await p.context().close();
+  }
+};
+
 (async () => {
   const b = await chromium.launch();
   const h = helpers(b);
