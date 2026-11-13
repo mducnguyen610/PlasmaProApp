@@ -9,7 +9,8 @@ import { NoAccess, useCanView } from '@/components/Guard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { Button, Card, Choices, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, SwitchRow, TextLink, WoundPhoto } from '@/components/ui';
 import { SEVERITY } from '@/lib/access';
-import { assessmentError, EXUDATE, HELP, INFECTION, PERCENT_BANDS, PRESSURE, PRESSURE_STAGES, WOUND_TYPES, woundAge } from '@/lib/assessment';
+import { assessmentError, assessmentSummary, EXUDATE, HELP, INFECTION, PERCENT_BANDS, PRESSURE, PRESSURE_STAGES, WOUND_TYPES, woundAge } from '@/lib/assessment';
+import { evaluationProblems, type EvalProblem } from '@/lib/evaluationCheck';
 import { fmtDate, TREND } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { notify } from '@/lib/dialog';
@@ -21,7 +22,7 @@ import { C, size, space, T } from '@/theme';
 export default function Evaluate() {
   const { woundId, imageId } = useLocalSearchParams<{ woundId: string; imageId?: string }>();
   const { data, me, addEvaluation, setReportHandled } = useStore();
-  const { wound, patient, imagesOf } = useLookups();
+  const { wound, patient, imagesOf, account } = useLookups();
   const w = wound(woundId);
   const p = patient(w?.patientId);
   const canView = useCanView(p);
@@ -32,13 +33,16 @@ export default function Evaluate() {
   // Lấy sẵn loại và giai đoạn của lần đánh giá trước (như Swift), bác sĩ chỉ sửa khi thay đổi.
   const prevEval = data.evaluations.filter((e) => e.woundId === woundId && e.assessment).sort((a, b) => b.date.localeCompare(a.date))[0];
   const prev = prevEval?.assessment;
+  // P1-03b: lần đánh giá gần nhất của đúng vết đang mở (có hay không có phân loại), chỉ để xem; không giá trị nào được chép vào biểu mẫu.
+  const lastEval = data.evaluations.filter((e) => e.woundId === woundId).sort((x, y) => y.date.localeCompare(x.date))[0];
   // P0 ID-06: imageId có trên đường dẫn nhưng không thuộc vết thương đang mở thì dừng, không lưu thiếu ảnh tham chiếu.
   const imageMismatch = !!imageId && !img;
   const [a, setA] = useState<Partial<WoundAssessment>>({ woundType: prev?.woundType, pressureStage: prev?.pressureStage });
   const set = (k: keyof WoundAssessment) => (v: string) => { setA((x) => ({ ...x, [k]: v, ...(k === 'woundType' && v !== PRESSURE ? { pressureStage: undefined } : {}) })); clearErr(k as FieldKey); };
   const [characteristics, setCharacteristics] = useState('');
   const [symptoms, setSymptoms] = useState(openReports.map((r) => r.content).join(' '));
-  const [symptomSource, setSymptomSource] = useState(openReports.length ? 'Bệnh nhân báo qua ứng dụng' : 'Bác sĩ hỏi trực tiếp');
+  const [defaultSource] = useState(openReports.length ? 'Bệnh nhân báo qua ứng dụng' : 'Bác sĩ hỏi trực tiếp');
+  const [symptomSource, setSymptomSource] = useState(defaultSource);
   const [severity, setSeverity] = useState<Severity | ''>('');
   const [trend, setTrend] = useState<Trend>('insufficient');
   const [instructions, setInstructions] = useState('');
@@ -54,14 +58,19 @@ export default function Evaluate() {
   const [saved, setSaved] = useState<{ reportIds: string[] } | null>(null);
   // Bổ sung Đợt 4: nhóm đang mở do màn điều khiển, để khi lưu thiếu trường thì mở đúng nhóm và đưa tới trường lỗi.
   const [openGroups, setOpenGroups] = useState<[boolean, boolean, boolean]>([true, false, false]);
-  const [fieldErr, setFieldErr] = useState<{ key: FieldKey; msg: string; at: number } | null>(null);
+  // P1-03a: lỗi tại từng trường (nhiều trường cùng lúc) và danh sách mục cần sửa của lần bấm Lưu gần nhất.
+  const [fieldErrs, setFieldErrs] = useState<Partial<Record<FieldKey, string>>>({});
+  const [problems, setProblems] = useState<EvalProblem[]>([]);
   // P0 SV-04: "Sửa" trong thẻ "Sẽ lưu" mở đúng nhóm và cuộn tới trường, như khi lưu thiếu.
   const [scrollTo, setScrollTo] = useState<{ key: FieldKey; at: number } | null>(null);
   const scrollRef = useRef<ScrollViewInstance>(null);
   // Bảng nút của các trường bắt buộc và hàm gắn nút, tạo một lần (không đọc trong lúc render).
   const [fieldNodes] = useState(() => new Map<FieldKey, HostInstance>());
   const [anchors] = useState(() => Object.fromEntries(FIELD_KEYS.map((k) => [k, (el: HostInstance | null) => { if (el) fieldNodes.set(k, el); else fieldNodes.delete(k); }])) as Record<FieldKey, (el: HostInstance | null) => void>);
-  const clearErr = (k: FieldKey) => setFieldErr((f) => (f?.key === k ? null : f));
+  const clearErr = (k: FieldKey) => {
+    setFieldErrs((f) => { if (!(k in f)) return f; const { [k]: _, ...rest } = f; return rest; });
+    setProblems((ps) => ps.filter((x) => x.key !== k));
+  };
   const [done, setDone] = useState(false);
   const allowLeave = useDiscardGuard(dirty && !done);
   // Cuộn tới trường lỗi một lần cho mỗi lần bấm Lưu (phụ thuộc fieldErr.at), sau khi nhóm đã mở và trường đã hiện.
@@ -87,7 +96,8 @@ export default function Evaluate() {
     total: isPressure ? 6 : 5,
     missing: [!filled(a.woundType) && 'loại vết thương', isPressure && !filled(a.pressureStage) && 'giai đoạn', !filled(a.exudate) && 'dịch tiết', !filled(a.infection) && 'dấu hiệu nhiễm trùng'].filter(Boolean) as string[],
   };
-  const g2 = { done: [severity, characteristics, symptoms, symptomSource].filter(filled).length, total: 4, missing: severity ? [] : ['mức độ'] };
+  // P1-03c: ô nguồn triệu chứng chỉ tính là đã điền khi bác sĩ đã sửa giá trị điền sẵn.
+  const g2 = { done: [severity, characteristics, symptoms, symptomSource !== defaultSource ? symptomSource : ''].filter(filled).length, total: 4, missing: severity ? [] : ['mức độ'] };
   const g3 = { done: [trend, instructions, nextReview].filter(filled).length, total: 3, missing: [] as string[] };
   const groupSummary = (g: { done: number; total: number; missing: string[] }) =>
     `Đã điền ${g.done}/${g.total}${g.missing.length ? ` · còn ${g.missing.length} mục bắt buộc` : ''}`;
@@ -97,17 +107,20 @@ export default function Evaluate() {
     instructions.trim() && 'hướng dẫn', nextReview.trim() && 'ngày tái đánh giá',
   ].filter(Boolean) as string[];
   const toggle = (g: 0 | 1 | 2) => (next: boolean) => setOpenGroups((o) => o.map((v, i) => (i === g ? next : v)) as [boolean, boolean, boolean]);
-  const errOf = (k: FieldKey) => (fieldErr?.key === k ? fieldErr.msg : undefined);
+  const errOf = (k: FieldKey) => fieldErrs[k];
   const anchor = (k: FieldKey) => anchors[k];
 
   // Quy tắc và câu báo lỗi giữ nguyên; chỉ thêm việc chỉ ra trường lỗi (mở nhóm, cuộn tới, ghi lỗi tại trường).
-  const fail = (msg: string, key?: FieldKey) => {
-    setErr(msg);
-    if (!key) return;
-    const g = GROUP_OF[key];
-    setOpenGroups((o) => (o[g] ? o : (o.map((v, i) => v || i === g) as [boolean, boolean, boolean])));
-    setFieldErr((f) => ({ key, msg, at: (f?.at ?? 0) + 1 }));
-    setScrollTo((x) => ({ key, at: (x?.at ?? 0) + 1 }));
+  const fail = (msg: string) => { setErr(msg); setProblems([]); };
+  // P1-03a: báo mọi mục cần sửa trong một lượt: mở mọi nhóm có mục, ghi lỗi tại từng trường, cuộn tới mục đầu tiên.
+  const failAll = (list: EvalProblem[]) => {
+    const keyed = list.filter((x): x is EvalProblem & { key: FieldKey } => !!x.key);
+    setErr(list.length === 1 ? list[0].msg : `Còn ${list.length} mục cần sửa trước khi lưu: ${list.map((x) => x.label).join(', ')}.`);
+    setProblems(list);
+    setFieldErrs(Object.fromEntries(keyed.map((x) => [x.key, x.msg])));
+    const groups = new Set(keyed.map((x) => GROUP_OF[x.key]));
+    setOpenGroups((o) => o.map((v, i) => v || groups.has(i as 0 | 1 | 2)) as [boolean, boolean, boolean]);
+    if (keyed[0]) setScrollTo((x) => ({ key: keyed[0].key, at: (x?.at ?? 0) + 1 }));
   };
   const jumpTo = (key: FieldKey) => {
     const g = GROUP_OF[key];
@@ -115,15 +128,10 @@ export default function Evaluate() {
     setScrollTo((x) => ({ key, at: (x?.at ?? 0) + 1 }));
   };
   const save = async () => {
-    const aErr = assessmentError(a);
-    if (aErr) return fail(aErr, ASSESSMENT_FIELD[aErr]);
-    if (!severity) return fail('Hãy chọn mức Nhẹ, Trung bình hoặc Nặng.', 'severity');
-    if (nextReview && !/^\d{2}\/\d{2}\/\d{4}$/.test(nextReview)) return fail('Ngày tái đánh giá theo dạng dd/mm/yyyy.', 'nextReview');
+    // Quy tắc không đổi: assessmentError (gọi lại nhiều lần trong evaluationCheck), mức độ bắt buộc, ngày tái đánh giá dd/mm/yyyy và có thật.
+    const list = evaluationProblems(assessmentError, a, severity, nextReview);
+    if (list.length) return failAll(list);
     const [d, m, y] = nextReview.split('/');
-    if (nextReview) {
-      const date = new Date(Number(y), Number(m) - 1, Number(d));
-      if (date.getFullYear() !== Number(y) || date.getMonth() !== Number(m) - 1 || date.getDate() !== Number(d)) return fail('Ngày tái đánh giá không tồn tại.', 'nextReview');
-    }
     if (imageMismatch) return fail('Ảnh tham chiếu không thuộc vết thương này. Mở lại từ màn vết thương.');
     if (saving.current) return;
     saving.current = true;
@@ -133,7 +141,7 @@ export default function Evaluate() {
     await addEvaluation({
       woundId: w.id, imageId: img?.id, date: todayIso(), areaCm2: img?.areaCm2 ?? null,
       characteristics: characteristics.trim(), symptoms: symptoms.trim(), symptomSource: symptomSource.trim(),
-      severity, trend, instructions: instructions.trim(), nextReview: nextReview ? `${y}-${m}-${d}` : undefined, visibleToPatient: visible,
+      severity: severity as Severity, trend, instructions: instructions.trim(), nextReview: nextReview ? `${y}-${m}-${d}` : undefined, visibleToPatient: visible,
       assessment: a as WoundAssessment,
     });
     } catch (e) {
@@ -141,6 +149,7 @@ export default function Evaluate() {
       return fail(`Chưa lưu được đánh giá: ${e instanceof Error ? e.message : 'lỗi không xác định'}. Dữ liệu vẫn còn, hãy thử lại.`);
     }
     setErr(null);
+    setProblems([]);
     setDone(true);
     if (filledReports.length) { setSaved({ reportIds: filledReports }); return; }
     allowLeave();
@@ -181,12 +190,31 @@ export default function Evaluate() {
         ) : <InfoRow label="Ảnh tham chiếu" value="Không có" />}
         <InfoRow label="Diện tích bác sĩ đo" value={formatAreaDisplay(img?.areaCm2 ?? null)} />
         <Muted>Ứng dụng chỉ lưu nhận định của bác sĩ; không tự suy luận tình trạng hay đề xuất liệu trình.</Muted>
+        {/* P1-03b: xem lại lần đánh giá trước của cùng vết, chỉ đọc. Không có nút chép, không điền thêm trường nào. */}
+        {lastEval ? (
+          <>
+            <Divider />
+            <Disclosure title={`Lần đánh giá trước ${fmtDate(lastEval.date)}`} summary={`${account(lastEval.doctorId)?.name ?? 'Bác sĩ không rõ'} · chỉ để tham khảo, không tự điền`}>
+              <View testID="lan-danh-gia-truoc" style={{ gap: space.xs }}>
+                <InfoRow label="Mức độ" value={lastEval.severity ? SEVERITY[lastEval.severity].label : 'Không ghi'} />
+                <InfoRow label="Diễn biến" value={TREND[lastEval.trend].label} />
+                <InfoRow label="Phân loại" value={lastEval.assessment ? assessmentSummary(lastEval.assessment) : 'Không ghi'} />
+                <InfoRow label="Diện tích lúc đó" value={formatAreaDisplay(lastEval.areaCm2)} />
+                {lastEval.characteristics ? <InfoRow label="Đặc điểm" value={lastEval.characteristics} /> : null}
+                {lastEval.symptoms ? <InfoRow label="Triệu chứng" value={lastEval.symptoms} /> : null}
+                <InfoRow label="Hướng dẫn" value={lastEval.instructions || 'Không ghi'} />
+                <Muted>Giá trị lần trước không được chép vào biểu mẫu. Bác sĩ nhập lại theo nhận định hôm nay.</Muted>
+              </View>
+            </Disclosure>
+          </>
+        ) : null}
       </Card>
       {/* PP-09: ba nhóm Disclosure theo thứ tự trường cũ; nhóm đầu mở sẵn. Giá trị nằm ở state của màn nên đóng mở nhóm không mất dữ liệu.
           Bổ sung Đợt 4: ba nhóm chung một thẻ, tách bằng đường kẻ, khoảng cách trong nhóm 8 (thang space) để màn ngắn hơn; nhóm do màn điều khiển. */}
       <Card>
         <Disclosure title="Phân loại vết thương" summary={groupSummary(g1)} summaryTone={g1.missing.length ? C.amber : undefined} open={openGroups[0]} onToggle={toggle(0)}>
           <View style={{ gap: space.s }}>
+            <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '700' }}>Bắt buộc</Text>
             <InfoRow label="Tuổi vết thương (tự tính)" value={`${woundAge(w.startDate, todayIso())}, từ ${w.startDate.split('-').reverse().join('/')}`} />
             <Q label="Loại vết thương" required help={HELP.woundType} error={errOf('woundType')} anchor={anchor('woundType')}><Choices value={a.woundType ?? ''} onChange={set('woundType')} options={WOUND_TYPES.map((v) => ({ value: v, label: v }))} /></Q>
             {/* P0 DS-04: giá trị điền sẵn từ lần trước được ghi rõ nguồn cho tới khi bác sĩ chọn lại. */}
@@ -196,10 +224,13 @@ export default function Evaluate() {
             {a.woundType === PRESSURE && (
               <Q label="Giai đoạn (NPIAP)" required help={HELP.pressureStage} error={errOf('pressureStage')} anchor={anchor('pressureStage')}><Choices value={a.pressureStage ?? ''} onChange={set('pressureStage')} options={PRESSURE_STAGES.map((v) => ({ value: v, label: v }))} /></Q>
             )}
-            <Q label="Mô hạt" help={HELP.granulation}><Choices value={a.granulation ?? ''} onChange={set('granulation')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
-            <Q label="Biểu mô hóa" help={HELP.epithelial}><Choices value={a.epithelial ?? ''} onChange={set('epithelial')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
             <Q label="Dịch tiết" required help={HELP.exudate} error={errOf('exudate')} anchor={anchor('exudate')}><Choices value={a.exudate ?? ''} onChange={set('exudate')} options={EXUDATE.map((v) => ({ value: v, label: v }))} /></Q>
             <Q label="Dấu hiệu nhiễm trùng" required help={HELP.infection} error={errOf('infection')} anchor={anchor('infection')}><Choices value={a.infection ?? ''} onChange={set('infection')} options={INFECTION.map((v) => ({ value: v, label: v }))} /></Q>
+            {/* P1-03c (QĐ-P1-5 A): câu không bắt buộc gom xuống cụm "Bổ sung"; câu chữ và lựa chọn giữ nguyên. */}
+            <Divider />
+            <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '700' }}>Bổ sung (không bắt buộc)</Text>
+            <Q label="Mô hạt" help={HELP.granulation}><Choices value={a.granulation ?? ''} onChange={set('granulation')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
+            <Q label="Biểu mô hóa" help={HELP.epithelial}><Choices value={a.epithelial ?? ''} onChange={set('epithelial')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
             <Muted>Danh mục là bản nháp cho demo, cần bác sĩ trong nhóm chọn thang đánh giá chính thức.</Muted>
           </View>
         </Disclosure>
@@ -255,6 +286,12 @@ export default function Evaluate() {
         ) : <Muted>Chỉ bác sĩ thấy đánh giá này.</Muted>}
       </View>
       {err ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{err}</Text> : null}
+      {/* P1-03a: mỗi mục cần sửa là một liên kết mở đúng nhóm và cuộn tới trường. */}
+      {problems.length > 1 ? (
+        <View testID="muc-can-sua" style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space.m }}>
+          {problems.filter((x) => x.key).map((x) => <TextLink key={x.key} label={`Tới ${x.label.toLowerCase()}`} accessibilityLabel={`Tới mục ${x.label}`} onPress={() => jumpTo(x.key as FieldKey)} />)}
+        </View>
+      ) : null}
       <Button label={visible ? 'Lưu và công bố cho bệnh nhân' : 'Lưu đánh giá (chỉ bác sĩ)'} icon="save-outline" onPress={save} disabled={imageMismatch} reason="Ảnh tham chiếu không thuộc vết thương này." />
     </Screen>
   );
@@ -298,10 +335,3 @@ function SummaryRow({ label, value, missing, onEdit }: { label: string; value: s
     </View>
   );
 }
-/** Câu lỗi của assessmentError (assessment.ts, không sửa) ứng với trường nào. Câu không có trong bảng thì chỉ báo trên nút Lưu như cũ. */
-const ASSESSMENT_FIELD: Record<string, FieldKey | undefined> = {
-  'Hãy chọn loại vết thương.': 'woundType',
-  'Loét do tì đè cần chọn giai đoạn.': 'pressureStage',
-  'Hãy chọn mức dịch tiết.': 'exudate',
-  'Hãy chọn dấu hiệu nhiễm trùng.': 'infection',
-};
