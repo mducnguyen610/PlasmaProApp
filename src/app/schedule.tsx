@@ -1,4 +1,6 @@
-import { AdherenceCalendar } from '@/components/AdherenceCalendar';
+import { useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
+import { AdherenceCalendar, SessionNoteForm } from '@/components/AdherenceCalendar';
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { View } from 'react-native';
@@ -6,7 +8,7 @@ import { DateTile } from '@/components/items';
 import { Card, Disclosure, Empty, Header, Muted, Notice, Ring, Screen, SectionTitle } from '@/components/ui';
 import { DoseRows, PhaseList } from '@/components/CourseCard';
 import { courseProgress, courseStatus, localDay, phasesOf } from '@/lib/course';
-import { fmtDate, PLAN_STATUS } from '@/lib/format';
+import { fmtDate, fmtDateTime, PLAN_STATUS } from '@/lib/format';
 import { computeReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
@@ -14,6 +16,10 @@ import { C, T } from '@/theme';
 export default function Schedule() {
   const { data, me } = useStore();
   const { patient, sessionsOf, woundsOf, coursePlan } = useLookups();
+  // Đợt 11 (UX-19): T02 và mục "Các buổi điều trị gần đây" ở Lịch sử mở màn này kèm mã phiên để ghi cảm giác ngay, không phải tìm trong lịch tháng.
+  const { sessionId } = useLocalSearchParams<{ sessionId?: string }>();
+  const [noteFor, setNoteFor] = useState<string | null>(sessionId ?? null);
+  const [noteSaved, setNoteSaved] = useState(false);
   const today = localDay(new Date());
   const p = patient(me?.patientId);
   // Màn nằm ngoài nhóm tab bệnh nhân nên tự chặn vai trò khác.
@@ -28,7 +34,17 @@ export default function Schedule() {
   const phases = plan ? phasesOf(plan) : [];
   const ph = pr && pr.phaseIndex >= 0 ? phases[pr.phaseIndex] : undefined;
   const st = pr ? courseStatus(pr, fmtDate) : null;
+  // Chỉ mở biểu mẫu cho phiên thuộc máy của bệnh nhân đang đăng nhập.
+  const noteSession = noteFor && dev ? sessionsOf(dev.id).find((s) => s.sessionId === noteFor) : undefined;
   return <Screen header={<Header back title="Lịch trình của tôi" />}>
+    {noteSession && (
+      <Card>
+        <Text accessibilityRole="header" style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>Ghi cảm giác buổi điều trị</Text>
+        <Muted>{`Buổi lúc ${fmtDateTime(noteSession.start)}, ${noteSession.durationMin} phút. Bác sĩ xem được ghi chú này.`}</Muted>
+        <SessionNoteForm sessionId={noteSession.sessionId} onDone={(saved) => { setNoteFor(null); setNoteSaved(saved); }} />
+      </Card>
+    )}
+    {noteSaved && <Notice tone="green" icon="checkmark-circle-outline">Đã lưu cảm giác của buổi điều trị. Có thể sửa lại trong lịch tháng bên dưới.</Notice>}
     {/* Bản rút gọn (08/11/2026): lịch tháng là điểm neo, nằm ngay dưới một dòng tóm tắt đợt.
         Giai đoạn, liều và ghi chú thu vào mục "Liệu trình". */}
     <Card hero>

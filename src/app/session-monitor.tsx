@@ -23,12 +23,12 @@ const STALE_AFTER_SEC = 5;
 
 export default function SessionMonitor() {
   const params = useLocalSearchParams<{ patientId?: string; woundId?: string }>();
-  const { me, recordDeviceSession } = useStore();
+  const { data, me, recordDeviceSession } = useStore();
   const { patient } = useLookups();
   const p = patient(me?.role === 'patient' ? me.patientId : params.patientId);
   const canView = useCanView(p);
   // kind: 'done' buổi đủ thời gian, 'interrupted' buổi dừng giữa chừng hoặc lỗi, 'fail' chưa ghi được (V03: mỗi sự kiện một thông báo).
-  const [saved, setSaved] = useState<{ kind: 'done' | 'interrupted' | 'fail'; text: string } | null>(null);
+  const [saved, setSaved] = useState<{ kind: 'done' | 'interrupted' | 'fail'; text: string; startedAt?: string } | null>(null);
   const link = useDeviceLink({
     onSessionEnd: (done) => {
       if (!p) return;
@@ -36,7 +36,7 @@ export default function SessionMonitor() {
         const ok = recordDeviceSession({ patientId: p.id, woundId: params.woundId, startedAt: done.startedAt.toISOString(), durationSec: done.durationSec, outcome: done.outcome });
         setSaved(ok
           ? done.outcome === 'done'
-            ? { kind: 'done', text: `Đã ghi phiên điều trị ${Math.round(done.durationSec / 6) / 10} phút vào nhật ký.` }
+            ? { kind: 'done', text: `Đã ghi phiên điều trị ${Math.round(done.durationSec / 6) / 10} phút vào nhật ký.`, startedAt: done.startedAt.toISOString() }
             : { kind: 'interrupted', text: 'Đã ghi vào nhật ký là phiên bị gián đoạn.' }
           : { kind: 'fail', text: 'Hồ sơ chưa được giao máy nên phiên chưa được ghi. Bác sĩ cần giao máy trên hồ sơ bệnh nhân.' });
       } catch (e) {
@@ -73,6 +73,7 @@ export default function SessionMonitor() {
   if (!p || !canView) return <NoAccess />;
 
   const isPatient = me?.role === 'patient';
+  const justRecorded = saved?.startedAt ? data.sessions.find((s) => s.start === saved.startedAt && s.deviceId === p.deviceId) : undefined;
   const st = link.lastStatus;
   const lost = link.state === 'disconnected' || link.state === 'error';
   // Ngưỡng 5 s là đề xuất ở wireframe T02 (P5), chưa có nguồn; ICD hiện quy định máy gửi STA mỗi giây.
@@ -114,7 +115,8 @@ export default function SessionMonitor() {
       {st?.state === 'done' && isPatient && (
         <>
           <Notice tone={semantic.success.tone} icon="checkmark-circle-outline">{saved?.kind === 'done' ? `Đã xong buổi điều trị hôm nay. ${saved.text}` : 'Đã xong buổi điều trị hôm nay.'}</Notice>
-          <Button label="Ghi cảm giác sau khi điều trị" icon="create-outline" onPress={() => router.push('/schedule')} />
+          {/* Đợt 11 (UX-19): mở thẳng biểu mẫu ghi cảm giác của phiên vừa ghi; không tìm được phiên thì mở Lịch trình như trước. */}
+          <Button label="Ghi cảm giác sau khi điều trị" icon="create-outline" onPress={() => router.push(justRecorded ? { pathname: '/schedule', params: { sessionId: justRecorded.sessionId } } : '/schedule')} />
         </>
       )}
       {st?.state === 'stopped' && (
