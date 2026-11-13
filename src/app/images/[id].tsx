@@ -124,11 +124,11 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
     setEditStart(JSON.stringify({ areaText: d.areaText, method: d.method, fullName: d.fullName }));
   };
 
-  const doSave = () => {
+  const doSave = async () => {
     if (saving.current) return;
     saving.current = true;
     try {
-      labelImage(im.id, newArea, method.trim() || undefined, unit === 'mm2' ? `Nhập ${areaText} mm², quy đổi sang cm²` : undefined);
+      await labelImage(im.id, newArea, method.trim() || undefined, unit === 'mm2' ? `Nhập ${areaText} mm², quy đổi sang cm²` : undefined);
       setEditing(false);
       setJustSaved(newArea !== null);
     } catch (e) {
@@ -165,13 +165,17 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
   const nextP = patient(next?.patientId);
   const nextW = wound(next?.woundId);
 
+  // CR-01: chờ ghi bộ nhớ xong mới coi là đã đổi; lỗi ghi thì báo, dữ liệu trên màn giữ nguyên.
+  const persist = (op: () => Promise<void>, after?: () => void) => {
+    op().then(() => after?.(), (e: unknown) => notify('Chưa lưu được', e instanceof Error ? e.message : String(e)));
+  };
+
   const exclude = () => {
     const reason = excludeReason.trim();
     if (!reason) return;
     // R-06: "Loại" có hộp xác nhận; ô lý do vẫn bắt buộc như trước.
     confirm('Loại ảnh khỏi bộ dữ liệu', `Ảnh ${im.id} sẽ không dùng cho huấn luyện. Lý do: ${reason}. Có thể đưa lại sau.`, () => {
-      setExcluded(im.id, reason);
-      setExcludeReason('');
+      persist(() => setExcluded(im.id, reason), () => setExcludeReason(''));
     }, 'Loại ảnh');
   };
 
@@ -295,9 +299,10 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
                 style={{ minHeight: 44, justifyContent: 'center' }}
                 onPress={() =>
                   confirm('Gỡ nhãn diện tích', 'Ảnh sẽ trở về trạng thái "Chưa có nhãn diện tích" (không đặt thành 0).', () => {
-                    labelImage(im.id, null, undefined, 'Gỡ nhãn');
-                    setEditing(false);
-                    setJustSaved(false);
+                    persist(() => labelImage(im.id, null, undefined, 'Gỡ nhãn'), () => {
+                      setEditing(false);
+                      setJustSaved(false);
+                    });
                   })
                 }>
                 <Text style={{ color: C.red, fontWeight: '600', textAlign: 'center' }}>Gỡ nhãn diện tích</Text>
@@ -336,7 +341,7 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
             <Disclosure icon="refresh-outline" title="Yêu cầu chụp lại, loại ảnh"
               summary={[im.retakeRequested ? 'Đã yêu cầu chụp lại' : null, im.status === 'excluded' ? 'Đã loại khỏi bộ dữ liệu' : null].filter(Boolean).join(' · ') || 'Chưa có yêu cầu'}>
               {im.retakeRequested ? (
-                <Button label="Hủy yêu cầu chụp lại" variant="ghost" onPress={() => requestRetake(im.id, null)} />
+                <Button label="Hủy yêu cầu chụp lại" variant="ghost" onPress={() => persist(() => requestRetake(im.id, null))} />
               ) : (
                 <>
                   <Field label="Yêu cầu chụp lại" value={retakeNote} onChangeText={setRetakeNote} placeholder="Ảnh mờ / sai vị trí / thiếu sáng…" />
@@ -346,15 +351,16 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
                     icon="refresh"
                     disabled={!retakeNote.trim()}
                     onPress={() => {
-                      requestRetake(im.id, retakeNote.trim());
-                      setRetakeNote('');
-                      notify('Đã gửi', 'Bệnh nhân sẽ thấy yêu cầu chụp lại trên trang chủ.');
+                      persist(() => requestRetake(im.id, retakeNote.trim()), () => {
+                        setRetakeNote('');
+                        notify('Đã gửi', 'Bệnh nhân sẽ thấy yêu cầu chụp lại trên trang chủ.');
+                      });
                     }}
                   />
                 </>
               )}
               {im.status === 'excluded' ? (
-                <Button label="Đưa lại vào bộ dữ liệu" variant="secondary" icon="return-up-back" onPress={() => setExcluded(im.id, null)} />
+                <Button label="Đưa lại vào bộ dữ liệu" variant="secondary" icon="return-up-back" onPress={() => persist(() => setExcluded(im.id, null))} />
               ) : (
                 <>
                   <Field label="Loại khỏi bộ dữ liệu huấn luyện" value={excludeReason} onChangeText={setExcludeReason} placeholder="Lý do, ví dụ: ảnh chứa nhiều vết thương" />

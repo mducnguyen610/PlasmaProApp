@@ -223,8 +223,57 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     await q.getByRole('button', { name: /^Lưu và công bố/ }).click(); await q.waitForTimeout(1200);
     const saidSaved = q.dialogs.slice(nd).some((d) => d.includes('Đã lưu đánh giá')) || await has(q, /Đã lưu đánh giá/, false);
     const persisted = await q.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2')).evaluations.length);
-    rec('TP-SV-04a', 'CR-01 (ngoài phạm vi UI): ghi đĩa thất bại mà màn vẫn báo "Đã lưu đánh giá"', 'note', `báo đã lưu: ${saidSaved}; số đánh giá trên đĩa ${persisted} (trước ${ev1})`);
+    const failShown = await has(q, /^Chưa lưu được đánh giá: Không ghi được vào bộ nhớ máy/, false);
+    rec('CR-01a', 'B07 ghi bộ nhớ lỗi: không báo "Đã lưu đánh giá", báo chưa lưu, trên đĩa không thêm', !saidSaved && failShown && persisted === ev1, `báo đã lưu: ${saidSaved}; báo lỗi: ${failShown}; trên đĩa ${persisted} (trước ${ev1})`);
+    // Bộ nhớ ghi lại được: bấm Lưu lần nữa, dữ liệu đang nhập vẫn còn, lần này lưu thật.
+    await q.evaluate(() => { localStorage.setItem = window.__origSet; });
+    const nd2 = q.dialogs.length;
+    await q.getByRole('button', { name: /^Lưu và công bố/ }).click(); await q.waitForTimeout(1200);
+    const saved2 = q.dialogs.slice(nd2).some((d) => d.includes('Đã lưu đánh giá')) || await has(q, /Đã lưu đánh giá/, false);
+    const persisted2 = await q.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2')).evaluations.length);
+    rec('CR-01b', 'B07 sau khi bộ nhớ ghi lại được: lưu lại không cần nhập lại, đúng 1 đánh giá mới trên đĩa', saved2 && persisted2 === ev1 + 1, `báo đã lưu: ${saved2}; trên đĩa ${persisted2}`);
     await q.context().close();
+  }
+  {
+    // CR-01: B11 sửa số đo khi ghi bộ nhớ lỗi.
+    const p = await newPage(); await login(p);
+    await go(p, '/images/IMG0004');
+    await p.getByRole('button', { name: /Nhập diện tích|Sửa diện tích|Nhập số đo/ }).first().click().catch(() => {}); await p.waitForTimeout(300);
+    const box = p.getByRole('textbox', { name: /^Diện tích bác sĩ đã đo/ });
+    await box.fill('7,5'); await p.waitForTimeout(200);
+    const methodBox = p.getByRole('textbox', { name: /^Phương pháp đo/ });
+    if (await methodBox.count()) { await methodBox.fill('Thước giấy kẻ ô'); await p.waitForTimeout(150); }
+    await p.evaluate(() => { const orig = localStorage.setItem.bind(localStorage); window.__origSet = orig; localStorage.setItem = (k, v) => { if (k === 'plasmapro.demo.v2') throw new Error('QuotaExceededError (giả lập)'); return orig(k, v); }; });
+    const nd = p.dialogs.length;
+    await p.getByRole('button', { name: /^Lưu (diện tích|số mới)$/ }).click(); await p.waitForTimeout(1000);
+    const dl = p.dialogs.slice(nd).join(' | ');
+    const disk = await p.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2')).images.find((i) => i.id === 'IMG0004'));
+    const stillEditing = (await box.count()) > 0 && (await box.inputValue()).includes('7,5');
+    rec('CR-01c', 'B11 ghi bộ nhớ lỗi: báo "Chưa lưu được", số trên đĩa không đổi, ô nhập còn số 7,5', dl.includes('Chưa lưu được') && disk.areaCm2 === null && stillEditing, `hộp: ${dl.slice(0, 120)}; đĩa ${disk.areaCm2}; còn ô ${stillEditing}`);
+    const uiUnlabeled = await has(p, 'Chưa có nhãn diện tích');
+    rec('CR-01d', 'B11 ghi lỗi: màn vẫn hiện "Chưa có nhãn diện tích" (không hiển thị số chưa lưu như đã lưu)', uiUnlabeled, '');
+    await p.context().close();
+  }
+  {
+    // CR-01: B06 lưu phiên bản khi ghi bộ nhớ lỗi.
+    const p = await newPage(); await login(p);
+    await go(p, '/plan/p-1?woundId=w-1');
+    for (let i = 0; i < 2; i++) { await p.getByText('Tiếp', { exact: true }).click(); await p.waitForTimeout(250); }
+    await p.getByRole('textbox', { name: /^Lý do thay đổi/ }).fill('Kiểm thử CR-01'); await p.waitForTimeout(150);
+    // Đợt "Đang áp dụng" cần dấu xác nhận của bác sĩ (quy tắc cũ, không đổi).
+    const cf = p.getByRole('checkbox', { name: /xác nhận/i });
+    if (await cf.count()) { await cf.first().click(); await p.waitForTimeout(200); }
+    const before = await p.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2')).plans.length);
+    await p.evaluate(() => { const orig = localStorage.setItem.bind(localStorage); localStorage.setItem = (k, v) => { if (k === 'plasmapro.demo.v2') throw new Error('QuotaExceededError (giả lập)'); return orig(k, v); }; });
+    const nd = p.dialogs.length;
+    for (let i = 0; i < 3; i++) await p.getByRole('button', { name: /^Lưu phiên bản \d+/ }).click().catch(() => {});
+    await p.waitForTimeout(1000);
+    const after = await p.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2')).plans.length);
+    const okDialog = p.dialogs.slice(nd).some((d) => d.includes('Đã lưu phiên bản mới'));
+    const err = await has(p, /^Chưa lưu được phiên bản: Không ghi được vào bộ nhớ máy/, false);
+    const reasonKept = (await p.getByRole('textbox', { name: /^Lý do thay đổi/ }).inputValue()) === 'Kiểm thử CR-01';
+    rec('CR-01e', 'B06 ghi bộ nhớ lỗi (bấm Lưu 3 lần): không báo đã lưu, báo lỗi, đĩa không thêm phiên bản, lý do còn nguyên', !okDialog && err && after === before && reasonKept, `báo đã lưu ${okDialog}; lỗi ${err}; đĩa ${before}→${after}; lý do còn ${reasonKept}`);
+    await p.context().close();
   }
   {
     // SV-06: B06 lưu "Đang áp dụng" khi đã có phiên bản đang áp dụng.

@@ -241,7 +241,7 @@ export default function GuidedCapture() {
       // P0 SV-02: ảnh đã lưu. Nếu bước ghi số đo lỗi, không báo "chưa lưu ảnh" (bấm lại sẽ tạo ảnh trùng):
       // mở chi tiết ảnh vừa lưu, điền lại số và phương pháp đang nhập để bác sĩ lưu lại.
       if (area?.ok) {
-        try { labelImage(image.id, area.value, method); }
+        try { await labelImage(image.id, area.value, method); }
         catch (e) {
           router.replace({ pathname: '/images/[id]', params: { id: image.id, nhapLai: areaText.trim(), phuongPhap: method, loi: e instanceof Error ? e.message : String(e) } });
           return;

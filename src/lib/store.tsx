@@ -65,11 +65,12 @@ interface Store {
   addWound: (patientId: string, location: string, group?: string) => Wound;
   updateWound: (id: string, patch: Partial<Wound>) => void;
   addImage: (args: { woundId: string; uri: string; ext: WoundImage['ext']; captureDate: string; source: 'doctor' | 'patient'; capture?: WoundImage['capture'] }) => Promise<WoundImage>;
-  labelImage: (imageId: string, area: number | null, method: string | undefined, note?: string) => void;
-  setExcluded: (imageId: string, reason: string | null) => void;
-  requestRetake: (imageId: string, note: string | null) => void;
-  addEvaluation: (e: Omit<Evaluation, 'id' | 'doctorId'>) => void;
-  savePlan: (p: Omit<TreatmentPlan, 'id' | 'version' | 'editedBy' | 'editedAt'> & { id?: string }) => void;
+  // CR-01: các thao tác lưu lâm sàng chỉ hoàn tất khi đã ghi xong vào bộ nhớ máy; lỗi ghi thì từ chối và dữ liệu trên màn không đổi.
+  labelImage: (imageId: string, area: number | null, method: string | undefined, note?: string) => Promise<void>;
+  setExcluded: (imageId: string, reason: string | null) => Promise<void>;
+  requestRetake: (imageId: string, note: string | null) => Promise<void>;
+  addEvaluation: (e: Omit<Evaluation, 'id' | 'doctorId'>) => Promise<void>;
+  savePlan: (p: Omit<TreatmentPlan, 'id' | 'version' | 'editedBy' | 'editedAt'> & { id?: string }) => Promise<void>;
   setDevicePower: (deviceId: string, on: boolean) => void;
   simulateSession: (deviceId: string) => { ok: boolean; message: string };
   registerDevice: (code: string) => void;
@@ -89,7 +90,7 @@ interface Store {
    * Ghi một phiên điều trị nhận qua USB (STA running rồi done, stopped hoặc error); người bệnh của hồ sơ hoặc bác sĩ phụ trách.
    * Trả false khi hồ sơ chưa được giao máy, vì phiên phải gắn với một thiết bị.
    */
-  recordDeviceSession: (entry: { patientId: string; woundId?: string; startedAt: string; durationSec: number; outcome: 'done' | 'stopped' | 'error' }) => boolean;
+  recordDeviceSession: (entry: { patientId: string; woundId?: string; startedAt: string; durationSec: number; outcome: 'done' | 'stopped' | 'error' }) => Promise<boolean>;
 }
 
 /**
@@ -100,6 +101,14 @@ export class TermsRequiredError extends Error {
   constructor(public reason: 'first' | 'updated') {
     super(reason === 'first' ? 'Hãy đọc và đồng ý điều khoản trước lần đăng nhập đầu tiên.' : `Điều khoản đã cập nhật (phiên bản ${TERMS_VERSION}). Hãy đọc và đồng ý để tiếp tục.`);
     this.name = 'TermsRequiredError';
+  }
+}
+
+/** Ghi vào bộ nhớ máy thất bại (đầy bộ nhớ, bị chặn). Dữ liệu chưa được lưu. */
+export class PersistError extends Error {
+  constructor(public cause: unknown) {
+    super('Không ghi được vào bộ nhớ máy (có thể bộ nhớ đã đầy). Dữ liệu này chưa được lưu');
+    this.name = 'PersistError';
   }
 }
 
@@ -147,6 +156,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     dataRef.current = next;
     setData(next);
   }, []);
+  /**
+   * CR-01 (SV-01, AL-03): ghi bản dữ liệu mới vào bộ nhớ máy trước, chỉ khi ghi xong mới cập nhật màn hình.
+   * Ghi lỗi thì ném PersistError và dữ liệu đang hiển thị giữ nguyên, để màn hình không báo "Đã lưu" khi chưa có bằng chứng.
+   */
+  const commit = useCallback(async (fn: (d: AppData) => AppData) => {
+    const next = fn(dataRef.current);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch (e) {
+      throw new PersistError(e);
+    }
+    update(() => next);
+  }, [update]);
   const me = data.accounts.find((a) => a.id === meId && !a.locked && !a.pendingApproval) ?? null;
   const meRef = useRef(me);
   useEffect(() => {
@@ -377,7 +399,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const labelImage: Store['labelImage'] = (imageId, area, method, note) =>
-    update((d) => ({
+    commit((d) => ({
       ...d,
       images: d.images.map((im) => {
         if (im.id !== imageId) return im;
@@ -405,31 +427,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }),
     }));
 
-  const setExcluded: Store['setExcluded'] = (imageId, reason) => {
+  const setExcluded: Store['setExcluded'] = async (imageId, reason) => {
     const image = dataRef.current.images.find(i => i.id === imageId);
     if (!image) return;
     requireDoctor(image.patientId);
-    update(d => ({ ...d, images: d.images.map(im => im.id !== imageId ? im : reason
+    await commit(d => ({ ...d, images: d.images.map(im => im.id !== imageId ? im : reason
       ? { ...im, status: 'excluded', excludeReason: reason, researchReady: false }
       : { ...im, status: im.areaCm2 === null ? 'unlabeled' : 'labeled', excludeReason: undefined }) }));
   };
-  const requestRetake: Store['requestRetake'] = (imageId, note) => {
+  const requestRetake: Store['requestRetake'] = async (imageId, note) => {
     const image = dataRef.current.images.find(i => i.id === imageId);
     if (!image) return;
     requireDoctor(image.patientId);
-    update(d => ({ ...d, images: d.images.map(im => im.id === imageId ? { ...im, retakeRequested: note ?? undefined, researchReady: note ? false : im.researchReady } : im) }));
+    await commit(d => ({ ...d, images: d.images.map(im => im.id === imageId ? { ...im, retakeRequested: note ?? undefined, researchReady: note ? false : im.researchReady } : im) }));
   };
 
-  const addEvaluation: Store['addEvaluation'] = (e) => {
+  const addEvaluation: Store['addEvaluation'] = async (e) => {
     const w = dataRef.current.wounds.find(w => w.id === e.woundId);
     if (!w) throw new Error('Không tìm thấy vết thương.');
     const actor = requireDoctor(w.patientId);
     if (!e.severity || !['mild', 'moderate', 'severe'].includes(e.severity)) throw new Error('Hãy chọn mức độ vết thương.');
-    update(d => ({ ...d, evaluations: [...d.evaluations, { ...e, id: 'e-' + Crypto.randomUUID(), doctorId: actor.id }] }));
+    await commit(d => ({ ...d, evaluations: [...d.evaluations, { ...e, id: 'e-' + Crypto.randomUUID(), doctorId: actor.id }] }));
   };
 
   const savePlan: Store['savePlan'] = (p) =>
-    update((d) => {
+    commit((d) => {
       requireDoctor(p.patientId);
       // Đợt điều trị gắn với vết thương: phiên bản đánh số riêng cho từng vết.
       const sameWound = (x: TreatmentPlan) => x.patientId === p.patientId && (x.woundId ?? null) === (p.woundId ?? null);
@@ -667,7 +689,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     update((d) => ({ ...d, deviceLinks: [...(d.deviceLinks ?? []), log] }));
   };
 
-  const recordDeviceSession: Store['recordDeviceSession'] = (entry) => {
+  const recordDeviceSession: Store['recordDeviceSession'] = async (entry) => {
     const actor = meRef.current;
     if (!actor || actor.locked) throw new Error('Chưa đăng nhập.');
     if (actor.role === 'patient') {
@@ -688,7 +710,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       source: 'device',
       woundId: entry.woundId,
     };
-    update((d) => ({
+    await commit((d) => ({
       ...d,
       sessions: d.sessions.some((x) => x.sessionId === session.sessionId) ? d.sessions : [...d.sessions, session],
       devices: d.devices.map((x) => (x.id === dev.id ? { ...x, lastSync: nowIso() } : x)),
