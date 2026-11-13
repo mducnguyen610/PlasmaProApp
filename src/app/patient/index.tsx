@@ -81,7 +81,8 @@ export default function PatientHome() {
               </Pressable>
             );
           })}
-          {openSteps && <Muted>Theo hướng dẫn chung, bác sĩ có thể dặn khác.</Muted>}
+          {/* P2-05 (R2-05): luôn ghi rõ đây là hướng dẫn chung, tách khỏi lời dặn của bác sĩ. Nội dung danh sách giữ nguyên (chờ bác sĩ duyệt). */}
+          <Muted>Hướng dẫn chung (tham khảo), không thay lời dặn của bác sĩ.</Muted>
         </View>
   ) : null;
 
@@ -198,7 +199,21 @@ export default function PatientHome() {
         )}
       </Card>
 
-      {/* Một thẻ cho mỗi vết thương: diện tích, ảnh, mức độ và lời dặn của bác sĩ. Trước đây lời dặn lặp ở hai thẻ (đề xuất 4). */}
+      {/* P2-01 (R2-01): "Cần chú ý" chỉ hiện khi bác sĩ đã yêu cầu chụp lại; trước đây dòng này nằm lẫn trong thẻ vết thương.
+          Không thêm loại cảnh báo mới. */}
+      {retakes.length > 0 && (
+        <>
+          <SectionTitle>Cần chú ý</SectionTitle>
+          <Card>
+            {retakes.map((im) => {
+              const w = wounds.find((x) => x.id === im.woundId);
+              return <TaskRow key={im.id} icon="camera-outline" tone="red" title={`${w ? w.code + ': c' : 'C'}ần hẹn bác sĩ chụp lại ảnh ${im.capture?.sourceDateKnown === false ? 'chưa rõ ngày' : fmtDate(im.captureDate)}`} detail={im.retakeRequested!} onPress={() => router.push('/schedule')} />;
+            })}
+          </Card>
+        </>
+      )}
+
+      {/* Một thẻ cho mỗi vết thương: diện tích, ảnh, mức độ. Lời dặn của bác sĩ tách thành mục riêng ngay sau (P2-05, R2-05). */}
       <SectionTitle action="Lịch sử" onAction={() => router.navigate('/patient/history')}>Vết thương</SectionTitle>
       {wounds.length === 0 && <Card><Muted>Hồ sơ mới đang chờ bác sĩ phụ trách tiếp nhận và đánh giá.</Muted></Card>}
       {wounds.map((w) => {
@@ -210,10 +225,6 @@ export default function PatientHome() {
         return (
           <Card key={w.id}>
             <Text style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{w.code}: {w.location}</Text>
-            {/* Yêu cầu chụp lại nằm trong thẻ vết thương thay cho một thẻ viền đỏ riêng. */}
-            {retakes.filter((im) => im.woundId === w.id).map((im) => (
-              <TaskRow key={im.id} icon="camera-outline" tone="red" title={`Cần hẹn bác sĩ chụp lại ảnh ${im.capture?.sourceDateKnown === false ? 'chưa rõ ngày' : fmtDate(im.captureDate)}`} detail={im.retakeRequested!} onPress={() => router.push('/schedule')} />
-            ))}
             {img ? (
               <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
                 <View style={{ flex: 1 }}>
@@ -239,20 +250,37 @@ export default function PatientHome() {
               {ev?.severity && <StatusChip status={SEVERITY_ROLE[ev.severity]} label={`Mức độ: ${SEVERITY[ev.severity].label}`} />}
               {ev && !(rv && rv.state !== 'no_data') && <StatusChip status={TREND_ROLE[ev.trend]} label={TREND[ev.trend].label} />}
             </View>
+            {!ev && <Muted>Chưa có đánh giá được công bố. Không suy ra mức độ từ diện tích.</Muted>}
+          </Card>
+        );
+      })}
+
+      {/* P2-05 (R2-05): lời dặn của bác sĩ là một mục riêng, nguyên văn đánh giá đã công bố (không tách câu, không viết lại).
+          Nguồn chữ giữ như trước: instructions, nếu trống thì characteristics (QĐ-2 chưa trả lời, giữ mặc định). */}
+      {wounds.length > 0 && <SectionTitle>Lời dặn của bác sĩ</SectionTitle>}
+      {wounds.map((w) => {
+        const ev = latestEvaluation(data, w.id, true);
+        const open = !!openNote[w.id];
+        // Số đánh giá đã công bố trước lần gần nhất; xem lại ở mục "Nhận xét của bác sĩ" của N05.
+        const older = Math.max(0, data.evaluations.filter((e) => e.woundId === w.id && e.visibleToPatient).length - 1);
+        return (
+          <Card key={'note-' + w.id}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="chatbubble-ellipses" size={20} color={C.primary} />
+              <Text style={{ flex: 1, color: C.text, fontWeight: '700' }}>{wounds.length > 1 ? `${w.code}: ${w.location}` : 'Lời dặn gần nhất'}</Text>
+            </View>
             {ev ? (
-              <View style={{ gap: 4, padding: 12, borderRadius: radius.m, backgroundColor: C.surfaceMuted }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="chatbubble-ellipses" size={20} color={C.primary} />
-                  <Text style={{ flex: 1, color: C.text, fontWeight: '600' }}>Lời dặn của bác sĩ</Text>
-                  <Text style={{ color: C.textSoft, fontSize: T.small }}>{fmtDate(ev.date).slice(0, 5)}</Text>
-                </View>
+              <>
+                <Muted>{`${fmtDate(ev.date)} · ${account(ev.doctorId)?.name ?? 'Bác sĩ phụ trách'}`}</Muted>
                 {/* Hai dòng đầu, chạm để đọc hết. */}
-                <Text numberOfLines={openNote[w.id] ? undefined : 2} style={{ color: C.text, lineHeight: 24 }}>{ev.instructions || ev.characteristics}</Text>
-                {openNote[w.id] && <Muted>{account(ev.doctorId)?.name ?? 'Bác sĩ phụ trách'}</Muted>}
-                {openNote[w.id] && ev.nextReview && ev.nextReview >= today && <Muted>{`Tái đánh giá ngày ${fmtDate(ev.nextReview)}`}</Muted>}
-                <TextLink label={openNote[w.id] ? 'Thu gọn' : 'Đọc hết'} accessibilityLabel={`${openNote[w.id] ? 'Thu gọn' : 'Đọc hết'} lời dặn ${w.code}`} onPress={() => setOpenNote({ ...openNote, [w.id]: !openNote[w.id] })} />
-              </View>
-            ) : <Muted>Chưa có đánh giá được công bố. Không suy ra mức độ từ diện tích.</Muted>}
+                <Text numberOfLines={open ? undefined : 2} style={{ color: C.text, lineHeight: 24 }}>{ev.instructions || ev.characteristics}</Text>
+                {ev.nextReview && ev.nextReview >= today && <Muted>{`Tái đánh giá (bác sĩ xem lại vết thương) ngày ${fmtDate(ev.nextReview)}`}</Muted>}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 16 }}>
+                  <TextLink label={open ? 'Thu gọn' : 'Đọc hết'} accessibilityLabel={`${open ? 'Thu gọn' : 'Đọc hết'} lời dặn ${w.code}`} onPress={() => setOpenNote({ ...openNote, [w.id]: !open })} />
+                  {older > 0 && <TextLink label={`Lời dặn trước đó (${older})`} accessibilityLabel={`Xem ${older} lời dặn trước đó của ${w.code}`} onPress={() => router.push({ pathname: '/wounds/[id]', params: { id: w.id } })} />}
+                </View>
+              </>
+            ) : <Muted>Bác sĩ chưa công bố lời dặn cho vết thương này.</Muted>}
           </Card>
         );
       })}
