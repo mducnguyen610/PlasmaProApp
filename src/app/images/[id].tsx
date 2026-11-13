@@ -7,7 +7,9 @@ import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { MONO, Text } from '@/components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
+import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { Button, Card, Chip, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, Segmented, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
@@ -38,11 +40,13 @@ function editDefaults(images: WoundImage[], im: WoundImage, pCode: string, wCode
 // Đợt 12 (R-06): key theo mã ảnh để khi mở "Ảnh chưa đo tiếp theo", toàn bộ trạng thái nhập được tạo mới,
 // không mang số hay phương pháp đang gõ sang ảnh khác.
 export default function ImageDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  return <ImageDetailInner key={id} id={id} />;
+  // P0: tuBenhNhan là bệnh nhân của ảnh trước trong chuỗi "Ảnh chưa đo tiếp theo" (ID-01);
+  // nhapLai, phuongPhap, loi do B10 truyền khi ảnh đã lưu mà số đo chưa lưu được (SV-02).
+  const { id, tuBenhNhan, nhapLai, phuongPhap, loi } = useLocalSearchParams<{ id: string; tuBenhNhan?: string; nhapLai?: string; phuongPhap?: string; loi?: string }>();
+  return <ImageDetailInner key={id} id={id} fromPatient={tuBenhNhan} retry={nhapLai ? { areaText: nhapLai, method: phuongPhap ?? '', error: loi ?? '' } : undefined} />;
 }
 
-function ImageDetailInner({ id }: { id: string }) {
+function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?: string; retry?: { areaText: string; method: string; error: string } }) {
   const { data, me, labelImage, setExcluded, requestRetake, setResearchReady } = useStore();
   const { patient, wound, account } = useLookups();
   const insets = useSafeAreaInsets();
@@ -55,19 +59,23 @@ function ImageDetailInner({ id }: { id: string }) {
   const [auto] = useState(() => (im && p && w && me?.role === 'doctor' && im.areaCm2 === null && im.status !== 'excluded') ? editDefaults(data.images, im, p.code, w.code) : null);
   const [sharingBusy, setSharingBusy] = useState(false);
   const [zoom, setZoom] = useState(false);
-  const [editing, setEditing] = useState(!!auto);
+  const [editing, setEditing] = useState(!!auto || !!retry);
   const [focusField, setFocusField] = useState(false);
   const [mode, setMode] = useState<Mode>('area');
-  const [areaText, setAreaText] = useState(auto?.areaText ?? '');
+  const [areaText, setAreaText] = useState(retry?.areaText ?? auto?.areaText ?? '');
   const [unit, setUnit] = useState<AreaUnit>('cm2');
   const [fullName, setFullName] = useState(auto?.fullName ?? '');
-  const [method, setMethod] = useState(auto?.method ?? '');
+  const [method, setMethod] = useState(retry?.method || (auto?.method ?? ''));
   // PP-11: nguồn của giá trị điền sẵn; null khi bác sĩ tự gõ hoặc ảnh đã có phương pháp riêng.
   const [methodFrom, setMethodFrom] = useState<{ imageId: string; captureDate: string } | null>(auto?.methodFrom ?? null);
   const [justSaved, setJustSaved] = useState(false);
   const saving = useRef(false);
   const [retakeNote, setRetakeNote] = useState('');
   const [excludeReason, setExcludeReason] = useState('');
+  // P0 SV-05: giá trị lúc mở biểu mẫu đo; khác thì rời màn phải hỏi. Không tự lưu.
+  const [editStart, setEditStart] = useState(() => JSON.stringify({ areaText: auto?.areaText ?? '', method: auto?.method ?? '', fullName: auto?.fullName ?? '' }));
+  const dirty = (editing && JSON.stringify({ areaText, method, fullName }) !== editStart) || !!retakeNote.trim() || !!excludeReason.trim();
+  useDiscardGuard(dirty);
 
   if (!im || !p || !w) return <NoAccess notFound />;
   if (!canView) return <NoAccess />;
@@ -113,6 +121,7 @@ function ImageDetailInner({ id }: { id: string }) {
     setFullName(d.fullName);
     setMethod(d.method);
     setMethodFrom(d.methodFrom);
+    setEditStart(JSON.stringify({ areaText: d.areaText, method: d.method, fullName: d.fullName }));
   };
 
   const doSave = () => {
@@ -168,8 +177,22 @@ function ImageDetailInner({ id }: { id: string }) {
 
   const aiBlock = isDoctor ? <AiBlock wound={im.capture?.wound} arArea={arArea} /> : null;
 
+  // P0 DS-02: người nhập và thời điểm của số bác sĩ hiện tại, chỉ lấy từ dữ liệu đã lưu; không có thì nói không có.
+  const ref = im.capture?.manualReference;
+  const lastSet = [...im.history].reverse().find((h) => h.toArea === im.areaCm2);
+  const enteredBy = ref && ref.areaCm2 === im.areaCm2 && ref.confirmedBy ? { by: ref.confirmedBy, at: ref.confirmedAt } : lastSet ? { by: lastSet.by, at: lastSet.at } : null;
+  const enteredText = enteredBy ? `${account(enteredBy.by)?.name ?? 'Tài khoản không còn trong danh sách'}${enteredBy.at ? ` lúc ${fmtDateTime(enteredBy.at)}` : ''}` : 'Chưa có thông tin người nhập';
+  // P0 SV-03: số mới sẽ thay số đã có.
+  const replacing = editing && im.areaCm2 !== null && newArea !== null && newArea !== im.areaCm2;
+  const patientChanged = !!fromPatient && fromPatient !== im.patientId;
+
   return (
-    <Screen header={<Header back title={`Ảnh ${im.id}`} subtitle={`${p.code} · ${w.code} · ${w.location}`} />}>
+    <Screen header={<Header back title={`Ảnh ${im.id}`} />}>
+      {/* P0 G1, ID-01: bệnh nhân và vết thương của ảnh; báo rõ khi vừa chuyển sang bệnh nhân khác. */}
+      <ClinicalContext patient={p} wound={w} patientChanged={patientChanged} />
+      {retry && editing && (
+        <Notice icon="alert-circle-outline">{`Ảnh ${im.id} đã lưu nhưng số đo chưa lưu${retry.error ? `: ${retry.error}` : '.'} Số và phương pháp đang nhập được điền lại bên dưới; kiểm tra rồi bấm "Lưu diện tích".`}</Notice>
+      )}
       {/* UX-11: ảnh thấp hơn (16:9) để thẻ số đo lên màn đầu; chạm để xem đủ khung. */}
       <Pressable onPress={() => setZoom(true)} accessibilityRole="imagebutton" accessibilityLabel="Phóng to ảnh vết thương">
         <WoundPhoto image={im} style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 20 }} />
@@ -190,9 +213,9 @@ function ImageDetailInner({ id }: { id: string }) {
       {/* UX-17: vừa lưu số thì mở thẳng ảnh chưa đo kế tiếp, không phải về Trang chủ. Ảnh kế tiếp có biểu mẫu trống riêng. */}
       {isDoctor && justSaved && (next && nextP && nextW ? (
         <View style={{ gap: 4 }}>
-          <Button label={`Ảnh chưa đo tiếp theo (${queue.length})`} icon="arrow-forward" variant="secondary"
-            onPress={() => router.replace({ pathname: '/images/[id]', params: { id: next.id } })} />
-          <Muted>{`Tiếp theo: ${next.id} · ${nextP.code} · ${nextW.code} ${nextW.location}`}</Muted>
+          <Button label={next.patientId !== im.patientId ? `Ảnh chưa đo tiếp theo, bệnh nhân khác (${queue.length})` : `Ảnh chưa đo tiếp theo (${queue.length})`} icon="arrow-forward" variant="secondary"
+            onPress={() => router.replace({ pathname: '/images/[id]', params: { id: next.id, tuBenhNhan: im.patientId } })} />
+          <Muted>{`Tiếp theo: ${next.id} · ${nextP.name} · ${nextP.code} · ${nextW.code} ${nextW.location}`}</Muted>
         </View>
       ) : <Muted>Không còn ảnh chưa đo.</Muted>)}
 
@@ -201,11 +224,12 @@ function ImageDetailInner({ id }: { id: string }) {
         <SectionTitle icon="resize-outline">Diện tích</SectionTitle>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <StatusChip status={LABEL[im.status]} label={LABEL_STATUS[im.status].label} />
-          {im.retakeRequested && <Chip label="Đã yêu cầu chụp lại" tone="red" icon="refresh" />}
+          {im.retakeRequested && <Chip label="Đã yêu cầu chụp lại" tone="amber" icon="refresh" />}
         </View>
         {/* Khi chưa có số đo, chip trạng thái đã nói "Chưa có nhãn diện tích": không lặp lại ở dòng giá trị (A18). */}
         {im.areaCm2 !== null && <InfoRow label="Diện tích bác sĩ đã đo" value={formatAreaDisplay(im.areaCm2)} />}
         {im.areaCm2 !== null && <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />}
+        {im.areaCm2 !== null && <InfoRow label="Nhập bởi" value={enteredText} />}
         {im.measureMethod ? <InfoRow label="Phương pháp đo" value={im.measureMethod} /> : null}
         <InfoRow label="Ngày chụp" value={im.capture?.sourceDateKnown === false ? 'Chưa xác định (ảnh thư viện)' : fmtDate(im.captureDate)} />
         {im.excludeReason ? <InfoRow label="Lý do loại" value={im.excludeReason} /> : null}
@@ -255,10 +279,15 @@ function ImageDetailInner({ id }: { id: string }) {
               </Text>
               {preview && newArea !== null && <Muted>Diện tích lưu trong hồ sơ: {formatAreaDisplay(newArea)}</Muted>}
               {warning && <Text accessibilityLiveRegion="polite" style={{ color: C.amber, fontSize: T.small, fontWeight: '600' }}>{warning}</Text>}
+              {replacing && (
+                <Text accessibilityLiveRegion="polite" style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>
+                  {`Số hiện tại ${formatAreaDisplay(im.areaCm2)}${enteredBy?.at ? ` (nhập ${fmtDate(enteredBy.at)})` : ''} sẽ được thay bằng ${formatAreaDisplay(newArea)}. Số cũ vẫn ở Lịch sử sửa nhãn.`}
+                </Text>
+              )}
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Button style={{ flex: 1 }} label="Hủy" variant="secondary" onPress={() => setEditing(false)} />
-              <Button style={{ flex: 1 }} label="Lưu diện tích" icon="checkmark" disabled={!preview} onPress={save} reason="Nhập diện tích hợp lệ để có tên xem trước." />
+              <Button style={{ flex: 1 }} label={replacing ? 'Lưu số mới' : 'Lưu diện tích'} icon="checkmark" disabled={!preview} onPress={save} reason="Nhập diện tích hợp lệ để có tên xem trước." />
             </View>
             {im.areaCm2 !== null && (
               <Pressable

@@ -32,7 +32,7 @@ export default function DoctorHome() {
     reports.length > 0 && { key: 'reports', icon: 'medkit-outline', tone: 'red', count: reports.length, label: 'Báo cáo mới', onPress: () => router.navigate({ pathname: '/doctor/patients', params: { loc: 'bao-cao', t: tapStamp() } }) },
     unlabeled.length > 0 && { key: 'unlabeled', icon: 'pricetag-outline', tone: 'amber', count: unlabeled.length, label: 'Ảnh chưa đo', onPress: () => router.navigate({ pathname: '/doctor/dataset', params: { loc: 'chua-do', t: tapStamp() } }) },
     retakes.length > 0 && { key: 'retakes', icon: 'camera-outline', tone: 'amber', count: retakes.length, label: 'Ảnh cần chụp lại', onPress: () => router.push({ pathname: '/images/[id]', params: { id: retakes[0].id } }) },
-    drafts.length > 0 && { key: 'drafts', icon: 'flash-outline', tone: 'amber', count: drafts.length, label: 'Đợt nháp chờ xác nhận', onPress: () => router.push({ pathname: '/plan/[patientId]', params: { patientId: drafts[0].patientId } }) },
+    drafts.length > 0 && { key: 'drafts', icon: 'flash-outline', tone: 'amber', count: drafts.length, label: 'Đợt nháp chờ xác nhận', onPress: () => router.push({ pathname: '/plan/[patientId]', params: { patientId: drafts[0].patientId, ...(drafts[0].woundId ? { woundId: drafts[0].woundId } : {}) } }) },
     offline.length > 0 && { key: 'offline', icon: 'cloud-offline-outline', tone: 'blue', count: offline.length, label: 'Thiết bị chưa đồng bộ', onPress: () => router.push({ pathname: '/devices/[id]', params: { id: offline[0]!.id } }) },
   ];
   const tasks = candidates.filter((t): t is Task => !!t);

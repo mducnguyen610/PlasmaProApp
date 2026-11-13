@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
+import { ClinicalContext } from '@/components/ClinicalContext';
 import { UsbLinkStatus } from '@/components/UsbLinkStatus';
 import { Button, Card, Choices, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, type IconName } from '@/components/ui';
 import { fmtDuration } from '@/lib/course';
@@ -30,6 +31,8 @@ export default function ConnectDevice() {
   const [chosen, setChosen] = useState<string>(params.woundId ?? '');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
+  // P0 DV-05: thời điểm nhận kết quả, để "Máy đã nhận" luôn kèm mốc giờ.
+  const [resultAt, setResultAt] = useState<string | null>(null);
 
   const courses = useMemo(
     () =>
@@ -61,6 +64,7 @@ export default function ConnectDevice() {
     try {
       const r = await link.send(cfg);
       setResult(r);
+      setResultAt(new Date().toISOString());
       recordDeviceLink({
         deviceId: p.deviceId!,
         patientId: p.id,
@@ -87,7 +91,9 @@ export default function ConnectDevice() {
   const capsNote = link.capsSource === 'device' ? 'Năng lực đọc từ máy' : link.identity?.kind === 'no_reply' ? 'Máy không trả lời lệnh hỏi, dùng bảng dự phòng' : link.capsSource === 'table' ? 'Dùng bảng năng lực ghi sẵn' : 'Chưa có năng lực cho mẫu này';
 
   return (
-    <Screen header={<Header back title="Nạp liệu trình" subtitle={`${p.name} · ${p.code}`} />}>
+    <Screen header={<Header back title="Nạp liệu trình" />}>
+      {/* P0 G1: bệnh nhân và vết thương của liệu trình sắp nạp. */}
+      <ClinicalContext patient={p} wound={selected?.wound ?? null} />
       <StepRow steps={isPatient ? PATIENT_STEPS : STEPS} step={step} />
       {!PROTOCOL.confirmed && !isPatient && <Notice>Giao thức chưa được firmware xác nhận.</Notice>}
 
@@ -164,10 +170,17 @@ export default function ConnectDevice() {
         <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={send} disabled={!canSend} loading={sending}
           reason={link.state !== 'connected' ? 'Kết nối máy bằng cáp USB trước.' : !cfg || errors.length > 0 ? (isPatient ? 'Đợt điều trị chưa sẵn sàng. Xem thông báo ở trên.' : 'Đợt điều trị chưa sẵn sàng, xem thông báo ở trên.') : isPatient ? 'Máy chưa sẵn sàng nhận liệu trình. Xem thông báo ở trên.' : 'Máy chưa sẵn sàng nhận liệu trình, xem thông báo ở trên.'} />
       )}
-      {result && (
+      {/* P0 DV-04: phân biệt đang gửi với máy đã nhận; chỉ báo thành công khi có ACK. */}
+      {sending && (
+        <Notice tone={semantic.info.tone} icon="hourglass-outline">Đang gửi liệu trình, chờ máy xác nhận…</Notice>
+      )}
+      {result && !sending && (
         <Notice tone={semantic[SEND_RESULT[result.kind].role].tone} icon={SEND_RESULT[result.kind].icon as IconName}>
-          {isPatient ? patientSendResultLabel(result) : sendResultLabel(result)}
+          {`${isPatient ? patientSendResultLabel(result) : sendResultLabel(result)}${resultAt ? ` (lúc ${new Date(resultAt).toLocaleTimeString('vi-VN')})` : ''}`}
         </Notice>
+      )}
+      {result?.kind === 'acked' && !sending && link.state !== 'connected' && (
+        <Notice tone={semantic.warning.tone} icon="unlink-outline">Đã mất kết nối sau khi máy nhận. Cắm lại cáp và kết nối trước khi theo dõi phiên.</Notice>
       )}
       {result && result.kind !== 'acked' && canSend && !noRetry && <Button label="Gửi lại" variant="secondary" icon="refresh-outline" onPress={send} />}
       {lostAfterSend && <Button label="Kết nối lại" variant="secondary" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />}

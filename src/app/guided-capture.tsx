@@ -6,6 +6,7 @@ import { router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform, View } from 'react-native';
 import { ARCameraView, arViewInBuild, type ARCameraHandle } from '@/components/ARCameraView';
+import { ClinicalContext } from '@/components/ClinicalContext';
 import { CheckRow } from '@/components/Consent';
 import { CaptureQualityCard } from '@/components/CaptureQualityCard';
 import { NoAccess, useCanView } from '@/components/Guard';
@@ -29,7 +30,7 @@ import { localDay } from '@/lib/course';
 
 type Photo = PickedPhoto & { imageSource: 'live_camera' | 'gallery'; takenAt: string | null; ar?: ARCaptureData; manualOverride?: boolean };
 const TONE_COLOR: Record<ARTone, string> = { green: C.green, amber: C.amber, red: C.red, gray: C.textSoft };
-const METHOD_AR = 'Ước lượng AR, bác sĩ đã xem lại';
+// P0 DS-01 (QĐ-P0-1 phương án B): bỏ lựa chọn "Ước lượng AR, bác sĩ đã xem lại"; phương pháp chỉ còn các cách bác sĩ đo, không chọn sẵn.
 const METHODS = ['Thước đo trên vết thương', 'Phần mềm đo trên ảnh'];
 
 function roiFrom(detection: RecognitionResult | null): Roi {
@@ -87,7 +88,7 @@ export default function GuidedCapture() {
   const [photoWound, setPhotoWound] = useState<RecognitionResult | null>(null);
   const [reviewed, setReviewed] = useState(false);
   const [areaText, setAreaText] = useState('');
-  const [method, setMethod] = useState(METHODS[0]);
+  const [method, setMethod] = useState('');
   const [error, setError] = useState('');
   const [cameraMode, setCameraMode] = useState<'ar' | 'standard'>('ar');
   const [tracking, setTracking] = useState<{ event: ARTrackingEvent; at: number } | null>(null);
@@ -165,7 +166,7 @@ export default function GuidedCapture() {
   const onCameraError = useCallback(() => { setLive(false); setReady(false); setError('Không mở được camera. Hãy kiểm tra quyền hoặc chọn ảnh có sẵn.'); }, []);
   const selectPhoto = (value: Photo) => {
     generation.current++; setAnalyzing(true); setPhoto(value); setLive(false); setReady(false); setQuality(unknownQuality());
-    setPhotoWound(null); setReviewed(false); setAreaText(''); setMethod(METHODS[0]); setError('');
+    setPhotoWound(null); setReviewed(false); setAreaText(''); setMethod(''); setError('');
   };
   if (!p || !w) return <NoAccess notFound />;
   if (!canView || me?.role !== 'doctor') return <NoAccess />;
@@ -215,6 +216,7 @@ export default function GuidedCapture() {
     const area = areaText.trim() ? parseArea(areaText) : null;
     if (area && !area.ok) { setError(area.error); return; }
     if (area?.ok && area.value === 0) { setError('Diện tích phải lớn hơn 0. Để trống nếu chưa đo.'); return; }
+    if (area?.ok && !method) { setError('Chọn phương pháp bác sĩ đã dùng để đo trước khi lưu số đo.'); return; }
     setBusy(true); setError('');
     try {
       const roi = roiFrom(photoWound);
@@ -236,14 +238,24 @@ export default function GuidedCapture() {
         ...(photo.ar ? { ar: photo.ar } : {}),
       };
       const image = await addImage({ woundId: w.id, ...photo, source: 'doctor', capture: metadata });
-      if (area?.ok) labelImage(image.id, area.value, method);
+      // P0 SV-02: ảnh đã lưu. Nếu bước ghi số đo lỗi, không báo "chưa lưu ảnh" (bấm lại sẽ tạo ảnh trùng):
+      // mở chi tiết ảnh vừa lưu, điền lại số và phương pháp đang nhập để bác sĩ lưu lại.
+      if (area?.ok) {
+        try { labelImage(image.id, area.value, method); }
+        catch (e) {
+          router.replace({ pathname: '/images/[id]', params: { id: image.id, nhapLai: areaText.trim(), phuongPhap: method, loi: e instanceof Error ? e.message : String(e) } });
+          return;
+        }
+      }
       router.replace({ pathname: '/images/[id]', params: { id: image.id } });
     } catch (e) { setError(e instanceof Error ? e.message : 'Chưa lưu được ảnh. Ảnh vẫn ở đây để thử lại.'); }
     finally { setBusy(false); }
   };
 
   const overlayColor = TONE_COLOR[readiness.ready ? 'green' : liveWound?.found ? 'amber' : 'gray'];
-  return <Screen header={<Header back title={photo ? 'Đánh giá và dán nhãn' : 'Chụp vết thương'} subtitle={p.code + ' · ' + w.code + ' · ' + w.location} />}>
+  return <Screen header={<Header back title={photo ? 'Kiểm tra ảnh và nhập số đo' : 'Chụp vết thương'} />}>
+    {/* P0 G1: ảnh và số đo sẽ lưu vào bệnh nhân và vết thương này. */}
+    <ClinicalContext patient={p} wound={w} />
     <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
       <Chip label={useAr ? (capabilities?.arFramework === 'arcore' ? 'ARCore' : 'ARKit') : 'Không có AR'} tone={useAr ? 'teal' : 'gray'} />
       <Chip label={photo?.imageSource === 'gallery' ? 'Ảnh từ thư viện' : 'Tự khoanh vết thương'} />
@@ -265,11 +277,12 @@ export default function GuidedCapture() {
           <Muted>Ước lượng từ vùng khoanh, khoảng cách và thông số camera của phiên AR. Chưa kiểm chứng lâm sàng. Số này chỉ để tham khảo, không tự điền vào ô bên dưới và không được ghi thành số đo của bác sĩ.</Muted>
         </> : <Muted>{photo.ar ? 'Chưa ước lượng được vì chưa khoanh được vết thương hoặc chưa đo được khoảng cách.' : 'Không có dữ liệu AR nên app không ước lượng diện tích. Nhập số đo của bác sĩ.'}</Muted>}
         <Field label="Diện tích bác sĩ đo (cm²)" value={areaText} onChangeText={setAreaText} keyboardType="decimal-pad" placeholder="Ví dụ: 12,5. Để trống nếu chưa đo" />
-        <Choices value={method} options={[...(estimate ? [METHOD_AR] : []), ...METHODS].map(m => ({ value: m, label: m }))} onChange={setMethod} />
+        <Text style={{ color: C.text, fontWeight: '600' }}>{`Phương pháp bác sĩ đã dùng để đo${areaText.trim() ? '' : ' (khi có số đo)'}`}</Text>
+        <Choices value={method} options={METHODS.map(m => ({ value: m, label: m }))} onChange={setMethod} />
         <CheckRow checked={reviewed} onChange={setReviewed} label="Đã xem ảnh: rõ nét, đủ sáng, thấy toàn bộ vết thương" />
       </Card>
       <CaptureQualityCard quality={quality} busy={analyzing} />
-      <Button label={areaText.trim() ? 'Lưu ảnh và dán nhãn diện tích' : 'Lưu ảnh (chưa dán nhãn)'} icon="save-outline" loading={busy} disabled={analyzing || !capabilities} onPress={save} />
+      <Button label={areaText.trim() ? 'Lưu ảnh và số đo bác sĩ' : 'Lưu ảnh (chưa có số đo)'} icon="save-outline" loading={busy} disabled={analyzing || !capabilities} onPress={save} />
       <Button label="Chụp / chọn lại" variant="secondary" disabled={busy} onPress={() => { generation.current++; setPhoto(null); setQuality(unknownQuality()); setPhotoWound(null); setError(''); }} />
     </> : <>
       <View onLayout={e => setView({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} style={{ height: 440, backgroundColor: C.text, borderRadius: 24, overflow: 'hidden' }}>

@@ -10,6 +10,7 @@ import { ImageTile } from '@/components/items';
 import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, TextLink, StatusChip } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
+import { ClinicalContext } from '@/components/ClinicalContext';
 import { SEVERITY_ROLE, SOURCE, TREND_ROLE, WOUND } from '@/theme.status';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
 import { areaReview, courseProgress, followUpDates, phasesOf, localDay, sessionsForWound } from '@/lib/course';
@@ -79,7 +80,7 @@ export default function WoundDetail() {
               {isDoctor && review?.state === 'low' && (
                 <Pressable accessibilityRole="button" accessibilityLabel="Cảnh báo giảm chậm, xem giải thích" hitSlop={10}
                   onPress={() => notify('Giảm chậm sau mốc xem lại', `Đã qua mốc ${fmtDate(review.reviewDate)} mà diện tích mới giảm ${pctOf(review.reduction ?? 0)}, chưa tới 50%. Cân nhắc xem lại liệu trình và nguyên nhân. Ngưỡng tham khảo cho loét bàn chân đái tháo đường (Sheehan 2003).`)}>
-                  <Chip icon="alert-circle" tone="red" label={`Mốc ${fmtDate(review.reviewDate)}: chưa tới 50%`} />
+                  <Chip icon="alert-circle" tone="amber" label={`Mốc ${fmtDate(review.reviewDate)}: chưa tới 50%`} />
                 </Pressable>
               )}
             </View>
@@ -96,7 +97,9 @@ export default function WoundDetail() {
 
   // Ba thẻ: tổng quan (vị trí, trạng thái, mức độ, diện tích), đợt điều trị, đánh giá. Album không đóng khung.
   return (
-    <Screen header={<Header back title={`Vết thương ${w.code}`} subtitle={`${p.name} · ${p.code}`} />}>
+    <Screen header={<Header back title={`Vết thương ${w.code}`} />}>
+      {/* P0 G1: bệnh nhân và vết thương đang thao tác. */}
+      <ClinicalContext patient={p} wound={w} />
       {/* Thẻ 1, tổng quan: vị trí, trạng thái, mức độ, cảnh báo chụp lại và diện tích (điểm neo) trong một thẻ.
           Vị trí và nhóm tổn thương luôn hiện đủ để tránh nhầm vết (R15). */}
       <Card>
@@ -113,7 +116,7 @@ export default function WoundDetail() {
           {sev ? <StatusChip status={SEVERITY_ROLE[sev]} label={`Mức độ ${SEVERITY[sev].label.toLowerCase()}`} /> : <Chip label="Chưa đánh giá mức độ" tone="gray" />}
           {isDoctor && retakes.length > 0 && (
             <Pressable accessibilityRole="button" hitSlop={10} onPress={() => notify(`Đã yêu cầu chụp lại ${retakes.length} ảnh`, retakes.map((im) => `${im.id}: ${im.retakeRequested}`).join('\n'))}>
-              <Chip icon="camera-reverse-outline" tone="red" label={`Chụp lại ${retakes.length} ảnh`} />
+              <Chip icon="camera-reverse-outline" tone="amber" label={`Chụp lại ${retakes.length} ảnh`} />
             </Pressable>
           )}
         </View>
@@ -126,7 +129,7 @@ export default function WoundDetail() {
             <SectionTitle icon="pulse-outline">Hiện trạng</SectionTitle>
             {latest ? areaBlock(false) : <Muted>Chưa có số đo. Chụp ảnh rồi nhập diện tích.</Muted>}
             <View>
-              {latest ? <InfoRow label="Ngày đo" value={fmtDate(latest.captureDate)} /> : null}
+              {latest ? <InfoRow label="Ảnh đo chụp ngày" value={fmtDate(latest.captureDate)} /> : null}
               <InfoRow label="Xu hướng (bác sĩ đánh giá)" stack value={evals[0]
                 ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}><StatusChip status={TREND_ROLE[evals[0].trend]} label={TREND[evals[0].trend].label} /><Muted>{fmtDate(evals[0].date)}</Muted></View>
                 : 'Chưa có đánh giá'} />
