@@ -59,6 +59,19 @@ const draftOf = (pid, wid, id) => `{ const base = d.plans.filter((x) => x.patien
   const b = await chromium.launch();
   const { newPage, login, go, mutate, overflow } = helpers(b);
   const tile = (p) => p.getByRole('button', { name: /Đợt nháp chờ xác nhận/ }).first();
+  if (SHOTS) {
+    // Ảnh: B01 có nháp của 2 vết (BN001, BN002), rồi màn mở ra khi chạm ô Đợt nháp.
+    const { shot } = helpers(b);
+    for (const w of WIDTHS) {
+      const p = await newPage(w); await login(p);
+      await go(p, '/'); await mutate(p, `d.plans = d.plans.filter((x) => x.status !== 'draft'); ${draftOf('p-1', 'w-1', 'pl-kt-1')} ${draftOf('p-2', 'w-2', 'pl-kt-2')}`);
+      await go(p, '/doctor'); await p.screenshot({ path: path.join(OUT, `b01-hai-nhap-${SHOTS}-${w}.png`) });
+      await tile(p).click(); await p.waitForTimeout(1200);
+      await shot(p, `cham-o-nhap-${SHOTS}-${w}.png`);
+      await p.context().close();
+    }
+    await b.close(); return;
+  }
   // Một nháp: mở thẳng B06 đúng vết (hành vi P0 giữ nguyên).
   {
     const p = await newPage(); await login(p);
