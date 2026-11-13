@@ -4,13 +4,15 @@ import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { DoseRows, PhaseList } from '@/components/CourseCard';
+import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
+import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { CheckRow } from '@/components/Consent';
 import { PLAN } from '@/theme.status';
 import { Button, Card, Chip, Choices, Disclosure, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
 import { capabilitiesFor, modeLabel } from '@/lib/device/capabilities';
 import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, phasesOf, suggestDurationSec } from '@/lib/course';
-import { notify } from '@/lib/dialog';
+import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, maskDateInput, PLAN_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import type { CoursePhase, PhasePattern, PlanStatus, TreatmentPlan } from '@/lib/types';
@@ -136,6 +138,11 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   const [clearedByEdit, setClearedByEdit] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [step, setStep] = useState(0);
+  // P0 SV-05, ID-05: biểu mẫu khác giá trị lúc mở (hoặc lúc vừa lưu) thì rời màn hay đổi vết thương phải hỏi trước.
+  const snapshot = JSON.stringify({ status, phases, perVisit, gap, level, mode, duration, spc, reviewDay, review, notes, reason, confirmed });
+  const [initial, setInitial] = useState(snapshot);
+  const dirty = snapshot !== initial;
+  useDiscardGuard(dirty);
 
   if (!p) return <NoAccess notFound />;
   if (!canView) return <NoAccess />;
@@ -181,6 +188,16 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
     { label: 'Mốc xem lại', before: base ? `Ngày thứ ${base.reviewAtDay ?? DEFAULT_REVIEW_DAY}` : undefined, after: reviewDay.trim() ? `Ngày thứ ${reviewDay.trim()}` : '—', step: 1 },
   ];
   const changedCount = base ? reviewRows.filter((r) => r.before !== r.after).length : 0;
+  const w = wounds.find((x) => x.id === woundId);
+  // P0 SV-06: cùng quy tắc với savePlan: lưu "Đang áp dụng" thì mọi phiên bản đang áp dụng hoặc tạm dừng của vết này chuyển Kết thúc.
+  const willEnd = status === 'active'
+    ? data.plans.filter((x) => x.patientId === patientId && (x.woundId ?? null) === (woundId ?? null) && (x.status === 'active' || x.status === 'paused')).sort((a, b) => a.version - b.version)
+    : [];
+  const changeWound = (v: string) => {
+    if (v === woundId) return;
+    if (!dirty) { setWoundId(v); return; }
+    confirm('Đổi vết thương?', `Dữ liệu đang nhập cho ${w?.code ?? 'vết thương này'} chưa lưu sẽ bị bỏ.`, () => setWoundId(v), 'Bỏ và đổi vết', 'Ở lại');
+  };
   /** Bỏ dấu xác nhận khi lịch hoặc liều đổi (UX-02); ghi lại để báo bác sĩ ở bước Xác nhận. */
   const unconfirm = () => {
     if (confirmed) setClearedByEdit(true);
@@ -224,15 +241,18 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
     setReason('');
     setConfirmed(false);
     setClearedByEdit(false);
+    setInitial(JSON.stringify({ status, phases, perVisit, gap, level, mode, duration, spc, reviewDay, review, notes, reason: '', confirmed: false }));
     notify('Đã lưu phiên bản mới', 'Bệnh nhân nạp mức, chế độ và thời gian xuống máy qua cáp USB ở màn Thiết bị (bản demo: thiết bị giả lập).');
   };
 
   return (
-    <Screen header={<Header back title="Đợt điều trị" subtitle={`${p.name} · ${p.code}`} />}>
+    <Screen header={<Header back title="Đợt điều trị" />}>
+      {/* P0 G1: bệnh nhân và vết thương của đợt đang lập. */}
+      <ClinicalContext patient={p} wound={w ?? null} />
       {wounds.length > 1 && (
         <Card>
           <SectionTitle icon="bandage-outline">Vết thương</SectionTitle>
-          <Choices<string> value={woundId} onChange={setWoundId} options={wounds.map((w) => ({ value: w.id, label: `${w.code} · ${w.location}` }))} />
+          <Choices<string> value={woundId} onChange={changeWound} options={wounds.map((w) => ({ value: w.id, label: `${w.code} · ${w.location}` }))} />
         </Card>
       )}
       <Card>
@@ -330,6 +350,8 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
           <>
             {/* R-02, UX-10 (Đợt 10): màn kiểm tra trước khi lưu. Bảng so với phiên bản đang áp dụng, trường đổi tô vàng; sửa thì quay về đúng bước. */}
             <Text style={{ fontWeight: '700', color: C.text, fontSize: T.cardTitle }}>Kiểm tra lịch và liều trước khi lưu</Text>
+            {/* P0 ID-05: nêu vết thương của phiên bản sắp lưu ngay đầu bảng kiểm tra. */}
+            <InfoRow label="Vết thương" value={w ? `${w.code} · ${w.location}` : 'Chưa chọn'} />
             <ReviewTable rows={reviewRows} baseTitle={baseTitle} />
             <Muted>{!base ? 'Lần lập đầu cho vết thương này.' : changedCount ? `${changedCount} thay đổi được tô vàng.` : 'Không có thay đổi lịch hoặc liều so với phiên bản đang so sánh.'}</Muted>
             <View style={{ flexDirection: 'row', gap: 16, flexWrap: 'wrap' }}>
@@ -348,8 +370,11 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
         )}
         <CheckRow checked={confirmed} onChange={(v) => { setConfirmed(v); if (v) setClearedByEdit(false); }} label="Tôi xác nhận liều và lịch này. Bệnh nhân sẽ xem được đợt và nạp liệu trình xuống máy." />
             {/* Hậu quả của trạng thái đang chọn (V12), đặt sát nút Lưu. */}
+            {willEnd.length > 0 && (
+              <Notice icon="git-branch-outline">{`${willEnd.map((x) => `Phiên bản ${x.version} (${PLAN_STATUS[x.status].label})`).join(', ')} sẽ chuyển sang Kết thúc khi lưu. Các phiên bản cũ vẫn giữ trong danh sách bên dưới.`}</Notice>
+            )}
             <Notice tone="blue" icon="information-circle-outline">{STATUS_EFFECT[status]}</Notice>
-            <Button label={`Lưu phiên bản ${nextVersion}`} icon="save-outline" onPress={save} />
+            <Button label={`Lưu phiên bản ${nextVersion}${w ? ` cho ${w.code}` : ''}`} icon="save-outline" onPress={save} />
           </>
         )}
         <View style={{ flexDirection: 'row', gap: 10 }}>

@@ -161,7 +161,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
       im.areaCm2 === 9.5 && im.measureMethod === 'Thước giấy kẻ ô' && im.history.length === 1 && await has(p, 'Đã lưu diện tích 9,5 cm² cho ảnh IMG0098.'), `lịch sử ${im.history.length}`);
     rec('D12-09', 'AI và bác sĩ vẫn tách: manualReference 9,5 có người xác nhận; automaticMeasurement 11,8 "estimated_unvalidated" giữ nguyên',
       im.capture.manualReference.areaCm2 === 9.5 && !!im.capture.manualReference.confirmedBy && im.capture.automaticMeasurement.areaCm2 === 11.8 && im.capture.automaticMeasurement.status === 'estimated_unvalidated');
-    rec('D12-10', 'Sau lưu có "Ảnh chưa đo tiếp theo (n)" và nêu rõ ảnh, bệnh nhân, vết thương kế tiếp', await has(p, /^Ảnh chưa đo tiếp theo \(\d+\)$/, false) && await has(p, /^Tiếp theo: IMG\d+ · BN\d+ · VT\d+/, false));
+    rec('D12-10', 'Sau lưu có "Ảnh chưa đo tiếp theo (n)" và nêu rõ ảnh, bệnh nhân, vết thương kế tiếp', await has(p, /^Ảnh chưa đo tiếp theo(, bệnh nhân khác)? \(\d+\)$/, false) && await has(p, /^Tiếp theo: IMG\d+ · .+ · BN\d+ · VT\d+/, false));
     // Sửa annotation: "Sửa số đo" điền đúng số đã lưu; "Sửa tên đầy đủ" ở mục kỹ thuật.
     await p.getByRole('button', { name: 'Sửa số đo' }).click(); await p.waitForTimeout(300);
     const pre = await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).inputValue();
@@ -170,7 +170,8 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const full = await p.getByRole('textbox', { name: 'Tên tệp đầy đủ', exact: true }).inputValue();
     await p.getByRole('button', { name: 'Quay về nhập diện tích' }).click(); await p.waitForTimeout(200);
     await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).fill('9');
-    await p.getByRole('button', { name: 'Lưu diện tích' }).click(); await p.waitForTimeout(500);
+    // P0 SV-03: thay số đã có thì nút là "Lưu số mới".
+    await p.getByRole('button', { name: 'Lưu số mới' }).click(); await p.waitForTimeout(500);
     const im2 = await imgOf(p, 'IMG0098');
     rec('D12-11', 'Sửa số: ô điền 9,5 của chính ảnh; "Sửa tên đầy đủ" mở từ mục kỹ thuật với tên hiện tại; lưu 9 thêm đúng 1 dòng lịch sử',
       pre === '9,5' && full === im.filename && im2.areaCm2 === 9 && im2.history.length === 2, `ô "${pre}", tên "${full}"`);

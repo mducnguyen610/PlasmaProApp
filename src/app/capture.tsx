@@ -18,8 +18,9 @@ export default function Capture() {
   // Không chọn sẵn bệnh nhân khi có từ 2 hồ sơ trở lên, để tránh chụp nhầm vào hồ sơ đứng đầu danh sách.
   const [pid, setPid] = useState(patients.length === 1 ? patients[0].id : '');
   const wounds = pid ? woundsOf(pid).filter((w) => w.status !== 'closed') : [];
-  const [wid, setWid] = useState(wounds[0]?.id ?? '');
-  const woundId = wounds.some((w) => w.id === wid) ? wid : (wounds[0]?.id ?? '');
+  const [wid, setWid] = useState('');
+  // P0 ID-03: như với bệnh nhân, chỉ chọn sẵn khi có đúng một vết đang theo dõi; từ 2 vết thì bác sĩ phải chọn.
+  const woundId = wounds.some((w) => w.id === wid) ? wid : wounds.length === 1 ? wounds[0].id : '';
   const last = woundId ? imagesOf(woundId).at(-1) : undefined;
   // UX-23 (Đợt 12): tìm theo tên hoặc mã như B02, danh sách một cột thay cho hàng chip.
   const [q, setQ] = useState('');
@@ -74,7 +75,7 @@ export default function Capture() {
           </View>
         </Card>
       )}
-      <Button label="Chụp có hướng dẫn" icon="camera" disabled={!woundId} onPress={go} reason="Chọn bệnh nhân và vết thương trước." />
+      <Button label="Chụp có hướng dẫn" icon="camera" disabled={!woundId} onPress={go} reason={pid ? 'Chọn vết thương trước.' : 'Chọn bệnh nhân và vết thương trước.'} />
       <Muted>Mở bước chụp để dùng camera hoặc chọn ảnh từ thư viện, rồi kiểm tra trước khi lưu.</Muted>
     </Screen>
   );

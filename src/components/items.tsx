@@ -113,7 +113,7 @@ export function ImageTile({ image, width = 150, showOwner }: { image: WoundImage
       </View>
       {image.retakeRequested && (
         <View style={{ position: 'absolute', top: 6, right: 6 }}>
-          <Chip label="Chụp lại" tone="red" icon="refresh" />
+          <Chip label="Chụp lại" tone="amber" icon="refresh" />
         </View>
       )}
       <Text style={{ fontSize: T.caption, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>

@@ -73,7 +73,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
       `ô "${await areaVal(p)}"`);
     await p.waitForTimeout(3000);
     rec('D9-02', 'Chờ thêm 3 giây sau khi phân tích xong: số AR không bị chép vào ô', (await areaVal(p)) === '');
-    rec('D9-03', 'Nút chính là "Lưu ảnh (chưa dán nhãn)" khi ô trống', await has(p, 'Lưu ảnh (chưa dán nhãn)'));
+    rec('D9-03', 'Nút chính là "Lưu ảnh (chưa có số đo)" khi ô trống (P0 DS-06 đổi nhãn)', await has(p, 'Lưu ảnh (chưa có số đo)'));
     // Rời màn không lưu.
     await p.goBack(); await p.waitForTimeout(1200);
     rec('D9-04', 'Rời B10 không lưu: không phát sinh ảnh hoặc bản ghi đo', (await imgs(p)).length === n0);

@@ -5,12 +5,14 @@ import { View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
+import { ClinicalContext } from '@/components/ClinicalContext';
 import { UsbLinkStatus } from '@/components/UsbLinkStatus';
 import { Button, Card, Header, InfoRow, Muted, Notice, Screen } from '@/components/ui';
 import { fmtRemaining, SESSION_LABEL } from '@/lib/device/labels';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
 import { confirm } from '@/lib/dialog';
 import { fmtDateTime } from '@/lib/format';
+import { sessionDisplay } from '@/lib/sessionDisplay';
 import { useLookups, useStore } from '@/lib/store';
 import { C, semantic, typeScale } from '@/theme';
 
@@ -24,7 +26,7 @@ const STALE_AFTER_SEC = 5;
 export default function SessionMonitor() {
   const params = useLocalSearchParams<{ patientId?: string; woundId?: string }>();
   const { data, me, recordDeviceSession } = useStore();
-  const { patient } = useLookups();
+  const { patient, wound } = useLookups();
   const p = patient(me?.role === 'patient' ? me.patientId : params.patientId);
   const canView = useCanView(p);
   // kind: 'done' buổi đủ thời gian, 'interrupted' buổi dừng giữa chừng hoặc lỗi, 'fail' chưa ghi được (V03: mỗi sự kiện một thông báo).
@@ -59,9 +61,13 @@ export default function SessionMonitor() {
   const [leaving, setLeaving] = useState(false);
   usePreventRemove(running && !leaving, ({ repeat }) => {
     const patientView = me?.role === 'patient';
+    // P0 DV-03: đã mất kết nối thì không nói "đang chạy" theo bản tin cũ.
+    const linkLost = link.state !== 'connected';
     confirm(
       'Rời màn theo dõi?',
-      patientView
+      linkLost
+        ? 'Đã mất kết nối với máy nên không biết máy còn đang điều trị hay không. Phiên này sẽ không được ghi vào nhật ký.'
+        : patientView
         ? 'Máy vẫn đang điều trị. Nếu rời màn này, buổi điều trị hôm nay sẽ không được ghi lại và bác sĩ sẽ thấy là bỏ lỡ.'
         : 'Phiên đang chạy. Nếu rời màn này, phiên sẽ không được ghi vào nhật ký.',
       () => { setLeaving(true); repeat(); },
@@ -77,18 +83,31 @@ export default function SessionMonitor() {
   const st = link.lastStatus;
   const lost = link.state === 'disconnected' || link.state === 'error';
   // Ngưỡng 5 s là đề xuất ở wireframe T02 (P5), chưa có nguồn; ICD hiện quy định máy gửi STA mỗi giây.
-  const staleSec = link.lastStatusAt ? Math.floor((now - new Date(link.lastStatusAt).getTime()) / 1000) : 0;
-  const stale = link.state === 'connected' && st?.state === 'running' && staleSec > STALE_AFTER_SEC;
+  // P0 DV-01: mất kết nối hoặc quá ngưỡng thì không trình bày bản tin cũ như trạng thái hiện tại.
+  const shown = sessionDisplay({ linkState: link.state, state: st?.state ?? null, statusAt: link.lastStatusAt, now, staleAfterSec: STALE_AFTER_SEC });
+  const staleSec = shown.ageSec ?? 0;
+  const stale = shown.view === 'stale';
+  const unknownNow = shown.view === 'stale' || shown.view === 'lost';
+  const w = wound(params.woundId);
   return (
-    <Screen header={<Header back title="Theo dõi phiên điều trị" subtitle={`${p.name} · ${p.code}`} />}>
+    <Screen header={<Header back title="Theo dõi phiên điều trị" />}>
+      {/* P0 G1 (ID-07): phiên được ghi theo vết thương này. */}
+      <ClinicalContext patient={p} wound={w && w.patientId === p.id ? w : null} />
       <Card>
         <UsbLinkStatus state={link.state} simulated={link.kind === 'simulated'} />
         {link.state !== 'connected' && <Button label="Kết nối" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />}
       </Card>
-      {lost && st?.state === 'running' && <Notice tone="red">Mất kết nối với máy trong lúc phiên đang chạy. Hãy cắm lại cáp.</Notice>}
+      {lost && shown.view === 'lost' && <Notice tone="red">{st?.state === 'running' ? 'Mất kết nối với máy trong lúc phiên đang chạy. Hãy cắm lại cáp.' : 'Mất kết nối với máy. Hãy cắm lại cáp.'}</Notice>}
       {stale && <Notice>{`Chưa nhận trạng thái từ máy ${staleSec} giây. Kiểm tra cáp còn cắm chặt.`}</Notice>}
       <Card>
-        {st && st.state !== 'stopped' && st.state !== 'error' && st.remainingSec != null ? (
+        {st && unknownNow ? (
+          // P0 DV-01: không đếm ngược theo bản tin cũ, không giả định máy đã dừng hay vẫn chạy.
+          <View testID="session-unknown" accessible accessibilityLabel={`Không rõ trạng thái hiện tại của máy. Trạng thái cuối nhận được: ${SESSION_LABEL[st.state]}${st.remainingSec != null ? `, còn ${fmtRemaining(st.remainingSec)}` : ''}`} style={{ alignItems: 'center', gap: 6, paddingVertical: 12 }}>
+            <Ionicons name="help-circle-outline" size={36} color={C.amber} />
+            <Text style={{ fontSize: typeScale.sectionTitle.size, fontWeight: '700', color: C.text, textAlign: 'center' }}>Không rõ trạng thái hiện tại của máy</Text>
+            <Text style={{ color: C.textSoft, textAlign: 'center' }}>{`Trạng thái cuối nhận được: ${SESSION_LABEL[st.state]}${st.remainingSec != null ? `, còn ${fmtRemaining(st.remainingSec)}` : ''}${link.lastStatusAt ? ` lúc ${new Date(link.lastStatusAt).toLocaleTimeString('vi-VN')}` : ''}. Số này không còn cập nhật.`}</Text>
+          </View>
+        ) : st && st.state !== 'stopped' && st.state !== 'error' && st.remainingSec != null ? (
           <View accessible accessibilityLabel={`${SESSION_LABEL[st.state]}, còn ${fmtRemaining(st.remainingSec)}`} style={{ alignItems: 'center', gap: 2, paddingVertical: 8 }}>
             <Text style={{ fontSize: typeScale.timer.size, fontWeight: typeScale.timer.weight, color: st.state === 'running' ? C.primary : C.text, fontVariant: ['tabular-nums'] }}>{fmtRemaining(st.remainingSec)}</Text>
             <Text style={{ color: C.textSoft }}>{`${SESSION_LABEL[st.state]}, còn lại`}</Text>
@@ -101,6 +120,13 @@ export default function SessionMonitor() {
           </View>
         )}
         <InfoRow label="Nhận lần cuối" value={link.lastStatusAt ? fmtDateTime(link.lastStatusAt) : '–'} />
+        {/* P0 DV-06: tách điều máy báo với việc ứng dụng đã ghi phiên hay chưa; máy xong không có nghĩa là đã ghi. */}
+        {st && (st.state === 'done' || st.state === 'stopped' || st.state === 'error') && (
+          <>
+            <InfoRow label="Máy báo" value={SESSION_LABEL[st.state]} />
+            <InfoRow label="Nhật ký ứng dụng" value={!saved ? 'Chưa ghi phiên này' : saved.kind === 'fail' ? 'Chưa ghi được' : saved.kind === 'done' ? 'Đã ghi (đủ thời gian)' : 'Đã ghi (gián đoạn)'} />
+          </>
+        )}
         {!st && <Muted>Bắt đầu phiên trên máy; trạng thái hiện ở đây khi máy gửi về. Giữ màn này mở tới khi phiên xong để phiên được ghi vào nhật ký.</Muted>}
       </Card>
       {/* Buổi đủ thời gian: một thông báo success. Buổi gián đoạn: gộp vào thông báo warning của trạng thái bên dưới. */}

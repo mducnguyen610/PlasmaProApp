@@ -4,8 +4,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, View, type HostInstance, type ScrollViewInstance } from 'react-native';
 import { Text } from '@/components/Text';
 
+import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Choices, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, SwitchRow, WoundPhoto } from '@/components/ui';
+import { useDiscardGuard } from '@/components/useDiscardGuard';
+import { Button, Card, Choices, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, SwitchRow, TextLink, WoundPhoto } from '@/components/ui';
 import { SEVERITY } from '@/lib/access';
 import { assessmentError, EXUDATE, HELP, INFECTION, PERCENT_BANDS, PRESSURE, PRESSURE_STAGES, WOUND_TYPES, woundAge } from '@/lib/assessment';
 import { fmtDate, TREND } from '@/lib/format';
@@ -28,7 +30,10 @@ export default function Evaluate() {
   const openReports = data.reports.filter((r) => r.patientId === p?.id && r.kind === 'symptom' && !r.handled);
 
   // Lấy sẵn loại và giai đoạn của lần đánh giá trước (như Swift), bác sĩ chỉ sửa khi thay đổi.
-  const prev = data.evaluations.filter((e) => e.woundId === woundId && e.assessment).sort((a, b) => b.date.localeCompare(a.date))[0]?.assessment;
+  const prevEval = data.evaluations.filter((e) => e.woundId === woundId && e.assessment).sort((a, b) => b.date.localeCompare(a.date))[0];
+  const prev = prevEval?.assessment;
+  // P0 ID-06: imageId có trên đường dẫn nhưng không thuộc vết thương đang mở thì dừng, không lưu thiếu ảnh tham chiếu.
+  const imageMismatch = !!imageId && !img;
   const [a, setA] = useState<Partial<WoundAssessment>>({ woundType: prev?.woundType, pressureStage: prev?.pressureStage });
   const set = (k: keyof WoundAssessment) => (v: string) => { setA((x) => ({ ...x, [k]: v, ...(k === 'woundType' && v !== PRESSURE ? { pressureStage: undefined } : {}) })); clearErr(k as FieldKey); };
   const [characteristics, setCharacteristics] = useState('');
@@ -40,6 +45,9 @@ export default function Evaluate() {
   const [nextReview, setNextReview] = useState('');
   const [visible, setVisible] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  // P0 SV-05: so với giá trị lúc mở màn; khác thì rời màn phải hỏi. Không tự lưu.
+  const [initial] = useState(() => JSON.stringify({ a: { woundType: prev?.woundType, pressureStage: prev?.pressureStage }, characteristics: '', symptoms: openReports.map((r) => r.content).join(' '), severity: '', trend: 'insufficient', instructions: '', nextReview: '', visible: true }));
+  const dirty = JSON.stringify({ a, characteristics, symptoms, severity, trend, instructions, nextReview, visible }) !== initial;
   // R-05, UX-15 (Đợt 10): sau khi lưu, nếu báo cáo triệu chứng chưa xử lý đã được điền vào ô Triệu chứng thì hỏi có đánh dấu đã xử lý
   // không (không tự làm, QĐ-5 giữ nguyên). saving chặn lưu trùng khi bấm nhiều lần.
   const saving = useRef(false);
@@ -47,22 +55,26 @@ export default function Evaluate() {
   // Bổ sung Đợt 4: nhóm đang mở do màn điều khiển, để khi lưu thiếu trường thì mở đúng nhóm và đưa tới trường lỗi.
   const [openGroups, setOpenGroups] = useState<[boolean, boolean, boolean]>([true, false, false]);
   const [fieldErr, setFieldErr] = useState<{ key: FieldKey; msg: string; at: number } | null>(null);
+  // P0 SV-04: "Sửa" trong thẻ "Sẽ lưu" mở đúng nhóm và cuộn tới trường, như khi lưu thiếu.
+  const [scrollTo, setScrollTo] = useState<{ key: FieldKey; at: number } | null>(null);
   const scrollRef = useRef<ScrollViewInstance>(null);
   // Bảng nút của các trường bắt buộc và hàm gắn nút, tạo một lần (không đọc trong lúc render).
   const [fieldNodes] = useState(() => new Map<FieldKey, HostInstance>());
   const [anchors] = useState(() => Object.fromEntries(FIELD_KEYS.map((k) => [k, (el: HostInstance | null) => { if (el) fieldNodes.set(k, el); else fieldNodes.delete(k); }])) as Record<FieldKey, (el: HostInstance | null) => void>);
   const clearErr = (k: FieldKey) => setFieldErr((f) => (f?.key === k ? null : f));
+  const [done, setDone] = useState(false);
+  const allowLeave = useDiscardGuard(dirty && !done);
   // Cuộn tới trường lỗi một lần cho mỗi lần bấm Lưu (phụ thuộc fieldErr.at), sau khi nhóm đã mở và trường đã hiện.
   useEffect(() => {
-    if (!fieldErr) return;
+    if (!scrollTo) return;
     const id = requestAnimationFrame(() => {
-      const node = fieldNodes.get(fieldErr.key);
+      const node = fieldNodes.get(scrollTo.key);
       const inner = scrollRef.current?.getInnerViewRef?.();
       if (!node || !inner) return;
       try { node.measureLayout(inner as never, (_x: number, y: number) => scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true }), () => {}); } catch { /* không cuộn được thì vẫn có lỗi tại trường và trên nút Lưu */ }
     });
     return () => cancelAnimationFrame(id);
-  }, [fieldErr?.at]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scrollTo?.at]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!w || !p) return <NoAccess notFound />;
   if (!canView || me?.role !== 'doctor') return <NoAccess />;
@@ -95,6 +107,12 @@ export default function Evaluate() {
     const g = GROUP_OF[key];
     setOpenGroups((o) => (o[g] ? o : (o.map((v, i) => v || i === g) as [boolean, boolean, boolean])));
     setFieldErr((f) => ({ key, msg, at: (f?.at ?? 0) + 1 }));
+    setScrollTo((x) => ({ key, at: (x?.at ?? 0) + 1 }));
+  };
+  const jumpTo = (key: FieldKey) => {
+    const g = GROUP_OF[key];
+    setOpenGroups((o) => (o[g] ? o : (o.map((v, i) => v || i === g) as [boolean, boolean, boolean])));
+    setScrollTo((x) => ({ key, at: (x?.at ?? 0) + 1 }));
   };
   const save = () => {
     const aErr = assessmentError(a);
@@ -106,6 +124,7 @@ export default function Evaluate() {
       const date = new Date(Number(y), Number(m) - 1, Number(d));
       if (date.getFullYear() !== Number(y) || date.getMonth() !== Number(m) - 1 || date.getDate() !== Number(d)) return fail('Ngày tái đánh giá không tồn tại.', 'nextReview');
     }
+    if (imageMismatch) return fail('Ảnh tham chiếu không thuộc vết thương này. Mở lại từ màn vết thương.');
     if (saving.current) return;
     saving.current = true;
     // Báo cáo đã được điền vào ô Triệu chứng (nội dung còn nằm trong ô lúc lưu).
@@ -122,7 +141,9 @@ export default function Evaluate() {
       return fail(`Chưa lưu được đánh giá: ${e instanceof Error ? e.message : 'lỗi không xác định'}. Dữ liệu vẫn còn, hãy thử lại.`);
     }
     setErr(null);
+    setDone(true);
     if (filledReports.length) { setSaved({ reportIds: filledReports }); return; }
+    allowLeave();
     notify('Đã lưu đánh giá', visible ? 'Bệnh nhân xem được đánh giá này.' : 'Chỉ bác sĩ xem được đánh giá này.');
     router.back();
   };
@@ -130,7 +151,8 @@ export default function Evaluate() {
   if (saved) {
     const n = saved.reportIds.length;
     return (
-      <Screen header={<Header back title="Đánh giá tình trạng" subtitle={`${p.name} · ${w.code} · ${w.location}`} />}>
+      <Screen header={<Header back title="Đánh giá tình trạng" />}>
+      <ClinicalContext patient={p} wound={w} />
         <Notice tone="green" icon="checkmark-circle-outline">Đã lưu đánh giá. {visible ? 'Bệnh nhân xem được đánh giá này.' : 'Chỉ bác sĩ xem được đánh giá này.'}</Notice>
         <Card>
           <Text style={{ fontWeight: '700', color: C.text }}>{n} báo cáo triệu chứng của bệnh nhân đã được điền vào đánh giá</Text>
@@ -143,7 +165,9 @@ export default function Evaluate() {
   }
 
   return (
-    <Screen scrollRef={scrollRef} header={<Header back title="Đánh giá tình trạng" subtitle={`${p.name} · ${w.code} · ${w.location}`} />}>
+    <Screen scrollRef={scrollRef} header={<Header back title="Đánh giá tình trạng" />}>
+      <ClinicalContext patient={p} wound={w} />
+      {imageMismatch && <Notice tone="red" icon="close-circle-outline">{`Ảnh ${imageId} không thuộc ${w.code} của bệnh nhân này. Không lưu được đánh giá từ đường dẫn này; mở lại từ màn vết thương.`}</Notice>}
       <Card>
         {/* R-05, UX-16 (Đợt 10): ảnh tham chiếu nhỏ, ngày chụp, diện tích bác sĩ đo. Cùng dữ liệu như trước. */}
         {img ? (
@@ -165,6 +189,10 @@ export default function Evaluate() {
           <View style={{ gap: space.s }}>
             <InfoRow label="Tuổi vết thương (tự tính)" value={`${woundAge(w.startDate, todayIso())}, từ ${w.startDate.split('-').reverse().join('/')}`} />
             <Q label="Loại vết thương" required help={HELP.woundType} error={errOf('woundType')} anchor={anchor('woundType')}><Choices value={a.woundType ?? ''} onChange={set('woundType')} options={WOUND_TYPES.map((v) => ({ value: v, label: v }))} /></Q>
+            {/* P0 DS-04: giá trị điền sẵn từ lần trước được ghi rõ nguồn cho tới khi bác sĩ chọn lại. */}
+            {prevEval && prev?.woundType && a.woundType === prev.woundType && (a.woundType !== PRESSURE || a.pressureStage === prev.pressureStage) ? (
+              <Muted>{`Lấy từ đánh giá ngày ${fmtDate(prevEval.date)}${a.woundType === PRESSURE && prev.pressureStage ? ' (cả giai đoạn)' : ''}. Kiểm tra lại trước khi lưu.`}</Muted>
+            ) : null}
             {a.woundType === PRESSURE && (
               <Q label="Giai đoạn (NPIAP)" required help={HELP.pressureStage} error={errOf('pressureStage')} anchor={anchor('pressureStage')}><Choices value={a.pressureStage ?? ''} onChange={set('pressureStage')} options={PRESSURE_STAGES.map((v) => ({ value: v, label: v }))} /></Q>
             )}
@@ -193,7 +221,9 @@ export default function Evaluate() {
         <Disclosure title="Diễn biến và hướng dẫn" summary={groupSummary(g3)} open={openGroups[2]} onToggle={toggle(2)}>
           <View style={{ gap: space.s }}>
             <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
-            <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
+            <View ref={anchor('trend')}>
+              <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
+            </View>
             <Field optional label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
             <View ref={anchor('nextReview')}>
               <Field optional label="Ngày tái đánh giá" value={nextReview} onChangeText={(v) => { setNextReview(v); clearErr('nextReview'); }} placeholder="dd/mm/yyyy" error={errOf('nextReview')} />
@@ -204,6 +234,17 @@ export default function Evaluate() {
       {/* R-05, UX-06 (Đợt 10): ai sẽ thấy đánh giá, đặt ngay trên nút Lưu. Mặc định giữ nguyên (QĐ-2 chưa đổi). Nội dung xem trước lấy
           đúng như trang chủ bệnh nhân (lời dặn, nếu trống thì đặc điểm) và trang vết thương (các trường đã nhập). */}
       <View style={{ gap: space.s, padding: 14, borderRadius: 14, borderWidth: 2, borderColor: visible ? C.primary : C.cardBorder, backgroundColor: C.card }}>
+        {/* P0 SV-04: tóm tắt các lựa chọn chính ngay trên nút Lưu, sửa thì mở đúng nhóm. Không thêm màn hay hộp xác nhận. */}
+        <View testID="se-luu" style={{ gap: space.xs }}>
+          <Text style={{ fontWeight: '700', color: C.text }}>Sẽ lưu</Text>
+          <SummaryRow label="Vết thương" value={`${w.code} · ${w.location}`} />
+          <SummaryRow label="Mức độ" value={severity ? SEVERITY[severity].label : 'Chưa chọn'} missing={!severity} onEdit={() => jumpTo('severity')} />
+          <SummaryRow label="Diễn biến" value={TREND[trend].label} onEdit={() => jumpTo('trend')} />
+          <SummaryRow label="Loại vết thương" value={a.woundType ? `${a.woundType}${a.woundType === PRESSURE ? `, ${a.pressureStage ?? 'chưa chọn giai đoạn'}` : ''}` : 'Chưa chọn'} missing={!a.woundType || (a.woundType === PRESSURE && !a.pressureStage)} onEdit={() => jumpTo('woundType')} />
+          <SummaryRow label="Nhiễm trùng" value={a.infection ?? 'Chưa chọn'} missing={!a.infection} onEdit={() => jumpTo('infection')} />
+          <SummaryRow label="Ảnh tham chiếu" value={img ? `${img.id}, ${formatAreaDisplay(img.areaCm2)}` : 'Không có'} />
+        </View>
+        <Divider />
         <SwitchRow label="Bệnh nhân sẽ xem đánh giá này" value={visible} onChange={setVisible} />
         {visible ? (
           <>
@@ -214,7 +255,7 @@ export default function Evaluate() {
         ) : <Muted>Chỉ bác sĩ thấy đánh giá này.</Muted>}
       </View>
       {err ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{err}</Text> : null}
-      <Button label={visible ? 'Lưu và công bố cho bệnh nhân' : 'Lưu đánh giá (chỉ bác sĩ)'} icon="save-outline" onPress={save} />
+      <Button label={visible ? 'Lưu và công bố cho bệnh nhân' : 'Lưu đánh giá (chỉ bác sĩ)'} icon="save-outline" onPress={save} disabled={imageMismatch} reason="Ảnh tham chiếu không thuộc vết thương này." />
     </Screen>
   );
 }
@@ -242,10 +283,21 @@ function Q({ label, required, help, error, anchor, children }: { label: string; 
   );
 }
 
-const FIELD_KEYS = ['woundType', 'pressureStage', 'exudate', 'infection', 'severity', 'nextReview'] as const;
+const FIELD_KEYS = ['woundType', 'pressureStage', 'exudate', 'infection', 'severity', 'trend', 'nextReview'] as const;
 type FieldKey = (typeof FIELD_KEYS)[number];
 /** Nhóm chứa từng trường bắt buộc hoặc có kiểm tra (0, 1, 2 theo thứ tự Disclosure). */
-const GROUP_OF: Record<FieldKey, 0 | 1 | 2> = { woundType: 0, pressureStage: 0, exudate: 0, infection: 0, severity: 1, nextReview: 2 };
+const GROUP_OF: Record<FieldKey, 0 | 1 | 2> = { woundType: 0, pressureStage: 0, exudate: 0, infection: 0, severity: 1, trend: 2, nextReview: 2 };
+
+/** P0 SV-04: một dòng của thẻ "Sẽ lưu". Mục bắt buộc còn trống ghi chữ "Chưa chọn" màu cảnh báo, không chỉ dựa vào màu. */
+function SummaryRow({ label, value, missing, onEdit }: { label: string; value: string; missing?: boolean; onEdit?: () => void }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, minHeight: 32 }}>
+      <Text style={{ width: 112, color: C.textSoft, fontSize: T.small }}>{label}</Text>
+      <Text style={{ flex: 1, color: missing ? C.amber : C.text, fontWeight: missing ? '700' : '600' }}>{value}</Text>
+      {onEdit ? <TextLink label="Sửa" accessibilityLabel={`Sửa ${label.toLowerCase()}`} onPress={onEdit} /> : null}
+    </View>
+  );
+}
 /** Câu lỗi của assessmentError (assessment.ts, không sửa) ứng với trường nào. Câu không có trong bảng thì chỉ báo trên nút Lưu như cũ. */
 const ASSESSMENT_FIELD: Record<string, FieldKey | undefined> = {
   'Hãy chọn loại vết thương.': 'woundType',

@@ -62,7 +62,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     rec('D8-02a', 'Đổi mức năng lượng sau khi tích: dấu xác nhận về trống và có câu giải thích', on1 === 'true' && off1 === 'false' && note1, `trước ${on1}, sau ${off1}, câu ${note1}`);
     // Dữ liệu không đầy đủ: đợt "Đang áp dụng" chưa tích thì không lưu.
     await p.getByLabel('Lý do thay đổi').fill('Kiểm thử Đợt 8');
-    await p.getByText(/^Lưu phiên bản \d+$/).click(); await p.waitForTimeout(400);
+    await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click(); await p.waitForTimeout(400);
     const blocked = await has(p, 'Đợt "Đang áp dụng" cần bác sĩ xác nhận.');
     const v1 = (await store(p)).plans.filter((x) => x.patientId === 'p-1').length;
     rec('D8-02b', 'Chưa tích lại: lưu bị chặn bởi quy tắc cũ, không tạo phiên bản', blocked && v1 === v0, `lỗi ${blocked}, phiên bản ${v0}→${v1}`);
@@ -84,13 +84,13 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     await tab(p, '2. Liều'); await tab(p, '3. Xác nhận');
     rec('D8-02e', 'Chỉ chuyển bước, không đổi giá trị: dấu xác nhận giữ nguyên', (await checked(p, CONFIRM)) === 'true');
     // Thao tác đúng: lưu được, rồi dấu xác nhận về trống.
-    await p.getByText(/^Lưu phiên bản \d+$/).click(); await p.waitForTimeout(600);
+    await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click(); await p.waitForTimeout(600);
     const s2 = await store(p); const v2 = s2.plans.filter((x) => x.patientId === 'p-1').length;
     const top = s2.plans.filter((x) => x.patientId === 'p-1').sort((a, c) => c.version - a.version)[0];
     const off2 = await checked(p, CONFIRM);
     rec('D8-02f', 'Lưu đúng: tạo đúng 1 phiên bản mới (mức 5, 200 giây, đã xác nhận), sau đó dấu xác nhận về trống', v2 === v0 + 1 && top.doseLevel === 5 && top.durationSec === 200 && top.confirmed === true && off2 === 'false', `phiên bản ${v0}→${v2}, mức ${top.doseLevel}, ${top.durationSec}s, dấu ${off2}`);
     // Nhấn Lưu liên tục: không tạo thêm phiên bản (lý do đã xóa, dấu xác nhận đã bỏ).
-    for (let i = 0; i < 3; i++) await p.getByText(/^Lưu phiên bản \d+$/).click();
+    for (let i = 0; i < 3; i++) await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click();
     await p.waitForTimeout(500);
     const v3 = (await store(p)).plans.filter((x) => x.patientId === 'p-1').length;
     rec('D8-02g', 'Nhấn Lưu 3 lần ngay sau khi lưu: không tạo phiên bản trùng', v3 === v2, `phiên bản ${v2}→${v3}`);
@@ -111,7 +111,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     await p.getByText('Nạp liệu trình vào máy').first().click(); await p.waitForTimeout(1200);
     await p.getByText('Kết nối', { exact: true }).click(); await p.waitForTimeout(1500);
     await p.getByText('Nạp liệu trình vào máy').last().click(); await p.waitForTimeout(2500);
-    const acked = await has(p, 'Máy đã nhận liệu trình.');
+    const acked = await has(p, /^Máy đã nhận liệu trình\./, false);
     const guide = await has(p, 'Bước tiếp theo') && await has(p, 'Buổi điều trị chỉ được ghi lại khi màn theo dõi đang mở.');
     rec('D8-03a', 'T01 sau khi máy nhận: có "Bước tiếp theo" và câu phiên chỉ ghi khi màn theo dõi mở', acked && guide, `ACK ${acked}`);
     for (const w of [320, 360, 390, 768]) { await p.setViewportSize({ width: w, height: 844 }); await p.waitForTimeout(200); await shot(p, `${OUT}/t01c-buoc-tiep-theo-${w}.png`); }

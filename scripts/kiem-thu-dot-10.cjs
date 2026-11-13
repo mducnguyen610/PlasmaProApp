@@ -46,7 +46,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     for (const name of ['Loét do bệnh tĩnh mạch', 'Không', 'Không có dấu hiệu']) { await p.getByRole('radio', { name, exact: true }).first().click(); await p.waitForTimeout(150); }
   };
   const plansW1 = async (p) => ((await store(p)).plans || []).filter((x) => x.patientId === 'p-1');
-  const SAVE06 = /^Lưu phiên bản \d+$/;
+  const SAVE06 = /^Lưu phiên bản \d+( cho VT\d+)?$/;
 
   // Ảnh trước/sau ở 4 khổ: B06 bước 3 sau khi đổi mức 4 → 5, B06 bước 2, B07 đầu và cuối màn.
   for (const w of [320, 360, 390, 768]) {
@@ -66,7 +66,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const v0 = (await plansW1(p)).length;
     await tab(p, '3. Xác nhận');
     rec('D10-06a', 'Bước 3 có bảng "Đang áp dụng (v2) | Phiên bản mới", nút "Lưu phiên bản 3", báo không có thay đổi',
-      await has(p, 'Đang áp dụng (v2)') && await has(p, 'Phiên bản mới') && await has(p, 'Lưu phiên bản 3') && await has(p, 'Không có thay đổi lịch hoặc liều so với phiên bản đang so sánh.'));
+      await has(p, 'Đang áp dụng (v2)') && await has(p, 'Phiên bản mới') && await has(p, /^Lưu phiên bản 3( cho VT\d+)?$/) && await has(p, 'Không có thay đổi lịch hoặc liều so với phiên bản đang so sánh.'));
     await p.getByText('Sửa liều', { exact: true }).click(); await p.waitForTimeout(300);
     const atDose = await vis(p, 'Liều khóa trên máy');
     await p.getByRole('radio', { name: '5', exact: true }).first().click(); await p.waitForTimeout(200);
@@ -102,7 +102,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
       `phiên bản ${v0}→${after.length}, v${top.version}, mức ${top.doseLevel}`);
     for (let i = 0; i < 3; i++) await p.getByText(SAVE06).click();
     await p.waitForTimeout(400);
-    rec('D10-06f', 'Nhấn Lưu 3 lần ngay sau đó: không tạo phiên bản trùng; nút thành "Lưu phiên bản 4"', (await plansW1(p)).length === v0 + 1 && await has(p, 'Lưu phiên bản 4'));
+    rec('D10-06f', 'Nhấn Lưu 3 lần ngay sau đó: không tạo phiên bản trùng; nút thành "Lưu phiên bản 4"', (await plansW1(p)).length === v0 + 1 && await has(p, /^Lưu phiên bản 4( cho VT\d+)?$/));
     // Rời màn giữa chừng.
     await tab(p, '2. Liều'); await p.getByRole('radio', { name: '3', exact: true }).first().click(); await tab(p, '3. Xác nhận');
     await p.getByLabel('Lý do thay đổi').fill('Rời giữa chừng');
