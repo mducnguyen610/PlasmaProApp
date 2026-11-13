@@ -37,7 +37,10 @@ export default function DoctorHome() {
     retakes.length > 0 && { key: 'retakes', icon: 'camera-outline', tone: 'amber', count: retakes.length, label: 'Ảnh cần chụp lại', onPress: () => retakes.length > 1
       ? router.navigate({ pathname: '/doctor/dataset', params: { loc: 'chup-lai', t: tapStamp() } })
       : router.push({ pathname: '/images/[id]', params: { id: retakes[0].id } }) },
-    drafts.length > 0 && { key: 'drafts', icon: 'flash-outline', tone: 'amber', count: drafts.length, label: 'Đợt nháp chờ xác nhận', onPress: () => router.push({ pathname: '/plan/[patientId]', params: { patientId: drafts[0].patientId, ...(drafts[0].woundId ? { woundId: drafts[0].woundId } : {}) } }) },
+    // P1-01d: nháp của từ 2 vết khác nhau thì mở B02 lọc "Có đợt nháp"; nháp của một vết thì mở thẳng B06 đúng vết như P0.
+    drafts.length > 0 && { key: 'drafts', icon: 'flash-outline', tone: 'amber', count: drafts.length, label: 'Đợt nháp chờ xác nhận', onPress: () => new Set(drafts.map((d) => `${d.patientId}:${d.woundId ?? ''}`)).size > 1
+      ? router.navigate({ pathname: '/doctor/patients', params: { loc: 'dot-nhap', t: tapStamp() } })
+      : router.push({ pathname: '/plan/[patientId]', params: { patientId: drafts[0].patientId, ...(drafts[0].woundId ? { woundId: drafts[0].woundId } : {}) } }) },
     offline.length > 0 && { key: 'offline', icon: 'cloud-offline-outline', tone: 'blue', count: offline.length, label: 'Thiết bị chưa đồng bộ', onPress: () => offline.length > 1
       ? router.navigate({ pathname: '/doctor/patients', params: { loc: 'chua-dong-bo', t: tapStamp() } })
       : router.push({ pathname: '/devices/[id]', params: { id: offline[0]!.id } }) },
