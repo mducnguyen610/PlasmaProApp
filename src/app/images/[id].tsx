@@ -10,13 +10,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
-import { Button, Card, Chip, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, Segmented, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, Segmented, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
 import { confirm, notify } from '@/lib/dialog';
-import { measurementSource } from '@/lib/measurementSource';
+import { measurementSource, neighbourImages, previousMeasuredImage } from '@/lib/measurementSource';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { buildFilename, checkFullFilename, formatAreaDisplay, formatAreaForName, parseArea, type AreaUnit } from '@/lib/naming';
 import { areaWarning, previousArea } from '@/lib/plausibility';
-import { previousMethod } from '@/lib/measureMethod';
+import { MEASURE_METHODS, previousMethod } from '@/lib/measureMethod';
 import { DEMO_ASSETS } from '@/lib/seed';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
@@ -70,6 +70,10 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
   // PP-11: nguồn của giá trị điền sẵn; null khi bác sĩ tự gõ hoặc ảnh đã có phương pháp riêng.
   const [methodFrom, setMethodFrom] = useState<{ imageId: string; captureDate: string } | null>(auto?.methodFrom ?? null);
   const [justSaved, setJustSaved] = useState(false);
+  // P1-06c: số cũ khi lần lưu vừa rồi là thay số (null nếu là lần đo đầu).
+  const [replacedFrom, setReplacedFrom] = useState<number | null>(null);
+  // P1-07c: bác sĩ chọn "Khác (ghi rõ)" khi ô còn trống.
+  const [otherMethod, setOtherMethod] = useState(false);
   const saving = useRef(false);
   const [retakeNote, setRetakeNote] = useState('');
   const [excludeReason, setExcludeReason] = useState('');
@@ -114,6 +118,7 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
   const startEdit = (m: Mode = 'area') => {
     const d = editDefaults(data.images, im, p.code, w.code);
     setEditing(true);
+    setOtherMethod(false);
     setFocusField(true);
     setJustSaved(false);
     setMode(m);
@@ -129,7 +134,9 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
     if (saving.current) return;
     saving.current = true;
     try {
+      const before = im.areaCm2;
       await labelImage(im.id, newArea, method.trim() || undefined, unit === 'mm2' ? `Nhập ${areaText} mm², quy đổi sang cm²` : undefined);
+      setReplacedFrom(before !== null && before !== newArea ? before : null);
       setEditing(false);
       setJustSaved(newArea !== null);
     } catch (e) {
@@ -189,6 +196,15 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
   // P0 SV-03: số mới sẽ thay số đã có.
   const replacing = editing && im.areaCm2 !== null && newArea !== null && newArea !== im.areaCm2;
   const patientChanged = !!fromPatient && fromPatient !== im.patientId;
+  // P1-06a: lần đo trước của cùng vết (cùng cách chọn với cảnh báo bất thường), chỉ đọc; ô số không điền sẵn.
+  const prevImg = previousMeasuredImage(data.images, im);
+  const prevSrc = prevImg ? measurementSource(prevImg) : null;
+  const prevText = prevImg ? [`${formatAreaDisplay(prevImg.areaCm2)}`, `chụp ${prevImg.capture?.sourceDateKnown === false ? 'chưa rõ ngày' : fmtDate(prevImg.captureDate)}`, prevImg.measureMethod?.trim() || 'chưa ghi phương pháp', prevSrc ? account(prevSrc.by)?.name ?? 'tài khoản không còn' : null].filter(Boolean).join(' · ') : null;
+  // P1-06b: ảnh liền trước, liền sau của cùng vết. Mở bằng replace với key theo mã ảnh: biểu mẫu tạo mới, không mang số sang.
+  const nb = neighbourImages(data.images, im);
+  const dayOf = (x: WoundImage) => (x.capture?.sourceDateKnown === false ? 'chưa rõ ngày' : fmtDate(x.captureDate).slice(0, 5));
+  // P1-07c: lựa chọn phương pháp dẫn xuất từ chữ trong ô; giá trị cũ ngoài danh sách hiện là "Khác" và giữ nguyên chữ.
+  const methodChoice = (MEASURE_METHODS as readonly string[]).includes(method.trim()) ? method.trim() : method.trim() || otherMethod ? 'khac' : '';
 
   return (
     <Screen header={<Header back title={`Ảnh ${im.id}`} />}>
@@ -211,8 +227,18 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
         )}
       </Pressable>
 
+      {/* P1-06b: đi giữa các ảnh của cùng vết; luôn ghi mã vết để không nhầm với hàng đợi "Ảnh chưa đo tiếp theo". */}
+      <View testID="anh-cung-vet" style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', columnGap: 12 }}>
+        {nb.prev ? <TextLink label={`← Ảnh trước của ${w.code} (${dayOf(nb.prev)})`} accessibilityLabel={`Ảnh trước của ${w.code}, ${nb.prev.id}, ${dayOf(nb.prev)}`} onPress={() => router.replace({ pathname: '/images/[id]', params: { id: nb.prev!.id } })} /> : <Muted>{`Ảnh đầu tiên của ${w.code}`}</Muted>}
+        {nb.next ? <TextLink label={`Ảnh sau của ${w.code} (${dayOf(nb.next)}) →`} accessibilityLabel={`Ảnh sau của ${w.code}, ${nb.next.id}, ${dayOf(nb.next)}`} onPress={() => router.replace({ pathname: '/images/[id]', params: { id: nb.next!.id } })} /> : <Muted>{`Ảnh mới nhất của ${w.code}`}</Muted>}
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 16 }}>
+        <TextLink label={`Mở ${w.code}`} accessibilityLabel={`Mở vết thương ${w.code}`} onPress={() => router.push(`/wounds/${w.id}`)} />
+        <TextLink label="So sánh với ảnh khác" accessibilityLabel={`So sánh ảnh ${im.id} với ảnh khác của ${w.code}`} onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id, sau: im.id } })} />
+      </View>
+
       {justSaved && im.areaCm2 !== null && (
-        <Notice tone="green" icon="checkmark-circle-outline">{`Đã lưu diện tích ${formatAreaDisplay(im.areaCm2)} cho ảnh ${im.id}.`}</Notice>
+        <Notice tone="green" icon="checkmark-circle-outline">{replacedFrom !== null ? `Đã thay ${formatAreaDisplay(replacedFrom)} bằng ${formatAreaDisplay(im.areaCm2)} cho ảnh ${im.id}.` : `Đã lưu diện tích ${formatAreaDisplay(im.areaCm2)} cho ảnh ${im.id}.`}</Notice>
       )}
       {/* UX-17: vừa lưu số thì mở thẳng ảnh chưa đo kế tiếp, không phải về Trang chủ. Ảnh kế tiếp có biểu mẫu trống riêng. */}
       {isDoctor && justSaved && (next && nextP && nextW ? (
@@ -264,6 +290,8 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
                   // Không đặt số mẫu trong ô: placeholder dạng số dễ bị đọc nhầm là giá trị đã nhập (A03, audit lần 2).
                   hint="Ví dụ: 12,5. Có thể dùng dấu phẩy hoặc dấu chấm."
                 />
+                {/* P1-06a: số lần trước chỉ để đối chiếu, không điền vào ô, không có nút chép. */}
+                {prevText ? <Muted>{`Lần đo trước của ${w.code}: ${prevText}`}</Muted> : <Muted>{`Chưa có lần đo trước của ${w.code}.`}</Muted>}
                 <Segmented<AreaUnit> value={unit} onChange={setUnit} options={[{ value: 'cm2', label: 'cm²' }, { value: 'mm2', label: 'mm² (quy đổi sang cm²)' }]} />
                 {aiBlock}
               </>
@@ -273,6 +301,9 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
                 <TextLink label="Quay về nhập diện tích" onPress={() => setMode('area')} />
               </>
             )}
+            {/* P1-07c (QĐ-P1-3 A): cùng hai lựa chọn với B10 cộng "Khác (ghi rõ)"; ô chữ bên dưới vẫn là giá trị được lưu. */}
+            <Choices<string> value={methodChoice} onChange={(v) => { if (v === 'khac') { setOtherMethod(true); if ((MEASURE_METHODS as readonly string[]).includes(method.trim())) setMethod(''); } else { setOtherMethod(false); setMethod(v); } setMethodFrom(null); }}
+              options={[...MEASURE_METHODS.map((m) => ({ value: m as string, label: m as string })), { value: 'khac', label: 'Khác (ghi rõ)' }]} />
             <Field label="Phương pháp đo" optional={!im.capture}
               hint={methodFrom ? `Điền sẵn theo lần đo trước (${methodFrom.imageId}, ${fmtDate(methodFrom.captureDate)}). Sửa nếu lần này đo cách khác.` : im.capture ? undefined : "Nên ghi để so sánh được giữa các lần đo."}
               value={method} onChangeText={(v) => { setMethod(v); setMethodFrom(null); }} placeholder="Ví dụ: thước giấy kẻ ô, phần mềm đo trên máy tính…" />
