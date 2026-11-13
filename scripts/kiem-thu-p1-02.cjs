@@ -92,11 +92,11 @@ const VT02 = `
     const lab = (wid) => d.images.filter((i) => i.woundId === wid && i.status === 'labeled' && i.areaCm2 !== null).sort((a, b) => a.captureDate.localeCompare(b.captureDate)).pop();
     const l1 = lab('w-1'), l2 = lab('w-kt2');
     const a1 = rows.find((r) => r.startsWith('VT01')) || '', a2 = rows.find((r) => r.startsWith('VT02')) || '';
-    const ok1 = a1.includes(`Diện tích ${String(l1.areaCm2).replace('.', ',')}`) && a1.includes('Có 1 ảnh mới chưa đo') && !a1.includes('Xấu đi');
-    const ok2 = a2.includes('Diện tích 5') && a2.includes('Xấu đi (bác sĩ đánh giá)') && !a2.includes('ảnh mới chưa đo');
+    const ok1 = a1.includes(`Diện tích ${String(l1.areaCm2).replace('.', ',')}`) && a1.includes('Có 1 ảnh mới chưa đo') && !a1.includes('Diễn biến bất lợi');
+    const ok2 = a2.includes('Diện tích 5') && a2.includes('Diễn biến bất lợi (bác sĩ đánh giá)') && !a2.includes('ảnh mới chưa đo');
     rec('TP1-05', 'B04 hai vết: mỗi dòng có số đo, đánh giá, ảnh chưa đo của chính vết đó', rows.length === 2 && ok1 && ok2, `VT01: ${a1.slice(0, 140)} | VT02: ${a2.slice(0, 140)}`);
     // Dòng đợt của VT02 mở B06 với thanh ngữ cảnh VT02.
-    await p.getByRole('button', { name: /^VT02 · Gót chân trái/ }).last().click(); await p.waitForTimeout(1200);
+    await p.getByText('VT02 · Gót chân trái (kiểm thử)', { exact: true }).last().click(); await p.waitForTimeout(1200);
     const ctx = (await p.getByTestId('clinical-context').first().innerText()).replace(/\s+/g, ' ');
     rec('TP1-05b', 'B04 dòng đợt của VT02 mở B06 có thanh ngữ cảnh VT02 (không mở VT01)', p.url().includes('woundId=w-kt2') && ctx.includes('VT02'), `${p.url().replace(BASE, '')} | ${ctx.slice(0, 80)}`);
     // Thứ tự lâm sàng: vết thương, báo cáo, đợt, rồi thiết bị và tài khoản.
