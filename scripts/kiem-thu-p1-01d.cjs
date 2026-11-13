@@ -72,7 +72,8 @@ const draftOf = (pid, wid, id) => `{ const base = d.plans.filter((x) => x.patien
     const p = await newPage(w); await login(p);
     await go(p, '/'); await mutate(p, `d.plans = d.plans.filter((x) => x.status !== 'draft'); ${draftOf('p-1', 'w-1', 'pl-kt-1')} ${draftOf('p-2', 'w-2', 'pl-kt-2')}`);
     await go(p, '/doctor'); await tile(p).click(); await p.waitForTimeout(1200);
-    const codes = await p.evaluate(() => [...document.querySelectorAll('[role="button"]')].map((e) => e.getAttribute('aria-label') || '').filter((l) => /, BN\d{3} · sinh /.test(l)).filter((l, i, a) => a.indexOf(l) === i).map((l) => l.match(/BN\d{3}/)[0]));
+    // Chỉ thẻ đang nhìn thấy (tab khác vẫn nằm trong DOM): cuộn tới rồi kiểm phần tử ở điểm giữa.
+    const codes = await p.evaluate(() => { const out = []; for (const e of document.querySelectorAll('[role="button"]')) { const l = e.getAttribute('aria-label') || ''; if (!/, BN\d{3} · sinh /.test(l)) continue; if (!e.getBoundingClientRect().width) continue; e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect(); const hit = document.elementFromPoint(r.x + Math.min(40, r.width / 2), r.y + Math.min(16, r.height / 2)); if (hit && (e.contains(hit) || hit.contains(e))) out.push(l.match(/BN\d{3}/)[0]); } return out; });
     const chip = await p.getByText('Có đợt nháp (2)', { exact: true }).count();
     const uniq = [...new Set(codes)].sort();
     rec(`TP1-01d-b-${w}`, `Nháp của 2 vết (${w} px): ô mở B02 lọc "Có đợt nháp (2)", danh sách BN001, BN002; không tràn ngang`, p.url().includes('/doctor/patients') && chip > 0 && JSON.stringify(uniq) === '["BN001","BN002"]' && (await overflow(p)) === 0, `${p.url().replace(BASE, '')}; ${uniq.join(',')}`);
