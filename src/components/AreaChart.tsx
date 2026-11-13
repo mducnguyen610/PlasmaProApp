@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { chartPoints } from '@/lib/woundSummary';
 import { Text } from '@/components/Text';
 
 import { fmtDate } from '@/lib/format';
@@ -16,13 +17,8 @@ const LABEL = typeScale.small.size; // PP-16: nhãn cột và nhãn ngày 14 px 
  * không cộng diện tích các góc chụp: nếu một ngày có nhiều ảnh, lấy ảnh có mã nhỏ nhất (đặc tả mục 8).
  */
 export function AreaChart({ images, markers = [] }: { images: WoundImage[]; markers?: ChartMarker[] }) {
-  const byDate = new Map<string, WoundImage>();
-  for (const im of images) {
-    if (im.status !== 'labeled' || im.areaCm2 === null || im.capture?.sourceDateKnown === false) continue;
-    const prev = byDate.get(im.captureDate);
-    if (!prev || im.id < prev.id) byDate.set(im.captureDate, im);
-  }
-  const points = [...byDate.values()].sort((a, b) => a.captureDate.localeCompare(b.captureDate));
+  // P1-02b: quy tắc chọn điểm chuyển sang woundSummary.ts để B05 "Lần trước" dùng đúng điểm của biểu đồ. Nội dung không đổi.
+  const points = chartPoints(images);
   if (points.length === 0) return <Text style={{ color: C.textSoft }}>Chưa có ảnh đủ số đo và ngày chụp xác định.</Text>;
   const max = Math.max(...points.map((p) => p.areaCm2!), 0.001);
   // Mỗi mốc đứng ngay trước cột đầu tiên có ngày chụp từ ngày bắt đầu đợt trở đi; mốc sau cột cuối đứng ở cuối.
