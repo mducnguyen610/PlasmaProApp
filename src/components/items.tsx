@@ -59,31 +59,41 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
   const incText = increases.map(({ w, inc }) => `${w.code}: số đo ${fmtDate(inc.latestDate).slice(0, 5)} lớn hơn lần trước (${formatAreaDisplay(inc.previous)} → ${formatAreaDisplay(inc.latest)})`);
   // PP-10: ngày đánh giá gần nhất của bác sĩ trên mọi vết thương của bệnh nhân (dữ liệu đánh giá, khác số đo).
   const woundIds = new Set(wounds.map((w) => w.id));
-  const lastEval = data.evaluations.filter((e) => woundIds.has(e.woundId)).map((e) => e.date).sort().pop();
+  const lastEvalRec = data.evaluations.filter((e) => woundIds.has(e.woundId)).sort((a, b) => a.date.localeCompare(b.date)).pop();
+  const lastEval = lastEvalRec?.date;
+  // P1-07 (IA 2.2): bệnh nhân có từ 2 vết thì ngày đánh giá kèm mã vết.
+  const lastEvalWound = lastEvalRec && wounds.length > 1 ? wounds.find((w) => w.id === lastEvalRec.woundId)?.code : undefined;
+  // P1-07a (IA 2.1): dòng định danh cùng định dạng với thanh ngữ cảnh lâm sàng; mã thiết bị không nằm trong dòng định danh.
+  const idLine = `${patient.code} · sinh ${patient.birthYear} · ${patient.sex}`;
+  // P1-01b: không có vết đang điều trị thì chip "Chưa có đợt" chỉ lặp ý của dòng "không có vết thương đang điều trị"; bỏ chip, giữ dòng chữ.
+  const showToday = !!attention && !(attention.state === 'no_plan' && !active);
+  const reasons = attention?.reasons ?? [];
   // Một dòng trong ListCard (không còn thẻ riêng cho mỗi bệnh nhân). Bản rút gọn (08/11/2026): một dòng tên, một dòng mã; mức độ là điểm neo bên phải; chỉ hiện việc cần làm khi có.
   return (
-    <Pressable onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityRole="button" style={({ pressed }) => ({ paddingVertical: 12, gap: space.s, opacity: pressed ? 0.7 : 1 })} accessibilityLabel={`${patient.name}, ${patient.code}${severity ? `, mức độ ${SEVERITY[severity].label}` : ''}${unlabeled ? `, ${unlabeled} ảnh chưa đo` : ''}${incText.length ? `, ${incText.join('; ')}` : ''}${lastEval ? `, đánh giá lần cuối ${fmtDate(lastEval)}` : ''}`}>
+    <Pressable onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityRole="button" style={({ pressed }) => ({ paddingVertical: 12, gap: space.s, opacity: pressed ? 0.7 : 1 })} accessibilityLabel={`${patient.name}, ${idLine}${severity ? `, mức độ ${SEVERITY[severity].label}` : ''}${attention ? `, hôm nay ${TODAY_LABEL[attention.state]}` : ''}${reasons.length ? `, ${reasons.join(', ')}` : ''}${unlabeled ? `, ${unlabeled} ảnh chưa đo` : ''}${incText.length ? `, ${incText.join('; ')}` : ''}${lastEval ? `, đánh giá lần cuối ${fmtDate(lastEval)}${lastEvalWound ? ` (${lastEvalWound})` : ''}` : ''}`}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
         <IconBadge icon="person-outline" />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: T.body, fontWeight: '700', color: C.text }}>{patient.name}</Text>
-          <Text style={{ color: C.textSoft, fontSize: T.caption }}>{patient.code} · {dev?.code ?? 'chưa gán thiết bị'}</Text>
+          <Text style={{ color: C.textSoft, fontSize: T.caption }}>{idLine}</Text>
         </View>
         {severity ? <StatusChip status={SEVERITY_ROLE[severity]} label={SEVERITY[severity].label} /> : null}
         <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
       </View>
-      {attention && (
+      {attention && (showToday || reasons.length > 0) && (
         <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingLeft: 52 }}>
-          <Chip label={TODAY_LABEL[attention.state]} tone={TODAY_TONE[attention.state]} />
-          {/* FR10: "chưa có dữ liệu" luôn kèm lần đồng bộ cuối, để bác sĩ phân biệt máy chưa gửi với người bệnh không điều trị. */}
-          {attention.state === 'no_data' && <Text style={{ color: C.textSoft, fontSize: T.caption }}>{dev?.lastSync ? `đồng bộ lần cuối ${fmtDateTime(dev.lastSync)}` : 'chưa từng đồng bộ'}</Text>}
-          {attention.reasons[0] ? <Text style={{ color: C.textSoft, fontSize: T.caption, flexShrink: 1 }}>{attention.reasons[0]}</Text> : null}
+          {showToday ? <Chip label={TODAY_LABEL[attention.state]} tone={TODAY_TONE[attention.state]} /> : null}
+          {/* FR10: "chưa có dữ liệu" luôn kèm lần đồng bộ cuối, để bác sĩ phân biệt máy chưa gửi với người bệnh không điều trị.
+              P1-07a: mã máy chuyển từ dòng định danh xuống đây, nơi nó giúp gọi kiểm tra máy. */}
+          {attention.state === 'no_data' && <Text style={{ color: C.textSoft, fontSize: T.caption }}>{dev ? `${dev.code}: ${dev.lastSync ? `đồng bộ lần cuối ${fmtDateTime(dev.lastSync)}` : 'chưa từng đồng bộ'}` : 'chưa từng đồng bộ'}</Text>}
+          {/* P1-01b: lý do đầu tiên và số lý do còn lại, để lý do thứ hai (ví dụ bỏ lỡ buổi) không bị ẩn hoàn toàn. Trình đọc màn hình đọc đủ. */}
+          {reasons[0] ? <Text style={{ color: C.textSoft, fontSize: T.caption, flexShrink: 1 }}>{reasons[0]}{reasons.length > 1 ? ` · +${reasons.length - 1} lý do` : ''}</Text> : null}
         </View>
       )}
       {/* Việc phụ thành một dòng chữ thay vì thêm chip (V08): mỗi dòng tối đa hai chip, mức độ và trạng thái hôm nay. */}
-      {(unlabeled > 0 || !active) && (
+      {(unlabeled > 0 || !active || !dev) && (
         <Text style={{ color: C.textSoft, fontSize: T.caption, paddingLeft: 52 }}>
-          {[unlabeled > 0 ? `${unlabeled} ảnh chưa đo` : null, !active ? 'không có vết thương đang điều trị' : null].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}
+          {[unlabeled > 0 ? `${unlabeled} ảnh chưa đo` : null, !active ? 'không có vết thương đang điều trị' : null, !dev ? 'chưa gán thiết bị' : null].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}
         </Text>
       )}
       {incText.map((t) => (
@@ -92,7 +102,7 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
           <Text style={{ color: C.amber, fontSize: T.caption, fontWeight: '600', flexShrink: 1 }}>{t}</Text>
         </View>
       ))}
-      {lastEval ? <Text style={{ color: C.textSoft, fontSize: T.caption, paddingLeft: 52 }}>Đánh giá lần cuối: {fmtDate(lastEval)}</Text> : null}
+      {lastEval ? <Text style={{ color: C.textSoft, fontSize: T.caption, paddingLeft: 52 }}>Đánh giá lần cuối: {fmtDate(lastEval)}{lastEvalWound ? ` (${lastEvalWound})` : ''}</Text> : null}
     </Pressable>
   );
 }

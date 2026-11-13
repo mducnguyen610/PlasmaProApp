@@ -7,14 +7,16 @@ import { SEVERITY } from '@/lib/access';
 import { AreaChart } from '@/components/AreaChart';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { ImageTile } from '@/components/items';
-import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Screen, SectionTitle, TextLink, StatusChip } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Notice, Screen, SectionTitle, TextLink, StatusChip } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { SEVERITY_ROLE, SOURCE, TREND_ROLE, WOUND } from '@/theme.status';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
 import { areaReview, courseProgress, followUpDates, phasesOf, localDay, sessionsForWound } from '@/lib/course';
-import { fmtDate, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
+import { fmtDate, fmtDateTime, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
+import { measurementSource } from '@/lib/measurementSource';
+import { woundSummary } from '@/lib/woundSummary';
 import { assessmentSummary } from '@/lib/assessment';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
@@ -31,6 +33,7 @@ export default function WoundDetail() {
   const [openEval, setOpenEval] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [showOldEvals, setShowOldEvals] = useState(false);
+  const [showAllSessions, setShowAllSessions] = useState(false);
   if (!w || !p) return <NoAccess notFound />;
   if (!canView) return <NoAccess />;
 
@@ -50,6 +53,11 @@ export default function WoundDetail() {
 
   const labeled = images.filter((i) => i.status === 'labeled' && i.areaCm2 !== null).sort((a, b) => a.captureDate.localeCompare(b.captureDate));
   const latest = labeled[labeled.length - 1];
+  // P1-02b: số đo trước (cùng điểm với biểu đồ), người nhập, ảnh mới hơn chưa đo. Chỉ đọc.
+  const sum = woundSummary(images, [], w.id);
+  const src = latest ? measurementSource(latest) : null;
+  // P1-02c: buổi điều trị của vết này (cùng bộ lọc với tiến độ đợt), mới trước.
+  const woundSessions = dev ? [...sessionsForWound(sessionsOf(dev.id), w.id)].sort((a, b) => b.start.localeCompare(a.start)) : [];
   const review = plan ? areaReview(images, plan, today) : null;
   const pctOf = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
 
@@ -130,6 +138,9 @@ export default function WoundDetail() {
             {latest ? areaBlock(false) : <Muted>Chưa có số đo. Chụp ảnh rồi nhập diện tích.</Muted>}
             <View>
               {latest ? <InfoRow label="Ảnh đo chụp ngày" value={fmtDate(latest.captureDate)} /> : null}
+              {latest ? <InfoRow label="Nhập bởi" value={src ? `${account(src.by)?.name ?? 'Tài khoản không còn trong danh sách'}${src.at ? ` lúc ${fmtDateTime(src.at)}` : ''}` : 'Chưa có thông tin người nhập'} /> : null}
+              {latest ? <InfoRow label="Phương pháp đo" value={latest.measureMethod?.trim() || 'Chưa ghi'} /> : null}
+              {sum.previous ? <InfoRow label="Lần đo trước" value={`${formatAreaDisplay(sum.previous.areaCm2)} · chụp ${fmtDate(sum.previous.captureDate)}`} /> : null}
               <InfoRow label="Xu hướng (bác sĩ đánh giá)" stack value={evals[0]
                 ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}><StatusChip status={TREND_ROLE[evals[0].trend]} label={TREND[evals[0].trend].label} /><Muted>{fmtDate(evals[0].date)}</Muted></View>
                 : 'Chưa có đánh giá'} />
@@ -137,6 +148,12 @@ export default function WoundDetail() {
                 ? `${PLAN_STATUS[plan.status].label}, từ ${fmtDate(plan.startDate)}${currentPhase ? `, giai đoạn ${pr!.phaseIndex + 1}/${pr!.phaseCount}` : ''}`
                 : 'Chưa có đợt'} />
             </View>
+            {sum.newerUnmeasured.length > 0 && (
+              <View style={{ gap: 4 }}>
+                <Notice icon="information-circle-outline" tone="blue">{`Có ${sum.newerUnmeasured.length} ảnh mới hơn chưa đo (${sum.newerUnmeasured[0].id}, chụp ${fmtDate(sum.newerUnmeasured[0].captureDate)}). Số đo ở trên là của ảnh ${latest ? fmtDate(latest.captureDate) : 'trước đó'}.`}</Notice>
+                <TextLink label={`Nhập số đo cho ${sum.newerUnmeasured[0].id}`} onPress={() => router.push({ pathname: '/images/[id]', params: { id: sum.newerUnmeasured[0].id } })} />
+              </View>
+            )}
             <Button label="Chụp ảnh có hướng dẫn" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />
             {/* UX-29 (Đợt 12): hai việc hay làm sau khi chụp thành nút phụ cố định, thay vì chỉ có liên kết chữ nhỏ ở tiêu đề thẻ phía dưới.
                 "Chụp ảnh" đã là nút chính ở trên nên không lặp thêm nút thứ ba cùng đích. */}
@@ -181,6 +198,22 @@ export default function WoundDetail() {
             {pr && isDoctor && <ProgressRows pr={pr} />}
           </Disclosure>
         ) : <Muted>Chưa có đợt điều trị cho vết thương này.</Muted>}
+        {/* P1-02c: buổi điều trị của vết này, không phải sang màn thiết bị. Trạng thái và nguồn ghi bằng chữ. */}
+        {isDoctor && dev && (
+          <Disclosure icon="time-outline" title={`Buổi điều trị gần đây (${woundSessions.length})`} summary={woundSessions[0] ? `Gần nhất ${fmtDateTime(woundSessions[0].start)}` : 'Chưa có buổi nào được ghi'}>
+            {woundSessions.slice(0, showAllSessions ? 30 : 5).map((s) => (
+              <View key={s.sessionId + s.start} testID="buoi-dieu-tri" style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border, gap: 2 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontWeight: '600', color: C.text }}>{fmtDateTime(s.start)}</Text>
+                  <Text style={{ color: C.textSoft }}>{s.durationMin} phút</Text>
+                </View>
+                <Text style={{ fontSize: T.caption, color: C.textSoft }}>{`${SESSION_STATUS[s.status]} · ${SESSION_SOURCE[s.source]}`}</Text>
+              </View>
+            ))}
+            {woundSessions.length > 5 && <TextLink label={showAllSessions ? 'Thu gọn' : `Xem thêm (${Math.min(30, woundSessions.length)} buổi gần nhất)`} onPress={() => setShowAllSessions(!showAllSessions)} />}
+            <TextLink label={`Mở thiết bị ${dev.code}`} onPress={() => router.push({ pathname: '/devices/[id]', params: { id: dev.id } })} />
+          </Disclosure>
+        )}
         {isDoctor && <ClosureActions woundId={w.id} status={w.status} check1={w.closureCheck1} followUpFrom={w.followUpFrom} today={today} hasPlan={!!plan} onNewCourse={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />}
         {!isDoctor && w.status === 'follow_up' && w.followUpFrom && <Muted>Đã liền ngày {fmtDate(w.followUpFrom)}. Các lần kiểm tra: {followUpDates(w.followUpFrom).map((x) => fmtDate(x.date)).join(', ')}.</Muted>}
       </Card>
@@ -243,3 +276,7 @@ export default function WoundDetail() {
     </Screen>
   );
 }
+
+// Cùng nhãn với màn thiết bị (DeviceView).
+const SESSION_STATUS = { completed: 'Hoàn tất', interrupted: 'Bị ngắt', over_limit: 'Ngắt do vượt ngưỡng' } as const;
+const SESSION_SOURCE = { device: 'Thiết bị gửi', manual: 'Nhập tay', simulated: 'Mô phỏng' } as const;

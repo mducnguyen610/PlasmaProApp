@@ -12,7 +12,8 @@ import { localDay } from '@/lib/course';
 // Xuất ZIP và xem trước labels.csv chuyển sang màn hình Dữ liệu của quản trị kỹ thuật.
 export default function Dataset() {
   const { data, me } = useStore();
-  const [filter, setFilter] = useState<LabelStatus>('unlabeled');
+  // P1-01a: thêm nhóm "Chụp lại" (ảnh bác sĩ đã yêu cầu chụp lại, ở bất kỳ trạng thái nhãn nào). Ba nhóm cũ và số đếm giữ nguyên.
+  const [filter, setFilter] = useState<LabelStatus | 'retake'>('unlabeled');
   const [pf, setPf] = useState('all');
   const [wf, setWf] = useState('all');
   const [range, setRange] = useState<'7' | '30' | 'all'>('all');
@@ -20,13 +21,16 @@ export default function Dataset() {
   // UX-17: mở từ ô "Ảnh chưa đo" ở B01 thì về nhóm "Chưa đo", bỏ các bộ lọc đang chọn để thấy đủ ảnh chưa đo.
   const { loc, t } = useLocalSearchParams<{ loc?: string; t?: string }>();
   const [seen, setSeen] = useState<string | undefined>(undefined);
-  if (loc === 'chua-do' && `${loc}:${t}` !== seen) { setSeen(`${loc}:${t}`); setFilter('unlabeled'); setPf('all'); setWf('all'); setRange('all'); setSince(''); }
+  // P1-01a: mở từ ô "Ảnh cần chụp lại" (khi có từ 2 ảnh) thì về nhóm "Chụp lại", cùng cách bỏ bộ lọc như UX-17.
+  const target = loc === 'chua-do' ? 'unlabeled' : loc === 'chup-lai' ? 'retake' : null;
+  if (target && `${loc}:${t}` !== seen) { setSeen(`${loc}:${t}`); setFilter(target); setPf('all'); setWf('all'); setRange('all'); setSince(''); }
   const mine = new Set(data.patients.filter((p) => p.doctorId === me?.id).map((p) => p.id));
   const images = data.images.filter((i) => mine.has(i.patientId));
   const count = (s: LabelStatus) => images.filter((i) => i.status === s).length;
+  const retakeCount = images.filter((i) => i.retakeRequested).length;
   // Tìm ảnh theo bệnh nhân / vết thương / ngày chụp (đặc tả mục 8).
   const shown = images
-    .filter((i) => i.status === filter)
+    .filter((i) => (filter === 'retake' ? !!i.retakeRequested : i.status === filter))
     .filter((i) => pf === 'all' || i.patientId === pf)
     .filter((i) => wf === 'all' || i.woundId === wf)
     .filter((i) => !since || i.captureDate >= since)
@@ -35,13 +39,15 @@ export default function Dataset() {
   const woundOpts = data.wounds.filter((w) => w.patientId === pf);
   return (
     <Screen header={<Header title="Ảnh vết thương" subtitle="Ghi diện tích cho ảnh đã chụp" />}>
-      <Segmented<LabelStatus>
+      <Segmented<LabelStatus | 'retake'>
         value={filter}
         onChange={setFilter}
         options={[
           { value: 'unlabeled', label: `Chưa đo (${count('unlabeled')})` },
           { value: 'labeled', label: `Đã đo (${count('labeled')})` },
           { value: 'excluded', label: `Đã loại (${count('excluded')})` },
+          // Chỉ hiện khi có ảnh cần chụp lại hoặc đang chọn, để thanh ba nhóm cũ không chật thêm ở 320 px.
+          ...(retakeCount > 0 || filter === 'retake' ? [{ value: 'retake' as const, label: `Chụp lại (${retakeCount})` }] : []),
         ]}
       />
       <Card>
