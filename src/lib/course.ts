@@ -107,6 +107,12 @@ export interface CourseProgress {
 
 const dayOf = (s: DeviceSession) => localDay(s.start);
 
+/** UX-18 (Đợt 12): phiên tính tiến độ cho một vết thương. B04 và B05 dùng chung để cùng một đợt cho cùng một con số.
+ *  Phiên không ghi vết thương (bản ghi cũ) được tính cho mọi vết, như B05 trước đây. Công thức courseProgress không đổi. */
+export function sessionsForWound(sessions: DeviceSession[], woundId: string | undefined): DeviceSession[] {
+  return woundId ? sessions.filter((s) => !s.woundId || s.woundId === woundId) : sessions;
+}
+
 export function courseProgress(plan: TreatmentPlan, sessions: DeviceSession[], today: string, lastSyncDay: string | null): CourseProgress {
   const ps = phasesOf(plan);
   const days = scheduledDays(plan);

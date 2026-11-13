@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Pressable, View } from 'react-native';
 
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
-import { Button, Card, Choices, Header, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
+import { Button, Card, Choices, Header, ListCard, Muted, Screen, SearchField, SectionTitle, WoundPhoto } from '@/components/ui';
 import { fmtDate } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
@@ -20,6 +21,10 @@ export default function Capture() {
   const [wid, setWid] = useState(wounds[0]?.id ?? '');
   const woundId = wounds.some((w) => w.id === wid) ? wid : (wounds[0]?.id ?? '');
   const last = woundId ? imagesOf(woundId).at(-1) : undefined;
+  // UX-23 (Đợt 12): tìm theo tên hoặc mã như B02, danh sách một cột thay cho hàng chip.
+  const [q, setQ] = useState('');
+  const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase();
+  const found = patients.filter((x) => !q || norm(`${x.name} ${x.code}`).includes(norm(q)));
 
   if (me?.role !== 'doctor') return <NoAccess />;
 
@@ -28,14 +33,26 @@ export default function Capture() {
   return (
     <Screen header={<Header back title="Chụp ảnh vết thương" subtitle="Ảnh vào đúng hồ sơ, rồi ghi diện tích" />}>
       <SectionTitle>Bệnh nhân</SectionTitle>
-      <Choices
-        value={pid}
-        onChange={(v) => {
-          setPid(v);
-          setWid('');
-        }}
-        options={patients.map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` }))}
-      />
+      {patients.length > 1 && <SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã bệnh nhân…" />}
+      {patients.length > 0 && found.length === 0 && <Muted>Không tìm thấy bệnh nhân phù hợp.</Muted>}
+      <View accessibilityRole="radiogroup">
+        <ListCard>
+          {found.map((x) => {
+            const on = x.id === pid;
+            return (
+              <Pressable key={x.id} accessibilityRole="radio" accessibilityState={{ checked: on, selected: on }} accessibilityLabel={`${x.code} · ${x.name}`}
+                onPress={() => { setPid(x.id); setWid(''); }}
+                style={({ pressed }) => ({ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}>
+                <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={22} color={on ? C.primary : C.textSoft} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={{ fontWeight: '700', color: C.text }}>{x.name}</Text>
+                  <Text style={{ color: C.textSoft, fontSize: T.small }}>{x.code}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </ListCard>
+      </View>
       {patients.length === 0 && <Muted>Chưa có bệnh nhân được phân công. Thêm bệnh nhân ở tab Bệnh nhân.</Muted>}
       <SectionTitle>Vết thương</SectionTitle>
       {!pid ? (

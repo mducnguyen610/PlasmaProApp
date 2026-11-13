@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { PatientCard } from '@/components/items';
@@ -11,8 +11,15 @@ import { useStore } from '@/lib/store';
 // BS02 – Danh sách bệnh nhân: tìm theo tên/mã, thêm mới, mở hồ sơ.
 export default function PatientList() {
   const { data, me } = useStore();
-  const [level, setLevel] = useState<Severity | 'all'>('all');
+  const [level, setLevel] = useState<Severity | 'all' | 'reports'>('all');
   const [q, setQ] = useState('');
+  // UX-17: mở từ ô "Báo cáo mới" ở B01 thì lọc sẵn bệnh nhân có báo cáo chưa xử lý.
+  // Mỗi lần chạm ô có mốc t riêng, nên chạm lại vẫn lọc lại dù tab đã mở từ trước.
+  const { loc, t } = useLocalSearchParams<{ loc?: string; t?: string }>();
+  const [seen, setSeen] = useState<string | undefined>(undefined);
+  if (loc === 'bao-cao' && `${loc}:${t}` !== seen) { setSeen(`${loc}:${t}`); setLevel('reports'); setQ(''); }
+  const withReports = new Set(data.reports.filter((r) => !r.handled).map((r) => r.patientId));
+  const reportCount = data.patients.filter((p) => p.doctorId === me?.id && withReports.has(p.id)).length;
   // Cùng thông tin và thứ tự với trang chủ (V09): trạng thái hôm nay và lý do cần chú ý.
   const ranked = useRankedPatients();
   const order = new Map(ranked.map((a, i) => [a.patientId, i]));
@@ -20,14 +27,14 @@ export default function PatientList() {
   const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase();
   const list = data.patients
     .filter((p) => p.doctorId === me?.id)
-    .filter(p => level === 'all' || patientSeverity(data, p.id) === level)
+    .filter(p => level === 'all' || (level === 'reports' ? withReports.has(p.id) : patientSeverity(data, p.id) === level))
     .filter((p) => !q || norm(`${p.name} ${p.code}`).includes(norm(q)))
     .sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9));
 
   return (
     <Screen header={<Header title="Bệnh nhân" right={<HeaderButton icon="add" label="Thêm mới" onPress={() => router.push('/patients/new')} />} />}>
       <SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã bệnh nhân…" />
-      <Choices<Severity | 'all'> value={level} onChange={setLevel} options={[{ value: 'all', label: 'Tất cả' }, ...(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))]} />
+      <Choices<Severity | 'all' | 'reports'> value={level} onChange={setLevel} options={[{ value: 'all', label: 'Tất cả' }, { value: 'reports', label: `Có báo cáo (${reportCount})` }, ...(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))]} />
       {list.length === 0 && <Empty icon="search" text="Không tìm thấy bệnh nhân phù hợp." />}
       {/* PP-10: cùng tiêu chí xếp với trang chủ (src/lib/attention.ts). */}
       {list.length > 0 && <Muted>Xếp theo mức cần xử lý: báo cáo chưa xử lý, mức độ bác sĩ đánh giá, buổi bỏ lỡ trong 7 ngày, chưa có dữ liệu hôm nay.</Muted>}

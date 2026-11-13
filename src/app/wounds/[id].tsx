@@ -12,7 +12,7 @@ import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
 import { SEVERITY_ROLE, SOURCE, TREND_ROLE, WOUND } from '@/theme.status';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
-import { areaReview, courseProgress, followUpDates, phasesOf, localDay } from '@/lib/course';
+import { areaReview, courseProgress, followUpDates, phasesOf, localDay, sessionsForWound } from '@/lib/course';
 import { fmtDate, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
 import { assessmentSummary } from '@/lib/assessment';
 import { formatAreaDisplay } from '@/lib/naming';
@@ -38,7 +38,7 @@ export default function WoundDetail() {
   const today = localDay();
   const plan = coursePlan(w.id, { patientView: !isDoctor });
   const dev = data.devices.find((x) => x.id === p.deviceId);
-  const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id).filter((s) => !s.woundId || s.woundId === w.id), today, (dev.lastSync ? localDay(dev.lastSync) : null)) : null;
+  const pr = plan && dev ? courseProgress(plan, sessionsForWound(sessionsOf(dev.id), w.id), today, (dev.lastSync ? localDay(dev.lastSync) : null)) : null;
   const currentPhase = plan && pr && pr.phaseIndex >= 0 ? phasesOf(plan)[pr.phaseIndex] : undefined;
   const byDate = new Map<string, typeof images>();
   for (const im of [...images].reverse()) byDate.set(im.captureDate, [...(byDate.get(im.captureDate) ?? []), im]);
@@ -135,6 +135,12 @@ export default function WoundDetail() {
                 : 'Chưa có đợt'} />
             </View>
             <Button label="Chụp ảnh có hướng dẫn" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />
+            {/* UX-29 (Đợt 12): hai việc hay làm sau khi chụp thành nút phụ cố định, thay vì chỉ có liên kết chữ nhỏ ở tiêu đề thẻ phía dưới.
+                "Chụp ảnh" đã là nút chính ở trên nên không lặp thêm nút thứ ba cùng đích. */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Button style={{ flex: 1 }} label="Ghi đánh giá" variant="secondary" onPress={() => router.push({ pathname: '/evaluate/[woundId]', params: { woundId: w.id } })} />
+              <Button style={{ flex: 1 }} label="Đợt điều trị" variant="secondary" onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />
+            </View>
           </>
         ) : (
           <>
