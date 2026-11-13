@@ -148,8 +148,7 @@ export default function GuidedCapture() {
       const found = await getRecognizer().recognize(photo.uri);
       if (cancelled) return;
       setPhotoWound(found);
-      const est = estimateFor(photo, found);
-      if (est) { setAreaText(String(est.areaCm2).replace('.', ',')); setMethod(METHOD_AR); }
+      // QĐ-1 phương án A (UX-01): ước lượng AR chỉ hiển thị để tham khảo, không điền vào ô diện tích của bác sĩ.
       const result = await analyzeImage(photo.uri, roiFrom(found));
       if (cancelled) return;
       setQuality(result); setAnalyzing(false);
@@ -259,12 +258,13 @@ export default function GuidedCapture() {
       <Card>
         <SectionTitle>Diện tích vết thương</SectionTitle>
         {estimate ? <>
-          <InfoRow label="Ước lượng AR" value={`${String(estimate.areaCm2).replace('.', ',')} cm²`} />
+          <View style={{ flexDirection: 'row' }}><Chip label="AI ước lượng · chưa kiểm chứng" tone="violet" icon="sparkles-outline" /></View>
+          <InfoRow label="Ước lượng AR (tham khảo)" value={`${String(estimate.areaCm2).replace('.', ',')} cm²`} />
           <InfoRow label="Khoảng cách tới vết thương" value={`${Math.round(hit!.centerDistanceM * 100)} cm (${HIT_SOURCE_LABEL[hit!.centerSource]})`} />
           {estimate.cosTilt !== null ? <InfoRow label="Góc nghiêng" value={`${Math.round(Math.acos(Math.min(1, estimate.cosTilt)) * 180 / Math.PI)}°`} /> : null}
-          <Muted>Ước lượng từ vùng khoanh, khoảng cách và thông số camera của phiên AR. Chưa kiểm chứng lâm sàng; bác sĩ sửa số nếu đo thực tế khác.</Muted>
+          <Muted>Ước lượng từ vùng khoanh, khoảng cách và thông số camera của phiên AR. Chưa kiểm chứng lâm sàng. Số này chỉ để tham khảo, không tự điền vào ô bên dưới và không được ghi thành số đo của bác sĩ.</Muted>
         </> : <Muted>{photo.ar ? 'Chưa ước lượng được vì chưa khoanh được vết thương hoặc chưa đo được khoảng cách.' : 'Không có dữ liệu AR nên app không ước lượng diện tích. Nhập số đo của bác sĩ.'}</Muted>}
-        <Field label="Diện tích xác nhận (cm²)" value={areaText} onChangeText={setAreaText} keyboardType="decimal-pad" placeholder="Ví dụ: 12,5. Để trống nếu chưa đo" />
+        <Field label="Diện tích bác sĩ đo (cm²)" value={areaText} onChangeText={setAreaText} keyboardType="decimal-pad" placeholder="Ví dụ: 12,5. Để trống nếu chưa đo" />
         <Choices value={method} options={[...(estimate ? [METHOD_AR] : []), ...METHODS].map(m => ({ value: m, label: m }))} onChange={setMethod} />
         <CheckRow checked={reviewed} onChange={setReviewed} label="Đã xem ảnh: rõ nét, đủ sáng, thấy toàn bộ vết thương" />
       </Card>
