@@ -61,14 +61,11 @@ function cellText(c: DayCell, target: number | null | undefined) {
  * chạm vào ngày để xem các phiên và ghi mức đau trước/sau phiên.
  */
 export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, reminders = [] }: { sessions: DeviceSession[]; plan?: TreatmentPlan; lastSyncDay: string | null; canEdit: boolean; reminders?: Reminder[] }) {
-  const { data, setSessionPain } = useStore();
+  const { data } = useStore();
   const today = localDay();
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selected, setSelected] = useState<string | null>(today);
   const [editing, setEditing] = useState<string | null>(null);
-  const [before, setBefore] = useState<number | undefined>();
-  const [after, setAfter] = useState<number | undefined>();
-  const [flags, setFlags] = useState<Flags>({});
   // Lịch theo đợt: chỉ ngày có buổi mới cần chiếu; ngày nghỉ theo lịch không bị tính là bỏ lỡ.
   const target = plan ? plan.sessionsPerDay ?? 1 : null;
   const cells = monthCells(month, sessions, target, lastSyncDay, plan?.startDate ?? null, plan?.endDate ?? null, today, plan ? (d) => isScheduled(plan, d) : undefined);
@@ -76,26 +73,6 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
   const note = (id: string) => data.sessionNotes.find((n) => n.sessionId === id);
   const [y, m] = month.split('-');
   const selectedCell = cells.find((c) => c.date === selected);
-
-  const startEdit = (id: string) => {
-    const n = note(id);
-    setEditing(id); setBefore(n?.painBefore); setAfter(n?.painAfter);
-    setFlags({ burning: n?.burning, stinging: n?.stinging, rednessNextDay: n?.rednessNextDay, swellingNextDay: n?.swellingNextDay });
-  };
-  const save = () => {
-    try {
-      setSessionPain(editing!, { painBefore: before, painAfter: after, ...flags });
-      if (flags.rednessNextDay || flags.swellingNextDay) {
-        notify('Đã ghi phản ứng da', 'Bác sĩ sẽ thấy ghi chú này. Nếu đỏ hoặc sưng lan rộng, có mủ hay sốt, hãy liên hệ bác sĩ ngay.');
-      }
-      setEditing(null);
-      if ((after ?? 0) >= HIGH_PAIN || (before ?? 0) >= HIGH_PAIN) {
-        notify('Mức đau cao', 'Nếu đau tăng, sốt, chảy máu hoặc mủ nhiều, hãy gọi 115 hoặc đến cơ sở y tế. Có thể gửi thêm báo cáo triệu chứng cho bác sĩ.');
-      }
-    } catch (e) {
-      notify('Chưa lưu được', e instanceof Error ? e.message : String(e));
-    }
-  };
 
   return (
     <>
@@ -192,30 +169,10 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
                     </Text>
                   </View>
                   {canEdit && editing !== s.sessionId && (
-                    <HeaderButton icon="create-outline" label={n ? 'Sửa' : 'Ghi cảm giác'} onPress={() => startEdit(s.sessionId)} />
+                    <HeaderButton icon="create-outline" label={n ? 'Sửa' : 'Ghi cảm giác'} onPress={() => setEditing(s.sessionId)} />
                   )}
                 </View>
-                {editing === s.sessionId && (
-                  <View style={{ gap: space.s }}>
-                    <PainRow label="Đau trước phiên" value={before} onChange={setBefore} />
-                    <PainRow label="Đau sau phiên" value={after} onChange={setAfter} />
-                    <Muted>0 = không đau, 10 = đau nhất. Có thể bỏ trống một trong hai.</Muted>
-                    <Text style={{ fontSize: T.small, fontWeight: '600', color: C.text }}>Trong lúc điều trị</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
-                      <Toggle label="Nóng rát" on={!!flags.burning} onPress={() => setFlags({ ...flags, burning: !flags.burning })} />
-                      <Toggle label="Châm chích" on={!!flags.stinging} onPress={() => setFlags({ ...flags, stinging: !flags.stinging })} />
-                    </View>
-                    <Text style={{ fontSize: T.small, fontWeight: '600', color: C.text }}>Ngày hôm sau, da quanh vết thương</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
-                      <Toggle label="Đỏ da" on={!!flags.rednessNextDay} onPress={() => setFlags({ ...flags, rednessNextDay: !flags.rednessNextDay })} />
-                      <Toggle label="Sưng" on={!!flags.swellingNextDay} onPress={() => setFlags({ ...flags, swellingNextDay: !flags.swellingNextDay })} />
-                    </View>
-                    <View style={{ flexDirection: 'row', gap: space.s }}>
-                      <View style={{ flex: 1 }}><Button label="Hủy" variant="ghost" onPress={() => setEditing(null)} /></View>
-                      <View style={{ flex: 1 }}><Button label="Lưu" icon="checkmark" disabled={before === undefined && after === undefined && !Object.values(flags).some(Boolean)} onPress={save} /></View>
-                    </View>
-                  </View>
-                )}
+                {editing === s.sessionId && <SessionNoteForm sessionId={s.sessionId} onDone={() => setEditing(null)} />}
               </View>
             );
           })}
@@ -226,6 +183,56 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
 }
 
 type Flags = Pick<SessionNote, 'burning' | 'stinging' | 'rednessNextDay' | 'swellingNextDay'>;
+
+/** Ghi chú phiên cần bác sĩ chú ý (UX-09, Đợt 11): đau từ 7, đỏ da hoặc sưng hôm sau. Chỉ dùng để hiển thị, không vào điểm chú ý (QĐ-3). */
+export const noteNeedsAttention = (n: SessionNote) => (n.painBefore ?? 0) >= HIGH_PAIN || (n.painAfter ?? 0) >= HIGH_PAIN || !!n.rednessNextDay || !!n.swellingNextDay;
+
+/**
+ * Biểu mẫu ghi cảm giác của một phiên: đau trước, sau và bốn dấu hiệu. Tách ra từ lịch tháng (Đợt 11, UX-19) để T02 mở thẳng
+ * biểu mẫu của phiên vừa xong. Nội dung, thang đau và các câu cảnh báo giữ nguyên; câu báo phản ứng da nói rõ nơi bác sĩ xem.
+ */
+export function SessionNoteForm({ sessionId, onDone }: { sessionId: string; onDone: (saved: boolean) => void }) {
+  const { data, setSessionPain } = useStore();
+  const n = data.sessionNotes.find((x) => x.sessionId === sessionId);
+  const [before, setBefore] = useState<number | undefined>(n?.painBefore);
+  const [after, setAfter] = useState<number | undefined>(n?.painAfter);
+  const [flags, setFlags] = useState<Flags>({ burning: n?.burning, stinging: n?.stinging, rednessNextDay: n?.rednessNextDay, swellingNextDay: n?.swellingNextDay });
+  const save = () => {
+    try {
+      setSessionPain(sessionId, { painBefore: before, painAfter: after, ...flags });
+      if (flags.rednessNextDay || flags.swellingNextDay) {
+        notify('Đã ghi phản ứng da', 'Bác sĩ sẽ thấy ghi chú này trong hồ sơ của bạn. Nếu đỏ hoặc sưng lan rộng, có mủ hay sốt, hãy liên hệ bác sĩ ngay.');
+      }
+      onDone(true);
+      if ((after ?? 0) >= HIGH_PAIN || (before ?? 0) >= HIGH_PAIN) {
+        notify('Mức đau cao', 'Nếu đau tăng, sốt, chảy máu hoặc mủ nhiều, hãy gọi 115 hoặc đến cơ sở y tế. Có thể gửi thêm báo cáo triệu chứng cho bác sĩ.');
+      }
+    } catch (e) {
+      notify('Chưa lưu được', e instanceof Error ? e.message : String(e));
+    }
+  };
+  return (
+    <View style={{ gap: space.s }}>
+      <PainRow label="Đau trước phiên" value={before} onChange={setBefore} />
+      <PainRow label="Đau sau phiên" value={after} onChange={setAfter} />
+      <Muted>0 = không đau, 10 = đau nhất. Có thể bỏ trống một trong hai.</Muted>
+      <Text style={{ fontSize: T.small, fontWeight: '600', color: C.text }}>Trong lúc điều trị</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
+        <Toggle label="Nóng rát" on={!!flags.burning} onPress={() => setFlags({ ...flags, burning: !flags.burning })} />
+        <Toggle label="Châm chích" on={!!flags.stinging} onPress={() => setFlags({ ...flags, stinging: !flags.stinging })} />
+      </View>
+      <Text style={{ fontSize: T.small, fontWeight: '600', color: C.text }}>Ngày hôm sau, da quanh vết thương</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
+        <Toggle label="Đỏ da" on={!!flags.rednessNextDay} onPress={() => setFlags({ ...flags, rednessNextDay: !flags.rednessNextDay })} />
+        <Toggle label="Sưng" on={!!flags.swellingNextDay} onPress={() => setFlags({ ...flags, swellingNextDay: !flags.swellingNextDay })} />
+      </View>
+      <View style={{ flexDirection: 'row', gap: space.s }}>
+        <View style={{ flex: 1 }}><Button label="Hủy" variant="ghost" onPress={() => onDone(false)} /></View>
+        <View style={{ flex: 1 }}><Button label="Lưu" icon="checkmark" disabled={before === undefined && after === undefined && !Object.values(flags).some(Boolean)} onPress={save} /></View>
+      </View>
+    </View>
+  );
+}
 
 /** Tóm tắt cảm giác của một phiên, dùng cả ở màn thiết bị của bác sĩ. */
 export function noteText(n: SessionNote): string {

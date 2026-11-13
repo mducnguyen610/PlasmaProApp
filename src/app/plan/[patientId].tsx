@@ -143,9 +143,18 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
   if (me?.role === 'patient') {
     // Bệnh nhân chỉ xem đợt đã được bác sĩ xác nhận.
     const visible = data.plans.filter((x) => x.patientId === p.id && x.confirmed && x.status !== 'draft').sort((a, b) => b.version - a.version);
+    // UX-20 (Đợt 11): mỗi vết thương một thẻ, mỗi thẻ là phiên bản mới nhất bệnh nhân được xem của vết đó (trước đây chỉ một thẻ cho mọi vết).
+    const perWound = wounds
+      .map((w) => ({ w, plan: visible.find((x) => (x.woundId ?? first) === w.id) }))
+      .filter((x): x is { w: (typeof wounds)[number]; plan: TreatmentPlan } => !!x.plan);
     return (
       <Screen header={<Header back title="Đợt điều trị của tôi" />}>
-        {visible.length === 0 ? <Card><Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted></Card> : <PlanCard plan={visible[0]} editorName={account(visible[0].editedBy)?.name} />}
+        {perWound.length === 0 ? <Card><Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted></Card> : perWound.map(({ w, plan }) => (
+          <View key={w.id} style={{ gap: 8 }}>
+            {perWound.length > 1 && <SectionTitle icon="bandage-outline">{`${w.code}: ${w.location}`}</SectionTitle>}
+            <PlanCard plan={plan} editorName={account(plan.editedBy)?.name} />
+          </View>
+        ))}
         <Muted>Thiết bị đã được khóa theo mức năng lượng và thời gian bác sĩ đặt. Bạn không cần chỉnh gì trên thiết bị.</Muted>
       </Screen>
     );

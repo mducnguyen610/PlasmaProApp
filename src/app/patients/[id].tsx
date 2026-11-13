@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { ActivationCode } from '@/components/ActivationCode';
+import { noteNeedsAttention, noteText } from '@/components/AdherenceCalendar';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, ListCard, Muted, Screen, SectionTitle, WoundPhoto, SwitchRow, type IconName, StatusChip, Empty } from '@/components/ui';
 import { isPendingActivation } from '@/lib/auth';
@@ -38,6 +39,12 @@ export default function PatientDetail() {
   const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id), localDay(), dev.lastSync ? localDay(dev.lastSync) : null) : null;
   const wounds = woundsOf(p.id);
   const reports = data.reports.filter((r) => r.patientId === p.id);
+  // UX-09 a (Đợt 11): ghi chú sau buổi điều trị có đau từ 7, đỏ da hoặc sưng hiện cùng khối báo cáo. Chỉ hiển thị;
+  // không tính vào điểm chú ý, không tạo báo cáo (QĐ-3 chưa đổi).
+  const flaggedNotes = dev ? sessionsOf(dev.id)
+    .map((s) => ({ s, n: data.sessionNotes.find((x) => x.sessionId === s.sessionId) }))
+    .filter((x): x is { s: (typeof x)['s']; n: NonNullable<(typeof x)['n']> } => !!x.n && noteNeedsAttention(x.n))
+    .sort((a, b) => b.s.start.localeCompare(a.s.start)) : [];
   const login = data.accounts.find((a) => a.patientId === p.id);
   const pending = !login || isPendingActivation(login);
   const codeLive = !!login?.activationHash && !!login.activationExpiresAt && login.activationExpiresAt > new Date().toISOString();
@@ -191,7 +198,18 @@ export default function PatientDetail() {
       </ListCard>
 
       <SectionTitle icon="chatbubble-ellipses-outline">Triệu chứng và sự cố bệnh nhân báo</SectionTitle>
-      {reports.length === 0 ? <Empty icon="chatbubble-ellipses-outline" text="Bệnh nhân chưa gửi báo cáo triệu chứng hay sự cố nào." /> : <Card>
+      {flaggedNotes.length > 0 && <Card>
+        {flaggedNotes.map(({ s, n }) => (
+          <View key={s.sessionId} accessible accessibilityLabel={`Ghi sau buổi điều trị ${fmtDate(s.start)}: ${noteText(n)}`} style={{ gap: 4, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border }}>
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Chip label={`Ghi sau buổi điều trị ${fmtDate(s.start).slice(0, 5)}`} tone="amber" icon="create-outline" />
+            </View>
+            <Text style={{ color: C.text }}>{noteText(n)}</Text>
+            <Muted>Nguồn: bệnh nhân ghi cảm giác sau buổi điều trị. Chỉ hiển thị, không phải báo cáo cần đánh dấu.</Muted>
+          </View>
+        ))}
+      </Card>}
+      {reports.length === 0 ? (flaggedNotes.length ? null : <Empty icon="chatbubble-ellipses-outline" text="Bệnh nhân chưa gửi báo cáo triệu chứng hay sự cố nào." />) : <Card>
         {reports.map((r) => (
           <View key={r.id} style={{ gap: 4, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border }}>
             <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>

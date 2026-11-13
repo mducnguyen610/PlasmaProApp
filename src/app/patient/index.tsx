@@ -30,7 +30,8 @@ export default function PatientHome() {
   const [busy, setBusy] = useState(false);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [openSteps, setOpenSteps] = useState(false);
-  const [openNote, setOpenNote] = useState(false);
+  // UX-24 (Đợt 11): trạng thái "Đọc hết" theo từng vết thương.
+  const [openNote, setOpenNote] = useState<Record<string, boolean>>({});
   // Màn hẹp (dưới 380 px): câu chính dùng bậc sectionTitle để không xuống 3 dòng; vòng tiến độ giữ 120 cho chữ trong vòng đủ chỗ (A25).
   const narrow = useWindowDimensions().width < 380;
   const p = patient(me?.patientId);
@@ -56,6 +57,33 @@ export default function PatientHome() {
   const review = plan && treating ? areaReview(imagesOf(treating.w.id), plan, today) : null;
   const nextCheck = followUp?.w.followUpFrom ? followUpDates(followUp.w.followUpFrom).find((x) => x.date >= today) : undefined;
   const steps = status?.kind === 'treat' ? BEFORE : status?.kind === 'done' ? AFTER : [];
+
+  // UX-21 (Đợt 11): ngày có điều trị, danh sách "Trước khi điều trị" đứng trên nút nạp liệu trình, vẫn thu gọn, có số đã làm.
+  // Nội dung danh sách giữ nguyên; dấu tích vẫn chỉ nằm trên màn (không lưu), như trước.
+  const stepsBlock = steps.length > 0 ? (
+        <View style={{ gap: 10 }}>
+          <Divider />
+          {/* Gộp vào thẻ Hôm nay. Thu gọn mặc định: một dòng có số bước đã tích. Mở ra khi cần. */}
+          <Pressable onPress={() => setOpenSteps(!openSteps)} accessibilityRole="button" accessibilityState={{ expanded: openSteps }} accessibilityLabel={`${status?.kind === 'treat' ? 'Trước khi điều trị' : 'Sau khi điều trị'}, đã làm ${steps.filter((t) => checked[t]).length} trên ${steps.length} bước`} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Ionicons name="list" size={26} color={C.primary} />
+            <Text style={{ flex: 1, fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{status?.kind === 'treat' ? 'Trước khi điều trị' : 'Sau khi điều trị'}</Text>
+            <Text style={{ color: steps.every((t) => checked[t]) ? C.green : C.textSoft, fontWeight: '700' }}>{steps.filter((t) => checked[t]).length}/{steps.length}</Text>
+            <Ionicons name={openSteps ? 'chevron-up' : 'chevron-down'} size={22} color={C.textSoft} />
+          </Pressable>
+          {status?.kind === 'treat' && !openSteps && <Muted>Làm xong các bước này rồi hãy nạp vào máy.</Muted>}
+          {openSteps && steps.map((t) => {
+            const on = !!checked[t];
+            return (
+              // Cả dòng là vùng bấm, cao tối thiểu 48 pt (Apple HIG 44 pt, Material 48 dp), có phản hồi khi chạm.
+              <Pressable key={t} onPress={() => setChecked({ ...checked, [t]: !on })} accessibilityRole="checkbox" accessibilityLabel={t} accessibilityState={{ checked: on }} style={({ pressed }) => ({ minHeight: 48, paddingVertical: 6, marginHorizontal: -8, paddingHorizontal: 8, borderRadius: radius.s, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pressed ? C.surfaceMuted : 'transparent' })}>
+                <Ionicons name={on ? 'checkbox' : 'square-outline'} size={28} color={on ? C.green : C.textSoft} />
+                <Text style={{ flex: 1, color: C.text }}>{t}</Text>
+              </Pressable>
+            );
+          })}
+          {openSteps && <Muted>Theo hướng dẫn chung, bác sĩ có thể dặn khác.</Muted>}
+        </View>
+  ) : null;
 
   return (
     <Screen header={<Header title="Trang chủ" subtitle={`${p.name} · ${p.code}`} right={<DateBadge />} />}>
@@ -93,6 +121,7 @@ export default function PatientHome() {
               </Pressable>
             )}
             {/* Lối tắt vào luồng chính tại nhà: N02 sang T01, không phải vòng qua tab Thiết bị. */}
+            {status.kind === 'treat' && stepsBlock}
             {status.kind === 'treat' && p.deviceId && (
               <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={() => router.push('/connect-device')} />
             )}
@@ -130,29 +159,7 @@ export default function PatientHome() {
         ) : (
           <Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted>
         )}
-        {steps.length > 0 && (
-        <View style={{ gap: 10 }}>
-          <Divider />
-          {/* Gộp vào thẻ Hôm nay. Thu gọn mặc định: một dòng có số bước đã tích. Mở ra khi cần. */}
-          <Pressable onPress={() => setOpenSteps(!openSteps)} accessibilityRole="button" accessibilityState={{ expanded: openSteps }} accessibilityLabel={`${status?.kind === 'treat' ? 'Trước khi điều trị' : 'Sau khi điều trị'}, đã làm ${steps.filter((t) => checked[t]).length} trên ${steps.length} bước`} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Ionicons name="list" size={26} color={C.primary} />
-            <Text style={{ flex: 1, fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{status?.kind === 'treat' ? 'Trước khi điều trị' : 'Sau khi điều trị'}</Text>
-            <Text style={{ color: steps.every((t) => checked[t]) ? C.green : C.textSoft, fontWeight: '700' }}>{steps.filter((t) => checked[t]).length}/{steps.length}</Text>
-            <Ionicons name={openSteps ? 'chevron-up' : 'chevron-down'} size={22} color={C.textSoft} />
-          </Pressable>
-          {openSteps && steps.map((t) => {
-            const on = !!checked[t];
-            return (
-              // Cả dòng là vùng bấm, cao tối thiểu 48 pt (Apple HIG 44 pt, Material 48 dp), có phản hồi khi chạm.
-              <Pressable key={t} onPress={() => setChecked({ ...checked, [t]: !on })} accessibilityRole="checkbox" accessibilityLabel={t} accessibilityState={{ checked: on }} style={({ pressed }) => ({ minHeight: 48, paddingVertical: 6, marginHorizontal: -8, paddingHorizontal: 8, borderRadius: radius.s, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pressed ? C.surfaceMuted : 'transparent' })}>
-                <Ionicons name={on ? 'checkbox' : 'square-outline'} size={28} color={on ? C.green : C.textSoft} />
-                <Text style={{ flex: 1, color: C.text }}>{t}</Text>
-              </Pressable>
-            );
-          })}
-          {openSteps && <Muted>Theo hướng dẫn chung, bác sĩ có thể dặn khác.</Muted>}
-        </View>
-        )}
+        {status?.kind !== 'treat' && stepsBlock}
         {/* Lịch hẹn gần nhất gộp vào thẻ Hôm nay thay cho một thẻ riêng; danh sách đầy đủ ở Lịch trình. */}
         <Divider />
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -240,10 +247,10 @@ export default function PatientHome() {
                   <Text style={{ color: C.textSoft, fontSize: T.small }}>{fmtDate(ev.date).slice(0, 5)}</Text>
                 </View>
                 {/* Hai dòng đầu, chạm để đọc hết. */}
-                <Text numberOfLines={openNote ? undefined : 2} style={{ color: C.text, lineHeight: 24 }}>{ev.instructions || ev.characteristics}</Text>
-                {openNote && <Muted>{account(ev.doctorId)?.name ?? 'Bác sĩ phụ trách'}</Muted>}
-                {openNote && ev.nextReview && ev.nextReview >= today && <Muted>{`Tái đánh giá ngày ${fmtDate(ev.nextReview)}`}</Muted>}
-                <TextLink label={openNote ? 'Thu gọn' : 'Đọc hết'} onPress={() => setOpenNote(!openNote)} />
+                <Text numberOfLines={openNote[w.id] ? undefined : 2} style={{ color: C.text, lineHeight: 24 }}>{ev.instructions || ev.characteristics}</Text>
+                {openNote[w.id] && <Muted>{account(ev.doctorId)?.name ?? 'Bác sĩ phụ trách'}</Muted>}
+                {openNote[w.id] && ev.nextReview && ev.nextReview >= today && <Muted>{`Tái đánh giá ngày ${fmtDate(ev.nextReview)}`}</Muted>}
+                <TextLink label={openNote[w.id] ? 'Thu gọn' : 'Đọc hết'} accessibilityLabel={`${openNote[w.id] ? 'Thu gọn' : 'Đọc hết'} lời dặn ${w.code}`} onPress={() => setOpenNote({ ...openNote, [w.id]: !openNote[w.id] })} />
               </View>
             ) : <Muted>Chưa có đánh giá được công bố. Không suy ra mức độ từ diện tích.</Muted>}
           </Card>
