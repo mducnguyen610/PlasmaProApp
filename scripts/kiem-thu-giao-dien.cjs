@@ -142,14 +142,17 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
   {
     const p = await newPage();
     await login(p, 'bacsi'); await go(p, '/wounds/w-1');
-    const order = ['Đang điều trị', 'Diện tích', 'Đợt điều trị', 'Đánh giá gần nhất', 'Album ảnh'];
+    // Giai đoạn 1 giao diện theo tác vụ: album chuyển sang "Ảnh và số đo" (wound-history); B05 thêm thẻ "Việc với vết thương".
+    const order = ['Đang điều trị', 'Diện tích', 'Việc với vết thương', 'Đợt điều trị', 'Đánh giá gần nhất'];
     const ys = []; for (const t of order) ys.push(await yOf(p, t));
     const ok = ys.every((y) => y != null) && ys.every((y, i) => i === 0 || y > ys[i - 1]);
-    rec('TC08a', 'Trang vết thương: thẻ tổng quan (trạng thái, diện tích) → đợt → đánh giá → album', ok, JSON.stringify(ys.map((y) => (y == null ? null : Math.round(y)))));
+    rec('TC08a', 'Trang vết thương: thẻ tổng quan (trạng thái, diện tích) → việc với vết thương → đợt → đánh giá', ok, JSON.stringify(ys.map((y) => (y == null ? null : Math.round(y)))));
+    // Album bác sĩ: B05 không còn album; lối vào "Ảnh và số đo" mở thẻ Ảnh của wound-history với đủ ngày chụp.
     const dates0 = await p.getByText(/^Chụp \d/).count();
-    await p.getByText(/^Xem tất cả \(\d+ ngày chụp\)/).click(); await p.waitForTimeout(300);
+    await p.getByRole('button', { name: /^Ảnh và số đo, / }).click(); await p.waitForTimeout(1200);
     const dates1 = await p.getByText(/^Chụp \d/).count();
-    rec('TC08b', 'Album mặc định 2 ngày, "Xem tất cả" mở đủ', dates0 === 2 && dates1 > 2, `${dates0} → ${dates1}`);
+    rec('TC08b', 'Album ở "Ảnh và số đo" (wound-history) hiện đủ ngày chụp; B05 không lặp album', dates0 === 0 && dates1 > 2 && p.url().includes('tab=anh'), `B05 ${dates0}, lịch sử ${dates1}`);
+    await go(p, '/wounds/w-1');
     const hidden0 = await visible(p, 'Mỗi ngày');
     await p.getByText(/^Giai đoạn \d trên \d$/).first().click(); await p.waitForTimeout(300);
     const shown1 = await visible(p, 'Mỗi ngày');

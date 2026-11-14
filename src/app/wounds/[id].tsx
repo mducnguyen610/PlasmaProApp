@@ -6,8 +6,7 @@ import { Text } from '@/components/Text';
 import { SEVERITY } from '@/lib/access';
 import { AreaProgress } from '@/components/AreaProgress';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { ImageTile } from '@/components/items';
-import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Notice, Screen, SectionTitle, TextLink, StatusChip } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, LinkRow, Muted, Notice, Screen, SectionTitle, TextLink, StatusChip } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
 import { ClinicalContext } from '@/components/ClinicalContext';
@@ -32,9 +31,7 @@ export default function WoundDetail() {
   const p = patient(w?.patientId);
   const canView = useCanView(p);
   const [openEval, setOpenEval] = useState(false);
-  const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [showOldEvals, setShowOldEvals] = useState(false);
-  const [showAllSessions, setShowAllSessions] = useState(false);
   if (!w || !p) return <NoAccess notFound />;
   if (!canView) return <NoAccess />;
 
@@ -45,8 +42,6 @@ export default function WoundDetail() {
   const dev = data.devices.find((x) => x.id === p.deviceId);
   const pr = plan && dev ? courseProgress(plan, sessionsForWound(sessionsOf(dev.id), w.id), today, (dev.lastSync ? localDay(dev.lastSync) : null)) : null;
   const currentPhase = plan && pr && pr.phaseIndex >= 0 ? phasesOf(plan)[pr.phaseIndex] : undefined;
-  const byDate = new Map<string, typeof images>();
-  for (const im of [...images].reverse()) byDate.set(im.captureDate, [...(byDate.get(im.captureDate) ?? []), im]);
   const evals = data.evaluations
     .filter((e) => e.woundId === w.id && (isDoctor || e.visibleToPatient))
     .sort((a, b) => b.date.localeCompare(a.date) || data.evaluations.indexOf(b) - data.evaluations.indexOf(a));
@@ -63,9 +58,8 @@ export default function WoundDetail() {
   const pctOf = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
 
   const retakes = images.filter((i) => i.retakeRequested);
+  const unmeasured = images.filter((i) => i.areaCm2 === null).length;
   const sev = evals[0]?.severity;
-  const dates = [...byDate.entries()];
-  const shownDates = showAllPhotos ? dates : dates.slice(0, 2);
   const shownEvals = showOldEvals ? evals : evals.slice(0, 1);
 
   const compareTitle = (title: string) => (
@@ -103,10 +97,17 @@ export default function WoundDetail() {
     .map((pl) => pl.startDate))]
     .sort()
     .map((date, i) => ({ date, label: `Đợt ${i + 1}` }));
+  const courseMarkerCount = courseMarkers.length;
 
   // Ba thẻ: tổng quan (vị trí, trạng thái, mức độ, diện tích), đợt điều trị, đánh giá. Album không đóng khung.
   return (
-    <Screen header={<Header back title={`Vết thương ${w.code}`} />}>
+    <Screen header={<Header back title={`Vết thương ${w.code}`} />} footer={isDoctor ? (
+      // Vùng nút cố định: hai việc chính của bác sĩ luôn thấy, không phải cuộn (giai đoạn 1 giao diện theo tác vụ).
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Button style={{ flex: 1 }} label="Ghi đánh giá" variant="secondary" onPress={() => router.push({ pathname: '/evaluate/[woundId]', params: { woundId: w.id } })} />
+        <Button style={{ flex: 1 }} label="Chụp ảnh" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />
+      </View>
+    ) : undefined}>
       {/* P0 G1: bệnh nhân và vết thương đang thao tác. */}
       <ClinicalContext patient={p} wound={w} />
       {/* Thẻ 1, tổng quan: vị trí, trạng thái, mức độ, cảnh báo chụp lại và diện tích (điểm neo) trong một thẻ.
@@ -145,9 +146,7 @@ export default function WoundDetail() {
               <InfoRow label="Xu hướng (bác sĩ đánh giá)" stack value={evals[0]
                 ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}><StatusChip status={TREND_ROLE[evals[0].trend]} label={TREND[evals[0].trend].label} /><Muted>{fmtDate(evals[0].date)}</Muted></View>
                 : 'Chưa có đánh giá'} />
-              <InfoRow label="Đợt đang áp dụng" value={plan
-                ? `${PLAN_STATUS[plan.status].label}, từ ${fmtDate(plan.startDate)}${currentPhase ? `, giai đoạn ${pr!.phaseIndex + 1}/${pr!.phaseCount}` : ''}`
-                : 'Chưa có đợt'} />
+              {/* "Đợt đang áp dụng" bỏ ở đây: cùng thông tin đã có ở thẻ "Đợt điều trị" và lối vào "Đợt điều trị" (không lặp dữ liệu). */}
             </View>
             {sum.newerUnmeasured.length > 0 && (
               <View style={{ gap: 4 }}>
@@ -155,13 +154,6 @@ export default function WoundDetail() {
                 <TextLink label={`Nhập số đo cho ${sum.newerUnmeasured[0].id}`} onPress={() => router.push({ pathname: '/images/[id]', params: { id: sum.newerUnmeasured[0].id } })} />
               </View>
             )}
-            <Button label="Chụp ảnh có hướng dẫn" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />
-            {/* UX-29 (Đợt 12): hai việc hay làm sau khi chụp thành nút phụ cố định, thay vì chỉ có liên kết chữ nhỏ ở tiêu đề thẻ phía dưới.
-                "Chụp ảnh" đã là nút chính ở trên nên không lặp thêm nút thứ ba cùng đích. */}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Button style={{ flex: 1 }} label="Ghi đánh giá" variant="secondary" onPress={() => router.push({ pathname: '/evaluate/[woundId]', params: { woundId: w.id } })} />
-              <Button style={{ flex: 1 }} label="Đợt điều trị" variant="secondary" onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />
-            </View>
           </>
         ) : (
           <>
@@ -172,17 +164,47 @@ export default function WoundDetail() {
         )}
       </Card>
 
-      {/* PP-08, P2-02d (QĐ-P2-5): thẻ biểu đồ riêng ở màn bác sĩ, cùng biểu đồ đường với bệnh nhân, giữ vạch ngày bắt đầu từng đợt. */}
+      {/* Giai đoạn 1 giao diện theo tác vụ: mỗi việc với vết thương một lối vào riêng, ngay dưới thẻ tổng quan.
+          Biểu đồ, album, đánh giá cũ và buổi điều trị chuyển sang màn "Tiến triển và lịch sử" (wound-history), mở đúng thẻ.
+          Hai việc hay làm nhất (ghi đánh giá, chụp ảnh) nằm ở vùng nút cố định cuối màn (UX-29). Mọi lối vào mang woundId (và patientId khi màn đích cần). */}
       {isDoctor && (
         <Card>
-          {compareTitle('Tiến triển diện tích')}
-          <AreaProgress code={w.code} woundId={w.id} images={images} evaluations={data.evaluations} today={today} isDoctor markers={courseMarkers} accountName={(id) => account(id)?.name} />
+          <SectionTitle icon="list-outline">Việc với vết thương</SectionTitle>
+          <View testID="loi-vao-vet-thuong">
+            <LinkRow icon="flash-outline" tone="violet" title="Đợt điều trị" accessibilityLabel={`Đợt điều trị, ${plan ? `phiên bản ${plan.version}, ${PLAN_STATUS[plan.status].label.toLowerCase()}` : 'chưa lập đợt'}`}
+              sub={plan ? `Phiên bản ${plan.version} · ${PLAN_STATUS[plan.status].label.toLowerCase()} · lập hoặc sửa phiên bản` : 'Chưa lập đợt · lập đợt mới'}
+              onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />
+            <Divider />
+            <LinkRow icon="images-outline" tone="teal" title="Ảnh và số đo" accessibilityLabel={`Ảnh và số đo, ${images.length} ảnh${unmeasured ? `, ${unmeasured} ảnh chưa đo` : ''}`}
+              sub={`${images.length} ảnh${unmeasured ? ` · ${unmeasured} ảnh chưa đo` : ''}`}
+              onPress={() => router.push({ pathname: '/wound-history/[woundId]', params: { woundId: w.id, tab: 'anh' } })} />
+            <Divider />
+            <LinkRow icon="stats-chart-outline" tone="teal" title="Tiến triển diện tích" accessibilityLabel={`Tiến triển diện tích, ${labeled.length} lần đo`}
+              sub={`${labeled.length} lần đo${courseMarkerCount ? ` · ${courseMarkerCount} đợt` : ''}`}
+              onPress={() => router.push({ pathname: '/wound-history/[woundId]', params: { woundId: w.id, tab: 'dien-tich' } })} />
+            <Divider />
+            <LinkRow icon="clipboard-outline" tone="violet" title="Lịch sử đánh giá" accessibilityLabel={`Lịch sử đánh giá, ${evals.length} lần`}
+              sub={evals[0] ? `${evals.length} lần · gần nhất ${fmtDate(evals[0].date)}` : 'Chưa có đánh giá'}
+              onPress={() => router.push({ pathname: '/wound-history/[woundId]', params: { woundId: w.id, tab: 'danh-gia' } })} />
+            {dev && <Divider />}
+            {dev && (
+              <LinkRow icon="time-outline" tone="teal" title="Lịch sử điều trị" accessibilityLabel={`Lịch sử điều trị, ${woundSessions.length} buổi`}
+                sub={woundSessions[0] ? `${woundSessions.length} buổi · gần nhất ${fmtDateTime(woundSessions[0].start)}` : 'Chưa có buổi nào được ghi'}
+                onPress={() => router.push({ pathname: '/wound-history/[woundId]', params: { woundId: w.id, tab: 'buoi' } })} />
+            )}
+            {images.length >= 2 && <Divider />}
+            {images.length >= 2 && (
+              <LinkRow icon="git-compare-outline" tone="amber" title="So sánh trước và sau" accessibilityLabel="So sánh trước và sau"
+                sub="Chọn hai ảnh của vết này"
+                onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} />
+            )}
+          </View>
         </Card>
       )}
 
       {/* Đợt điều trị: một dòng tóm tắt; giai đoạn, liều, tuân thủ và mốc xem lại nằm trong phần thu gọn. */}
       <Card>
-        <SectionTitle icon="flash-outline" right={isDoctor ? <TextLink label={plan ? 'Sửa đợt' : '+ Lập đợt'} onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} /> : null}>
+        <SectionTitle icon="flash-outline">
           Đợt điều trị
         </SectionTitle>
         {plan && isDoctor && <DoseRows plan={plan} />}
@@ -199,22 +221,6 @@ export default function WoundDetail() {
             {pr && isDoctor && <ProgressRows pr={pr} />}
           </Disclosure>
         ) : <Muted>Chưa có đợt điều trị cho vết thương này.</Muted>}
-        {/* P1-02c: buổi điều trị của vết này, không phải sang màn thiết bị. Trạng thái và nguồn ghi bằng chữ. */}
-        {isDoctor && dev && (
-          <Disclosure icon="time-outline" title={`Buổi điều trị gần đây (${woundSessions.length})`} summary={woundSessions[0] ? `Gần nhất ${fmtDateTime(woundSessions[0].start)}` : 'Chưa có buổi nào được ghi'}>
-            {woundSessions.slice(0, showAllSessions ? 30 : 5).map((s) => (
-              <View key={s.sessionId + s.start} testID="buoi-dieu-tri" style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border, gap: 2 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ fontWeight: '600', color: C.text }}>{fmtDateTime(s.start)}</Text>
-                  <Text style={{ color: C.textSoft }}>{s.durationMin} phút</Text>
-                </View>
-                <Text style={{ fontSize: T.caption, color: C.textSoft }}>{`${SESSION_STATUS[s.status]} · ${SESSION_SOURCE[s.source]}`}</Text>
-              </View>
-            ))}
-            {woundSessions.length > 5 && <TextLink label={showAllSessions ? 'Thu gọn' : `Xem thêm (${Math.min(30, woundSessions.length)} buổi gần nhất)`} onPress={() => setShowAllSessions(!showAllSessions)} />}
-            <TextLink label={`Mở thiết bị ${dev.code}`} onPress={() => router.push({ pathname: '/devices/[id]', params: { id: dev.id } })} />
-          </Disclosure>
-        )}
         {isDoctor && <ClosureActions woundId={w.id} status={w.status} check1={w.closureCheck1} followUpFrom={w.followUpFrom} today={today} hasPlan={!!plan} onNewCourse={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />}
         {!isDoctor && w.status === 'follow_up' && w.followUpFrom && <Muted>Đã liền ngày {fmtDate(w.followUpFrom)}. Các lần kiểm tra: {followUpDates(w.followUpFrom).map((x) => fmtDate(x.date)).join(', ')}.</Muted>}
       </Card>
@@ -223,7 +229,7 @@ export default function WoundDetail() {
       <Card>
       <SectionTitle
         icon="clipboard-outline"
-        right={isDoctor ? <TextLink label="+ Ghi đánh giá" onPress={() => router.push({ pathname: '/evaluate/[woundId]', params: { woundId: w.id } })} /> : null}>
+>
         {isDoctor ? 'Đánh giá gần nhất' : 'Nhận xét của bác sĩ'}
       </SectionTitle>
       {evals.length === 0 && <Muted>Chưa có đánh giá.</Muted>}
@@ -258,7 +264,8 @@ export default function WoundDetail() {
           </View>
         );
       })}
-      {evals.length > 1 && <Button variant="ghost" label={showOldEvals ? 'Ẩn đánh giá cũ' : `Xem đánh giá cũ (${evals.length - 1})`} onPress={() => setShowOldEvals(!showOldEvals)} />}
+      {/* Bác sĩ xem đánh giá cũ ở "Lịch sử đánh giá"; màn bệnh nhân giữ như cũ. */}
+      {!isDoctor && evals.length > 1 && <Button variant="ghost" label={showOldEvals ? 'Ẩn đánh giá cũ' : `Xem đánh giá cũ (${evals.length - 1})`} onPress={() => setShowOldEvals(!showOldEvals)} />}
       </Card>
 
       {/* P2-07a (R2-07): dòng thời gian chỉ của vết này, phía bệnh nhân. Buổi không gắn vết không đưa vào (A26). */}
@@ -268,26 +275,8 @@ export default function WoundDetail() {
         </Card>
       )}
 
-      {/* P2-03a: phía bệnh nhân, ảnh nằm ở dải "Ảnh theo thời gian" trong thẻ Tiến triển diện tích; album giữ cho bác sĩ. */}
-      {isDoctor && <>
-      <SectionTitle icon="albums-outline">Album ảnh</SectionTitle>
-      {images.length === 0 && <Muted>Chưa có ảnh. Chụp hoặc tải ảnh lên để bắt đầu.</Muted>}
-      {shownDates.map(([date, ims]) => (
-        <View key={date} style={{ gap: 8 }}>
-          <Text style={{ color: C.textSoft, fontWeight: '700', fontSize: T.small }}>Chụp {fmtDate(date)}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-            {ims.map((im) => (
-              <ImageTile key={im.id} image={im} width={160} />
-            ))}
-          </View>
-        </View>
-      ))}
-      {dates.length > 2 && <Button variant="ghost" label={showAllPhotos ? 'Thu gọn album' : `Xem tất cả (${dates.length} ngày chụp)`} onPress={() => setShowAllPhotos(!showAllPhotos)} />}
-      </>}
+      {/* Album của bác sĩ chuyển sang "Ảnh và số đo" (màn Tiến triển và lịch sử, giao diện theo tác vụ giai đoạn 1); phía bệnh nhân dùng dòng thời gian P2-07a. */}
     </Screen>
   );
 }
 
-// Cùng nhãn với màn thiết bị (DeviceView).
-const SESSION_STATUS = { completed: 'Hoàn tất', interrupted: 'Bị ngắt', over_limit: 'Ngắt do vượt ngưỡng' } as const;
-const SESSION_SOURCE = { device: 'Thiết bị gửi', manual: 'Nhập tay', simulated: 'Mô phỏng' } as const;
