@@ -37,11 +37,11 @@ export function woundTimelineItems({ images, evaluations, sessions, doctorName }
   ].sort((a, b) => b.at.localeCompare(a.at) || a.key.localeCompare(b.key));
 }
 
-/** expanded: hiện danh sách ngay, không bọc mục thu gọn (thẻ Lịch sử của bệnh nhân ở /wound-history). Mặc định như cũ. */
-export function WoundTimeline({ expanded, ...input }: TimelineInput & { expanded?: boolean }) {
+/** limit: số mục hiện trước khi bấm "Xem thêm" (mặc định 10; N05 dùng 5). expanded: hiện danh sách ngay, không bọc mục thu gọn (thẻ Lịch sử của bệnh nhân ở /wound-history). Mặc định như cũ. */
+export function WoundTimeline({ expanded, limit = 10, ...input }: TimelineInput & { expanded?: boolean; limit?: number }) {
   const [all, setAll] = useState(false);
   const items = woundTimelineItems(input);
-  const shown = all ? items : items.slice(0, 10);
+  const shown = all ? items : items.slice(0, limit);
   const list = (
     <>
       {items.length === 0 && expanded ? <Text style={{ color: C.textSoft }}>Chưa có mục nào.</Text> : null}
@@ -66,7 +66,7 @@ export function WoundTimeline({ expanded, ...input }: TimelineInput & { expanded
           ? <Pressable key={it.key} testID="muc-lich-su" accessibilityRole="button" accessibilityLabel={`${it.kind}: ${it.text}, ${it.sub}. Mở ảnh`} onPress={() => router.push({ pathname: '/images/[id]', params: { id: it.imageId! } })} style={style}>{body}</Pressable>
           : <View key={it.key} testID="muc-lich-su" accessible accessibilityLabel={`${it.kind}: ${it.text}, ${it.sub}`} style={style}>{body}</View>;
       })}
-      {items.length > 10 && <TextLink label={all ? 'Thu gọn' : `Xem thêm (${items.length - 10})`} onPress={() => setAll(!all)} />}
+      {items.length > limit && <TextLink label={all ? 'Thu gọn' : `Xem thêm (${items.length - limit})`} onPress={() => setAll(!all)} />}
     </>
   );
   if (expanded) return list;

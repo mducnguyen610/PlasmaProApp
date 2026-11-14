@@ -97,12 +97,17 @@ const KEY = 'plasmapro.demo.v2';
     rec('N05-13', 'Mặc định thẻ Ảnh; không còn dòng "Lịch sử vết thương" riêng; số mục ở thẻ Lịch sử đúng tổng ảnh không bị loại + nhận xét công bố + buổi gắn vết', defAnh && noOldRow && nTl === expectN, `${defAnh}/${noOldRow}/${nTl}=${expectN}`);
     await p.getByRole('tab', { name: /^Lịch sử \(\d+\)$/ }).first().click(); await p.waitForTimeout(800);
     const items = await p.getByTestId('muc-lich-su').evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
-    const switched = url(p).includes('the=lich-su') && (await tabSel(/^Lịch sử \(\d+\)$/)) === 'true' && (await p.getByTestId('o-anh').count()) === 0 && items.length === Math.min(nTl, 10);
+    const switched = url(p).includes('the=lich-su') && (await tabSel(/^Lịch sử \(\d+\)$/)) === 'true' && (await p.getByTestId('o-anh').count()) === 0 && items.length === Math.min(nTl, 5) && (nTl <= 5 || await has(p, `Xem thêm (${nTl - 5})`));
     const noDup = new Set(items).size === items.length;
     // Thứ tự mới trước: so ngày (dd/mm/yyyy) đầu tiên trong mỗi nhãn.
     const ymd = items.map((l) => { const m = l.match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; }).filter(Boolean);
     const ordered = ymd.every((d, i) => i === 0 || ymd[i - 1] >= d);
-    rec('N05-14', 'Chuyển thẻ Lịch sử: giữ trong đường dẫn, đủ mục (10 đầu), không trùng, mới trước', switched && noDup && ordered, `${switched}/${noDup}/${ordered} ${items.length}`);
+    rec('N05-14', 'Chuyển thẻ Lịch sử: giữ trong đường dẫn, 5 mục đầu và "Xem thêm (n-5)", không trùng, mới trước', switched && noDup && ordered, `${switched}/${noDup}/${ordered} ${items.length}`);
+    // Xem thêm: hiện đủ mục, không trùng, vẫn mới trước.
+    await p.getByText(/^Xem thêm \(\d+\)$/).first().click(); await p.waitForTimeout(500);
+    const all = await p.getByTestId('muc-lich-su').evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
+    const ymdAll = all.map((l) => { const m = l.match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; }).filter(Boolean);
+    rec('N05-17', 'Thẻ Lịch sử "Xem thêm": đủ n mục, không trùng, mới trước', all.length === nTl && new Set(all).size === all.length && ymdAll.every((d, i) => i === 0 || ymdAll[i - 1] >= d), `${all.length}/${nTl}`);
     const evRow = p.getByRole('button', { name: /^Nhận xét: .*Mở chi tiết$/ }).first();
     let detail = false, kept = false;
     if (await evRow.count()) {

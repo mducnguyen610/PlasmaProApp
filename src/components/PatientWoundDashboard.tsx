@@ -135,7 +135,7 @@ export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patie
         ))}
         {view === 'lich-su' && (
           <View testID="the-lich-su">
-            <WoundTimeline expanded images={images} evaluations={evals} sessions={woundSessions} doctorName={doctorName} />
+            <WoundTimeline expanded limit={5} images={images} evaluations={evals} sessions={woundSessions} doctorName={doctorName} />
           </View>
         )}
       </Card>
