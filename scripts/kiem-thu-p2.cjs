@@ -144,6 +144,47 @@ GROUPS['p2-5'] = async (b, h) => {
   }
 };
 
+// PR-P2-6: báo triệu chứng (nhóm câu hỏi, hỏi trước khi bỏ dữ liệu, mục Đã gửi).
+GROUPS['p2-6'] = async (b, h) => {
+  const { newPage, login, go, has, mutate, overflow, back } = h;
+  const open = async (p) => { await go(p, '/patient'); await p.getByText('Báo triệu chứng hoặc sự cố', { exact: true }).last().click(); await p.waitForTimeout(1200); };
+  for (const w of WIDTHS) {
+    const p = await newPage(w); await login(p, 'benhnhan'); await go(p, '/report');
+    rec(`P26-01-${w}`, `N08 ${w}px: hai nhóm "Mức đau (0 là không đau, 10 là đau nhất)" và "Mô tả thêm (không bắt buộc)"`, await has(p, 'Mức đau (0 là không đau, 10 là đau nhất)') && await has(p, 'Mô tả thêm (không bắt buộc)'));
+    rec(`P26-02-${w}`, `N08 ${w}px: giữ 11 mức đau 0..10 và nhãn hai đầu thang`, (await p.getByRole('radio').count()) === 11 && await has(p, '0: không đau') && await has(p, '10: đau nhất'));
+    rec(`P26-03-${w}`, `N08 ${w}px: không tràn ngang`, (await overflow(p)) === 0);
+    rec(`P26-04-${w}`, `N08 ${w}px: không lỗi JS`, p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+  {
+    const p = await newPage(); await login(p, 'benhnhan');
+    const n0 = (await h.store(p)).reports.length;
+    await open(p);
+    const mine0 = (await h.store(p)).reports.filter((r) => r.patientId === 'p-1').length;
+    rec('P26-05', 'Mục "Đã gửi" hiện khi và chỉ khi bệnh nhân có báo cáo đã gửi', (await has(p, 'Đã gửi')) === mine0 > 0, `báo cáo của p-1 trong dữ liệu mẫu: ${mine0}`);
+    await p.getByRole('radio', { name: /^Mức đau 8/ }).click(); await p.waitForTimeout(300);
+    rec('P26-06', 'Ngưỡng 7 giữ nguyên: chọn 8 hiện câu cảnh báo cũ', await has(p, 'Mức đau 8/10 là cao. Hãy gọi bác sĩ hoặc đến cơ sở y tế ngay. Đồng thời, gửi báo cáo này.'));
+    p.answer = false; await back(p);
+    rec('P26-07', 'Đã chọn mức đau mà bấm Quay lại: hỏi "Bỏ dữ liệu chưa lưu?", chọn Ở lại thì còn ở N08', p.dialogs.some((d) => d.includes('Bỏ dữ liệu chưa lưu?')) && p.url().includes('/report'), p.dialogs.join(' / ').slice(0, 120));
+    await p.getByText('Gửi', { exact: true }).last().click(); await p.waitForTimeout(1200);
+    const st = await h.store(p);
+    rec('P26-08', 'Gửi: lưu 1 báo cáo, quay lại không hỏi bỏ dữ liệu', st.reports.length === n0 + 1 && !p.url().includes('/report') && p.dialogs.filter((d) => d.includes('Bỏ dữ liệu chưa lưu?')).length === 1, p.url());
+    await open(p);
+    const dis = p.getByText('Đã gửi', { exact: true });
+    rec('P26-09', 'Mở lại N08: có mục "Đã gửi"', (await dis.count()) > 0);
+    if (await dis.count()) { await dis.first().click(); await p.waitForTimeout(400); }
+    rec('P26-10', 'Báo cáo vừa gửi hiện mức đau 8/10 và "Chưa được xử lý"', await has(p, /Triệu chứng · Mức đau 8\/10$/, false) && await has(p, 'Chưa được xử lý'));
+    await mutate(p, `d.reports = d.reports.map((r, i) => i === 0 ? { ...r, handled: true } : r);`);
+    await go(p, '/report'); await p.getByText('Đã gửi', { exact: true }).first().click(); await p.waitForTimeout(400);
+    rec('P26-11', 'Bác sĩ đánh dấu đã xử lý: hiện "Bác sĩ đã đánh dấu đã xử lý"', await has(p, 'Bác sĩ đã đánh dấu đã xử lý'));
+    await mutate(p, `d.reports.unshift({ id: 'r-kt-khac', patientId: 'p-khac', date: new Date().toISOString(), kind: 'symptom', content: 'Báo cáo người khác (minh họa)', handled: false });`);
+    await go(p, '/report'); await p.getByText('Đã gửi', { exact: true }).first().click(); await p.waitForTimeout(400);
+    rec('P26-12', 'Không hiện báo cáo của bệnh nhân khác', !(await has(p, 'Báo cáo người khác (minh họa)')));
+    rec('P26-13', 'Không lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+};
+
 (async () => {
   const b = await chromium.launch();
   const h = helpers(b);
