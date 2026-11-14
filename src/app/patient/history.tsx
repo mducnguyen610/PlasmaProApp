@@ -4,7 +4,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { noteText } from '@/components/AdherenceCalendar';
-import { Card, Header, ListCard, IconBadge, InfoRow, Muted, Screen, SectionTitle, WoundPhoto, StatusChip } from '@/components/ui';
+import { Card, Disclosure, Header, ListCard, IconBadge, InfoRow, Muted, Screen, SectionTitle, WoundPhoto, StatusChip } from '@/components/ui';
 import { WOUND } from '@/theme.status';
 import { fmtDate, fmtDateTime, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
@@ -69,13 +69,16 @@ export default function PatientHistory() {
           })}
         </ListCard>
       )}
-      <SectionTitle icon="person-outline">Thông tin cá nhân</SectionTitle>
+      {/* Giai đoạn 5 giao diện theo tác vụ: thông tin cá nhân là thông tin tham khảo, thu gọn; dòng tóm tắt giữ bác sĩ phụ trách.
+          Các dòng và câu bên trong giữ nguyên. */}
       <Card>
-        <InfoRow label="Họ tên" value={p.name} />
-        <InfoRow label="Năm sinh" value={String(p.birthYear)} />
-        <InfoRow label="Bác sĩ phụ trách" value={account(p.doctorId)?.name ?? '—'} />
-        <InfoRow label="Đồng ý dùng ảnh cho nghiên cứu" value={p.researchConsent ? `Có (${fmtDate(p.consentDate)})` : 'Không'} />
-        <Muted>Muốn thay đổi sự đồng ý, hãy báo bác sĩ phụ trách.</Muted>
+        <Disclosure icon="person-outline" title="Thông tin cá nhân" summary={`${account(p.doctorId)?.name ?? 'Chưa có bác sĩ phụ trách'} · ${p.researchConsent ? 'đồng ý dùng ảnh cho nghiên cứu' : 'không dùng ảnh cho nghiên cứu'}`}>
+          <InfoRow label="Họ tên" value={p.name} />
+          <InfoRow label="Năm sinh" value={String(p.birthYear)} />
+          <InfoRow label="Bác sĩ phụ trách" value={account(p.doctorId)?.name ?? '—'} />
+          <InfoRow label="Đồng ý dùng ảnh cho nghiên cứu" value={p.researchConsent ? `Có (${fmtDate(p.consentDate)})` : 'Không'} />
+          <Muted>Muốn thay đổi sự đồng ý, hãy báo bác sĩ phụ trách.</Muted>
+        </Disclosure>
       </Card>
     </Screen>
   );
