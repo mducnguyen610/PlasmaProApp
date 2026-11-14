@@ -3,19 +3,20 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 
-import { latestEvaluation, SEVERITY } from '@/lib/access';
-import { areaReview, courseProgress, courseStatus, followUpDates, localDay } from '@/lib/course';
+import { latestEvaluation } from '@/lib/access';
+import { courseProgress, courseStatus, followUpDates, localDay } from '@/lib/course';
 import { DateBadge } from '@/components/DateBadge';
 import { DateTile, TaskRow } from '@/components/items';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Divider, Header, Muted, Ring, Screen, SectionTitle, SimBadge, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
+import { Button, Card, Divider, Header, Muted, Ring, Screen, SectionTitle, SimBadge, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
 import { notify } from '@/lib/dialog';
-import { fmtDate, fmtDateTime, TREND } from '@/lib/format';
-import { formatAreaForName } from '@/lib/naming';
+import { changeLine, progressInput, progressSummary, splitByMethod } from '@/lib/areaProgress';
+import { fmtDate, fmtDateTime, TREND, WOUND_STATUS } from '@/lib/format';
+import { formatAreaDisplay } from '@/lib/naming';
 import { computeReminders, scheduleReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
 import { C, radius, size, T, typeScale } from '@/theme';
-import { SEVERITY_ROLE, SOURCE, TREND_ROLE } from '@/theme.status';
+import { SOURCE, WOUND } from '@/theme.status';
 
 // Việc trước và sau mỗi lần chiếu (slide 34: chiếu sau chăm sóc thường quy; S2k 2022: loại dịch tiết, không làm khô vết).
 // Nội dung là bản nháp cho demo, cần bác sĩ trong nhóm duyệt.
@@ -54,7 +55,6 @@ export default function PatientHome() {
   const pr = plan ? courseProgress(plan, woundSessions, today, lastSyncDay) : null;
   const status = pr ? courseStatus(pr, fmtDate) : null;
   const statusColor = status?.kind === 'done' ? C.green : status?.kind === 'over' ? C.amber : status?.kind === 'rest' ? C.textSoft : C.primary;
-  const review = plan && treating ? areaReview(imagesOf(treating.w.id), plan, today) : null;
   const nextCheck = followUp?.w.followUpFrom ? followUpDates(followUp.w.followUpFrom).find((x) => x.date >= today) : undefined;
   const steps = status?.kind === 'treat' ? BEFORE : status?.kind === 'done' ? AFTER : [];
 
@@ -218,39 +218,39 @@ export default function PatientHome() {
       {wounds.length === 0 && <Card><Muted>Hồ sơ mới đang chờ bác sĩ phụ trách tiếp nhận và đánh giá.</Muted></Card>}
       {wounds.map((w) => {
         const ev = latestEvaluation(data, w.id, true);
-        const img = data.images
-          .filter((i) => i.woundId === w.id && i.areaCm2 !== null && i.status === 'labeled')
-          .sort((a, b) => b.captureDate.localeCompare(a.captureDate))[0];
-        const rv = treating && treating.w.id === w.id ? review : null;
+        // P2-01a (R2-01, QĐ-P2-2 A, QĐ-P2-3): thẻ rút gọn. Số đo lấy cùng quy tắc biểu đồ N05 (areaProgress), dòng thay đổi trung tính
+        // một màu; chip mức độ và xu hướng chuyển sang N05; nhận định của bác sĩ ghi bằng chữ kèm ngày. Cả thẻ mở N05.
+        const pts = progressInput(imagesOf(w.id), w.id, today);
+        const main = splitByMethod(pts.points).main;
+        const last = main[main.length - 1];
+        const img = last ? data.images.find((i) => i.id === last.imageId) : undefined;
+        const change = changeLine(progressSummary(pts.points));
         return (
-          <Card key={w.id}>
-            <Text style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{w.code}: {w.location}</Text>
-            {img ? (
+          <Card key={w.id} onPress={() => router.push({ pathname: '/wounds/[id]', params: { id: w.id } })}
+            accessibilityLabel={`${w.code}: ${w.location}. ${last ? `Lần đo gần nhất ${formatAreaDisplay(last.areaCm2)}, ngày ${fmtDate(last.date)}. ${change ? change.replace('↓ ', '').replace('↑ ', '') + '. ' : ''}` : 'Chưa có số đo. '}${ev ? `Bác sĩ đánh giá ${fmtDate(ev.date)}: ${TREND[ev.trend].label}. ` : ''}Xem tiến triển`}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <Text style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text, flexShrink: 1 }}>{w.code}: {w.location}</Text>
+              <StatusChip status={WOUND[w.status]} label={WOUND_STATUS[w.status].label} />
+            </View>
+            {last && img ? (
               <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4 }}>
-                    <Text style={{ fontSize: T.display, fontWeight: '600', color: C.primary }}>{formatAreaForName(img.areaCm2!).replace('.', ',')}</Text>
-                    <Text style={{ fontSize: T.cardTitle, fontWeight: '500', color: C.primary, marginBottom: 5 }}>cm²</Text>
-                  </View>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={{ color: C.text }}>{`Lần đo gần nhất: ${formatAreaDisplay(last.areaCm2)}, ngày ${fmtDate(last.date).slice(0, 5)}`}</Text>
                   {/* PP-01: nguồn số đo cạnh số diện tích. */}
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                     <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />
                   </View>
-                  {rv && rv.state !== 'no_data' && rv.reduction != null ? (
-                    <View style={{ flexDirection: 'row' }}>
-                      <Chip icon={rv.reduction >= 0 ? 'trending-down' : 'trending-up'} tone={rv.reduction >= 0 ? 'green' : 'amber'} label={`${rv.reduction >= 0 ? 'Giảm' : 'Tăng'} ${Math.round(Math.abs(rv.reduction) * 100)}% từ đầu đợt`} />
-                    </View>
-                  ) : null}
-                  <Muted>{img.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : 'Đo ' + fmtDate(img.captureDate).slice(0, 5)}</Muted>
+                  {change ? <Text style={{ color: C.primary, fontWeight: '700' }}>{change}</Text> : null}
                 </View>
                 <WoundPhoto image={img} style={{ width: 110, height: 82, borderRadius: radius.m }} />
               </View>
             ) : <Muted>Chưa có số đo do bác sĩ nhập.</Muted>}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {ev?.severity && <StatusChip status={SEVERITY_ROLE[ev.severity]} label={`Mức độ: ${SEVERITY[ev.severity].label}`} />}
-              {ev && !(rv && rv.state !== 'no_data') && <StatusChip status={TREND_ROLE[ev.trend]} label={TREND[ev.trend].label} />}
+            {ev ? <Text style={{ color: C.text }}>{`Bác sĩ đánh giá ${fmtDate(ev.date).slice(0, 5)}: ${TREND[ev.trend].label}`}</Text>
+              : <Muted>Chưa có đánh giá được công bố. Không suy ra mức độ từ diện tích.</Muted>}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 24 }}>
+              <Text style={{ color: C.primary, fontWeight: '700' }}>Xem tiến triển</Text>
+              <Ionicons name="chevron-forward" size={16} color={C.primary} />
             </View>
-            {!ev && <Muted>Chưa có đánh giá được công bố. Không suy ra mức độ từ diện tích.</Muted>}
           </Card>
         );
       })}

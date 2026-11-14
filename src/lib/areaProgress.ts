@@ -169,6 +169,13 @@ export function summaryText(s: ProgressSummary): { headline: string | null; deta
   }
 }
 
+/** P2-01a (R2-01): một dòng thay đổi ngắn cho thẻ vết ở trang chủ, cùng điều kiện với tóm tắt (mục 6.3). Không đủ điều kiện thì null. */
+export function changeLine(s: ProgressSummary): string | null {
+  if (s.kind !== 'change') return null;
+  if (s.delta === 0) return `Không đổi so với lần đo ${ddmm(s.base.date)}`;
+  return `${s.delta < 0 ? '↓ Giảm' : '↑ Tăng'} ${fmtPct(s.pct)} so với lần đo ${ddmm(s.base.date)}`;
+}
+
 // Trục (mục 8).
 /** Số tròn trên giá trị lớn nhất, bước 1, 2, 5 × 10^k, 4 đến 5 vạch, bắt đầu từ 0. */
 export function niceAxis(maxValue: number): { max: number; step: number } {

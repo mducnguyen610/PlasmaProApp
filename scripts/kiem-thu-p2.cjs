@@ -381,6 +381,32 @@ GROUPS['p2-3'] = async (b, h) => {
   }
 };
 
+// PR-P2-4: thẻ vết thương ở trang chủ (N02) rút gọn, dòng thay đổi trung tính, chip mức độ và xu hướng chuyển sang N05.
+GROUPS['p2-4'] = async (b, h) => {
+  const { newPage, login, go, has, mutate, overflow } = h;
+  for (const w of WIDTHS) {
+    const p = await newPage(w); await login(p, 'benhnhan'); await go(p, '/patient');
+    const card = p.getByRole('button', { name: /^VT01: .*Xem tiến triển$/ });
+    rec(`P24-01-${w}`, `N02 ${w}px: cả thẻ VT01 chạm được, nhãn kết thúc "Xem tiến triển"`, (await card.count()) === 1);
+    rec(`P24-02-${w}`, `N02 ${w}px: "Lần đo gần nhất: 8,4 cm², ngày dd/MM" và "↓ Giảm 32,8% so với lần đo dd/MM"`, await has(p, /^Lần đo gần nhất: 8,4 cm², ngày \d\d\/\d\d$/, false) && await has(p, /^↓ Giảm 32,8% so với lần đo \d\d\/\d\d$/, false));
+    rec(`P24-03-${w}`, `N02 ${w}px (QĐ-P2-3, QĐ-P2-2): không chip mức độ, không chip "từ đầu đợt"`, !(await has(p, /^Mức độ: /, false)) && !(await has(p, /từ đầu đợt$/, false)));
+    rec(`P24-04-${w}`, `N02 ${w}px: nhận định của bác sĩ ghi bằng chữ kèm ngày`, await has(p, /^Bác sĩ đánh giá \d\d\/\d\d: Cải thiện$/, false));
+    rec(`P24-05-${w}`, `N02 ${w}px: không tràn ngang, không lỗi JS`, (await overflow(p)) === 0 && p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+  {
+    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/patient');
+    const color = await p.getByText(/^↓ Giảm 32,8%/).first().evaluate((e) => getComputedStyle(e).color);
+    rec('P24-06', 'Dòng thay đổi dùng màu nhấn của ứng dụng, không xanh lá', color === 'rgb(11, 107, 111)', color);
+    await p.getByRole('button', { name: /^VT01: .*Xem tiến triển$/ }).click(); await p.waitForTimeout(1200);
+    rec('P24-07', 'Chạm thẻ mở N05 của VT01, có chip mức độ ở N05', p.url().includes('/wounds/w-1') && await has(p, /^Mức độ /, false));
+    await go(p, '/patient'); await mutate(p, TWO_WOUNDS); await go(p, '/patient');
+    rec('P24-08', 'Vết chưa có số đo, chưa đánh giá: "Chưa có số đo do bác sĩ nhập." và câu không suy ra mức độ', await has(p, 'Chưa có số đo do bác sĩ nhập.') && await has(p, 'Chưa có đánh giá được công bố. Không suy ra mức độ từ diện tích.'));
+    rec('P24-09', 'Không lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+};
+
 (async () => {
   const b = await chromium.launch();
   const h = helpers(b);
