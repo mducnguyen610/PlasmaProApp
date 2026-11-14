@@ -1,13 +1,12 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { AdherenceCalendar, SessionNoteForm } from '@/components/AdherenceCalendar';
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { View } from 'react-native';
 import { DateTile } from '@/components/items';
-import { Card, Disclosure, Empty, Header, Muted, Notice, Ring, Screen, SectionTitle } from '@/components/ui';
-import { DoseRows, PhaseList } from '@/components/CourseCard';
-import { courseProgress, courseStatus, followUpDates, localDay, phasesOf } from '@/lib/course';
+import { Card, Disclosure, Divider, Empty, Header, LinkRow, Muted, Notice, Ring, Screen, SectionTitle } from '@/components/ui';
+import { courseProgress, courseStatus, fmtDuration, followUpDates, localDay, phasesOf } from '@/lib/course';
 import { fmtDate, fmtDateTime, PLAN_STATUS } from '@/lib/format';
 import { computeReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
@@ -69,16 +68,18 @@ export default function Schedule() {
             </> : <Muted>Lịch dưới đây để xem lại.</Muted>}
           </View>
         </View>
-        {/* Liều luôn hiện thành dòng có nhãn (rà soát thiết kế 12/11/2026), không nén vào một chuỗi nối dấu chấm giữa. */}
-        <DoseRows plan={plan} />
-        {/* P2-04 (R2-04): ghi chú của bác sĩ về đợt không còn nằm trong mục thu gọn "Các giai đoạn". Nguyên văn, không sửa. */}
+        {/* P2-04 (R2-04): ghi chú của bác sĩ về đợt luôn hiện ngay, nguyên văn, không sửa. */}
         {plan.notes ? <View style={{ gap: 4 }}>
           <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '600' }}>Ghi chú của bác sĩ về đợt</Text>
           <Notice icon="information-circle-outline">{plan.notes}</Notice>
         </View> : null}
-        <Disclosure icon="options-outline" title="Các giai đoạn" summary={ph ? `Đang ở giai đoạn ${pr!.phaseIndex + 1} trên ${phases.length}` : `${phases.length} giai đoạn`}>
-          <PhaseList plan={plan} current={pr?.phaseIndex} />
-        </Disclosure>
+        {/* Giai đoạn 5 giao diện theo tác vụ: liều và các giai đoạn là thông tin tham khảo, chuyển sang màn "Đợt điều trị của tôi" (N06)
+            của đúng vết này (S-12, trước đây bệnh nhân không có lối vào N06). Nội dung N06 đọc cùng đợt bác sĩ đã xác nhận. */}
+        <Divider />
+        <LinkRow testID="loi-vao-n06" icon="flash-outline" tone="violet" title="Liều và các giai đoạn"
+          sub={`${ph ? `Giai đoạn ${pr!.phaseIndex + 1} trên ${phases.length}` : `${phases.length} giai đoạn`} · ${plan.doseLevel != null ? `mức ${plan.doseLevel}` : 'mức chưa đặt'}${plan.durationSec != null ? `, ${fmtDuration(plan.durationSec)} mỗi lần` : ''}`}
+          accessibilityLabel={`Liều và các giai đoạn của đợt ${course!.w.code}. Mở màn Đợt điều trị của tôi`}
+          onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: course!.w.id } })} />
       </> : <Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted>}
     </Card>
     {dev

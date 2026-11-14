@@ -36,6 +36,7 @@ export default function Report() {
   const canSend = !!content.trim() || hasPain;
 
   const send = () => {
+    if (sent) return;
     setSent(true); allowLeave();
     addReport({ patientId: me.patientId!, kind, content: content.trim() || `Mức đau ${pain}/10`, painLevel: kind === 'symptom' && pain !== null ? pain : undefined });
     // Không hứa thời gian phản hồi: bản demo lưu cục bộ, bác sĩ chỉ thấy khi mở ứng dụng.
@@ -45,7 +46,10 @@ export default function Report() {
 
   // PP-15: ở 320 px tiêu đề một dòng bị cắt; cho xuống 2 dòng, giữ chữ. Câu chữ theo bảng đã duyệt C21 đến C24 (Đợt 5).
   return (
-    <Screen header={<Header back title="Báo triệu chứng / sự cố" titleLines={2} />}>
+    // Giai đoạn 5 giao diện theo tác vụ: nút Gửi ở vùng nút cố định (Screen tự đẩy lên trên bàn phím khi có footer),
+    // luôn thấy dù đang nhập mô tả. Khóa sau lần bấm đầu để không gửi trùng.
+    <Screen header={<Header back title="Báo triệu chứng / sự cố" titleLines={2} />}
+      footer={<Button label="Gửi" icon="send" disabled={!canSend || sent} onPress={send} reason={sent ? undefined : kind === 'symptom' ? 'Chọn mức đau hoặc nhập mô tả để gửi.' : 'Nhập mô tả sự cố để gửi.'} />}>
       <Card style={{ backgroundColor: C.redSoft }}>
         <Text style={{ color: C.red, fontWeight: '700' }}>Khi khẩn cấp, hãy gọi 115 hoặc đến cơ sở y tế gần nhất.</Text>
         <Muted>Ứng dụng không thay thế cấp cứu. Không có ai theo dõi ứng dụng liên tục.</Muted>
@@ -82,7 +86,6 @@ export default function Report() {
         )}
         <Field label={kind === 'symptom' ? 'Mô tả thêm (không bắt buộc)' : 'Mô tả'} value={content} onChangeText={setContent} multiline placeholder={kind === 'symptom' ? 'Đau, rát, chảy dịch, sốt…' : 'Không bật được, mất Wi-Fi, báo lỗi…'} />
       </Card>
-      <Button label="Gửi" icon="send" disabled={!canSend} onPress={send} reason={kind === 'symptom' ? 'Chọn mức đau hoặc nhập mô tả để gửi.' : 'Nhập mô tả sự cố để gửi.'} />
       {mine.length > 0 && (
         <Card>
           <Disclosure icon="document-text-outline" title="Đã gửi" summary={`${mine.length} báo cáo gần nhất`}>

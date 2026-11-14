@@ -100,10 +100,10 @@ export default function Plan() {
   const wounds = woundsOf(patientId);
   const [woundId, setWoundId] = useState(woundParam ?? wounds.find((w) => w.status === 'active')?.id ?? wounds[0]?.id ?? '');
   // Đổi vết thương thì dựng lại biểu mẫu theo đợt của vết đó.
-  return <PlanBody key={woundId} patientId={patientId} woundId={woundId} setWoundId={setWoundId} />;
+  return <PlanBody key={woundId} patientId={patientId} woundId={woundId} setWoundId={setWoundId} woundParam={woundParam} />;
 }
 
-function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; woundId: string; setWoundId: (v: string) => void }) {
+function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: string; woundId: string; setWoundId: (v: string) => void; woundParam?: string }) {
   const { data, me, savePlan } = useStore();
   const { patient, account, woundsOf, imagesOf, device } = useLookups();
   const p = patient(patientId);
@@ -156,11 +156,15 @@ function PlanBody({ patientId, woundId, setWoundId }: { patientId: string; wound
     const perWound = wounds
       .map((w) => ({ w, plan: visible.find((x) => (x.woundId ?? first) === w.id) }))
       .filter((x): x is { w: (typeof wounds)[number]; plan: TreatmentPlan } => !!x.plan);
+    // Giai đoạn 5 giao diện theo tác vụ: mở từ N03 hoặc N05 kèm woundId thì chỉ hiện đợt của vết đó (vết phải thuộc chính bệnh nhân).
+    // Mở không kèm woundId (lối vào cũ) vẫn hiện mọi vết như trước.
+    const only = woundParam ? perWound.filter((x) => x.w.id === woundParam) : [];
+    const shown = only.length ? only : perWound;
     return (
-      <Screen header={<Header back title="Đợt điều trị của tôi" />}>
-        {perWound.length === 0 ? <Card><Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted></Card> : perWound.map(({ w, plan }) => (
+      <Screen header={<Header back title="Đợt điều trị của tôi" subtitle={only.length ? `${only[0].w.code}: ${only[0].w.location}` : undefined} />}>
+        {shown.length === 0 ? <Card><Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted></Card> : shown.map(({ w, plan }) => (
           <View key={w.id} style={{ gap: 8 }}>
-            {perWound.length > 1 && <SectionTitle icon="bandage-outline">{`${w.code}: ${w.location}`}</SectionTitle>}
+            {shown.length > 1 && <SectionTitle icon="bandage-outline">{`${w.code}: ${w.location}`}</SectionTitle>}
             <PlanCard plan={plan} editorName={account(plan.editedBy)?.name} />
           </View>
         ))}

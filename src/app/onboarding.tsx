@@ -90,6 +90,13 @@ export default function Onboarding() {
 
   return (
     <Screen
+      // Giai đoạn 5 giao diện theo tác vụ: Tiếp / Quay lại ở vùng nút cố định, không phải cuộn khi trang dài (màn hẹp, cỡ chữ lớn).
+      footer={
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {i > 0 && <Button style={{ flex: 1 }} label="Quay lại" variant="ghost" onPress={() => setI(i - 1)} />}
+          <Button style={{ flex: i > 0 ? 2 : 1 }} label={last ? 'Bắt đầu sử dụng' : 'Tiếp'} icon={last ? 'checkmark' : 'arrow-forward'} onPress={last ? done : () => setI(i + 1)} />
+        </View>
+      }
       header={
         <Header
           title="Hướng dẫn"
@@ -118,8 +125,6 @@ export default function Onboarding() {
         )}
         {step.emergency && doctor ? <Muted>Bác sĩ phụ trách: {doctor}</Muted> : null}
       </Card>
-      <Button label={last ? 'Bắt đầu sử dụng' : 'Tiếp'} icon={last ? 'checkmark' : 'arrow-forward'} onPress={last ? done : () => setI(i + 1)} />
-      {i > 0 && <Button label="Quay lại" variant="ghost" onPress={() => setI(i - 1)} />}
       <Muted>Bạn có thể xem lại hướng dẫn này trong Tài khoản.</Muted>
     </Screen>
   );
