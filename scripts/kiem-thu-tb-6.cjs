@@ -85,9 +85,13 @@ const KEY = 'plasmapro.demo.v2';
     await p.getByText('Cấp quyền xuất dữ liệu', { exact: true }).click(); await p.waitForTimeout(400);
     const granted = (await acc(p, 'u-bs2')).researchAccess === true && await has(p, 'Đã cấp quyền xuất dữ liệu nghiên cứu.') && await has(p, 'Được cấp');
     n = p.dialogs.length;
+    p.answer = false;
+    await p.getByText('Thu quyền xuất dữ liệu', { exact: true }).click(); await p.waitForTimeout(300);
+    const askR = p.dialogs.length - n === 1 && p.dialogs[n].includes('Thu quyền xuất dữ liệu của BS. Lê Thu Hà?') && (await acc(p, 'u-bs2')).researchAccess === true;
+    p.answer = true;
     await p.getByText('Thu quyền xuất dữ liệu', { exact: true }).click(); await p.waitForTimeout(400);
-    const revoked = p.dialogs.length === n && (await acc(p, 'u-bs2')).researchAccess === false;
-    rec('TB6-04', 'Q01b: chi tiết đúng tài khoản; cấp quyền hỏi xác nhận (Hủy không đổi, Đồng ý đổi, có thông báo thành công); thu quyền đổi ngay như cũ',
+    const revoked = askR && (await acc(p, 'u-bs2')).researchAccess === false && await has(p, 'Đã thu quyền xuất dữ liệu nghiên cứu.');
+    rec('TB6-04', 'Q01b: chi tiết đúng tài khoản; cấp quyền hỏi xác nhận (Hủy không đổi, Đồng ý đổi, có thông báo thành công); thu quyền cũng hỏi xác nhận (Hủy không đổi, Đồng ý đổi)',
       onDetail && askG && granted && revoked, `${onDetail}/${askG}/${granted}/${revoked}`);
     // TB6-05: khóa có xác nhận; mở khóa đổi ngay; tài khoản đang đăng nhập không khóa được.
     p.answer = false; n = p.dialogs.length;
@@ -97,15 +101,19 @@ const KEY = 'plasmapro.demo.v2';
     await p.getByText('Khóa tài khoản', { exact: true }).click(); await p.waitForTimeout(400);
     const locked = (await acc(p, 'u-bs2')).locked === true && await has(p, 'Đã khóa');
     n = p.dialogs.length;
+    p.answer = false;
+    await p.getByText('Mở khóa tài khoản', { exact: true }).click(); await p.waitForTimeout(300);
+    const askU = p.dialogs.length - n === 1 && p.dialogs[n].includes('Mở khóa tài khoản BS. Lê Thu Hà?') && (await acc(p, 'u-bs2')).locked === true;
+    p.answer = true;
     await p.getByText('Mở khóa tài khoản', { exact: true }).click(); await p.waitForTimeout(400);
-    const unlocked = p.dialogs.length === n && (await acc(p, 'u-bs2')).locked === false;
+    const unlocked = askU && (await acc(p, 'u-bs2')).locked === false;
     await back(p);
     const backOk = url(p).startsWith('/admin') && !url(p).startsWith('/admin-') && (await p.getByLabel('Tìm tài khoản').inputValue()) === 'thu ha' && await rows(p) === 1;
     await search(p, '');
     await p.getByTestId('tai-khoan-u-qt').click(); await p.waitForTimeout(1000);
     const self = await has(p, 'Tài khoản đang đăng nhập, không khóa được.') && !(await has(p, 'Khóa tài khoản'));
     await back(p);
-    rec('TB6-05', 'Q01b: khóa hỏi xác nhận; mở khóa đổi ngay; Back về Q01 giữ chữ tìm và kết quả; tài khoản đang đăng nhập không có nút khóa',
+    rec('TB6-05', 'Q01b: khóa và mở khóa đều hỏi xác nhận (Hủy không đổi); Back về Q01 giữ chữ tìm và kết quả; tài khoản đang đăng nhập không có nút khóa',
       askL && locked && unlocked && backOk && self, `${askL}/${locked}/${unlocked}/${backOk}/${self}`);
 
     // TB6-06: phân công: đổi bác sĩ hỏi đúng một hộp, có Hoàn tác; Hủy không đổi.
@@ -137,11 +145,14 @@ const KEY = 'plasmapro.demo.v2';
     const only = await rows(p) === 1 && await has(p, 'BS. Đỗ Văn Mới');
     await p.getByTestId('tai-khoan-u-moi').click(); await p.waitForTimeout(1000);
     const noResearch = await has(p, 'Duyệt tài khoản trước khi cấp quyền xuất dữ liệu.') && !(await has(p, 'Cấp quyền xuất dữ liệu'));
+    p.answer = false; const n0 = p.dialogs.length;
+    await p.getByText('Duyệt tài khoản', { exact: true }).click(); await p.waitForTimeout(300);
+    const askA = p.dialogs.length - n0 === 1 && p.dialogs[n0].includes('Duyệt tài khoản BS. Đỗ Văn Mới?') && (await acc(p, 'u-moi')).pendingApproval === true;
+    p.answer = true;
     await p.getByText('Duyệt tài khoản', { exact: true }).click(); await p.waitForTimeout(400);
     const a = await acc(p, 'u-moi');
-    const ok = a.pendingApproval === false && a.locked === false && await has(p, 'Đã duyệt tài khoản.') && await has(p, 'Cấp quyền xuất dữ liệu');
-    rec('TB6-09', 'Ô "Chờ duyệt" lọc đúng 1 tài khoản chờ; chi tiết chưa cho cấp quyền khi chờ duyệt; Duyệt mở tài khoản và báo thành công', only && noResearch && ok, `${only}/${noResearch}/${ok}`);
-    await p.getByText('Duyệt tài khoản', { exact: true }).count();
+    const ok = askA && a.pendingApproval === false && a.locked === false && await has(p, 'Đã duyệt tài khoản.') && await has(p, 'Cấp quyền xuất dữ liệu');
+    rec('TB6-09', 'Ô "Chờ duyệt" lọc đúng 1 tài khoản chờ; chi tiết chưa cho cấp quyền khi chờ duyệt; Duyệt hỏi xác nhận (Hủy không đổi), Đồng ý mở tài khoản và báo thành công', only && noResearch && ok, `${only}/${noResearch}/${ok}`);
     // Ô lỗi và trực tuyến dẫn sang tab tương ứng.
     await go(p, '/admin');
     await p.getByRole('button', { name: /Lỗi chưa xử lý$/ }).click(); await p.waitForTimeout(800);

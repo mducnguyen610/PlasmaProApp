@@ -12,8 +12,7 @@ import type { Account } from '@/lib/types';
 import { C } from '@/theme';
 
 // Q01b Chi tiết tài khoản (Stage 6): tác vụ toàn màn, mở từ danh sách Q01. Phần trên chỉ xem (thông tin, trạng thái, quyền);
-// phần "Thao tác" là các thao tác cũ của Q01 với cùng quy tắc xác nhận (UX-05, Đợt 8): khóa và cấp quyền hỏi trước,
-// mở khóa, thu quyền và duyệt đổi ngay. Không có thao tác đổi vai trò, sửa tên hay tạo tài khoản vì kho dữ liệu chưa hỗ trợ.
+// phần "Thao tác" là các thao tác cũ của Q01; tất cả đều hỏi xác nhận (Đợt 8 chỉ hỏi khi khóa và cấp quyền). Không có thao tác đổi vai trò, sửa tên hay tạo tài khoản vì kho dữ liệu chưa hỗ trợ.
 export default function AdminAccountDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, me, updateAccount } = useStore();
@@ -34,6 +33,25 @@ export default function AdminAccountDetail() {
     `${a.name} sẽ không đăng nhập được.${managed ? ` Tài khoản đang phụ trách ${managed} bệnh nhân; hãy phân công bác sĩ khác nếu cần.` : ''}`,
     () => run({ locked: true }, 'Đã khóa tài khoản.'),
     'Khóa tài khoản',
+  );
+  // Người dùng chốt 14/11/2026: duyệt, mở khóa, thu quyền cũng hỏi xác nhận như khóa và cấp quyền.
+  const approve = () => confirm(
+    `Duyệt tài khoản ${a.name}?`,
+    `${a.name} (${ROLE_LABEL[a.role].toLowerCase()}) sẽ đăng nhập và dùng được ứng dụng.`,
+    () => run({ pendingApproval: false, locked: false }, 'Đã duyệt tài khoản.'),
+    'Duyệt tài khoản',
+  );
+  const unlock = () => confirm(
+    `Mở khóa tài khoản ${a.name}?`,
+    `${a.name} sẽ đăng nhập lại được.`,
+    () => run({ locked: false }, 'Đã mở khóa tài khoản.'),
+    'Mở khóa',
+  );
+  const revoke = () => confirm(
+    `Thu quyền xuất dữ liệu của ${a.name}?`,
+    `${a.name} sẽ không tải được bộ dữ liệu nghiên cứu nữa. Tệp đã tải trước đó không bị thu hồi.`,
+    () => run({ researchAccess: false }, 'Đã thu quyền xuất dữ liệu nghiên cứu.'),
+    'Thu quyền',
   );
   const grant = () => confirm(
     `Cấp quyền xuất dữ liệu cho ${a.name}?`,
@@ -73,21 +91,21 @@ export default function AdminAccountDetail() {
       <SectionTitle>Thao tác</SectionTitle>
       <Card>
         {a.pendingApproval && (
-          <Button label="Duyệt tài khoản" icon="checkmark-circle-outline" onPress={() => run({ pendingApproval: false, locked: false }, 'Đã duyệt tài khoản.')} />
+          <Button label="Duyệt tài khoản" icon="checkmark-circle-outline" onPress={approve} />
         )}
         {isMe ? (
           <Muted>Tài khoản đang đăng nhập, không khóa được.</Muted>
         ) : a.locked ? (
-          <Button label="Mở khóa tài khoản" variant="secondary" icon="lock-open-outline" onPress={() => run({ locked: false }, 'Đã mở khóa tài khoản.')} />
+          <Button label="Mở khóa tài khoản" variant="secondary" icon="lock-open-outline" onPress={unlock} />
         ) : (
           <Button label="Khóa tài khoản" variant="danger" icon="lock-closed-outline" onPress={lock} />
         )}
         {research && (a.researchAccess ? (
-          <Button label="Thu quyền xuất dữ liệu" variant="secondary" icon="remove-circle-outline" onPress={() => run({ researchAccess: false }, 'Đã thu quyền xuất dữ liệu nghiên cứu.')} />
+          <Button label="Thu quyền xuất dữ liệu" variant="secondary" icon="remove-circle-outline" onPress={revoke} />
         ) : (
           <Button label="Cấp quyền xuất dữ liệu" variant="secondary" icon="key-outline" onPress={grant} />
         ))}
-        <Text style={{ color: C.textSoft }}>Khóa tài khoản và cấp quyền xuất dữ liệu cần xác nhận trước khi đổi.</Text>
+        <Text style={{ color: C.textSoft }}>Mọi thao tác ở đây đều hỏi xác nhận trước khi đổi.</Text>
       </Card>
     </Screen>
   );
