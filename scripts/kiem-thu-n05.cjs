@@ -32,7 +32,6 @@ const KEY = 'plasmapro.demo.v2';
   };
   const go = async (p, url) => { await p.goto(BASE + url); await p.waitForTimeout(1400); };
   const has = async (p, t, exact = true) => (await p.getByText(t, { exact }).count()) > 0;
-  const visible = async (p, t) => { const l = p.getByText(t, { exact: true }); return (await l.count()) > 0 && await l.first().isVisible(); };
   const store = (p) => p.evaluate((k) => JSON.parse(localStorage.getItem(k) || '{}'), KEY);
   const mutate = async (p, fn) => { await p.evaluate(([k, src]) => { const d = JSON.parse(localStorage.getItem(k)); new Function('d', src)(d); localStorage.setItem(k, JSON.stringify(d)); }, [KEY, fn]); };
   const back = async (p) => { await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(1000); };
@@ -79,12 +78,52 @@ const KEY = 'plasmapro.demo.v2';
     const a1 = await trip('lich-su-do', () => p.getByText('Lịch sử đo', { exact: true }).click(), async (u) => u.includes('/wound-history/w-1') && u.includes('tab=dien-tich') && await has(p, 'Ảnh theo thời gian'));
     const a2 = await trip('so-sanh', () => p.getByText('So sánh', { exact: true }).click(), async (u) => u.startsWith('/compare/w-1'));
     const a3 = await trip('dot', () => p.getByTestId('dong-dot-dieu-tri').click(), async (u) => u.startsWith('/wound-history/w-1/dot-dieu-tri') && await has(p, 'Mức năng lượng') && await has(p, /^Giai đoạn \d+ trên \d+$/, false));
-    const nTl = Number(((await p.getByText(/^Lịch sử vết thương \(\d+\)$/).innerText()).match(/\d+/) || [])[0]);
-    const a4 = await trip('lich-su', () => p.getByTestId('dong-lich-su').click(), async (u) => /^\/wound-history\/w-1(\?|$)/.test(u) && u.includes('tab=lich-su') && await has(p, /^Ảnh \(\d+\)$/, false) && (await p.getByTestId('muc-lich-su').count()) === Math.min(nTl, 10));
     const a5 = await trip('nhan-xet', () => p.getByText(/^Tất cả \(\d+\)$/).click(), async (u) => u.includes('loc=danh-gia'));
     const a6 = await trip('xem-day-du', () => p.getByText('Xem đầy đủ', { exact: true }).click(), async (u) => u.startsWith('/wound-history/w-1/ban-ghi/') && u.includes('loai=danh-gia'));
     const a7 = await trip('anh', () => p.getByTestId('o-anh').first().click(), async (u) => u.startsWith('/wound-history/w-1/anh/'));
-    rec('N05-04', 'Mở và quay lại từng màn riêng: Lịch sử đo (có dải ảnh), So sánh, Đợt điều trị, Lịch sử vết thương, Nhận xét, Xem đầy đủ, Ảnh; Back về đúng N05 VT01', a1 && a2 && a3 && a4 && a5 && a6 && a7, trips.join(' '));
+    rec('N05-04', 'Mở và quay lại từng màn riêng: Lịch sử đo (có dải ảnh), So sánh, Đợt điều trị, Nhận xét, Xem đầy đủ, Ảnh; Back về đúng N05 VT01', a1 && a2 && a3 && a5 && a6 && a7, trips.join(' '));
+    // N05-13..16: mục "Ảnh và lịch sử vết thương" hai thẻ.
+    await go(p, '/wounds/w-1');
+    // Segmented trên web không xuất aria-selected: thẻ đang chọn có nền màu chính.
+    const tabSel = async (re) => String(await p.getByRole('tab', { name: re }).first().evaluate((e) => !/rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(e).backgroundColor)));
+    const defAnh = (await tabSel(/^Ảnh \(\d+\)$/)) === 'true' && (await p.getByTestId('o-anh').count()) === imgs.length && (await p.getByTestId('muc-lich-su').count()) === 0;
+    const noOldRow = (await p.getByTestId('dong-lich-su').count()) === 0 && !(await has(p, /^Lịch sử vết thương \(\d+\)$/, false));
+    const evVis = st.evaluations.filter((e) => e.woundId === 'w-1' && e.visibleToPatient);
+    const dev = st.devices.find((x) => x.id === st.patients.find((q) => q.id === 'p-1').deviceId);
+    const ses = [...new Map(st.sessions.filter((x) => x.deviceId === dev.id && x.woundId === 'w-1').map((x) => [x.sessionId + x.start, x])).values()]; // sessionsOf bỏ bản ghi trùng mã phiên + mốc bắt đầu
+    const expectN = imgs.filter((i) => i.status !== 'excluded').length + evVis.length + ses.length;
+    const tabLabel = await p.getByRole('tab', { name: /^Lịch sử \(\d+\)$/ }).first().getAttribute('aria-label');
+    const nTl = Number((tabLabel.match(/\d+/) || [])[0]);
+    rec('N05-13', 'Mặc định thẻ Ảnh; không còn dòng "Lịch sử vết thương" riêng; số mục ở thẻ Lịch sử đúng tổng ảnh không bị loại + nhận xét công bố + buổi gắn vết', defAnh && noOldRow && nTl === expectN, `${defAnh}/${noOldRow}/${nTl}=${expectN}`);
+    await p.getByRole('tab', { name: /^Lịch sử \(\d+\)$/ }).first().click(); await p.waitForTimeout(800);
+    const items = await p.getByTestId('muc-lich-su').evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
+    const switched = url(p).includes('the=lich-su') && (await tabSel(/^Lịch sử \(\d+\)$/)) === 'true' && (await p.getByTestId('o-anh').count()) === 0 && items.length === Math.min(nTl, 5) && (nTl <= 5 || await has(p, `Xem thêm (${nTl - 5})`));
+    const noDup = new Set(items).size === items.length;
+    // Thứ tự mới trước: so ngày (dd/mm/yyyy) đầu tiên trong mỗi nhãn.
+    const ymd = items.map((l) => { const m = l.match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; }).filter(Boolean);
+    const ordered = ymd.every((d, i) => i === 0 || ymd[i - 1] >= d);
+    rec('N05-14', 'Chuyển thẻ Lịch sử: giữ trong đường dẫn, 5 mục đầu và "Xem thêm (n-5)", không trùng, mới trước', switched && noDup && ordered, `${switched}/${noDup}/${ordered} ${items.length}`);
+    // Xem thêm: hiện đủ mục, không trùng, vẫn mới trước.
+    await p.getByText(/^Xem thêm \(\d+\)$/).first().click(); await p.waitForTimeout(500);
+    const all = await p.getByTestId('muc-lich-su').evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
+    const ymdAll = all.map((l) => { const m = l.match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; }).filter(Boolean);
+    rec('N05-17', 'Thẻ Lịch sử "Xem thêm": đủ n mục, không trùng, mới trước', all.length === nTl && new Set(all).size === all.length && ymdAll.every((d, i) => i === 0 || ymdAll[i - 1] >= d), `${all.length}/${nTl}`);
+    const evRow = p.getByRole('button', { name: /^Nhận xét: .*Mở chi tiết$/ }).first();
+    let detail = false, kept = false;
+    if (await evRow.count()) {
+      await evRow.click(); await p.waitForTimeout(1300);
+      detail = url(p).startsWith('/wound-history/w-1/ban-ghi/') && url(p).includes('loai=danh-gia') && !(await has(p, 'Không tìm thấy'));
+      await back(p);
+      kept = url(p).startsWith('/wounds/w-1') && url(p).includes('the=lich-su') && (await tabSel(/^Lịch sử \(\d+\)$/)) === 'true';
+    }
+    const imgRow = p.getByRole('button', { name: /Mở ảnh$/ }).first();
+    await imgRow.click(); await p.waitForTimeout(1300);
+    const imgOpen = /\/images\//.test(url(p)); await back(p);
+    const kept2 = url(p).includes('the=lich-su');
+    rec('N05-15', 'Lịch sử: mở chi tiết nhận xét và ảnh, quay lại vẫn ở thẻ Lịch sử của VT01', detail && kept && imgOpen && kept2, `${detail}/${kept}/${imgOpen}/${kept2}`);
+    await p.getByRole('tab', { name: /^Ảnh \(\d+\)$/ }).first().click(); await p.waitForTimeout(800);
+    const backAnh = url(p).includes('the=anh') && (await p.getByTestId('o-anh').count()) === imgs.length && await has(p, 'So sánh');
+    rec('N05-16', 'Chuyển lại thẻ Ảnh: dải ảnh và nút So sánh trở lại', backAnh);
     await go(p, '/wounds/w-1');
     rec('N05-05', 'QĐ-1: N05 không có "Dùng số này", không hiện ước lượng AR', !(await has(p, 'Dùng số này', false)) && !(await has(p, /\bAR\b/, false)));
     rec('N05-06', 'Duyệt N05 và các màn riêng không đổi dữ liệu lâm sàng', clinical(await store(p)) === d0);
@@ -93,10 +132,12 @@ const KEY = 'plasmapro.demo.v2';
       d.wounds.push({ id: 'w-moi2', patientId: 'p-1', code: 'VT08', location: 'Gối (kiểm thử)', startDate: d.wounds[0].startDate, status: 'active' });
       const im = d.images.find((x) => x.woundId === 'w-1'); d.images.push({ ...im, id: 'IMG-KT1', woundId: 'w-moi2', status: 'unlabeled', areaCm2: null, history: [], retakeRequested: undefined });`);
     await go(p, '/wounds/w-moi');
-    const noImg = await has(p, 'Chưa có ảnh vết thương. Bác sĩ sẽ chụp và đo ở lần khám.') && await has(p, 'Ảnh (0)') && !(await has(p, 'So sánh')) && await has(p, 'Chưa có đợt điều trị cho vết thương này');
+    const noImg = await has(p, 'Chưa có ảnh vết thương. Bác sĩ sẽ chụp và đo ở lần khám.') && await has(p, 'Ảnh (0)') && await has(p, 'Chưa có ảnh do bác sĩ chụp.') && !(await has(p, 'So sánh')) && await has(p, 'Chưa có đợt điều trị cho vết thương này');
+    await go(p, '/wounds/w-moi?the=lich-su');
+    const noHist = await has(p, 'Lịch sử (0)') && await has(p, 'Chưa có mục nào.');
     await go(p, '/wounds/w-moi2');
     const noMeas = await has(p, 'Chưa có lần đo diện tích. Ảnh đã chụp: 1.') && (await lbls(p, /^Ảnh chụp .*Chưa đo/)).length === 1 && (await p.getByTestId('bieu-do-thu-gon').count()) === 0;
-    rec('N05-07', 'Vết chưa có ảnh và vết chỉ có ảnh chưa đo: báo đúng, không biểu đồ, không nút So sánh', noImg && noMeas, `${noImg}/${noMeas}`);
+    rec('N05-07', 'Vết chưa có ảnh, chưa có lịch sử, và vết chỉ có ảnh chưa đo: báo đúng, không biểu đồ, không nút So sánh', noImg && noHist && noMeas, `${noImg}/${noHist}/${noMeas}`);
     rec('N05-08', 'Không lỗi JS phía bệnh nhân', p.errors.length === 0, p.errors.join(' | ').slice(0, 200));
     await p.context().close();
   }
@@ -124,7 +165,7 @@ const KEY = 'plasmapro.demo.v2';
   for (const w of [320, 360, 390, 768]) {
     const bad = [];
     const p = await newPage({ w, h: 740 }); await login(p, 'benhnhan');
-    for (const u of ['/wounds/w-1', '/wound-history/w-1/dot-dieu-tri', '/wound-history/w-1?tab=lich-su', '/wound-history/w-1?tab=dien-tich']) { await go(p, u); const o = await overflow(p); if (o) bad.push(`${u}:${o}`); }
+    for (const u of ['/wounds/w-1', '/wounds/w-1?the=lich-su', '/wound-history/w-1/dot-dieu-tri', '/wound-history/w-1?tab=lich-su', '/wound-history/w-1?tab=dien-tich']) { await go(p, u); const o = await overflow(p); if (o) bad.push(`${u}:${o}`); }
     await go(p, '/wounds/w-1');
     const yArea = await yOf(p, 'Lần đo gần nhất');
     if (yArea == null || yArea > 740) bad.push(`diện tích ở ${yArea}`);

@@ -354,10 +354,12 @@ GROUPS['p2-3'] = async (b, h) => {
     await p.getByRole('button', { name: /^Ảnh chụp .*Chưa đo/ }).click(); await p.waitForTimeout(1200);
     rec('P23-06', 'Chạm ảnh chưa đo mở ảnh đó (IMG0004)', /\/images\/IMG0004/.test(p.url()), p.url());
     await go(p, '/wounds/w-1');
-    // N05 trang tổng quan: "Lịch sử vết thương (n)" mở thẻ Lịch sử của /wound-history (cạnh thẻ Ảnh), bộ lọc Tất cả là danh sách P2-07a giữ nguyên.
-    const tl = p.getByText(/^Lịch sử vết thương \(\d+\)$/);
-    rec('P23-07', 'N05 có dòng "Lịch sử vết thương (n)", danh sách không nằm trên N05', (await tl.count()) === 1 && (await p.getByTestId('muc-lich-su').count()) === 0);
+    // N05: mục "Ảnh và lịch sử vết thương" hai thẻ; danh sách P2-07a nằm ở thẻ Lịch sử (mặc định thẻ Ảnh), giữ nguyên.
+    const tl = p.getByRole('tab', { name: /^Lịch sử \(\d+\)$/ });
+    rec('P23-07', 'N05 có thẻ "Lịch sử (n)", mặc định thẻ Ảnh nên danh sách chưa hiện', (await tl.count()) === 1 && (await p.getByTestId('muc-lich-su').count()) === 0);
     await tl.click(); await p.waitForTimeout(1200);
+    // N05 hiện 5 mục đầu; mở đủ để kiểm nội dung như trước.
+    const more = p.getByText(/^Xem thêm \(\d+\)$/); if (await more.count()) { await more.first().click(); await p.waitForTimeout(400); }
     const items = await p.getByTestId('muc-lich-su').evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
     rec('P23-08', 'Lịch sử: lần đo "Đo 8,4 cm²", ảnh chưa đo, nhận xét đã công bố; mới trước', items.some((l) => l.startsWith('Lần đo: Đo 8,4 cm²')) && items.some((l) => l.startsWith('Ảnh: Ảnh, chưa có số đo')) && items.some((l) => l.startsWith('Nhận xét: ')), items.slice(0, 3).join(' / ').slice(0, 200));
     // Đánh giá chưa công bố không vào lịch sử của bệnh nhân; buổi có woundId đúng vết thì vào.

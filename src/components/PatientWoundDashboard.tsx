@@ -1,10 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import { AreaLineChart } from '@/components/AreaLineChart';
 import { Text } from '@/components/Text';
-import { Card, Chip, Divider, LinkRow, Muted, SectionTitle, SimBadge, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
+import { Card, Chip, LinkRow, Muted, SectionTitle, Segmented, SimBadge, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
 import { SEVERITY } from '@/lib/access';
 import { progressInput, progressSummary, splitByMethod, summaryText } from '@/lib/areaProgress';
 import { courseProgress, localDay, phasesOf, sessionsForWound } from '@/lib/course';
@@ -13,7 +13,7 @@ import { measurementSource } from '@/lib/measurementSource';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, Wound } from '@/lib/types';
-import { woundTimelineItems } from '@/components/WoundTimeline';
+import { WoundTimeline, woundTimelineItems } from '@/components/WoundTimeline';
 import { C, radius, T } from '@/theme';
 import { SEVERITY_ROLE, TREND_ROLE, WOUND } from '@/theme.status';
 
@@ -25,7 +25,7 @@ const CAVEAT = 'Số đo cho biết kích thước vết thương. Việc vết 
  * - Lịch sử đo: /wound-history/[woundId]?tab=dien-tich (biểu đồ đầy đủ, dải ảnh, danh sách lần đo).
  * - So sánh ảnh: /compare/[woundId]. Mở ảnh: /wound-history/[woundId]/anh/[imageId].
  * - Đợt điều trị: /wound-history/[woundId]/dot-dieu-tri. Nhận xét: /wound-history/[woundId]?tab=lich-su&loc=danh-gia.
- * - Lịch sử vết thương: /wound-history/[woundId] (thẻ Lịch sử cạnh thẻ Ảnh, Số đo; bộ lọc Tất cả là dòng thời gian P2-07a).
+ * - Ảnh và lịch sử: ngay trên N05, hai thẻ (?the=anh|lich-su). Lịch sử là dòng thời gian P2-07a; nhận xét mở ban-ghi, ảnh mở trình xem ảnh.
  * Số đo, phần trăm và câu chữ lấy nguyên từ areaProgress (cùng quy tắc biểu đồ N05 trước đây), không tính lại theo cách khác.
  */
 export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patient; wound: Wound }) {
@@ -57,7 +57,10 @@ export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patie
   const pr = plan && dev ? courseProgress(plan, sessionsForWound(sessionsOf(dev.id), w.id), today, dev.lastSync ? localDay(dev.lastSync) : null) : null;
 
   // G. Lịch sử: cùng danh sách mục với dòng thời gian P2-07a (ảnh, nhận xét đã công bố, buổi gắn đúng vết).
-  const timeline = woundTimelineItems({ images, evaluations: evals, sessions: dev ? sessionsOf(dev.id).filter((s) => s.woundId === w.id) : [], doctorName: (id) => account(id)?.name });
+  const woundSessions = dev ? sessionsOf(dev.id).filter((s) => s.woundId === w.id) : [];
+  const doctorName = (id: string) => account(id)?.name;
+  const timeline = woundTimelineItems({ images, evaluations: evals, sessions: woundSessions, doctorName });
+  const view: 'anh' | 'lich-su' = useLocalSearchParams<{ the?: string }>().the === 'lich-su' ? 'lich-su' : 'anh';
 
   return (
     <>
@@ -107,10 +110,12 @@ export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patie
         )}
       </Card>
 
-      {/* D. Ảnh theo thời gian: dải cuộn ngang, ảnh hiện đủ khung (contain), ngày chụp và trạng thái đo của chính ảnh. */}
+      {/* D + G. Ảnh và lịch sử vết thương: một mục, hai thẻ. Thẻ đang chọn nằm trong tham số "the" của đường dẫn (setParams),
+          nên mở chi tiết rồi quay lại vẫn đúng thẻ. Mặc định thẻ Ảnh. */}
       <Card>
-        <SectionTitle right={images.length >= 2 ? <TextLink label="So sánh" accessibilityLabel="So sánh hai ảnh" onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} /> : null}>{`Ảnh (${images.length})`}</SectionTitle>
-        {photos.length === 0 ? <Muted>Chưa có ảnh do bác sĩ chụp.</Muted> : (
+        <SectionTitle right={view === 'anh' && images.length >= 2 ? <TextLink label="So sánh" accessibilityLabel="So sánh hai ảnh" onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} /> : null}>Ảnh và lịch sử vết thương</SectionTitle>
+        <Segmented value={view} options={[{ value: 'anh' as const, label: `Ảnh (${images.length})` }, { value: 'lich-su' as const, label: `Lịch sử (${timeline.length})` }]} onChange={(v) => router.setParams({ the: v })} />
+        {view === 'anh' && (photos.length === 0 ? <Muted>Chưa có ảnh do bác sĩ chụp.</Muted> : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
             {photos.map((im) => {
               const date = im.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(im.captureDate);
@@ -127,19 +132,20 @@ export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patie
               );
             })}
           </ScrollView>
+        ))}
+        {view === 'lich-su' && (
+          <View testID="the-lich-su">
+            <WoundTimeline expanded limit={5} images={images} evaluations={evals} sessions={woundSessions} doctorName={doctorName} />
+          </View>
         )}
       </Card>
 
-      {/* E, F, G: mỗi việc chuyên sâu một dòng mở màn riêng. */}
+      {/* E. Đợt điều trị: dòng mở màn riêng. */}
       <Card>
         <LinkRow testID="dong-dot-dieu-tri" icon="flash-outline" tone="violet" title="Đợt điều trị"
           sub={plan ? [pr && pr.phaseIndex >= 0 ? `Giai đoạn ${pr.phaseIndex + 1} trên ${pr.phaseCount}` : `${phasesOf(plan).length} giai đoạn`, pr ? `${pr.done}/${pr.total} buổi` : null, PLAN_STATUS[plan.status].label.toLowerCase()].filter(Boolean).join(' · ') : 'Chưa có đợt điều trị cho vết thương này'}
           accessibilityLabel={`Đợt điều trị. ${plan ? `${pr ? `Đã xong ${pr.done} trên ${pr.total} buổi, ` : ''}${PLAN_STATUS[plan.status].label}` : 'Chưa có đợt'}. Mở chi tiết`}
           onPress={() => router.push({ pathname: '/wound-history/[woundId]/dot-dieu-tri', params: { woundId: w.id } })} />
-        <Divider />
-        <LinkRow testID="dong-lich-su" icon="git-commit-outline" tone="teal" title={`Lịch sử vết thương (${timeline.length})`}
-          sub={timeline[0] ? `Gần nhất: ${timeline[0].kind.toLowerCase()} ${timeline[0].sub?.split(' · ')[0] ?? ''}` : 'Chưa có mục nào'}
-          onPress={() => router.push({ pathname: '/wound-history/[woundId]', params: { woundId: w.id, tab: 'lich-su' } })} />
       </Card>
 
       {/* F. Nhận xét của bác sĩ: nhận xét mới nhất đã công bố, xem trước 3 dòng. */}
