@@ -93,12 +93,13 @@ const finish = (tag) => {
     const closed = (await p.getByRole('radio', { name: /^Ảnh IMG/ }).count()) === 0;
     const label = await p.getByRole('button', { name: /^Đổi ảnh sau/ }).getAttribute('aria-label');
     rec('TP1-14b', 'Chọn một ảnh: danh sách đóng, dòng chọn ghi đúng ảnh', closed && /IMG0002/.test(label), label);
-    // TP1-15: chạm ảnh "Sau" mở B11 IMG0002; quay lại vẫn giữ cặp.
+    // TP1-15: chạm ảnh "Sau" mở ảnh IMG0002; quay lại vẫn giữ cặp.
+    // Giai đoạn 4 giao diện theo tác vụ: ảnh mở ở trình xem riêng của vết (wound-history/w-1/anh/IMG0002), B11 mở từ đó bằng "Chi tiết ảnh và số đo".
     await p.getByRole('button', { name: /^Mở ảnh IMG0002/ }).click(); await p.waitForTimeout(1200);
-    const onB11 = p.url().includes('/images/IMG0002');
+    const onB11 = p.url().includes('/wound-history/w-1/anh/IMG0002');
     await back(p);
     const kept = /IMG0002/.test(await p.getByRole('button', { name: /^Đổi ảnh sau/ }).getAttribute('aria-label')) && /IMG0001/.test(await p.getByRole('button', { name: /^Đổi ảnh trước/ }).getAttribute('aria-label'));
-    rec('TP1-15', 'Chạm ảnh mở đúng B11; quay lại B08 giữ cặp IMG0001, IMG0002', onB11 && kept, `url ${onB11}, giữ cặp ${kept}`);
+    rec('TP1-15', 'Chạm ảnh mở đúng ảnh (trình xem riêng, giai đoạn 4); quay lại B08 giữ cặp IMG0001, IMG0002', onB11 && kept, `url ${onB11}, giữ cặp ${kept}`);
     // P1-04a: người nhập, số ngày cách nhau (phép trừ ngày).
     const d2 = await store(p);
     const A = d2.images.find((i) => i.id === 'IMG0001'), B = d2.images.find((i) => i.id === 'IMG0002');
