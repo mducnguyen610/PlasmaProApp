@@ -92,17 +92,19 @@ const PHOTO = path.join(__dirname, '..', 'assets', 'demo', 'demo_1.png');
   {
     const p = await newPage(); await login(p);
     await go(p, '/guided-capture?woundId=w-1');
-    const step1 = (await p.getByRole('progressbar', { name: /^Bước \d trên 3/ }).count()) === 0; // trước khi có ảnh không hiện thanh bước
+    // Giai đoạn 3: thanh bước luôn hiện (bước 1 "Chụp"); bước 2 kiểm ảnh, bước 3 nhập số sau nút "Tiếp: nhập số đo" (trước: sau khi tích "Đã xem ảnh").
+    const step1 = (await p.getByRole('progressbar', { name: 'Bước 1 trên 3: Chụp' }).count()) === 1;
     await pickLibrary(p);
     const step2 = await p.getByRole('progressbar', { name: 'Bước 2 trên 3: Kiểm tra ảnh' }).count();
-    const yQ = (await p.getByText('Đã xem ảnh: rõ nét, đủ sáng, thấy toàn bộ vết thương', { exact: true }).boundingBox())?.y ?? -1;
-    const yA = (await p.getByText('Diện tích vết thương', { exact: true }).boundingBox())?.y ?? -1;
+    const qOn2 = (await p.getByText('Đã xem ảnh: rõ nét, đủ sáng, thấy toàn bộ vết thương', { exact: true }).count()) === 1 && (await p.getByText('Diện tích vết thương', { exact: true }).count()) === 0;
+    await p.getByRole('checkbox', { name: /^Đã xem ảnh/ }).click(); await p.waitForTimeout(300);
+    await p.getByRole('button', { name: 'Tiếp: nhập số đo', exact: true }).click(); await p.waitForTimeout(500);
+    const step3 = await p.getByRole('progressbar', { name: 'Bước 3 trên 3: Nhập số đo' }).count();
+    const aOn3 = (await p.getByText('Diện tích vết thương', { exact: true }).count()) === 1;
     const empty = (await areaB10(p).inputValue()) === '';
     const noUse = !(await has(p, 'Dùng số này'));
-    await p.getByRole('checkbox', { name: /^Đã xem ảnh/ }).click(); await p.waitForTimeout(300);
-    const step3 = await p.getByRole('progressbar', { name: 'Bước 3 trên 3: Nhập số đo' }).count();
-    rec('TP1-17', 'B10: chưa có ảnh thì không có thanh bước; bước 2 sau khi chọn ảnh, bước 3 sau khi tích "Đã xem ảnh"; kiểm ảnh nằm trên thẻ diện tích; ô diện tích trống; không có "Dùng số này"',
-      step1 && step2 && step3 && yQ > 0 && yQ < yA && empty && noUse, `bước ${step1}/${step2}/${step3}, y kiểm ${yQ} < diện tích ${yA}, ô trống ${empty}`);
+    rec('TP1-17', 'B10: thanh bước luôn hiện, bước 1 "Chụp"; bước 2 sau khi chọn ảnh (kiểm ảnh, chưa có thẻ diện tích); bước 3 sau "Tiếp: nhập số đo" (thẻ diện tích); ô diện tích trống; không có "Dùng số này"',
+      step1 && step2 && step3 && qOn2 && aOn3 && empty && noUse, `bước ${step1}/${step2}/${step3}, kiểm ảnh ở bước 2 ${qOn2}, diện tích ở bước 3 ${aOn3}, ô trống ${empty}`);
     // QĐ-1, P0 DS-01: phương pháp không chọn sẵn, không có lựa chọn AR; có số mà chưa chọn phương pháp thì không lưu.
     const n0 = (await store(p)).images.length;
     await areaB10(p).fill('9,5');
@@ -154,9 +156,12 @@ const PHOTO = path.join(__dirname, '..', 'assets', 'demo', 'demo_1.png');
     for (let i = 0; i < 6; i++) {
       chain.push(p.url().match(/IMG\d+/)[0]);
       const nx = p.getByRole('button', { name: /^Ảnh sau của VT01/ });
+      // Giai đoạn 3: ảnh chưa đo mở ở chế độ đo (ẩn liên kết); bấm "Hủy" ở chân màn để về chế độ xem rồi mới đi tiếp.
+      if (!(await nx.count()) && (await p.getByRole('button', { name: 'Hủy', exact: true }).count())) { await p.getByRole('button', { name: 'Hủy', exact: true }).click(); await p.waitForTimeout(400); }
       if (!(await nx.count())) break;
       await nx.click(); await p.waitForTimeout(1000);
     }
+    if (!(await p.getByRole('button', { name: /^Ảnh trước của VT01/ }).count())) { await p.getByRole('button', { name: 'Hủy', exact: true }).click(); await p.waitForTimeout(400); }
     const back1 = p.getByRole('button', { name: /^Ảnh trước của VT01/ });
     await back1.click(); await p.waitForTimeout(1000);
     const afterBack = p.url().match(/IMG\d+/)[0];
@@ -179,10 +184,12 @@ const PHOTO = path.join(__dirname, '..', 'assets', 'demo', 'demo_1.png');
     await p.getByRole('button', { name: 'Sửa số đo' }).click(); await p.waitForTimeout(300);
     await areaB11(p).fill('7,7');
     p.answer = false; p.dialogs = [];
-    await p.getByRole('button', { name: /^Ảnh sau của VT01/ }).click(); await p.waitForTimeout(900);
+    // Giai đoạn 3: khi đang sửa (chế độ đo), liên kết ảnh cùng vết ẩn; lối rời màn còn lại là nút quay lại trên đầu màn, phải hỏi trước.
+    const linksHidden = (await p.getByRole('button', { name: /^Ảnh (trước|sau) của VT01/ }).count()) === 0;
+    await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(900);
     const stay = p.url().includes('IMG0003') && (await areaB11(p).inputValue()) === '7,7';
     const notSaved = (await store(p)).images.find((i) => i.id === 'IMG0003').areaCm2 !== 7.7;
-    rec('TP1-13', 'B11 đang sửa: liên kết cùng vết hỏi trước; Ở lại thì dữ liệu còn, không tự lưu', p.dialogs.length > 0 && stay && notSaved, p.dialogs.join(' / ').slice(0, 100));
+    rec('TP1-13', 'B11 đang sửa: liên kết cùng vết ẩn (chế độ đo); nút quay lại hỏi trước; Ở lại thì dữ liệu còn, không tự lưu', linksHidden && p.dialogs.length > 0 && stay && notSaved, p.dialogs.join(' / ').slice(0, 100));
     // P1-06c: lưu thay số thì thông báo ghi số cũ và số mới.
     p.answer = true;
     await p.getByRole('radio', { name: 'Thước đo trên vết thương', exact: true }).click(); await p.waitForTimeout(200);
@@ -219,9 +226,10 @@ const PHOTO = path.join(__dirname, '..', 'assets', 'demo', 'demo_1.png');
     await go(p, '/guided-capture?woundId=w-1'); const o1 = await overflow(p);
     await pickLibrary(p); const o2 = await overflow(p);
     await go(p, '/images/IMG0004'); const o3 = await overflow(p);
-    const links = await p.getByTestId('anh-cung-vet').getByRole('button').evaluateAll((es) => es.map((e) => Math.round(e.getBoundingClientRect().height)));
+    // Giai đoạn 3: IMG0004 chưa đo mở ở chế độ đo (ẩn liên kết ảnh cùng vết); kiểm liên kết ở IMG0003 (chế độ xem).
     await go(p, '/images/IMG0003'); const o4 = await overflow(p);
-    rec(`TP1-UI-${w}`, `B10, B11 ở ${w} px: không tràn ngang; liên kết ảnh cùng vết cao ≥ 44 px`, o1 + o2 + o3 + o4 === 0 && links.every((x) => x >= 44), `tràn ${o1}/${o2}/${o3}/${o4}; liên kết ${links.join(',')}`);
+    const links = await p.getByTestId('anh-cung-vet').getByRole('button').evaluateAll((es) => es.map((e) => Math.round(e.getBoundingClientRect().height)));
+    rec(`TP1-UI-${w}`, `B10, B11 ở ${w} px: không tràn ngang; liên kết ảnh cùng vết cao ≥ 44 px`, o1 + o2 + o3 + o4 === 0 && links.length > 0 && links.every((x) => x >= 44), `tràn ${o1}/${o2}/${o3}/${o4}; liên kết ${links.join(',')}`);
     const sm = await small(p); if (sm.length) rec(`TP1-UI-${w}-nho`, `Phần tử bấm < 44 px ở B11 (${w} px, màn đầu)`, 'note', sm.slice(0, 6).join('; '));
     if (p.errors.length) rec(`TP1-UI-${w}-js`, 'Lỗi JavaScript', false, p.errors.join(' | '));
     await p.context().close();

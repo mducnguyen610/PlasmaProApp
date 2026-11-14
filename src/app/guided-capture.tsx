@@ -93,6 +93,11 @@ export default function GuidedCapture() {
   const [quality, setQuality] = useState<CaptureQuality>(unknownQuality());
   const [photoWound, setPhotoWound] = useState<RecognitionResult | null>(null);
   const [reviewed, setReviewed] = useState(false);
+  // Giai đoạn 3 giao diện theo tác vụ: khi đã có ảnh, bước 2 "Kiểm tra ảnh" và bước 3 "Nhập số đo" tách riêng trong cùng màn.
+  // Ảnh, ô "Đã xem ảnh", số và phương pháp đang nhập nằm ở state của màn nên lùi, tiến giữa hai bước không mất.
+  const [stage, setStage] = useState<2 | 3>(2);
+  // Chặn lưu trùng khi bấm nhiều lần trước khi màn kịp vẽ lại (busy là state, cập nhật sau một lượt vẽ).
+  const saveLock = useRef(false);
   const [areaText, setAreaText] = useState('');
   const [method, setMethod] = useState('');
   const [error, setError] = useState('');
@@ -175,7 +180,7 @@ export default function GuidedCapture() {
   const onCameraError = useCallback(() => { setLive(false); setReady(false); setError('Không mở được camera. Hãy kiểm tra quyền hoặc chọn ảnh có sẵn.'); }, []);
   const selectPhoto = (value: Photo) => {
     generation.current++; setAnalyzing(true); setPhoto(value); setLive(false); setReady(false); setQuality(unknownQuality());
-    setPhotoWound(null); setReviewed(false); setAreaText(''); setMethod(''); setError('');
+    setPhotoWound(null); setReviewed(false); setAreaText(''); setMethod(''); setError(''); setStage(2);
   };
   // P0 bổ sung PX-02: ảnh đã chụp nhưng chưa lưu (kèm số đo đang nhập) thì hỏi trước khi rời màn. Không tự lưu.
   const allowLeave = useDiscardGuard(photo !== null);
@@ -227,11 +232,12 @@ export default function GuidedCapture() {
     finally { setBusy(false); }
   };
   const save = async () => {
-    if (!photo || busy || !capabilities) return;
+    if (!photo || busy || !capabilities || saveLock.current) return;
     const area = areaText.trim() ? parseArea(areaText) : null;
     if (area && !area.ok) { setError(area.error); return; }
     if (area?.ok && area.value === 0) { setError('Diện tích phải lớn hơn 0. Để trống nếu chưa đo.'); return; }
     if (area?.ok && !method) { setError('Chọn phương pháp bác sĩ đã dùng để đo trước khi lưu số đo.'); return; }
+    saveLock.current = true;
     setBusy(true); setError('');
     try {
       const roi = roiFrom(photoWound);
@@ -265,30 +271,62 @@ export default function GuidedCapture() {
       }
       allowLeave();
       router.replace({ pathname: '/images/[id]', params: { id: image.id } });
-    } catch (e) { setError(e instanceof Error ? e.message : 'Chưa lưu được ảnh. Ảnh vẫn ở đây để thử lại.'); }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Chưa lưu được ảnh. Ảnh vẫn ở đây để thử lại.'); saveLock.current = false; }
     finally { setBusy(false); }
   };
 
   const overlayColor = TONE_COLOR[readiness.ready ? 'green' : liveWound?.found ? 'amber' : 'gray'];
-  return <Screen header={<Header back title={photo ? 'Kiểm tra ảnh và nhập số đo' : 'Chụp vết thương'} />}>
+  const saveLabel = areaText.trim() ? 'Lưu ảnh và số đo bác sĩ' : 'Lưu ảnh (chưa có số đo)';
+  // Giai đoạn 3: nút chính của từng bước ở chân màn, luôn thấy. Bước 1: mở camera hoặc chụp, chọn ảnh có sẵn.
+  // Bước 2: chụp lại (có hỏi), tiếp sang nhập số đo (luôn bật như trước, không phụ thuộc ô "Đã xem ảnh"). Bước 3: về bước 2, lưu.
+  const footer = !photo
+    ? <View style={{ flexDirection: 'row', gap: 10 }}>
+      <Button label="Chọn ảnh có sẵn" icon="images-outline" variant="secondary" disabled={busy} onPress={fromLibrary} style={{ flex: 1 }} />
+      {live
+        ? <Button label={readiness.ready ? 'Chụp ảnh' : useAr ? 'Chờ đạt yêu cầu để chụp' : 'Chụp ảnh'} icon="camera" loading={busy} disabled={!ready || !readiness.ready} onPress={() => void take()} style={{ flex: 1 }} />
+        : <Button label={useAr ? 'Mở camera AR' : 'Mở camera'} icon="camera" loading={busy} onPress={start} style={{ flex: 1 }} />}
+    </View>
+    : stage === 2
+      ? <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Button label="Chụp / chọn lại" variant="secondary" disabled={busy} onPress={retake} style={{ flex: 1 }} />
+        <Button label="Tiếp: nhập số đo" icon="chevron-forward" onPress={() => { setError(''); setStage(3); }} style={{ flex: 1 }} />
+      </View>
+      : <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Button label="Bước trước" icon="chevron-back" variant="secondary" disabled={busy} onPress={() => { setError(''); setStage(2); }} style={{ flexShrink: 0 }} />
+        <Button label={saveLabel} icon="save-outline" loading={busy} disabled={analyzing || !capabilities} onPress={save} style={{ flex: 1 }} />
+      </View>;
+  return <Screen footer={footer} header={<Header back title={!photo ? 'Chụp vết thương' : stage === 2 ? 'Kiểm tra ảnh' : 'Nhập số đo'} />}>
     {/* P0 G1: ảnh và số đo sẽ lưu vào bệnh nhân và vết thương này. */}
     <ClinicalContext patient={p} wound={w} />
     <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
       <Chip label={useAr ? (capabilities?.arFramework === 'arcore' ? 'ARCore' : 'ARKit') : 'Không có AR'} tone={useAr ? 'teal' : 'gray'} />
       <Chip label={photo?.imageSource === 'gallery' ? 'Ảnh từ thư viện' : 'Tự khoanh vết thương'} />
+      {/* Giai đoạn 3: trạng thái ảnh rõ ràng. Ảnh chỉ thành bản ghi khi bấm lưu ở bước 3. */}
+      {photo ? <Chip label="Ảnh chưa lưu" tone="amber" icon="alert-circle-outline" /> : null}
     </View>
-    {photo ? <>
-      {/* P1-05c: thanh bước chỉ để hiển thị, không chặn thao tác. Chỉ hiện sau khi có ảnh để màn chụp giữ nút Mở camera trong màn đầu ở 320x640. */}
-      <StepRow steps={['Chụp', 'Kiểm tra ảnh', 'Nhập số đo']} step={reviewed ? 3 : 2} />
+    <StepRow steps={['Chụp', 'Kiểm tra ảnh', 'Nhập số đo']} step={!photo ? 1 : stage} />
+    {photo && stage === 2 ? <>
       <View style={{ width: '100%', aspectRatio: photo.width / photo.height, backgroundColor: C.text, borderRadius: 18, overflow: 'hidden' }}>
         <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
         {photoWound?.found ? <WoundOutline hull={photoWound.hull} color={bar.green} /> : null}
       </View>
       <Muted>{analyzing ? 'Đang khoanh vết thương trên ảnh…' : photoWound?.found ? 'Viền xanh là vùng vết thương ứng dụng tự khoanh theo màu (thử nghiệm). Bác sĩ kiểm tra lại trước khi xác nhận diện tích.' : 'Chưa khoanh được vết thương trên ảnh này. Bác sĩ vẫn có thể nhập diện tích đã đo.'}</Muted>
-
       {/* P1-05c: kiểm ảnh trước (chất lượng, ô "Đã xem ảnh"), nhập số sau. Không bỏ bước nào; QĐ-1 giữ nguyên: ô diện tích trống, số AR không tự điền. */}
       <CaptureQualityCard quality={quality} busy={analyzing} />
       <CheckRow checked={reviewed} onChange={setReviewed} label="Đã xem ảnh: rõ nét, đủ sáng, thấy toàn bộ vết thương" />
+    </> : null}
+    {photo && stage === 3 ? <>
+      {/* Bước 3: ảnh thu nhỏ để đối chiếu khi nhập; ảnh đủ khung ở bước 2. */}
+      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+        <View style={{ width: 96, aspectRatio: photo.width / photo.height, maxHeight: 96, backgroundColor: C.text, borderRadius: 10, overflow: 'hidden' }}>
+          <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+          {photoWound?.found ? <WoundOutline hull={photoWound.hull} color={bar.green} /> : null}
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ color: C.text, fontWeight: '700' }}>Ảnh vừa chụp</Text>
+          <Muted>{reviewed ? 'Đã xem ảnh' : 'Chưa đánh dấu "Đã xem ảnh"'}</Muted>
+        </View>
+      </View>
       <Card>
         <SectionTitle>Diện tích vết thương</SectionTitle>
         {estimate ? <>
@@ -303,9 +341,8 @@ export default function GuidedCapture() {
         <Text style={{ color: C.text, fontWeight: '600' }}>{`Phương pháp bác sĩ đã dùng để đo${areaText.trim() ? '' : ' (khi có số đo)'}`}</Text>
         <Choices value={method} options={METHODS.map(m => ({ value: m, label: m }))} onChange={setMethod} />
       </Card>
-      <Button label={areaText.trim() ? 'Lưu ảnh và số đo bác sĩ' : 'Lưu ảnh (chưa có số đo)'} icon="save-outline" loading={busy} disabled={analyzing || !capabilities} onPress={save} />
-      <Button label="Chụp / chọn lại" variant="secondary" disabled={busy} onPress={retake} />
-    </> : <>
+    </> : null}
+    {!photo ? <>
       <View onLayout={e => setView({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} style={{ height: cameraH, backgroundColor: C.text, borderRadius: 24, overflow: 'hidden' }}>
         {liveVisible ? useAr
           ? <ARCameraView ref={arCamera} style={{ flex: 1 }} focusPoint={focusPoint} onTracking={onTracking} onError={onARError} />
@@ -329,22 +366,18 @@ export default function GuidedCapture() {
       {/* P1-05b: mục chưa đạt đầu tiên nằm ngay dưới khung, sát nút Chụp; danh sách đủ ở dưới nút. */}
       {liveVisible && ready && !readiness.ready && (() => { const first = orderChecks(readiness.checks)[0]; return first && first.ok !== true
         ? <Text accessibilityLiveRegion="polite" style={{ color: first.ok === false ? C.amber : C.textSoft, fontWeight: '700' }}>{`${first.ok === false ? 'Chưa đạt' : 'Đang kiểm tra'}: ${first.label}`}</Text> : null; })()}
-      {live
-        ? <Button label={readiness.ready ? 'Chụp ảnh' : useAr ? 'Chờ đạt yêu cầu để chụp' : 'Chụp ảnh'} icon="camera" loading={busy} disabled={!ready || !readiness.ready} onPress={() => void take()} />
-        : <Button label={useAr ? 'Mở camera AR' : 'Mở camera'} icon="camera" loading={busy} onPress={start} />}
       {live && !useAr && ready && !readiness.ready && <Button label="Vẫn chụp (bỏ qua kiểm tra)" variant="ghost" disabled={busy} onPress={() => void take(true)} />}
       {liveVisible && ready && <Card>
         <SectionTitle>Kiểm tra trước khi chụp</SectionTitle>
         <CheckList checks={readiness.checks} />
       </Card>}
       {arAvailable && <Button label={useAr ? 'Dùng camera thường (không có AR)' : 'Dùng camera AR'} icon="swap-horizontal" variant="ghost" disabled={busy} onPress={() => { generation.current++; setLive(false); setReady(false); setTracking(null); setCameraMode(useAr ? 'standard' : 'ar'); }} />}
-      <Button label="Chọn ảnh có sẵn" icon="images-outline" variant="secondary" disabled={busy} onPress={fromLibrary} />
       <Muted>{useAr
         ? 'AR đo khoảng cách tới đúng vết thương đang khoanh và độ sáng môi trường. Nút chụp chỉ mở khi vết thương được khoanh, đủ sáng và cách 20–60 cm.'
         : Platform.OS !== 'web' && !arViewInBuild
           ? 'Expo Go không có AR: app vẫn khoanh vết thương và kiểm tra độ sáng, nhưng không đo được khoảng cách và diện tích. Cần bản cài riêng để dùng AR.'
           : 'Không có AR: ứng dụng khoanh vết thương và kiểm tra độ sáng, không đo được khoảng cách.'}</Muted>
-    </>}
+    </> : null}
     {error ? <Text accessibilityRole="alert" style={{ color: C.red }}>{error}</Text> : null}
   </Screen>;
 }

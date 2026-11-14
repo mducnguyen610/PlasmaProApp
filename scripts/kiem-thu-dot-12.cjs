@@ -142,16 +142,14 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const blocked = p.dialogs.slice(nd).join(' ').includes('Thiếu phương pháp đo');
     rec('D12-06', 'Lưu thiếu phương pháp (ảnh có lần chụp): bị chặn như cũ, không ghi gì, số 9,5 vẫn trong ô', blocked && (await imgOf(p, 'IMG0098')).areaCm2 === null && (await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).inputValue()) === '9,5', `điền sẵn trước đó: "${prefilled}"`);
     await methodBox.fill('Thước giấy kẻ ô');
-    // Điều hướng giữa các phần: mở, đóng các mục thu gọn, gõ lý do chụp lại.
-    await p.getByRole('button', { name: /^Thông tin lần chụp và chi tiết kỹ thuật/ }).click(); await p.waitForTimeout(200);
-    const techOpen = await has(p, 'Nguồn ảnh') && await has(p, 'Tên tệp hiện tại');
-    await p.getByRole('button', { name: /^Yêu cầu chụp lại, loại ảnh/ }).click(); await p.waitForTimeout(200);
-    await p.getByRole('textbox', { name: 'Yêu cầu chụp lại', exact: true }).fill('Ảnh hơi mờ');
-    await p.getByRole('button', { name: /^Yêu cầu chụp lại, loại ảnh/ }).click(); await p.waitForTimeout(200);
-    await p.getByRole('button', { name: /^Yêu cầu chụp lại, loại ảnh/ }).click(); await p.waitForTimeout(200);
-    await p.getByRole('button', { name: /^Thông tin lần chụp và chi tiết kỹ thuật/ }).click(); await p.waitForTimeout(200);
-    rec('D12-07', 'Mở, đóng các mục thu gọn: số 9,5, phương pháp và lý do chụp lại đang gõ vẫn giữ',
-      techOpen && (await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).inputValue()) === '9,5' && (await p.getByRole('textbox', { name: /^Phương pháp đo/ }).inputValue()) === 'Thước giấy kẻ ô' && (await p.getByRole('textbox', { name: 'Yêu cầu chụp lại', exact: true }).inputValue()) === 'Ảnh hơi mờ');
+    // Điều hướng giữa các phần khi đang đo. Giai đoạn 3 (chế độ đo B11): mục kỹ thuật và mục "Yêu cầu chụp lại, loại ảnh" ẩn khi đang đo,
+    // nên kiểm giữ dữ liệu khi chuyển "Sửa tên đầy đủ" và "Quay về nhập diện tích" trong biểu mẫu đo; lý do chụp lại kiểm sau khi lưu (D12-07b).
+    const secHidden = (await p.getByRole('button', { name: /^Thông tin lần chụp và chi tiết kỹ thuật/ }).count()) === 0 && (await p.getByRole('button', { name: /^Yêu cầu chụp lại, loại ảnh/ }).count()) === 0;
+    await p.getByRole('button', { name: 'Sửa tên đầy đủ' }).click(); await p.waitForTimeout(200);
+    const fullOpen = (await p.getByRole('textbox', { name: 'Tên tệp đầy đủ', exact: true }).count()) === 1;
+    await p.getByRole('button', { name: 'Quay về nhập diện tích' }).click(); await p.waitForTimeout(200);
+    rec('D12-07', 'Chế độ đo: mục phụ ẩn; chuyển "Sửa tên đầy đủ" rồi "Quay về nhập diện tích": số 9,5 và phương pháp đang gõ vẫn giữ',
+      secHidden && fullOpen && (await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).inputValue()) === '9,5' && (await p.getByRole('textbox', { name: /^Phương pháp đo/ }).inputValue()) === 'Thước giấy kẻ ô', `mục phụ ẩn ${secHidden}, tên đầy đủ ${fullOpen}`);
     // Bấm Lưu liên tục 3 lần.
     nd = p.dialogs.length;
     const btn = p.getByRole('button', { name: 'Lưu diện tích' });
@@ -162,10 +160,18 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     rec('D12-09', 'AI và bác sĩ vẫn tách: manualReference 9,5 có người xác nhận; automaticMeasurement 11,8 "estimated_unvalidated" giữ nguyên',
       im.capture.manualReference.areaCm2 === 9.5 && !!im.capture.manualReference.confirmedBy && im.capture.automaticMeasurement.areaCm2 === 11.8 && im.capture.automaticMeasurement.status === 'estimated_unvalidated');
     rec('D12-10', 'Sau lưu có "Ảnh chưa đo tiếp theo (n)" và nêu rõ ảnh, bệnh nhân, vết thương kế tiếp', await has(p, /^Ảnh chưa đo tiếp theo(, bệnh nhân khác)? \(\d+\)$/, false) && await has(p, /^Tiếp theo: IMG\d+ · .+ · BN\d+ · VT\d+/, false));
+    // D12-07b: ngoài chế độ đo, mục phụ hiện lại; mở, đóng các mục thu gọn giữ lý do chụp lại đang gõ (điều kiện cũ của D12-07).
+    await p.getByRole('button', { name: /^Thông tin lần chụp và chi tiết kỹ thuật/ }).click(); await p.waitForTimeout(200);
+    const techOpen = await has(p, 'Nguồn ảnh') && await has(p, 'Tên tệp hiện tại');
+    await p.getByRole('button', { name: /^Yêu cầu chụp lại, loại ảnh/ }).click(); await p.waitForTimeout(200);
+    await p.getByRole('textbox', { name: 'Yêu cầu chụp lại', exact: true }).fill('Ảnh hơi mờ');
+    await p.getByRole('button', { name: /^Yêu cầu chụp lại, loại ảnh/ }).click(); await p.waitForTimeout(200);
+    await p.getByRole('button', { name: /^Yêu cầu chụp lại, loại ảnh/ }).click(); await p.waitForTimeout(200);
+    await p.getByRole('button', { name: /^Thông tin lần chụp và chi tiết kỹ thuật/ }).click(); await p.waitForTimeout(200);
+    rec('D12-07b', 'Sau khi lưu (ngoài chế độ đo): mở, đóng các mục thu gọn, lý do chụp lại đang gõ vẫn giữ', techOpen && (await p.getByRole('textbox', { name: 'Yêu cầu chụp lại', exact: true }).inputValue()) === 'Ảnh hơi mờ');
     // Sửa annotation: "Sửa số đo" điền đúng số đã lưu; "Sửa tên đầy đủ" ở mục kỹ thuật.
     await p.getByRole('button', { name: 'Sửa số đo' }).click(); await p.waitForTimeout(300);
     const pre = await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).inputValue();
-    await p.getByRole('button', { name: /^Thông tin lần chụp và chi tiết kỹ thuật/ }).click(); await p.waitForTimeout(200);
     await p.getByRole('button', { name: 'Sửa tên đầy đủ' }).click(); await p.waitForTimeout(300);
     const full = await p.getByRole('textbox', { name: 'Tên tệp đầy đủ', exact: true }).inputValue();
     await p.getByRole('button', { name: 'Quay về nhập diện tích' }).click(); await p.waitForTimeout(200);
@@ -173,7 +179,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     // P0 SV-03: thay số đã có thì nút là "Lưu số mới".
     await p.getByRole('button', { name: 'Lưu số mới' }).click(); await p.waitForTimeout(500);
     const im2 = await imgOf(p, 'IMG0098');
-    rec('D12-11', 'Sửa số: ô điền 9,5 của chính ảnh; "Sửa tên đầy đủ" mở từ mục kỹ thuật với tên hiện tại; lưu 9 thêm đúng 1 dòng lịch sử',
+    rec('D12-11', 'Sửa số: ô điền 9,5 của chính ảnh; "Sửa tên đầy đủ" mở từ biểu mẫu đo (giai đoạn 3) với tên hiện tại; lưu 9 thêm đúng 1 dòng lịch sử',
       pre === '9,5' && full === im.filename && im2.areaCm2 === 9 && im2.history.length === 2, `ô "${pre}", tên "${full}"`);
     // Loại ảnh: có hộp xác nhận, hủy thì không loại.
     if (!(await p.getByRole('textbox', { name: 'Loại khỏi bộ dữ liệu huấn luyện', exact: true }).count())) { await p.getByRole('button', { name: /^Yêu cầu chụp lại, loại ảnh/ }).click(); await p.waitForTimeout(200); }

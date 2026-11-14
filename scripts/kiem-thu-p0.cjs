@@ -184,11 +184,13 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     const arOpt = await p.getByRole('radio', { name: 'Ước lượng AR, bác sĩ đã xem lại' }).count();
     const anyChecked = await p.getByRole('radio', { checked: true }).count();
     const n0 = (await store(p)).images.length;
+    // Giai đoạn 3: ô diện tích ở bước "Nhập số đo", sau nút "Tiếp: nhập số đo".
+    await p.getByRole('button', { name: 'Tiếp: nhập số đo', exact: true }).click(); await p.waitForTimeout(500);
     await p.getByRole('textbox').first().fill('9,5');
     await p.getByText('Lưu ảnh và số đo bác sĩ', { exact: true }).click(); await p.waitForTimeout(800);
     const blocked = (await store(p)).images.length === n0 && await has(p, 'Chọn phương pháp bác sĩ đã dùng để đo trước khi lưu số đo.');
-    rec('TP-DS-02b', 'B10: tiêu đề "Kiểm tra ảnh và nhập số đo"; không có lựa chọn AR; phương pháp không chọn sẵn; có số mà chưa chọn phương pháp thì không lưu',
-      await has(p, 'Kiểm tra ảnh và nhập số đo') && arOpt === 0 && anyChecked === 0 && blocked, `AR ${arOpt}, đang bật ${anyChecked}`);
+    rec('TP-DS-02b', 'B10: tiêu đề "Nhập số đo" (giai đoạn 3 tách bước, trước là "Kiểm tra ảnh và nhập số đo"); không có lựa chọn AR; phương pháp không chọn sẵn; có số mà chưa chọn phương pháp thì không lưu',
+      await has(p, 'Nhập số đo') && arOpt === 0 && anyChecked === 0 && blocked, `AR ${arOpt}, đang bật ${anyChecked}`);
     await p.getByRole('radio', { name: 'Thước đo trên vết thương' }).click();
     await p.getByText('Lưu ảnh và số đo bác sĩ', { exact: true }).click(); await p.waitForTimeout(2500);
     const after = (await store(p)).images; const last = after[after.length - 1];
@@ -388,21 +390,29 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     await go(p, '/guided-capture?woundId=w-1');
     const pick = async () => { const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.getByText('Chọn ảnh có sẵn', { exact: true }).click()]); await fc.setFiles(PHOTO); await p.waitForTimeout(3000); };
     await pick();
+    // Giai đoạn 3: nhập số ở bước 3, "Chụp / chọn lại" ở bước 2 ("Bước trước").
+    const toInput = async () => { await p.getByRole('button', { name: 'Tiếp: nhập số đo', exact: true }).click(); await p.waitForTimeout(400); };
+    const toReview = async () => { await p.getByRole('button', { name: 'Bước trước', exact: true }).click(); await p.waitForTimeout(400); };
+    await toInput();
     await p.getByRole('textbox').first().fill('6,1');
+    await toReview();
     // Chụp / chọn lại, chọn "Ở lại": ảnh và số còn nguyên.
     p.answer = false; let n = p.dialogs.length;
     await p.getByText('Chụp / chọn lại', { exact: true }).click(); await p.waitForTimeout(500);
     const asked = p.dialogs.slice(n).some((d) => d.includes('Bỏ ảnh vừa chụp?') && d.includes('số đo đang nhập'));
-    const kept = await has(p, 'Kiểm tra ảnh và nhập số đo') && (await p.getByRole('textbox').first().inputValue()) === '6,1';
+    const stillReview = await has(p, 'Kiểm tra ảnh');
+    await toInput();
+    const kept = stillReview && await has(p, 'Nhập số đo') && (await p.getByRole('textbox').first().inputValue()) === '6,1';
     rec('PX-02a', 'B10 có ảnh và số chưa lưu, bấm "Chụp / chọn lại", chọn Ở lại: có hỏi, ảnh và số còn nguyên', asked && kept, `hỏi ${asked}; còn ${kept}`);
     // Quay lại, chọn "Ở lại": vẫn ở B10.
     n = p.dialogs.length;
     await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(800);
     const askedBack = p.dialogs.slice(n).some((d) => d.includes('Bỏ dữ liệu chưa lưu?'));
-    const stayed = await has(p, 'Kiểm tra ảnh và nhập số đo');
+    const stayed = await has(p, 'Nhập số đo') && (await p.getByRole('textbox').first().inputValue()) === '6,1';
     rec('PX-02b', 'B10 có ảnh chưa lưu, bấm quay lại, chọn Ở lại: có hỏi, vẫn ở B10', askedBack && stayed, `hỏi ${askedBack}; ở lại ${stayed}`);
     // Chụp / chọn lại, đồng ý bỏ: về màn chụp.
     p.answer = true;
+    await toReview();
     await p.getByText('Chụp / chọn lại', { exact: true }).click(); await p.waitForTimeout(500);
     const reset = await has(p, 'Chọn ảnh có sẵn');
     rec('PX-02c', 'B10 đồng ý bỏ: về bước chụp', reset, '');
@@ -410,6 +420,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     await pick();
     n = p.dialogs.length;
     const n0 = (await store(p)).images.length;
+    await toInput();
     await p.getByText('Lưu ảnh (chưa có số đo)', { exact: true }).click(); await p.waitForTimeout(2500);
     const noAsk = !p.dialogs.slice(n).some((d) => d.includes('Bỏ dữ liệu chưa lưu?') || d.includes('Bỏ ảnh vừa chụp?'));
     const savedOne = (await store(p)).images.length === n0 + 1 && /\/images\//.test(p.url());
