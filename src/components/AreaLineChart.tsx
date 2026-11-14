@@ -21,7 +21,7 @@ const LABEL = 13;
  * - Vùng chạm là cả vùng vẽ: chạm hoặc kéo chọn điểm gần nhất theo trục X.
  * - Trình đọc màn hình đọc nhãn tóm tắt; từng lần đo đọc ở danh sách "Các lần đo" ngay dưới (phương án thay thế, mục 9).
  */
-export function AreaLineChart({ code, groups, from, to, unmeasuredDates = [], markers = [], selectedId, onSelect, maxLabels }: {
+export function AreaLineChart({ code, groups, from, to, unmeasuredDates = [], markers = [], selectedId, onSelect, maxLabels, height = H }: {
   code: string;
   /** Mỗi nhóm một phương pháp; nhóm đầu là nhóm chính. */
   groups: { key: string; label: string; shape: MarkShape; points: AreaPoint[] }[];
@@ -32,11 +32,13 @@ export function AreaLineChart({ code, groups, from, to, unmeasuredDates = [], ma
   onSelect: (imageId: string) => void;
   /** Số nhãn ngày tối đa; mặc định theo độ rộng (4 ở máy hẹp, 6 ở 768 px). */
   maxLabels?: number;
+  /** Chiều cao vùng vẽ; mặc định 200 như cũ. Biểu đồ thu gọn ở N05 dùng thấp hơn. */
+  height?: number;
 }) {
   const [w, setW] = useState(0);
   const all = groups.flatMap((g) => g.points).sort((a, b) => a.date.localeCompare(b.date));
   const axis = niceAxis(Math.max(0, ...all.map((p) => p.areaCm2)));
-  const x0 = PAD.left, x1 = Math.max(x0 + 10, w - PAD.right), y0 = PAD.top, y1 = H - PAD.bottom;
+  const x0 = PAD.left, x1 = Math.max(x0 + 10, w - PAD.right), y0 = PAD.top, y1 = height - PAD.bottom;
   const X = (d: string) => xScale(d, from, to, x0, x1);
   const Y = (a: number) => y1 - ((y1 - y0) * a) / axis.max;
   const ticks = Array.from({ length: Math.round(axis.max / axis.step) + 1 }, (_, i) => Math.round(i * axis.step * 1e6) / 1e6);
@@ -77,9 +79,9 @@ export function AreaLineChart({ code, groups, from, to, unmeasuredDates = [], ma
       onStartShouldSetResponder={() => true} onMoveShouldSetResponder={() => true}
       onResponderGrant={(e) => pick(e.nativeEvent.locationX)} onResponderMove={(e) => pick(e.nativeEvent.locationX)}
       testID="bieu-do-dien-tich"
-      style={{ height: H, width: '100%' }}>
+      style={{ height, width: '100%' }}>
       {w > 0 && (
-        <Svg width={w} height={H} pointerEvents="none">
+        <Svg width={w} height={height} pointerEvents="none">
           {ticks.map((t) => (
             <Line key={'g' + t} x1={x0} x2={x1} y1={Y(t)} y2={Y(t)} stroke={C.border} strokeWidth={1} />
           ))}
@@ -105,7 +107,7 @@ export function AreaLineChart({ code, groups, from, to, unmeasuredDates = [], ma
           {first && <SvgText x={X(first.date)} y={Y(first.areaCm2) - 10} fontSize={LABEL} fontFamily={F.bold} fill={C.text} textAnchor={anchor(first.date)}>{fmt(first.areaCm2)}</SvgText>}
           {last && last !== first && <SvgText x={X(last.date)} y={Y(last.areaCm2) - 10} fontSize={LABEL} fontFamily={F.bold} fill={C.text} textAnchor={anchor(last.date)}>{fmt(last.areaCm2)}</SvgText>}
           {labels.map((d) => (
-            <SvgText key={'x' + d} x={X(d)} y={H - 8} fontSize={LABEL} fontFamily={F.regular} fill={C.textSoft} textAnchor={anchor(d)}>{ddmm(d)}</SvgText>
+            <SvgText key={'x' + d} x={X(d)} y={height - 8} fontSize={LABEL} fontFamily={F.regular} fill={C.textSoft} textAnchor={anchor(d)}>{ddmm(d)}</SvgText>
           ))}
         </Svg>
       )}

@@ -4,16 +4,15 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { SEVERITY } from '@/lib/access';
-import { AreaProgress } from '@/components/AreaProgress';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, LinkRow, Muted, Notice, Screen, SectionTitle, TextLink, StatusChip } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
 import { ClinicalContext } from '@/components/ClinicalContext';
-import { WoundTimeline } from '@/components/WoundTimeline';
+import { PatientWoundDashboard } from '@/components/PatientWoundDashboard';
 import { SEVERITY_ROLE, SOURCE, TREND_ROLE, WOUND } from '@/theme.status';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
-import { areaReview, courseProgress, followUpDates, phasesOf, localDay, sessionsForWound } from '@/lib/course';
+import { areaReview, courseProgress, phasesOf, localDay, sessionsForWound } from '@/lib/course';
 import { fmtDate, fmtDateTime, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
 import { measurementSource } from '@/lib/measurementSource';
 import { woundSummary } from '@/lib/woundSummary';
@@ -31,11 +30,19 @@ export default function WoundDetail() {
   const p = patient(w?.patientId);
   const canView = useCanView(p);
   const [openEval, setOpenEval] = useState(false);
-  const [showOldEvals, setShowOldEvals] = useState(false);
   if (!w || !p) return <NoAccess notFound />;
   if (!canView) return <NoAccess />;
 
   const isDoctor = me?.role === 'doctor';
+  // N05 (vai trò khác bác sĩ, tức bệnh nhân): trang tổng quan theo tác vụ, các phần chuyên sâu mở màn riêng (PatientWoundDashboard).
+  // Nhánh bác sĩ (B05) bên dưới giữ nguyên.
+  if (!isDoctor) {
+    return (
+      <Screen header={<Header back title={`Vết thương ${w.code}`} />}>
+        <PatientWoundDashboard patient={p} wound={w} />
+      </Screen>
+    );
+  }
   const images = imagesOf(w.id);
   const today = localDay();
   const plan = coursePlan(w.id, { patientView: !isDoctor });
@@ -60,11 +67,8 @@ export default function WoundDetail() {
   const retakes = images.filter((i) => i.retakeRequested);
   const unmeasured = images.filter((i) => i.areaCm2 === null).length;
   const sev = evals[0]?.severity;
-  const shownEvals = showOldEvals ? evals : evals.slice(0, 1);
+  const shownEvals = evals.slice(0, 1);
 
-  const compareTitle = (title: string) => (
-    <SectionTitle icon="stats-chart-outline" right={images.length >= 2 ? <TextLink label="So sánh" onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id } })} /> : null}>{title}</SectionTitle>
-  );
   // Số diện tích lớn và hàng chip (nguồn, thay đổi từ đầu đợt, mốc xem lại). showDate: màn bệnh nhân giữ ngày đo cạnh số như cũ.
   const areaBlock = (showDate: boolean) => latest && (
           <View style={{ gap: 8 }}>
@@ -155,13 +159,7 @@ export default function WoundDetail() {
               </View>
             )}
           </>
-        ) : (
-          <>
-            {/* P2-02c (QĐ-P2-2 A): bệnh nhân xem biểu đồ đường và câu thay đổi trung tính; bỏ chip xanh/cam "Giảm X% từ đầu đợt". */}
-            {compareTitle('Tiến triển diện tích')}
-            <AreaProgress code={w.code} woundId={w.id} images={images} evaluations={data.evaluations} today={today} isDoctor={false} accountName={(id) => account(id)?.name} photoStrip />
-          </>
-        )}
+        ) : null}
       </Card>
 
       {/* Giai đoạn 1 giao diện theo tác vụ: mỗi việc với vết thương một lối vào riêng, ngay dưới thẻ tổng quan.
@@ -217,12 +215,10 @@ export default function WoundDetail() {
             <Muted>Phiên bản {plan.version}{plan.status === 'active' && pr?.next ? ` · buổi tiếp theo ${fmtDate(pr.next)}` : ''}</Muted>
             {review && <ReviewNote review={review} forPatient={!isDoctor} />}
             <PhaseList plan={plan} current={pr?.phaseIndex} />
-            {!isDoctor && <DoseRows plan={plan} />}
             {pr && isDoctor && <ProgressRows pr={pr} />}
           </Disclosure>
         ) : <Muted>Chưa có đợt điều trị cho vết thương này.</Muted>}
         {isDoctor && <ClosureActions woundId={w.id} status={w.status} check1={w.closureCheck1} followUpFrom={w.followUpFrom} today={today} hasPlan={!!plan} onNewCourse={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />}
-        {!isDoctor && w.status === 'follow_up' && w.followUpFrom && <Muted>Đã liền ngày {fmtDate(w.followUpFrom)}. Các lần kiểm tra: {followUpDates(w.followUpFrom).map((x) => fmtDate(x.date)).join(', ')}.</Muted>}
       </Card>
 
       {/* Thẻ 3: đánh giá gần nhất và các đánh giá cũ trong cùng một thẻ, tách bằng đường kẻ. */}
@@ -264,16 +260,8 @@ export default function WoundDetail() {
           </View>
         );
       })}
-      {/* Bác sĩ xem đánh giá cũ ở "Lịch sử đánh giá"; màn bệnh nhân giữ như cũ. */}
-      {!isDoctor && evals.length > 1 && <Button variant="ghost" label={showOldEvals ? 'Ẩn đánh giá cũ' : `Xem đánh giá cũ (${evals.length - 1})`} onPress={() => setShowOldEvals(!showOldEvals)} />}
       </Card>
 
-      {/* P2-07a (R2-07): dòng thời gian chỉ của vết này, phía bệnh nhân. Buổi không gắn vết không đưa vào (A26). */}
-      {!isDoctor && (
-        <Card>
-          <WoundTimeline images={images} evaluations={evals} sessions={dev ? sessionsOf(dev.id).filter((s) => s.woundId === w.id) : []} doctorName={(id) => account(id)?.name} />
-        </Card>
-      )}
 
       {/* Album của bác sĩ chuyển sang "Ảnh và số đo" (màn Tiến triển và lịch sử, giao diện theo tác vụ giai đoạn 1); phía bệnh nhân dùng dòng thời gian P2-07a. */}
     </Screen>
