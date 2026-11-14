@@ -1,19 +1,24 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Disclosure, Field, Header, ListCard, Muted, Screen, SimBadge, StatusChip } from '@/components/ui';
+import { Sheet } from '@/components/Sheet';
+import { Button, Disclosure, Field, Header, ListCard, Muted, Notice, Screen, SimBadge, StatusChip } from '@/components/ui';
 import { fmtDateTime } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import { C, T } from '@/theme';
 import { CLOUD_LINK, cloudState } from '@/theme.status';
 
-// Quản trị: đăng ký mã thiết bị và xem máy đang giao cho ai. Giao máy và thu hồi do bác sĩ phụ trách làm trên hồ sơ người bệnh (UR11).
+// Q03 Quản trị: đăng ký mã thiết bị và xem máy đang giao cho ai. Giao máy và thu hồi do bác sĩ phụ trách làm trên hồ sơ người bệnh (UR11).
 export default function AdminDevices() {
   const { data, registerDevice } = useStore();
   const [code, setCode] = useState('');
   const [now] = useState(() => Date.now());
+  // Stage 6: đăng ký là thao tác phụ ngắn nên mở trong bảng trượt. Mã đang nhập giữ ở màn này, đóng bảng không mất.
+  const [sheet, setSheet] = useState(false);
+  const [added, setAdded] = useState<string | null>(null);
+  const submitting = useRef(false);
   const exists = data.devices.some((d) => d.code.toUpperCase() === code.trim().toUpperCase());
   const valid = /^TB-\d{3,}$/i.test(code.trim());
 
@@ -21,9 +26,9 @@ export default function AdminDevices() {
     <Screen header={<Header title="Thiết bị" subtitle="Đăng ký và theo dõi thiết bị" />}>
       <SimBadge />
       <Button label="Chẩn đoán kết nối USB/UART" variant="secondary" icon="pulse-outline" onPress={() => router.push('/device-diagnostics')} />
-      {/* Một thẻ cho cả danh sách: mỗi thiết bị một dòng, gán bệnh nhân và nhật ký nằm trong phần mở rộng. */}
-      <ListCard>
-      <View style={{ paddingVertical: 4 }}><Disclosure icon="add-circle-outline" title="Đăng ký thiết bị mới">
+      <Button label={code.trim() ? 'Tiếp tục đăng ký thiết bị' : 'Đăng ký thiết bị mới'} variant="secondary" icon="add-circle-outline" onPress={() => { submitting.current = false; setAdded(null); setSheet(true); }} />
+      {added && <Notice tone="green" icon="checkmark-circle-outline">{`Đã đăng ký thiết bị ${added}.`}</Notice>}
+      <Sheet visible={sheet} title="Đăng ký thiết bị mới" onClose={() => setSheet(false)} testID="bang-dang-ky-thiet-bi">
         <Field
           label="Mã thiết bị"
           value={code}
@@ -37,11 +42,24 @@ export default function AdminDevices() {
           icon="add"
           disabled={!valid || exists}
           onPress={() => {
-            registerDevice(code.trim().toUpperCase());
+            if (submitting.current) return;
+            submitting.current = true;
+            const c = code.trim().toUpperCase();
+            // Khóa giữ đến lần mở bảng sau: lần bấm thứ hai trước khi màn vẽ lại không đăng ký trùng.
+            try {
+              registerDevice(c);
+            } catch (e) {
+              submitting.current = false;
+              throw e;
+            }
             setCode('');
+            setAdded(c);
+            setSheet(false);
           }}
         />
-      </Disclosure></View>
+      </Sheet>
+      {/* Một thẻ cho cả danh sách: mỗi thiết bị một dòng, gán bệnh nhân và nhật ký nằm trong phần mở rộng. */}
+      <ListCard>
       {/* Thiết bị cần chú ý (ngoại tuyến, lâu chưa đồng bộ) lên đầu (V24); thứ tự còn lại giữ như dữ liệu. */}
       {[...data.devices].sort((a, b) => Number(CLOUD_LINK[cloudState(b.online, b.lastSync, now)].role === 'warning') - Number(CLOUD_LINK[cloudState(a.online, a.lastSync, now)].role === 'warning')).map((d) => (
         <View key={d.id} style={{ paddingVertical: 4 }}>
