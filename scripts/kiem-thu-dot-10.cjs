@@ -34,6 +34,8 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   const vis = async (p, t, exact = true) => p.getByText(t, { exact }).first().isVisible().catch(() => false);
   const store = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2') || '{}'));
   const tab = (p, name) => p.getByRole('tab', { name }).click().then(() => p.waitForTimeout(300));
+  // Giai đoạn 2 giao diện theo tác vụ: B07 chia 4 bước (Phân loại, Mức độ, Diễn biến, Xem lại); chạm thanh bước để tới bước n.
+  const toStep = (p, n) => p.getByRole('tab', { name: new RegExp(`^${n}\\. `) }).click().then(() => p.waitForTimeout(400));
   const shot = async (p, file) => {
     const w = p.viewportSize().width;
     const H = await p.evaluate(() => { let best = document.documentElement.scrollHeight; for (const el of document.querySelectorAll('body *')) { const cs = getComputedStyle(el); if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll') && el.scrollHeight > el.clientHeight) best = Math.max(best, el.scrollHeight + (window.innerHeight - el.clientHeight)); } return Math.ceil(best); });
@@ -42,7 +44,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   };
   // Chọn đáp án cho các câu bắt buộc của nhóm 1 (giá trị bất kỳ hợp lệ trong danh mục hiện có).
   const fillRequired = async (p) => {
-    if (!(await vis(p, 'Loét do bệnh tĩnh mạch'))) { await p.getByText('Phân loại vết thương', { exact: true }).click(); await p.waitForTimeout(200); }
+    await toStep(p, 1);
     for (const name of ['Loét do bệnh tĩnh mạch', 'Không', 'Không có dấu hiệu']) { await p.getByRole('radio', { name, exact: true }).first().click(); await p.waitForTimeout(150); }
   };
   const plansW1 = async (p) => ((await store(p)).plans || []).filter((x) => x.patientId === 'p-1');
@@ -120,28 +122,31 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     await go(p, '/evaluate/w-1');
     rec('D10-07a', 'Đầu màn có ảnh tham chiếu, ngày chụp và "Diện tích bác sĩ đo"', await has(p, /^Ảnh tham chiếu IMG\d+$/, false) && await has(p, /^Chụp \d{2}\/\d{2}\/\d{4}$/, false) && await has(p, 'Diện tích bác sĩ đo'));
     rec('D10-07i', 'B07 không hiện số ước lượng AI/AR như số bác sĩ', !(await has(p, /ước lượng/i, false)));
+    // Giai đoạn 2: công tắc "Bệnh nhân sẽ xem" và nút lưu ở bước 4 "Xem lại"; bước 3 không còn công tắc cũ.
+    await toStep(p, 3);
+    const oldSwitchGone = !(await has(p, 'Công bố cho bệnh nhân xem')) && (await p.getByRole('switch', { name: 'Bệnh nhân sẽ xem đánh giá này' }).count()) === 0;
+    await toStep(p, 4);
     const swOn = await p.locator('input[role=switch]').first().isChecked();
-    await p.getByText('Diễn biến và hướng dẫn', { exact: true }).click(); await p.waitForTimeout(200);
-    const oldSwitchGone = !(await has(p, 'Công bố cho bệnh nhân xem')) && (await p.getByRole('switch', { name: 'Bệnh nhân sẽ xem đánh giá này' }).count()) === 1;
-    await p.getByText('Diễn biến và hướng dẫn', { exact: true }).click(); await p.waitForTimeout(200);
     rec('D10-07b', 'Thẻ "Bệnh nhân sẽ xem" bật sẵn (mặc định cũ) ngay trên nút "Lưu và công bố cho bệnh nhân"; công tắc cũ trong nhóm 3 đã chuyển ra',
       swOn && oldSwitchGone && await has(p, 'Lưu và công bố cho bệnh nhân') && await has(p, 'Lời dặn trên trang chủ bệnh nhân: chưa có lời dặn.'), `bật ${swOn}, công tắc cũ đã chuyển ${oldSwitchGone}`);
     // Thiếu trường bắt buộc: nhập hướng dẫn trước, lưu.
-    await p.getByText('Diễn biến và hướng dẫn', { exact: true }).click(); await p.waitForTimeout(200);
+    await toStep(p, 3);
     await p.getByLabel('Hướng dẫn tiếp theo').fill('Thay băng mỗi ngày');
+    await toStep(p, 4);
     rec('D10-07c', 'Xem trước lấy đúng lời dặn vừa nhập', await has(p, 'Lời dặn trên trang chủ bệnh nhân: “Thay băng mỗi ngày”'));
     await p.getByText('Lưu và công bố cho bệnh nhân').click(); await p.waitForTimeout(500);
     const errShown = (await p.getByRole('alert').count()) > 0;
+    await toStep(p, 3);
     rec('D10-07d', 'Thiếu trường bắt buộc: báo lỗi theo quy tắc cũ, không lưu; hướng dẫn đã nhập còn nguyên', errShown && (await evs()).length === n0 && (await p.getByLabel('Hướng dẫn tiếp theo').inputValue()) === 'Thay băng mỗi ngày');
     // Điền bắt buộc.
     await fillRequired(p);
     const pick = async (name) => { await p.getByRole('radio', { name, exact: true }).first().click(); await p.waitForTimeout(150); };
-    if (!(await vis(p, 'Mức độ vết thương'))) await p.getByText('Mức độ và triệu chứng', { exact: true }).click();
+    await toStep(p, 2);
     await pick('Nhẹ');
-    // Đóng, mở nhóm 3: dữ liệu giữ nguyên.
-    await p.getByText('Diễn biến và hướng dẫn', { exact: true }).click(); await p.waitForTimeout(150);
-    await p.getByText('Diễn biến và hướng dẫn', { exact: true }).click(); await p.waitForTimeout(150);
-    rec('D10-07e', 'Đóng mở nhóm: hướng dẫn vẫn còn', (await p.getByLabel('Hướng dẫn tiếp theo').inputValue()) === 'Thay băng mỗi ngày');
+    // Đổi bước: dữ liệu giữ nguyên (thay cho đóng mở nhóm trước đây).
+    await toStep(p, 3);
+    rec('D10-07e', 'Đổi bước rồi quay lại: hướng dẫn vẫn còn', (await p.getByLabel('Hướng dẫn tiếp theo').inputValue()) === 'Thay băng mỗi ngày');
+    await toStep(p, 4);
     await p.getByRole('switch', { name: 'Bệnh nhân sẽ xem đánh giá này' }).click(); await p.waitForTimeout(150);
     rec('D10-07f', 'Tắt công bố: thẻ ghi "Chỉ bác sĩ thấy", nút đổi thành "Lưu đánh giá (chỉ bác sĩ)"', await has(p, 'Chỉ bác sĩ thấy đánh giá này.') && await has(p, 'Lưu đánh giá (chỉ bác sĩ)'));
     const nd = p.dialogs.length;
@@ -161,11 +166,12 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const p = await newPage(); await login(p);
     const run = async (mark) => {
       await go(p, '/evaluate/w-2');
-      await p.getByText('Mức độ và triệu chứng', { exact: true }).click(); await p.waitForTimeout(200);
+      await toStep(p, 2);
       const pre = (await p.locator('textarea').evaluateAll((els) => els.map((e) => e.value).join('|'))).includes('Rát nhẹ quanh vết thương');
       await fillRequired(p);
-      if (!(await vis(p, 'Mức độ vết thương'))) await p.getByText('Mức độ và triệu chứng', { exact: true }).click();
+      await toStep(p, 2);
       await p.getByRole('radio', { name: 'Nhẹ', exact: true }).first().click();
+      await toStep(p, 4);
       await p.getByText('Lưu và công bố cho bệnh nhân').click(); await p.waitForTimeout(800);
       const card = await has(p, 'Đã lưu đánh giá. Bệnh nhân xem được đánh giá này.') && await has(p, 'Đánh dấu 1 báo cáo đã xử lý');
       const handledBefore = ((await store(p)).reports || []).find((r) => r.id === 'r-1')?.handled;

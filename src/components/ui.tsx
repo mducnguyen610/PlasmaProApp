@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useSegments } from 'expo-router';
 import { Children, useState, type ComponentProps, type ReactNode } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, View, type ScrollViewInstance, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, View, type ScrollViewInstance, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -108,8 +108,12 @@ export function Screen({ children, header, padded = true, scrollRef, footer }: {
   const hasFab = segments[0] === 'patient' || segments[0] === 'doctor';
   // Có footer: vùng an toàn đáy do footer chừa, nội dung chỉ cần khoảng thở 16 trên footer.
   const bottom = footer ? 16 : hasTabBar ? TAB_BAR_HEIGHT + (hasFab ? FAB_RISE + 4 : 0) + insets.bottom + 8 : insets.bottom + 16;
+  // Giai đoạn 2: màn có footer và ô nhập (B07) cần đẩy footer lên trên bàn phím; ứng dụng edge-to-edge nên cửa sổ không tự co.
+  // Chỉ bọc khi có footer để các màn khác giữ nguyên hành vi.
+  const Wrap = footer ? KeyboardAvoidingView : View;
+  const wrapProps = footer ? { behavior: Platform.OS === 'ios' ? ('padding' as const) : ('height' as const) } : {};
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg, width: '100%', maxWidth: 1080, alignSelf: 'center' }}>
+    <Wrap {...wrapProps} style={{ flex: 1, backgroundColor: C.bg, width: '100%', maxWidth: 1080, alignSelf: 'center' }}>
       {header}
       {/* Nội dung không rộng quá size.maxContent (cộng lề 2 x 20) để dòng chữ và nút không giãn hết khổ máy tính bảng (A08). */}
       <ScrollView ref={scrollRef} contentContainerStyle={[padded && { paddingHorizontal: 20, paddingTop: 18, gap: space.l }, { paddingBottom: bottom, width: '100%', maxWidth: size.maxContent + 40, alignSelf: 'center' }]} keyboardShouldPersistTaps="handled">
@@ -120,7 +124,7 @@ export function Screen({ children, header, padded = true, scrollRef, footer }: {
           <View style={{ width: '100%', maxWidth: size.maxContent, alignSelf: 'center' }}>{footer}</View>
         </View>
       ) : null}
-    </View>
+    </Wrap>
   );
 }
 
@@ -527,21 +531,28 @@ export function TextLink({ label, onPress, tone = C.primary, accessibilityLabel 
  * Thanh các bước của một luồng (T01, B06): bước đã qua có dấu tích, bước hiện tại tô màu chính. step đếm từ 1.
  * onStep: cho phép chạm để chuyển bước (B06), mỗi bước thành một tab có vùng chạm 44.
  */
-export function StepRow({ steps, step, onStep }: { steps: string[]; step: number; onStep?: (step: number) => void }) {
+/**
+ * Thanh bước. `marks` (không bắt buộc, giai đoạn 2 giao diện theo tác vụ): trạng thái thật của từng bước do màn tính
+ * ('ok' đã đủ mục bắt buộc, 'missing' còn thiếu, null chưa xem). Có `marks` thì dấu ✓ chỉ hiện khi bước đủ, không theo vị trí.
+ */
+export function StepRow({ steps, step, onStep, marks }: { steps: string[]; step: number; onStep?: (step: number) => void; marks?: ('ok' | 'missing' | null)[] }) {
   return (
     <View accessibilityRole={onStep ? 'tablist' : 'progressbar'} accessibilityLabel={`Bước ${step} trên ${steps.length}: ${steps[step - 1]}`} style={{ flexDirection: 'row', gap: 6 }}>
       {steps.map((label, i) => {
         const n = i + 1;
-        const done = n < step;
+        const mark = marks?.[i];
+        const done = marks ? mark === 'ok' : n < step;
+        const missing = mark === 'missing';
         const current = n === step;
+        const text = done ? `✓ ${label}` : missing ? `! ${label}` : `${n}. ${label}`;
         const inner = (
           <>
-            <View style={{ height: 4, borderRadius: 2, backgroundColor: done || current ? C.primary : C.border }} />
-            <Text style={{ fontSize: T.caption, color: current ? C.text : C.textSoft, fontWeight: current ? '700' : '400' }}>{done ? `✓ ${label}` : `${n}. ${label}`}</Text>
+            <View style={{ height: 4, borderRadius: 2, backgroundColor: missing ? C.amber : done || current || (!marks && n < step) ? C.primary : C.border }} />
+            <Text style={{ fontSize: T.caption, color: missing ? C.amber : current ? C.text : C.textSoft, fontWeight: current || missing ? '700' : '400' }}>{text}</Text>
           </>
         );
         return onStep ? (
-          <Pressable key={label} onPress={() => onStep(n)} accessibilityRole="tab" accessibilityLabel={`${n}. ${label}`} accessibilityState={{ selected: current }} style={{ flex: 1, gap: space.xs, minHeight: size.touch, justifyContent: 'center' }}>
+          <Pressable key={label} onPress={() => onStep(n)} accessibilityRole="tab" accessibilityLabel={`${n}. ${label}${done ? ', đã đủ' : missing ? ', còn mục bắt buộc' : ''}`} accessibilityState={{ selected: current }} style={{ flex: 1, gap: space.xs, minHeight: size.touch, justifyContent: 'center' }}>
             {inner}
           </Pressable>
         ) : (

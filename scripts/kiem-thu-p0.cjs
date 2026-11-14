@@ -38,6 +38,8 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
   const store = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2') || '{}'));
   const mutate = async (p, fn) => { await p.evaluate((src) => { const d = JSON.parse(localStorage.getItem('plasmapro.demo.v2')); new Function('d', src)(d); localStorage.setItem('plasmapro.demo.v2', JSON.stringify(d)); }, fn); };
   const ctxText = async (p) => (await p.getByTestId('clinical-context').count()) ? (await p.getByTestId('clinical-context').first().innerText()).replace(/\s+/g, ' ') : '';
+  // Giai đoạn 2 giao diện theo tác vụ: B07 chia 4 bước; chạm thanh bước để tới bước n (4 là "Xem lại", có thẻ "Sẽ lưu" và nút lưu).
+  const toStep = async (p, n) => { await p.getByRole('tab', { name: new RegExp(`^${n}\\. `) }).click(); await p.waitForTimeout(400); };
   const back = async (p) => { await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(900); };
   const pageHeight = (p) => p.evaluate(() => { let best = document.documentElement.scrollHeight; for (const el of document.querySelectorAll('body *')) { const cs = getComputedStyle(el); if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll') && el.scrollHeight > el.clientHeight) best = Math.max(best, el.scrollHeight + (window.innerHeight - el.clientHeight)); } return Math.ceil(best); });
   const shot = async (p, file) => {
@@ -124,17 +126,17 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
 
     // SV-05, ID-05: B07 chọn mức độ rồi quay lại.
     await go(p, '/wounds/w-1'); await p.getByRole('button', { name: 'Ghi đánh giá', exact: true }).click(); await p.waitForTimeout(1200);
-    await p.getByRole('button', { name: /^Mức độ và triệu chứng/ }).click(); await p.waitForTimeout(200);
+    await toStep(p, 2);
     await p.getByRole('radio', { name: 'Nặng', exact: true }).click(); await p.waitForTimeout(200);
     p.answer = false; n = p.dialogs.length; await back(p);
     const askedB07 = p.dialogs.slice(n).some((d) => d.includes('Bỏ dữ liệu chưa lưu?'));
-    const stillB07 = await has(p, 'Sẽ lưu');
+    const stillB07 = await has(p, 'Mức độ vết thương');
     p.answer = true; n = p.dialogs.length; await back(p);
-    const leftB07 = !(await has(p, 'Sẽ lưu'));
+    const leftB07 = !(await has(p, 'Mức độ vết thương'));
     rec('TP-ID-05c', 'B07 có dữ liệu chưa lưu, bấm quay lại: hỏi; "Ở lại" giữ màn; đồng ý thì rời màn, không lưu', askedB07 && stillB07 && leftB07, `hỏi ${askedB07}, ở lại ${stillB07}, rời ${leftB07}`);
 
     // ID-06: ảnh không thuộc vết thương.
-    await go(p, '/evaluate/w-1?imageId=IMG0005');
+    await go(p, '/evaluate/w-1?imageId=IMG0005'); await toStep(p, 4);
     const saveBtn = p.getByRole('button', { name: /^Lưu và công bố|^Lưu đánh giá/ });
     rec('TP-ID-06', 'B07 với ảnh của vết khác: báo không thuộc, nút Lưu bị khóa', await has(p, /không thuộc VT01/, false) && await saveBtn.isDisabled(), '');
     rec('TP-ID-z', 'Không có lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
@@ -198,13 +200,16 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
   // ===== P0-03: lưu =====
   {
     const p = await newPage(); await login(p);
-    await go(p, '/evaluate/w-1');
+    await go(p, '/evaluate/w-1'); await toStep(p, 4);
     const sum0 = await has(p, 'Sẽ lưu') && (await p.getByTestId('se-luu').innerText()).includes('Chưa chọn');
     await p.getByRole('button', { name: 'Sửa mức độ' }).click(); await p.waitForTimeout(500);
     const opened = await p.getByRole('radio', { name: 'Nặng', exact: true }).isVisible();
     await p.getByRole('radio', { name: 'Nặng', exact: true }).click(); await p.waitForTimeout(200);
+    await toStep(p, 4);
     const showsHeavy = (await p.getByTestId('se-luu').innerText()).includes('Nặng');
+    await p.getByRole('button', { name: 'Sửa mức độ' }).click(); await p.waitForTimeout(500);
     await p.getByRole('radio', { name: 'Trung bình', exact: true }).click(); await p.waitForTimeout(200);
+    await toStep(p, 4);
     const showsMid = (await p.getByTestId('se-luu').innerText()).includes('Trung bình');
     rec('TP-SV-05', 'B07 thẻ "Sẽ lưu": ghi "Chưa chọn"; "Sửa" mở đúng nhóm; đổi Nặng sang Trung bình thì thẻ cập nhật', sum0 && opened && showsHeavy && showsMid, `mở ${opened}`);
     // Thiếu trường bắt buộc: chặn như cũ.
@@ -217,8 +222,9 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     // Điền đủ B07 qua dữ liệu đánh giá trước: dùng lựa chọn đầu tiên của mỗi câu bắt buộc.
     await go(q, '/evaluate/w-2');
     for (const name of ['Bỏng', 'Ít', 'Không có dấu hiệu']) { await q.getByRole('radio', { name, exact: true }).first().click(); await q.waitForTimeout(150); }
-    await q.getByRole('button', { name: 'Sửa mức độ' }).click(); await q.waitForTimeout(400);
+    await toStep(q, 2);
     await q.getByRole('radio', { name: 'Nhẹ', exact: true }).click(); await q.waitForTimeout(200);
+    await toStep(q, 4);
     const ev1 = (await store(q)).evaluations.length;
     await q.evaluate(() => { const orig = localStorage.setItem.bind(localStorage); window.__origSet = orig; localStorage.setItem = (k, v) => { if (k === 'plasmapro.demo.v2') throw new Error('QuotaExceededError (giả lập)'); return orig(k, v); }; });
     const nd = q.dialogs.length;

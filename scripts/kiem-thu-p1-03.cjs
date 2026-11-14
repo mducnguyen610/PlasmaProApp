@@ -58,7 +58,9 @@ const finish = (tag) => {
 (async () => {
   const b = await chromium.launch();
   const { newPage, login, go, has, store, mutate, shot, overflow, small, inView } = helpers(b);
-  const saveB07 = (p) => p.getByRole('button', { name: /^Lưu (và công bố cho bệnh nhân|đánh giá \(chỉ bác sĩ\))$/ }).click();
+  // Giai đoạn 2 giao diện theo tác vụ: B07 chia 4 bước; nút lưu ở bước 4 "Xem lại", chạm thanh bước để tới bước n.
+  const toStep = async (p, n) => { await p.getByRole('tab', { name: new RegExp(`^${n}\\. `) }).click(); await p.waitForTimeout(400); };
+  const saveB07 = async (p) => { await toStep(p, 4); await p.getByRole('button', { name: /^Lưu (và công bố cho bệnh nhân|đánh giá \(chỉ bác sĩ\))$/ }).click(); };
 
   if (SHOTS) {
     const heights = {};
@@ -87,21 +89,24 @@ const finish = (tag) => {
     await go(p, '/evaluate/w-2');
     const n0 = ((await store(p)).evaluations || []).length;
     await saveB07(p); await p.waitForTimeout(600);
-    const msg = 'Còn 4 mục cần sửa trước khi lưu: Loại vết thương, Dịch tiết, Dấu hiệu nhiễm trùng, Mức độ.';
+    // Giai đoạn 2: câu báo ghi thêm bước của từng mục; màn đưa về bước 1 (bước của mục đầu), lỗi mức độ hiện khi tới bước 2.
+    const msg = 'Còn 4 mục cần sửa trước khi lưu: Loại vết thương (bước 1), Dịch tiết (bước 1), Dấu hiệu nhiễm trùng (bước 1), Mức độ (bước 2).';
     const links = await p.getByTestId('muc-can-sua').getByRole('button').allInnerTexts().catch(() => []);
-    const fieldErrs = await Promise.all(['Hãy chọn loại vết thương.', 'Hãy chọn mức dịch tiết.', 'Hãy chọn dấu hiệu nhiễm trùng.', 'Hãy chọn mức Nhẹ, Trung bình hoặc Nặng.'].map((t) => has(p, t)));
+    const fieldErrs = await Promise.all(['Hãy chọn loại vết thương.', 'Hãy chọn mức dịch tiết.', 'Hãy chọn dấu hiệu nhiễm trùng.'].map((t) => has(p, t)));
+    // Liên kết "Tới mức độ": sang bước 2, trường Mức độ nằm trong màn hình, lỗi hiện tại trường.
+    await p.getByRole('button', { name: /^Tới mục Mức độ/ }).click(); await p.waitForTimeout(900);
+    fieldErrs.push(await has(p, 'Hãy chọn mức Nhẹ, Trung bình hoặc Nặng.'));
     rec('TP1-09', 'B07 thiếu 4 mục: một lần Lưu nêu đủ 4, lỗi hiện tại từng trường, không lưu', await has(p, msg) && links.length === 4 && fieldErrs.every(Boolean) && ((await store(p)).evaluations || []).length === n0, `liên kết: ${links.join(', ')}; lỗi tại trường: ${fieldErrs}`);
-    // Liên kết "Tới mức độ": nhóm 2 mở, trường Mức độ nằm trong màn hình.
-    await p.getByRole('button', { name: 'Tới mục Mức độ' }).click(); await p.waitForTimeout(900);
     const sev = p.getByText('Mức độ vết thương', { exact: true });
     const sevIn = await inView(p, sev);
-    await p.getByRole('button', { name: 'Tới mục Loại vết thương' }).click(); await p.waitForTimeout(900);
+    await p.getByRole('button', { name: /^Tới mục Loại vết thương/ }).click(); await p.waitForTimeout(900);
     const typeIn = await inView(p, p.getByText('Loại vết thương', { exact: true }).first());
     rec('TP1-10', 'Liên kết từng mục cuộn tới đúng trường (Mức độ, Loại vết thương)', sevIn && typeIn, `mức độ ${sevIn}, loại ${typeIn}`);
     // Điền đủ 4 mục rồi Lưu một lần.
     await p.getByRole('radio', { name: 'Bỏng', exact: true }).click();
     await p.getByRole('radio', { name: 'Ít', exact: true }).click();
     await p.getByRole('radio', { name: 'Nghi ngờ', exact: true }).click();
+    await toStep(p, 2);
     await p.getByRole('radio', { name: 'Nhẹ', exact: true }).click();
     const noErrLeft = !(await has(p, 'Hãy chọn loại vết thương.')) && !(await has(p, 'Hãy chọn mức Nhẹ, Trung bình hoặc Nặng.'));
     await saveB07(p); await p.waitForTimeout(1200);
@@ -120,9 +125,10 @@ const finish = (tag) => {
     const hasHead = (await head.count()) === 1;
     if (hasHead) { await head.click(); await p.waitForTimeout(300); }
     const body = hasHead ? (await p.getByTestId('lan-danh-gia-truoc').innerText()).replace(/\s+/g, ' ') : '';
+    await toStep(p, 4);
     const sumSev = (await p.getByTestId('se-luu').innerText()).replace(/\s+/g, ' ');
-    // Mở nhóm 3 để đọc ô hướng dẫn.
-    await p.getByRole('button', { name: /^Diễn biến và hướng dẫn, / }).click(); await p.waitForTimeout(300);
+    // Sang bước 3 để đọc ô hướng dẫn.
+    await toStep(p, 3);
     const instr = await p.getByRole('textbox', { name: /^Hướng dẫn tiếp theo/ }).inputValue();
     const ok = hasHead && !!last && body.includes(last.instructions.slice(0, 20)) && /Mức độ Chưa chọn/.test(sumSev) && /Nhiễm trùng Chưa chọn/.test(sumSev) && instr === '';
     rec('TP1-11', 'B07 "Lần đánh giá trước" chỉ đọc, đúng vết w-1; mức độ, nhiễm trùng, hướng dẫn trong biểu mẫu vẫn trống', ok, `có mục ${hasHead}; Sẽ lưu: ${sumSev.slice(0, 120)}; ô hướng dẫn "${instr}"`);
@@ -144,8 +150,10 @@ const finish = (tag) => {
     const d = await store(p);
     const prefilled = (d.reports || []).some((r) => r.patientId === 'p-1' && r.kind === 'symptom' && !r.handled && r.content.trim());
     const expect = `Mức độ và triệu chứng, Đã điền ${prefilled ? 1 : 0}/4 · còn 1 mục bắt buộc`;
-    const got = await p.getByRole('button', { name: /^Mức độ và triệu chứng, / }).getAttribute('aria-label');
-    rec('TP1-03c-b', 'Bộ đếm nhóm 2 không tính ô "Nguồn thông tin triệu chứng" điền sẵn', got === expect, `"${got}" (mong đợi "${expect}")`);
+    // Giai đoạn 2: bộ đếm nằm ở đầu bước 2 (cùng chữ với dòng tóm tắt nhóm cũ).
+    await toStep(p, 2);
+    const got = await p.getByTestId('tieu-de-buoc').getAttribute('aria-label');
+    rec('TP1-03c-b', 'Bộ đếm nhóm 2 không tính ô "Nguồn thông tin triệu chứng" điền sẵn', got === `Bước 2 trên 4: ${expect}`, `"${got}" (mong đợi "Bước 2 trên 4: ${expect}")`);
     await p.context().close();
   }
 
