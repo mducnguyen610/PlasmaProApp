@@ -4,7 +4,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { SEVERITY } from '@/lib/access';
-import { AreaChart } from '@/components/AreaChart';
+import { AreaProgress } from '@/components/AreaProgress';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { ImageTile } from '@/components/items';
 import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Muted, Notice, Screen, SectionTitle, TextLink, StatusChip } from '@/components/ui';
@@ -164,18 +164,18 @@ export default function WoundDetail() {
           </>
         ) : (
           <>
-            {compareTitle('Diện tích')}
-            {latest ? areaBlock(true) : <Muted>Chưa có ảnh đã đo diện tích.</Muted>}
-            <AreaChart images={images} />
+            {/* P2-02c (QĐ-P2-2 A): bệnh nhân xem biểu đồ đường và câu thay đổi trung tính; bỏ chip xanh/cam "Giảm X% từ đầu đợt". */}
+            {compareTitle('Tiến triển diện tích')}
+            <AreaProgress code={w.code} woundId={w.id} images={images} evaluations={data.evaluations} today={today} isDoctor={false} accountName={(id) => account(id)?.name} />
           </>
         )}
       </Card>
 
-      {/* PP-08: biểu đồ diện tích tách thành thẻ riêng ở màn bác sĩ, có vạch ngày bắt đầu từng đợt. */}
+      {/* PP-08, P2-02d (QĐ-P2-5): thẻ biểu đồ riêng ở màn bác sĩ, cùng biểu đồ đường với bệnh nhân, giữ vạch ngày bắt đầu từng đợt. */}
       {isDoctor && (
         <Card>
-          {compareTitle('Diện tích theo ngày')}
-          <AreaChart images={images} markers={courseMarkers} />
+          {compareTitle('Tiến triển diện tích')}
+          <AreaProgress code={w.code} woundId={w.id} images={images} evaluations={data.evaluations} today={today} isDoctor markers={courseMarkers} accountName={(id) => account(id)?.name} />
         </Card>
       )}
 

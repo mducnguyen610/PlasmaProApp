@@ -185,6 +185,144 @@ GROUPS['p2-6'] = async (b, h) => {
   }
 };
 
+// PR-P2-2: biểu đồ đường tiến triển diện tích (N05 bệnh nhân, B05 bác sĩ). Ca G01 đến G22 trong Test Plan.
+const BAN = ['lành', 'hồi phục', 'tốt lên', 'xấu đi', 'dự kiến lành'];
+const CAVEAT = 'Số đo cho biết kích thước vết thương. Việc vết thương hồi phục ra sao do bác sĩ đánh giá.';
+// Điểm trên biểu đồ: tâm các dấu (tròn r 5 hoặc 7; tròn rỗng r 4 là ảnh chưa đo; vuông, tam giác là phương pháp khác).
+const marks = (p) => p.evaluate(() => {
+  const svg = document.querySelector('[data-testid="bieu-do-dien-tich"] svg'); if (!svg) return null;
+  const c = [...svg.querySelectorAll('circle')].map((e) => ({ x: +e.getAttribute('cx'), y: +e.getAttribute('cy'), r: +e.getAttribute('r') }));
+  return { pts: c.filter((e) => e.r >= 5).sort((a, b) => a.x - b.x), hollow: c.filter((e) => e.r === 4).length, rects: svg.querySelectorAll('rect').length, tris: svg.querySelectorAll('polygon').length, lines: svg.querySelectorAll('polyline').length, labels: [...svg.querySelectorAll('text')].map((t) => t.textContent) };
+});
+const cardText = (p) => p.evaluate(() => document.querySelector('[data-testid="tien-trien-dien-tich"]')?.innerText ?? '');
+// Ảnh minh họa cho kiểm thử: chép một ảnh có sẵn, chỉ ghi vào localStorage của trình duyệt.
+const addImg = (id, woundId, daysAgo, area, method, status = 'labeled') => `
+  const src = d.images.find((i) => i.id === 'IMG0003'); const t = new Date(); t.setDate(t.getDate() - ${daysAgo});
+  const day = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+  d.images.push({ ...src, id: '${id}', woundId: '${woundId}', captureDate: day, areaCm2: ${area}, measureMethod: ${JSON.stringify(method)}, status: '${status}', retakeRequested: undefined,
+    history: ${area === null ? '[]' : `[{ at: day + 'T09:00:00.000Z', by: src.history[0]?.by ?? 'u-bs', fromStatus: 'unlabeled', toStatus: 'labeled', fromArea: null, toArea: ${area} }]`}, capture: { ...(src.capture || {}), sourceDateKnown: true, manualReference: undefined } });
+`;
+GROUPS['p2-2'] = async (b, h) => {
+  const { newPage, login, go, has, mutate, overflow } = h;
+  for (const w of WIDTHS) {
+    const p = await newPage(w); await login(p, 'benhnhan'); await go(p, '/wounds/w-1');
+    const m = await marks(p); const txt = await cardText(p);
+    rec(`P22-01-${w}`, `N05 ${w}px (G04): biểu đồ đường, 3 dấu điểm, 1 đường, không còn cột`, !!m && m.pts.length === 3 && m.lines === 1, JSON.stringify(m && { n: m.pts.length, l: m.lines }));
+    rec(`P22-02-${w}`, `N05 ${w}px (G05, C15): "↓ Giảm 32,8% so với lần đo đầu", câu có ngày hai mốc`, txt.includes('↓ Giảm 32,8% so với lần đo đầu') && /Diện tích giảm từ 12,5 cm² \(\d\d\/\d\d\) xuống 8,4 cm² \(\d\d\/\d\d\), sau 14 ngày\./.test(txt));
+    rec(`P22-03-${w}`, `N05 ${w}px (QĐ-P2-2): không còn chip "Giảm 33% từ đầu đợt"`, !(await has(p, 'Giảm 33% từ đầu đợt')));
+    const xs = m ? m.pts.map((q) => q.x) : [];
+    rec(`P22-04-${w}`, `N05 ${w}px (G08): trục X tỉ lệ ngày (3 lần đo cách 7 ngày, khoảng cách bằng nhau)`, xs.length === 3 && Math.abs((xs[1] - xs[0]) - (xs[2] - xs[1])) <= 1, xs.map(Math.round).join(','));
+    const dates = m ? m.labels.filter((t) => /^\d\d\/\d\d$/.test(t)) : [];
+    rec(`P22-05-${w}`, `N05 ${w}px (G17): tối đa ${w >= 600 ? 6 : 4} nhãn ngày, có nhãn đầu và cuối`, dates.length >= 2 && dates.length <= (w >= 600 ? 6 : 4), dates.join(' '));
+    rec(`P22-06-${w}`, `N05 ${w}px (G18): không từ đánh giá tự sinh trong thẻ (trừ câu nhắc cố định)`, !BAN.some((x) => txt.replace(CAVEAT, '').toLowerCase().includes(x)) && txt.includes(CAVEAT));
+    rec(`P22-07-${w}`, `N05 ${w}px: không tràn ngang`, (await overflow(p)) === 0);
+    rec(`P22-08-${w}`, `N05 ${w}px: không lỗi JS`, p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+  {
+    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/wounds/w-1');
+    const head = p.getByText('↓ Giảm 32,8% so với lần đo đầu', { exact: true });
+    const color = await head.evaluate((e) => getComputedStyle(e).color);
+    rec('P22-09', 'G05: dòng giảm dùng màu nhấn của ứng dụng (#0B6B6F), không xanh lá', color === 'rgb(11, 107, 111)', color);
+    const label = await p.getByTestId('bieu-do-dien-tich').getAttribute('aria-label');
+    rec('P22-10', 'G16: nhãn trợ năng tóm tắt, ngày viết đầy đủ, không từ chủ quan', /^Biểu đồ đường diện tích vết thương VT01\. 3 lần đo từ ngày \d+ tháng \d+ năm \d{4} đến ngày \d+ tháng \d+ năm \d{4}\. Trục dọc từ 0 đến 15 xăng ti mét vuông\. Lần đầu 12,5; gần nhất 8,4\.$/.test(label || '') && !BAN.some((x) => (label || '').includes(x)), label);
+    const m = await marks(p);
+    rec('P22-11', 'G09: ảnh chưa đo có ngày rõ hiện dấu tròn rỗng; có dòng "Không đưa vào biểu đồ: 1 ảnh chưa đo."', m.hollow === 1 && await has(p, 'Không đưa vào biểu đồ: 1 ảnh chưa đo.'), `rỗng ${m.hollow}`);
+    // G12: chạm đúng X của từng điểm.
+    await p.getByTestId('bieu-do-dien-tich').scrollIntoViewIfNeeded();
+    const box = await p.getByTestId('bieu-do-dien-tich').boundingBox();
+    const got = [];
+    for (const q of m.pts) { await p.mouse.click(box.x + q.x, box.y + 100); await p.waitForTimeout(250); got.push(await p.getByTestId('chi-tiet-lan-do').evaluate((e) => e.innerText.split('\n')[0]).catch(() => '')); }
+    rec('P22-12', 'G12: chạm vùng vẽ tại X của từng điểm mở đúng ngày ở vùng chi tiết', got.length === 3 && got.every((g) => /^Ngày đo \d\d\/\d\d\/\d{4}/.test(g)) && new Set(got).size === 3, got.join(' | '));
+    const det = await p.getByTestId('chi-tiet-lan-do').innerText();
+    rec('P22-13', 'G12: vùng chi tiết có diện tích, phương pháp, nguồn, người nhập, ảnh', det.includes('8,4 cm²') && det.includes('Phương pháp:') && det.includes('Bác sĩ nhập') && /Nhập bởi BS\./.test(det) && det.includes('IMG0003'), det.replace(/\n/g, ' / ').slice(0, 200));
+    await p.getByText('Các lần đo (3)', { exact: true }).click(); await p.waitForTimeout(300);
+    const rows = p.getByRole('button', { name: /^\d\d\/\d\d\/\d{4}, \d+,\d cm², / });
+    rec('P22-14', 'Danh sách các lần đo: 3 dòng, mới trước', (await rows.count()) === 3);
+    await rows.nth(2).click(); await p.waitForTimeout(300);
+    rec('P22-15', 'G12: chạm dòng cũ nhất chọn điểm đầu', (await p.getByTestId('chi-tiet-lan-do').innerText()).includes('12,5 cm²'));
+    await p.getByRole('button', { name: 'Mở ảnh của lần đo này' }).click(); await p.waitForTimeout(1200);
+    rec('P22-16', 'G13: "Mở ảnh của lần đo này" mở đúng ảnh IMG0001', /\/images\/IMG0001/.test(p.url()), p.url());
+    rec('P22-17', 'Không lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+  // G11, G22: hai phương pháp. Lần đo gần nhất bằng phần mềm thì phần mềm là nhóm chính.
+  {
+    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/wounds/w-1');
+    await mutate(p, `d.images.find((i) => i.id === 'IMG0003').measureMethod = 'Phần mềm đo trên ảnh';` + addImg('IMG-KT01', 'w-1', 5, 7.9, 'Phần mềm đo trên ảnh'));
+    await go(p, '/wounds/w-1');
+    const off = await marks(p); const t0 = await cardText(p);
+    rec('P22-18', 'G11 tắt: chỉ vẽ nhóm chính (2 điểm), dòng "Ẩn 2 lần đo bằng phương pháp khác."', off.pts.length === 2 && off.rects === 0 && t0.includes('Đang hiện 2 lần đo bằng Phần mềm đo trên ảnh. Ẩn 2 lần đo bằng phương pháp khác.'), JSON.stringify({ n: off.pts.length }));
+    const pct0 = (t0.match(/[↓↑] (Giảm|Tăng) [\d,]+%/) || [])[0];
+    rec('P22-19', 'C11: % tính trong nhóm chính (8,4 → 7,9 = 6,0%)', pct0 === '↓ Giảm 6,0%', pct0);
+    await p.getByRole('button', { name: 'Hiện cả phương pháp khác' }).click(); await p.waitForTimeout(400);
+    const on = await marks(p); const t1 = await cardText(p);
+    rec('P22-20', 'G11 bật: phương pháp khác vẽ dấu vuông, đường riêng, có chú thích; % không đổi', on.rects === 2 && on.lines === 2 && t1.includes('Vuông: Thước giấy kẻ ô vô trùng (mô phỏng)') && (t1.match(/[↓↑] (Giảm|Tăng) [\d,]+%/) || [])[0] === pct0, JSON.stringify({ r: on.rects, l: on.lines }));
+    rec('P22-21', 'G11: nút đổi thành "Chỉ hiện phương pháp chính"', (await p.getByRole('button', { name: 'Chỉ hiện phương pháp chính' }).count()) === 1);
+    // G22: chỉ một phương pháp thì không có dòng ẩn, nút, chú thích.
+    await mutate(p, `d.images.forEach((i) => { if (i.woundId === 'w-1' && i.areaCm2 !== null) i.measureMethod = 'Phần mềm đo trên ảnh'; });`);
+    await go(p, '/wounds/w-1');
+    const one = await marks(p); const t2 = await cardText(p);
+    rec('P22-22', 'G22: một phương pháp: một đường liền, không nút, không chú thích phương pháp', one.lines === 1 && one.pts.length === 4 && !t2.includes('Hiện cả phương pháp khác') && !t2.includes('Đang hiện'));
+    // G08: 7 ngày rồi 7 ngày rồi khoảng tới IMG-KT01; khoảng cách tỉ lệ số ngày.
+    const xs = one.pts.map((q) => q.x);
+    const st = await h.store(p); const ds = st.images.filter((i) => i.woundId === 'w-1' && i.areaCm2 !== null && i.status === 'labeled').map((i) => i.captureDate).sort();
+    const day = (s) => Date.parse(s + 'T00:00:00Z') / 864e5;
+    const ratio = (xs[3] - xs[2]) / (xs[1] - xs[0]), want = (day(ds[3]) - day(ds[2])) / (day(ds[1]) - day(ds[0]));
+    rec('P22-23', 'G08: khoảng cách X tỉ lệ số ngày giữa các lần đo', Math.abs(ratio - want) < 0.05, `đo ${ratio.toFixed(2)}, cần ${want.toFixed(2)}`);
+    // G14: thêm lần đo cũ 200 ngày: có bộ chọn khoảng; "1 tháng" lọc bớt.
+    await mutate(p, addImg('IMG-KT02', 'w-1', 200, 15, 'Phần mềm đo trên ảnh'));
+    await go(p, '/wounds/w-1');
+    const tabs = await p.getByRole('tab').allInnerTexts();
+    rec('P22-24', 'G14: có lần đo ngoài 6 tháng thì hiện bộ chọn 1/3/6 tháng và Toàn bộ', ['1 tháng', '3 tháng', '6 tháng', 'Toàn bộ'].every((x) => tabs.includes(x)), tabs.join(','));
+    const nAll = (await marks(p)).pts.length;
+    await p.getByRole('tab', { name: '1 tháng' }).click(); await p.waitForTimeout(400);
+    const n1 = (await marks(p)).pts.length; const t3 = await cardText(p);
+    rec('P22-25', 'G14: chọn 1 tháng bỏ lần đo cũ, tóm tắt và danh sách theo khoảng', nAll === 5 && n1 === 4 && t3.includes('Các lần đo (4)'), `${nAll} → ${n1}`);
+    await p.getByRole('button', { name: /^Ảnh IMG/ }).count();
+    await p.goto(BASE + '/patient'); await p.waitForTimeout(800);
+    await p.evaluate(() => history.back()); await p.waitForTimeout(1500);
+    rec('P22-26', 'Không lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+  // G01, G02, G06: vết không ảnh, vết một lần đo, vết tăng.
+  {
+    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/patient');
+    await mutate(p, TWO_WOUNDS); await go(p, '/wounds/w-kt2');
+    rec('P22-27', 'G01: vết chưa có ảnh: câu trạng thái, không vẽ trục', await has(p, 'Chưa có ảnh vết thương. Bác sĩ sẽ chụp và đo ở lần khám.') && !(await marks(p)));
+    await mutate(p, addImg('IMG-KT03', 'w-kt2', 10, null, '', 'unlabeled')); await go(p, '/wounds/w-kt2');
+    rec('P22-28', 'G01: có ảnh chưa đo: "Chưa có lần đo diện tích. Ảnh đã chụp: 1."', await has(p, 'Chưa có lần đo diện tích. Ảnh đã chụp: 1.') && !(await marks(p)));
+    await mutate(p, addImg('IMG-KT04', 'w-kt2', 8, 6, 'Phần mềm đo trên ảnh')); await go(p, '/wounds/w-kt2');
+    rec('P22-29', 'G02: một lần đo: thẻ số, câu cần thêm lần đo, không đường', await has(p, 'Mới có 1 lần đo. Cần thêm lần đo để thấy sự thay đổi.') && !(await marks(p)));
+    await mutate(p, addImg('IMG-KT05', 'w-kt2', 1, 6.75, 'Phần mềm đo trên ảnh')); await go(p, '/wounds/w-kt2');
+    const up = p.getByText('↑ Tăng 12,5% so với lần đo đầu', { exact: true });
+    const c = (await up.count()) ? await up.evaluate((e) => getComputedStyle(e).color) : '';
+    rec('P22-30', 'G06: tăng: "↑ Tăng 12,5%", cùng màu nhấn, không cảnh báo', c === 'rgb(11, 107, 111)' && !(await has(p, /chậm|cảnh báo|bất thường/i, false)), c);
+    rec('P22-31', 'G21: vết chưa có đánh giá công bố: không chip xu hướng, không chữ "Cải thiện"', !(await cardText(p)).includes('Cải thiện'));
+    rec('P22-32', 'Không lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+  // G20: B05 bác sĩ cùng biểu đồ đường, vạch đợt, ReviewNote và chip đầu đợt giữ nguyên.
+  for (const w of WIDTHS) {
+    const p = await newPage(w); await login(p, 'bacsi'); await go(p, '/wounds/w-1');
+    const m = await marks(p);
+    rec(`P22-33-${w}`, `B05 ${w}px (G20): biểu đồ đường 3 điểm, vạch "Đợt 1"`, !!m && m.pts.length === 3 && m.labels.includes('Đợt 1'));
+    rec(`P22-34-${w}`, `B05 ${w}px: chip "Giảm 33% từ đầu đợt" và mốc 50% của bác sĩ giữ nguyên`, await has(p, 'Giảm 33% từ đầu đợt') && await has(p, /^Mốc \d\d\/\d\d\/\d{4}: chưa tới 50%$/, false));
+    rec(`P22-35-${w}`, `B05 ${w}px: không tràn ngang, không lỗi JS`, (await overflow(p)) === 0 && p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    if (w === 390) {
+      await p.getByText(/^Giai đoạn \d trên \d$/).first().click(); await p.waitForTimeout(300);
+      rec('P22-36', 'G20: ReviewNote cùng chữ, cùng số như trước', await has(p, 'Diện tích 12,5 → 8,4 cm², giảm 33% so với đầu đợt.'));
+      rec('P22-37', 'B05: "Đo 1 ảnh chưa đo" mở ảnh chưa đo mới nhất', (await p.getByRole('button', { name: 'Đo 1 ảnh chưa đo' }).count()) === 1);
+      await p.getByTestId('bieu-do-dien-tich').scrollIntoViewIfNeeded();
+      const box = await p.getByTestId('bieu-do-dien-tich').boundingBox();
+      await p.mouse.click(box.x + m.pts[2].x, box.y + 100); await p.waitForTimeout(300);
+      await p.getByRole('button', { name: 'Mở ảnh để xem hoặc sửa số đo' }).click(); await p.waitForTimeout(1200);
+      rec('P22-38', 'G20: "Mở ảnh để xem hoặc sửa số đo" mở B11 của điểm chọn', /\/images\/IMG0003/.test(p.url()), p.url());
+    }
+    await p.context().close();
+  }
+};
+
 (async () => {
   const b = await chromium.launch();
   const h = helpers(b);
