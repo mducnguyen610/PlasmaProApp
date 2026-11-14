@@ -136,14 +136,15 @@ export default function ConnectDevice() {
       {link.state !== 'connected' ? (
         <>
           {link.state === 'error' && <Notice tone={semantic.danger.tone} icon="alert-circle-outline">{isPatient ? 'Chưa kết nối được máy. Kiểm tra máy đã bật và cáp đã cắm chặt, rồi bấm Kết nối.' : 'Không mở được kết nối. Kiểm tra máy đã bật, cáp đã cắm, rồi bấm Kết nối.'}</Notice>}
-          <Button label="Kết nối" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />
-          {result?.kind === 'acked' && <Button label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={openMonitor} />}
+          <Button key="ket-noi" label="Kết nối" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />
+          {result?.kind === 'acked' && <Button key="theo-doi-phu" label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={openMonitor} />}
         </>
       ) : result?.kind === 'acked' ? (
-        <Button label="Theo dõi phiên điều trị" icon="pulse-outline" onPress={openMonitor} />
+        <Button key="theo-doi" label="Theo dõi phiên điều trị" icon="pulse-outline" onPress={openMonitor} armAfterMs={ARM_AFTER_MS} />
       ) : (
         <>
-          <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={send} disabled={!canSend} loading={sending} reason={reasonText} />
+          {/* Stage 8 (S8-B01): nút nạp hiện đúng chỗ nút Kết nối vừa bấm; chạm lần hai vào chỗ cũ không được gửi liệu trình. */}
+          <Button key="nap" label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={send} disabled={!canSend} loading={sending} reason={reasonText} armAfterMs={ARM_AFTER_MS} />
           {result && canSend && !noRetry && <Button label="Gửi lại" variant="secondary" icon="refresh-outline" onPress={send} />}
         </>
       )}
@@ -256,6 +257,9 @@ export default function ConnectDevice() {
 
 /** Cùng ngưỡng hiển thị với T02 (session-monitor.tsx). */
 const STALE_AFTER_SEC = 5;
+// Stage 8 (S8-B01, S8-B02): nút ở chân màn đổi chỗ cho nhau sau Kết nối và sau ACK. Lần chạm trong 800 ms đầu bị bỏ qua để chạm đúp
+// không gửi liệu trình hay mở T02 ngoài ý muốn. 800 ms: gấp hơn hai lần ngưỡng chạm đúp mặc định 300 ms của Android; đề xuất, chưa thử người dùng.
+const ARM_AFTER_MS = 800;
 const STEPS = ['Kết nối máy', 'Nạp liệu trình', 'Điều trị'];
 /** Bệnh nhân: "điều trị" thay "chiếu" (duyệt 12/11/2026, C40). */
 const PATIENT_STEPS = ['Kết nối máy', 'Nạp liệu trình', 'Điều trị'];
