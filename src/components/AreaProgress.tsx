@@ -7,7 +7,7 @@ import { ImageTile } from '@/components/items';
 import { Text } from '@/components/Text';
 import { Button, Disclosure, Muted, Segmented, SimBadge, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
 import {
-  dayDiff, excludedText, inRange, methodLabel, progressInput, progressSummary, rangeOptions, RANGE_LABEL, rangeStart, splitByMethod, summaryText,
+  dayDiff, excludedText, inRange, noPointsText, methodLabel, progressInput, progressSummary, rangeOptions, RANGE_LABEL, rangeStart, splitByMethod, summaryText,
   type AreaPoint, type RangeKey,
 } from '@/lib/areaProgress';
 import { fmtDate, fmtDateTime, TREND } from '@/lib/format';
@@ -88,7 +88,7 @@ export function AreaProgress({ code, woundId, images, evaluations, today, isDoct
   if (input.points.length === 0) {
     return (
       <View style={{ gap: 8 }}>
-        <Muted>{`Chưa có lần đo diện tích. Ảnh đã chụp: ${mine.length}.`}</Muted>
+        <Muted>{noPointsText(input.excluded, mine.length)}</Muted>
         {strip([])}
         {isDoctor && newestUnmeasured && <TextLink label={`Đo ${input.excluded.unmeasured} ảnh chưa đo`} onPress={() => router.push({ pathname: '/images/[id]', params: { id: newestUnmeasured.id } })} />}
       </View>
