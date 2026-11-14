@@ -10,7 +10,7 @@ import { fmtDate, fmtDateTime, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
 
-// Hồ sơ và lịch sử của bệnh nhân: thông tin cá nhân, bác sĩ phụ trách, vết thương, ảnh và nhận xét.
+// P2-08 (A27): tiêu đề "Lịch sử và hồ sơ" khớp tên tab "Lịch sử" (câu chữ chờ duyệt). Hồ sơ và lịch sử của bệnh nhân: thông tin cá nhân, bác sĩ phụ trách, vết thương, ảnh và nhận xét.
 export default function PatientHistory() {
   const { data, me } = useStore();
   const { patient, account, woundsOf, imagesOf, sessionsOf } = useLookups();
@@ -22,7 +22,7 @@ export default function PatientHistory() {
   const woundTag = (wid?: string) => (wid ? myWounds.find((x) => x.id === wid)?.code ?? 'Vết không còn trong danh sách' : myWounds.length > 1 ? 'Chưa gắn vết thương' : '');
   const recent = p.deviceId ? [...sessionsOf(p.deviceId)].sort((a, b) => b.start.localeCompare(a.start)).slice(0, 5) : [];
   return (
-    <Screen header={<Header title="Hồ sơ và lịch sử" subtitle={`${p.name} · ${p.code}`} />}>
+    <Screen header={<Header title="Lịch sử và hồ sơ" subtitle={`${p.name} · ${p.code}`} />}>
       {/* P2-07a (R2-07): vết thương lên đầu (việc hay làm hơn), rồi buổi điều trị, thông tin cá nhân cuối. */}
       <SectionTitle icon="bandage-outline">Vết thương đang theo dõi</SectionTitle>
       <ListCard>
