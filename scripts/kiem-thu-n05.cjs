@@ -80,7 +80,7 @@ const KEY = 'plasmapro.demo.v2';
     const a2 = await trip('so-sanh', () => p.getByText('So sánh', { exact: true }).click(), async (u) => u.startsWith('/compare/w-1'));
     const a3 = await trip('dot', () => p.getByTestId('dong-dot-dieu-tri').click(), async (u) => u.startsWith('/wound-history/w-1/dot-dieu-tri') && await has(p, 'Mức năng lượng') && await has(p, /^Giai đoạn \d+ trên \d+$/, false));
     const nTl = Number(((await p.getByText(/^Lịch sử vết thương \(\d+\)$/).innerText()).match(/\d+/) || [])[0]);
-    const a4 = await trip('lich-su', () => p.getByTestId('dong-lich-su').click(), async (u) => u.startsWith('/wound-history/w-1/dong-thoi-gian') && (await p.getByTestId('muc-lich-su').count()) === Math.min(nTl, 10));
+    const a4 = await trip('lich-su', () => p.getByTestId('dong-lich-su').click(), async (u) => /^\/wound-history\/w-1(\?|$)/.test(u) && u.includes('tab=lich-su') && await has(p, /^Ảnh \(\d+\)$/, false) && (await p.getByTestId('muc-lich-su').count()) === Math.min(nTl, 10));
     const a5 = await trip('nhan-xet', () => p.getByText(/^Tất cả \(\d+\)$/).click(), async (u) => u.includes('loc=danh-gia'));
     const a6 = await trip('xem-day-du', () => p.getByText('Xem đầy đủ', { exact: true }).click(), async (u) => u.startsWith('/wound-history/w-1/ban-ghi/') && u.includes('loai=danh-gia'));
     const a7 = await trip('anh', () => p.getByTestId('o-anh').first().click(), async (u) => u.startsWith('/wound-history/w-1/anh/'));
@@ -104,7 +104,7 @@ const KEY = 'plasmapro.demo.v2';
   {
     const p = await newPage(); await login(p, 'benhnhan2');
     const blocked = [];
-    for (const u of ['/wounds/w-1', '/wound-history/w-1/dot-dieu-tri', '/wound-history/w-1/dong-thoi-gian']) { await go(p, u); blocked.push(!(await has(p, 'Cẳng chân trái, mặt trước', false)) && !(await has(p, 'Nguyễn Văn A', false))); }
+    for (const u of ['/wounds/w-1', '/wound-history/w-1/dot-dieu-tri', '/wound-history/w-1?tab=lich-su']) { await go(p, u); blocked.push(!(await has(p, 'Cẳng chân trái, mặt trước', false)) && !(await has(p, 'Nguyễn Văn A', false))); }
     rec('N05-09', 'Bệnh nhân khác không xem được N05, Đợt điều trị, Lịch sử vết thương của BN001', blocked.every(Boolean), blocked.join('/'));
     await p.context().close();
   }
@@ -124,7 +124,7 @@ const KEY = 'plasmapro.demo.v2';
   for (const w of [320, 360, 390, 768]) {
     const bad = [];
     const p = await newPage({ w, h: 740 }); await login(p, 'benhnhan');
-    for (const u of ['/wounds/w-1', '/wound-history/w-1/dot-dieu-tri', '/wound-history/w-1/dong-thoi-gian', '/wound-history/w-1?tab=dien-tich']) { await go(p, u); const o = await overflow(p); if (o) bad.push(`${u}:${o}`); }
+    for (const u of ['/wounds/w-1', '/wound-history/w-1/dot-dieu-tri', '/wound-history/w-1?tab=lich-su', '/wound-history/w-1?tab=dien-tich']) { await go(p, u); const o = await overflow(p); if (o) bad.push(`${u}:${o}`); }
     await go(p, '/wounds/w-1');
     const yArea = await yOf(p, 'Lần đo gần nhất');
     if (yArea == null || yArea > 740) bad.push(`diện tích ở ${yArea}`);

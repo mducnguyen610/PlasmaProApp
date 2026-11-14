@@ -35,7 +35,7 @@ export function woundTimelineItems({ images, evaluations, sessions, doctorName }
   ].sort((a, b) => b.at.localeCompare(a.at) || a.key.localeCompare(b.key));
 }
 
-/** expanded: hiện danh sách ngay, không bọc mục thu gọn (màn "Lịch sử vết thương" riêng của N05). Mặc định như cũ. */
+/** expanded: hiện danh sách ngay, không bọc mục thu gọn (thẻ Lịch sử của bệnh nhân ở /wound-history). Mặc định như cũ. */
 export function WoundTimeline({ expanded, ...input }: TimelineInput & { expanded?: boolean }) {
   const [all, setAll] = useState(false);
   const items = woundTimelineItems(input);

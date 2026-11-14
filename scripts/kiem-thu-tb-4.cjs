@@ -278,10 +278,14 @@ const KEY = 'plasmapro.demo.v2';
     await p.context().close();
     const p2 = await newPage(); await login(p2, 'benhnhan');
     await p2.evaluate(([k, d]) => localStorage.setItem(k, JSON.stringify(d)), [KEY, after]);
+    // N05: bộ lọc mặc định "Tất cả" của bệnh nhân là dòng thời gian P2-07a (không có phiên bản đợt); danh sách B08 xem ở "Chỉ đánh giá".
     await go(p2, '/wound-history/w-1');
+    const tl = await p2.getByTestId('muc-lich-su').evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
+    const noDraft = !tl.some((l) => /phiên bản 3/.test(l)) && !(await has(p2, 'Nháp, chưa áp dụng'));
+    const tlEvalN = tl.filter((l) => l.startsWith('Nhận xét')).length;
+    await go(p2, '/wound-history/w-1?tab=lich-su&loc=danh-gia');
     const labels = (await rowLabels(p2, /Mở chi tiết$/)).join(' | ');
-    const noDraft = !/phiên bản 3/.test(labels) && !(await has(p2, 'Nháp, chưa áp dụng'));
-    const evalN = (labels.match(/^Đánh giá|\| Đánh giá/g) || []).length;
+    const evalN = (labels.match(/^Đánh giá|\| Đánh giá/g) || []).length === 1 && tlEvalN === 1 ? 1 : -1;
     const noSessFilter = (await p2.getByRole('radio', { name: /^Buổi điều trị/ }).count()) === 0;
     await go(p2, '/wound-history/w-1/ban-ghi/e-noibo?loai=danh-gia');
     const hiddenEval = await title(p2);

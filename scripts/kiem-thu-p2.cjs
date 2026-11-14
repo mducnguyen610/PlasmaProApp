@@ -354,7 +354,7 @@ GROUPS['p2-3'] = async (b, h) => {
     await p.getByRole('button', { name: /^Ảnh chụp .*Chưa đo/ }).click(); await p.waitForTimeout(1200);
     rec('P23-06', 'Chạm ảnh chưa đo mở ảnh đó (IMG0004)', /\/images\/IMG0004/.test(p.url()), p.url());
     await go(p, '/wounds/w-1');
-    // N05 trang tổng quan: "Lịch sử vết thương (n)" là dòng mở màn riêng (dong-thoi-gian), danh sách giữ nguyên.
+    // N05 trang tổng quan: "Lịch sử vết thương (n)" mở thẻ Lịch sử của /wound-history (cạnh thẻ Ảnh), bộ lọc Tất cả là danh sách P2-07a giữ nguyên.
     const tl = p.getByText(/^Lịch sử vết thương \(\d+\)$/);
     rec('P23-07', 'N05 có dòng "Lịch sử vết thương (n)", danh sách không nằm trên N05', (await tl.count()) === 1 && (await p.getByTestId('muc-lich-su').count()) === 0);
     await tl.click(); await p.waitForTimeout(1200);
@@ -363,7 +363,7 @@ GROUPS['p2-3'] = async (b, h) => {
     // Đánh giá chưa công bố không vào lịch sử của bệnh nhân; buổi có woundId đúng vết thì vào.
     await mutate(p, `const e = d.evaluations.find((x) => x.woundId === 'w-1'); d.evaluations.push({ ...e, id: 'e-kt-noi-bo', date: '2026-11-12', visibleToPatient: false });
       const pt = d.patients.find((x) => x.id === 'p-1'); const s0 = d.sessions.find((x) => x.deviceId === pt.deviceId); d.sessions.push({ ...s0, sessionId: 'kt-gan-vet', start: '2026-11-12T08:00:00.000Z', woundId: 'w-1' }); d.sessions.push({ ...s0, sessionId: 'kt-khong-gan', start: '2026-11-12T09:00:00.000Z', durationMin: 7, woundId: undefined });`);
-    await go(p, '/wound-history/w-1/dong-thoi-gian');
+    await go(p, '/wound-history/w-1?tab=lich-su');
     const items2 = await p.getByTestId('muc-lich-su').evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
     rec('P23-09', 'Buổi không gắn vết (7 phút, minh họa) không đưa vào lịch sử của vết (A26)', !items2.some((l) => l.includes('Buổi điều trị 7 phút')));
     rec('P23-10', 'Buổi có woundId đúng vết vào lịch sử; đánh giá nội bộ không vào', items2.some((l) => l.includes('16:00 12/11/2026') || l.includes('15:00 12/11/2026') || l.includes('08:00 12/11/2026')) && items2.filter((l) => l.startsWith('Nhận xét')).length === items.filter((l) => l.startsWith('Nhận xét')).length, `${items.length} → ${items2.length}`);

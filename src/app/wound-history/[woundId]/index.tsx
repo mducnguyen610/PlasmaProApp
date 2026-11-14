@@ -4,6 +4,7 @@ import { useWindowDimensions, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { AreaProgress } from '@/components/AreaProgress';
+import { WoundTimeline } from '@/components/WoundTimeline';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { HistoryPhotoTile, KIND_META, SaveStateChip, SESSION_SOURCE, SESSION_STATUS, photoDay } from '@/components/history';
@@ -45,6 +46,7 @@ export default function WoundHistory() {
   const tab: Tab = legacy ? 'lich-su' : params.tab === 'anh' || params.tab === 'dien-tich' ? params.tab : 'lich-su';
   const rawFilter = (legacy ? params.tab : params.loc) as Filter | undefined;
   const filter: Filter = rawFilter === 'danh-gia' || (rawFilter === 'buoi' && isDoctor) ? rawFilter : 'kham';
+  const patientTimeline = !isDoctor && filter === 'kham';
   const measureView: Measure = params.xem === 'danh-sach' ? 'danh-sach' : 'bieu-do';
 
   const images = imagesOf(w.id);
@@ -100,18 +102,24 @@ export default function WoundHistory() {
               value={filter}
               onChange={(v) => router.setParams({ tab: 'lich-su', loc: v })}
               options={[
-                { value: 'kham' as const, label: 'Khám và đánh giá' },
+                { value: 'kham' as const, label: isDoctor ? 'Khám và đánh giá' : 'Tất cả' },
                 { value: 'danh-gia' as const, label: `Chỉ đánh giá (${evalCount})` },
                 ...(isDoctor ? [{ value: 'buoi' as const, label: `Buổi điều trị (${sessionCount})` }] : []),
               ]}
             />
           ) : null}
+          {/* N05: bệnh nhân mở "Lịch sử vết thương" từ trang tổng quan, cạnh thẻ Ảnh và Số đo. Bộ lọc "Tất cả" dùng dòng thời gian P2-07a
+              (ảnh và lần đo, nhận xét đã công bố, buổi có woundId đúng vết, A26) như trước đây trên N05; "Chỉ đánh giá" giữ danh sách B08. */}
+          {patientTimeline && (
+            <WoundTimeline expanded images={images} evaluations={data.evaluations.filter((e) => e.woundId === w.id && e.visibleToPatient)}
+              sessions={dev ? sessionsOf(dev.id).filter((s) => s.woundId === w.id) : []} doctorName={(id) => account(id)?.name} />
+          )}
           {filter === 'buoi' && !dev && <Muted>Bệnh nhân chưa được giao thiết bị.</Muted>}
-          {shown.length === 0 && !(filter === 'buoi' && !dev) && (
+          {!patientTimeline && shown.length === 0 && !(filter === 'buoi' && !dev) && (
             <Empty icon="time-outline" text={filter === 'danh-gia' ? 'Chưa có đánh giá.' : filter === 'buoi' ? 'Chưa có buổi nào được ghi.' : 'Vết thương này chưa có lịch sử khám, ảnh hoặc đợt điều trị.'} />
           )}
           {/* Buổi điều trị nhiều (mỗi ngày một buổi): hiện 30 buổi gần nhất như trước. */}
-          {(filter === 'buoi' ? shown.slice(0, 30) : shown).map((t, i) => (
+          {(patientTimeline ? [] : filter === 'buoi' ? shown.slice(0, 30) : shown).map((t, i) => (
             <View key={`${t.kind}-${t.id}-${i}`}>
               {i > 0 && <Divider />}
               {timelineRow(t)}

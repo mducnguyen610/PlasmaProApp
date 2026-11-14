@@ -25,7 +25,7 @@ const CAVEAT = 'Số đo cho biết kích thước vết thương. Việc vết 
  * - Lịch sử đo: /wound-history/[woundId]?tab=dien-tich (biểu đồ đầy đủ, dải ảnh, danh sách lần đo).
  * - So sánh ảnh: /compare/[woundId]. Mở ảnh: /wound-history/[woundId]/anh/[imageId].
  * - Đợt điều trị: /wound-history/[woundId]/dot-dieu-tri. Nhận xét: /wound-history/[woundId]?tab=lich-su&loc=danh-gia.
- * - Lịch sử vết thương: /wound-history/[woundId]/dong-thoi-gian (cùng dòng thời gian P2-07a, có buổi điều trị của vết).
+ * - Lịch sử vết thương: /wound-history/[woundId] (thẻ Lịch sử cạnh thẻ Ảnh, Số đo; bộ lọc Tất cả là dòng thời gian P2-07a).
  * Số đo, phần trăm và câu chữ lấy nguyên từ areaProgress (cùng quy tắc biểu đồ N05 trước đây), không tính lại theo cách khác.
  */
 export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patient; wound: Wound }) {
@@ -139,7 +139,7 @@ export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patie
         <Divider />
         <LinkRow testID="dong-lich-su" icon="git-commit-outline" tone="teal" title={`Lịch sử vết thương (${timeline.length})`}
           sub={timeline[0] ? `Gần nhất: ${timeline[0].kind.toLowerCase()} ${timeline[0].sub?.split(' · ')[0] ?? ''}` : 'Chưa có mục nào'}
-          onPress={() => router.push({ pathname: '/wound-history/[woundId]/dong-thoi-gian', params: { woundId: w.id } })} />
+          onPress={() => router.push({ pathname: '/wound-history/[woundId]', params: { woundId: w.id, tab: 'lich-su' } })} />
       </Card>
 
       {/* F. Nhận xét của bác sĩ: nhận xét mới nhất đã công bố, xem trước 3 dòng. */}
