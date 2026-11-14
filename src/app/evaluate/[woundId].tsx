@@ -1,16 +1,16 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, View, type HostInstance, type ScrollViewInstance } from 'react-native';
+import { Pressable, useWindowDimensions, View, type HostInstance, type ScrollViewInstance } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
-import { Button, Card, Choices, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, SwitchRow, TextLink, WoundPhoto } from '@/components/ui';
+import { Button, Card, Choices, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, StepRow, SwitchRow, TextLink, WoundPhoto } from '@/components/ui';
 import { SEVERITY } from '@/lib/access';
 import { assessmentError, assessmentSummary, EXUDATE, HELP, INFECTION, PERCENT_BANDS, PRESSURE, PRESSURE_STAGES, WOUND_TYPES, woundAge } from '@/lib/assessment';
-import { evaluationProblems, type EvalProblem } from '@/lib/evaluationCheck';
+import { evaluationProblems, nextReviewError, type EvalProblem } from '@/lib/evaluationCheck';
 import { fmtDate, TREND } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { notify } from '@/lib/dialog';
@@ -56,8 +56,11 @@ export default function Evaluate() {
   // không (không tự làm, QĐ-5 giữ nguyên). saving chặn lưu trùng khi bấm nhiều lần.
   const saving = useRef(false);
   const [saved, setSaved] = useState<{ reportIds: string[] } | null>(null);
-  // Bổ sung Đợt 4: nhóm đang mở do màn điều khiển, để khi lưu thiếu trường thì mở đúng nhóm và đưa tới trường lỗi.
-  const [openGroups, setOpenGroups] = useState<[boolean, boolean, boolean]>([true, false, false]);
+  // Giai đoạn 2 giao diện theo tác vụ (QĐ-TB-1 = B): ba nhóm trường cũ thành ba bước, thêm bước 4 "Xem lại và lưu".
+  // Mọi giá trị vẫn nằm ở state của màn nên chuyển bước, quay lại không mất dữ liệu. `seen`: bước đã mở, để thanh bước chỉ báo
+  // thiếu ở bước bác sĩ đã xem (hoặc sau khi bấm Lưu).
+  const [step, setStep] = useState<StepIndex>(0);
+  const [seen, setSeen] = useState<boolean[]>([true, false, false, false]);
   // P1-03a: lỗi tại từng trường (nhiều trường cùng lúc) và danh sách mục cần sửa của lần bấm Lưu gần nhất.
   const [fieldErrs, setFieldErrs] = useState<Partial<Record<FieldKey, string>>>({});
   const [problems, setProblems] = useState<EvalProblem[]>([]);
@@ -72,6 +75,10 @@ export default function Evaluate() {
     setProblems((ps) => ps.filter((x) => x.key !== k));
   };
   const [done, setDone] = useState(false);
+  // Màn hẹp (dưới 400 px): "Bước trước" chỉ còn biểu tượng để nút chính không xuống nhiều dòng; nhãn đọc màn hình giữ "Bước trước".
+  const narrow = useWindowDimensions().width < 400;
+  // Đổi bước thì về đầu bước; nếu đang đưa tới một trường (scrollTo) thì hiệu ứng dưới cuộn tiếp tới trường đó.
+  useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: false }); }, [step]);
   const allowLeave = useDiscardGuard(dirty && !done);
   // Cuộn tới trường lỗi một lần cho mỗi lần bấm Lưu (phụ thuộc fieldErr.at), sau khi nhóm đã mở và trường đã hiện.
   useEffect(() => {
@@ -106,27 +113,45 @@ export default function Evaluate() {
     severity && 'mức độ', trend && 'diễn biến', characteristics.trim() && 'đặc điểm', symptoms.trim() && 'triệu chứng',
     instructions.trim() && 'hướng dẫn', nextReview.trim() && 'ngày tái đánh giá',
   ].filter(Boolean) as string[];
-  const toggle = (g: 0 | 1 | 2) => (next: boolean) => setOpenGroups((o) => o.map((v, i) => (i === g ? next : v)) as [boolean, boolean, boolean]);
+  const groups = [g1, g2, g3];
+  // Bước đang mở không đánh dấu (lỗi đã hiện tại trường); bước khác chỉ đánh dấu khi bác sĩ đã mở nó.
+  const marks = STEPS.map((_, i) => (i === 3 || i === step || !seen[i] ? null : groups[i].missing.length ? 'missing' : 'ok')) as ('ok' | 'missing' | null)[];
+  const goStep = (n: StepIndex) => { setStep(n); setSeen((v) => (v[n] ? v : v.map((x, i) => x || i === n))); };
   const errOf = (k: FieldKey) => fieldErrs[k];
   const anchor = (k: FieldKey) => anchors[k];
 
   // Quy tắc và câu báo lỗi giữ nguyên; chỉ thêm việc chỉ ra trường lỗi (mở nhóm, cuộn tới, ghi lỗi tại trường).
-  const fail = (msg: string) => { setErr(msg); setProblems([]); };
-  // P1-03a: báo mọi mục cần sửa trong một lượt: mở mọi nhóm có mục, ghi lỗi tại từng trường, cuộn tới mục đầu tiên.
-  const failAll = (list: EvalProblem[]) => {
+  const fail = (msg: string) => { setErr(msg); setProblems([]); scrollRef.current?.scrollTo({ y: 0, animated: true }); };
+  // P1-03a: báo mọi mục cần sửa trong một lượt, ghi lỗi tại từng trường. Giai đoạn 2: đưa tới bước chứa mục đầu tiên rồi cuộn tới trường;
+  // các mục ở bước khác hiện thành liên kết "Tới … (bước n)" và thanh bước đánh dấu "!" ở bước còn thiếu.
+  const failAll = (list: EvalProblem[], scope: 'save' | 'step' = 'save') => {
     const keyed = list.filter((x): x is EvalProblem & { key: FieldKey } => !!x.key);
-    setErr(list.length === 1 ? list[0].msg : `Còn ${list.length} mục cần sửa trước khi lưu: ${list.map((x) => x.label).join(', ')}.`);
+    setErr(list.length === 1 ? list[0].msg : scope === 'save'
+      ? `Còn ${list.length} mục cần sửa trước khi lưu: ${list.map((x) => `${x.label}${x.key ? ` (bước ${GROUP_OF[x.key as FieldKey] + 1})` : ''}`).join(', ')}.`
+      : `Còn ${list.length} mục cần điền ở bước này: ${list.map((x) => x.label).join(', ')}.`);
     setProblems(list);
-    setFieldErrs(Object.fromEntries(keyed.map((x) => [x.key, x.msg])));
-    const groups = new Set(keyed.map((x) => GROUP_OF[x.key]));
-    setOpenGroups((o) => o.map((v, i) => v || groups.has(i as 0 | 1 | 2)) as [boolean, boolean, boolean]);
-    if (keyed[0]) setScrollTo((x) => ({ key: keyed[0].key, at: (x?.at ?? 0) + 1 }));
+    setFieldErrs((f) => ({ ...f, ...Object.fromEntries(keyed.map((x) => [x.key, x.msg])) }));
+    if (scope === 'save') setSeen((v) => v.map((x, i) => x || keyed.some((k) => GROUP_OF[k.key] === i)));
+    if (keyed[0]) { goStep(GROUP_OF[keyed[0].key]); setScrollTo((x) => ({ key: keyed[0].key, at: (x?.at ?? 0) + 1 })); }
+    else scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
   const jumpTo = (key: FieldKey) => {
-    const g = GROUP_OF[key];
-    setOpenGroups((o) => (o[g] ? o : (o.map((v, i) => v || i === g) as [boolean, boolean, boolean])));
+    goStep(GROUP_OF[key]);
     setScrollTo((x) => ({ key, at: (x?.at ?? 0) + 1 }));
   };
+  // "Tiếp": kiểm các mục bắt buộc của riêng bước đang mở bằng đúng hàm kiểm khi lưu (evaluationProblems), không thêm quy tắc.
+  // Bước đủ thì sang bước sau; thiếu thì ở lại, báo lỗi tại trường. Bước 3 chỉ kiểm định dạng ngày tái đánh giá như trước.
+  const next = () => {
+    if (step === 3) return;
+    const list = evaluationProblems(assessmentError, a, severity, nextReview).filter((x) => x.key && GROUP_OF[x.key as FieldKey] === step);
+    if (list.length) return failAll(list, 'step');
+    // Mục còn thiếu ở bước khác (từ lần bấm Lưu trước) vẫn giữ trong danh sách "Tới …".
+    const rest = problems.filter((x) => x.key && GROUP_OF[x.key as FieldKey] !== step);
+    setProblems(rest);
+    setErr(rest.length ? `Còn ${rest.length} mục cần sửa trước khi lưu: ${rest.map((x) => `${x.label} (bước ${GROUP_OF[x.key as FieldKey] + 1})`).join(', ')}.` : null);
+    goStep((step + 1) as StepIndex);
+  };
+  const back = () => { if (step > 0) goStep((step - 1) as StepIndex); };
   const save = async () => {
     // Quy tắc không đổi: assessmentError (gọi lại nhiều lần trong evaluationCheck), mức độ bắt buộc, ngày tái đánh giá dd/mm/yyyy và có thật.
     const list = evaluationProblems(assessmentError, a, severity, nextReview);
@@ -173,127 +198,190 @@ export default function Evaluate() {
     );
   }
 
+  const saveLabel = visible ? 'Lưu và công bố cho bệnh nhân' : 'Lưu đánh giá (chỉ bác sĩ)';
+  const g = step < 3 ? groups[step] : null;
+  const val = (v?: string) => (v && v.trim() ? v.trim() : 'Không ghi');
   return (
-    <Screen scrollRef={scrollRef} header={<Header back title="Đánh giá tình trạng" />}>
+    <Screen scrollRef={scrollRef} header={<Header back title="Đánh giá tình trạng" />}
+      footer={
+        // Giai đoạn 2: nút điều hướng luôn thấy ở chân màn. "Bước trước" khác tên với nút "Quay lại" trên đầu (rời màn, có hỏi nếu đã nhập); bước 1 không có "Bước trước".
+        <View style={{ flexDirection: 'row', gap: space.s }}>
+          {step > 0 ? (narrow
+            ? <Pressable onPress={back} accessibilityRole="button" accessibilityLabel="Bước trước" style={({ pressed }) => ({ width: size.button, height: size.button, borderRadius: size.button / 2, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}>
+                <Ionicons name="chevron-back" size={22} color={C.primary} />
+              </Pressable>
+            : <Button label="Bước trước" icon="chevron-back" variant="secondary" onPress={back} style={{ flexShrink: 0 }} />) : null}
+          {step < 3
+            ? <Button label={`Tiếp: ${STEPS[step + 1]}`} icon="chevron-forward" onPress={next} style={{ flex: 1 }} />
+            : <Button label={saveLabel} icon="save-outline" onPress={save} disabled={imageMismatch} style={{ flex: 1 }} />}
+        </View>
+      }>
       <ClinicalContext patient={p} wound={w} />
       {imageMismatch && <Notice tone="red" icon="close-circle-outline">{`Ảnh ${imageId} không thuộc ${w.code} của bệnh nhân này. Không lưu được đánh giá từ đường dẫn này; mở lại từ màn vết thương.`}</Notice>}
-      <Card>
-        {/* R-05, UX-16 (Đợt 10): ảnh tham chiếu nhỏ, ngày chụp, diện tích bác sĩ đo. Cùng dữ liệu như trước. */}
-        {img ? (
-          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-            <WoundPhoto image={img} style={{ width: 88, height: 66, borderRadius: 10 }} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ fontWeight: '700', color: C.text }}>Ảnh tham chiếu {img.id}</Text>
-              <Muted>{img.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : `Chụp ${fmtDate(img.captureDate)}`}</Muted>
-            </View>
-          </View>
-        ) : <InfoRow label="Ảnh tham chiếu" value="Không có" />}
-        <InfoRow label="Diện tích bác sĩ đo" value={formatAreaDisplay(img?.areaCm2 ?? null)} />
-        <Muted>Ứng dụng chỉ lưu nhận định của bác sĩ; không tự suy luận tình trạng hay đề xuất liệu trình.</Muted>
-        {/* P1-03b: xem lại lần đánh giá trước của cùng vết, chỉ đọc. Không có nút chép, không điền thêm trường nào. */}
-        {lastEval ? (
-          <>
-            <Divider />
-            <Disclosure title={`Lần đánh giá trước ${fmtDate(lastEval.date)}`} summary={`${account(lastEval.doctorId)?.name ?? 'Bác sĩ không rõ'} · chỉ để tham khảo, không tự điền`}>
-              <View testID="lan-danh-gia-truoc" style={{ gap: space.xs }}>
-                <InfoRow label="Mức độ" value={lastEval.severity ? SEVERITY[lastEval.severity].label : 'Không ghi'} />
-                <InfoRow label="Diễn biến" value={TREND[lastEval.trend].label} />
-                <InfoRow label="Phân loại" value={lastEval.assessment ? assessmentSummary(lastEval.assessment) : 'Không ghi'} />
-                <InfoRow label="Diện tích lúc đó" value={formatAreaDisplay(lastEval.areaCm2)} />
-                {lastEval.characteristics ? <InfoRow label="Đặc điểm" value={lastEval.characteristics} /> : null}
-                {lastEval.symptoms ? <InfoRow label="Triệu chứng" value={lastEval.symptoms} /> : null}
-                <InfoRow label="Hướng dẫn" value={lastEval.instructions || 'Không ghi'} />
-                <Muted>Giá trị lần trước không được chép vào biểu mẫu. Bác sĩ nhập lại theo nhận định hôm nay.</Muted>
-              </View>
-            </Disclosure>
-          </>
-        ) : null}
-      </Card>
-      {/* PP-09: ba nhóm Disclosure theo thứ tự trường cũ; nhóm đầu mở sẵn. Giá trị nằm ở state của màn nên đóng mở nhóm không mất dữ liệu.
-          Bổ sung Đợt 4: ba nhóm chung một thẻ, tách bằng đường kẻ, khoảng cách trong nhóm 8 (thang space) để màn ngắn hơn; nhóm do màn điều khiển. */}
-      <Card>
-        <Disclosure title="Phân loại vết thương" summary={groupSummary(g1)} summaryTone={g1.missing.length ? C.amber : undefined} open={openGroups[0]} onToggle={toggle(0)}>
-          <View style={{ gap: space.s }}>
-            <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '700' }}>Bắt buộc</Text>
-            <InfoRow label="Tuổi vết thương (tự tính)" value={`${woundAge(w.startDate, todayIso())}, từ ${w.startDate.split('-').reverse().join('/')}`} />
-            <Q label="Loại vết thương" required help={HELP.woundType} error={errOf('woundType')} anchor={anchor('woundType')}><Choices value={a.woundType ?? ''} onChange={set('woundType')} options={WOUND_TYPES.map((v) => ({ value: v, label: v }))} /></Q>
-            {/* P0 DS-04: giá trị điền sẵn từ lần trước được ghi rõ nguồn cho tới khi bác sĩ chọn lại. */}
-            {prevEval && prev?.woundType && a.woundType === prev.woundType && (a.woundType !== PRESSURE || a.pressureStage === prev.pressureStage) ? (
-              <Muted>{`Lấy từ đánh giá ngày ${fmtDate(prevEval.date)}${a.woundType === PRESSURE && prev.pressureStage ? ' (cả giai đoạn)' : ''}. Kiểm tra lại trước khi lưu.`}</Muted>
-            ) : null}
-            {a.woundType === PRESSURE && (
-              <Q label="Giai đoạn (NPIAP)" required help={HELP.pressureStage} error={errOf('pressureStage')} anchor={anchor('pressureStage')}><Choices value={a.pressureStage ?? ''} onChange={set('pressureStage')} options={PRESSURE_STAGES.map((v) => ({ value: v, label: v }))} /></Q>
-            )}
-            <Q label="Dịch tiết" required help={HELP.exudate} error={errOf('exudate')} anchor={anchor('exudate')}><Choices value={a.exudate ?? ''} onChange={set('exudate')} options={EXUDATE.map((v) => ({ value: v, label: v }))} /></Q>
-            <Q label="Dấu hiệu nhiễm trùng" required help={HELP.infection} error={errOf('infection')} anchor={anchor('infection')}><Choices value={a.infection ?? ''} onChange={set('infection')} options={INFECTION.map((v) => ({ value: v, label: v }))} /></Q>
-            {/* P1-03c (QĐ-P1-5 A): câu không bắt buộc gom xuống cụm "Bổ sung"; câu chữ và lựa chọn giữ nguyên. */}
-            <Divider />
-            <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '700' }}>Bổ sung (không bắt buộc)</Text>
-            <Q label="Mô hạt" help={HELP.granulation}><Choices value={a.granulation ?? ''} onChange={set('granulation')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
-            <Q label="Biểu mô hóa" help={HELP.epithelial}><Choices value={a.epithelial ?? ''} onChange={set('epithelial')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
-            <Muted>Danh mục là bản nháp cho demo, cần bác sĩ trong nhóm chọn thang đánh giá chính thức.</Muted>
-          </View>
-        </Disclosure>
-        <Divider />
-        <Disclosure title="Mức độ và triệu chứng" summary={groupSummary(g2)} summaryTone={g2.missing.length ? C.amber : undefined} open={openGroups[1]} onToggle={toggle(1)}>
-          <View style={{ gap: space.s }}>
-            <View ref={anchor('severity')} style={{ gap: space.xs }}>
-              <Text style={{ fontWeight: '700', fontSize: 17 }}>Mức độ vết thương</Text>
-              {errOf('severity') ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600', fontSize: T.caption }}>{errOf('severity')}</Text> : null}
-              <Choices<Severity | ''> value={severity} onChange={(v) => { setSeverity(v); clearErr('severity'); }} options={(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))} />
-            </View>
-            <Muted>Bác sĩ chọn mức độ sau khi đánh giá; mức độ không tự tính từ diện tích hay diễn biến.</Muted>
-            <Field optional label="Đặc điểm vết thương" value={characteristics} onChangeText={setCharacteristics} multiline placeholder="Nền, bờ, da xung quanh, dịch tiết, mô hạt…" />
-            <Field optional label="Triệu chứng" value={symptoms} onChangeText={setSymptoms} multiline placeholder="Đau, khó chịu…" />
-            <Field optional label="Nguồn thông tin triệu chứng" value={symptomSource} onChangeText={setSymptomSource} />
-          </View>
-        </Disclosure>
-        <Divider />
-        <Disclosure title="Diễn biến và hướng dẫn" summary={groupSummary(g3)} open={openGroups[2]} onToggle={toggle(2)}>
-          <View style={{ gap: space.s }}>
-            <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
-            <View ref={anchor('trend')}>
-              <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
-            </View>
-            <Field optional label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
-            <View ref={anchor('nextReview')}>
-              <Field optional label="Ngày tái đánh giá" value={nextReview} onChangeText={(v) => { setNextReview(v); clearErr('nextReview'); }} placeholder="dd/mm/yyyy" error={errOf('nextReview')} />
-            </View>
-          </View>
-        </Disclosure>
-      </Card>
-      {/* R-05, UX-06 (Đợt 10): ai sẽ thấy đánh giá, đặt ngay trên nút Lưu. Mặc định giữ nguyên (QĐ-2 chưa đổi). Nội dung xem trước lấy
-          đúng như trang chủ bệnh nhân (lời dặn, nếu trống thì đặc điểm) và trang vết thương (các trường đã nhập). */}
-      <View style={{ gap: space.s, padding: 14, borderRadius: 14, borderWidth: 2, borderColor: visible ? C.primary : C.cardBorder, backgroundColor: C.card }}>
-        {/* P0 SV-04: tóm tắt các lựa chọn chính ngay trên nút Lưu, sửa thì mở đúng nhóm. Không thêm màn hay hộp xác nhận. */}
-        <View testID="se-luu" style={{ gap: space.xs }}>
-          <Text style={{ fontWeight: '700', color: C.text }}>Sẽ lưu</Text>
-          <SummaryRow label="Vết thương" value={`${w.code} · ${w.location}`} />
-          <SummaryRow label="Mức độ" value={severity ? SEVERITY[severity].label : 'Chưa chọn'} missing={!severity} onEdit={() => jumpTo('severity')} />
-          <SummaryRow label="Diễn biến" value={TREND[trend].label} onEdit={() => jumpTo('trend')} />
-          <SummaryRow label="Loại vết thương" value={a.woundType ? `${a.woundType}${a.woundType === PRESSURE ? `, ${a.pressureStage ?? 'chưa chọn giai đoạn'}` : ''}` : 'Chưa chọn'} missing={!a.woundType || (a.woundType === PRESSURE && !a.pressureStage)} onEdit={() => jumpTo('woundType')} />
-          <SummaryRow label="Nhiễm trùng" value={a.infection ?? 'Chưa chọn'} missing={!a.infection} onEdit={() => jumpTo('infection')} />
-          <SummaryRow label="Ảnh tham chiếu" value={img ? `${img.id}, ${formatAreaDisplay(img.areaCm2)}` : 'Không có'} />
-        </View>
-        <Divider />
-        <SwitchRow label="Bệnh nhân sẽ xem đánh giá này" value={visible} onChange={setVisible} />
-        {visible ? (
-          <>
-            <Text style={{ color: C.text }}>Lời dặn trên trang chủ bệnh nhân: {(instructions.trim() || characteristics.trim()) ? `“${instructions.trim() || characteristics.trim()}”` : 'chưa có lời dặn.'}</Text>
-            {!instructions.trim() && characteristics.trim() ? <Muted>Chưa có hướng dẫn nên trang chủ hiện đặc điểm vết thương thay lời dặn.</Muted> : null}
-            {patientSees.length ? <Muted>Trang vết thương còn hiện: {patientSees.join(', ')}.</Muted> : null}
-          </>
-        ) : <Muted>Chỉ bác sĩ thấy đánh giá này.</Muted>}
-      </View>
+      <StepRow steps={STEPS} step={step + 1} onStep={(n) => goStep((n - 1) as StepIndex)} marks={marks} />
       {err ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{err}</Text> : null}
-      {/* P1-03a: mỗi mục cần sửa là một liên kết mở đúng nhóm và cuộn tới trường. */}
-      {problems.length > 1 ? (
+      {/* P1-03a: mỗi mục cần sửa là một liên kết đưa tới đúng bước và cuộn tới trường. */}
+      {problems.filter((x) => x.key).length > 1 ? (
         <View testID="muc-can-sua" style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space.m }}>
-          {problems.filter((x) => x.key).map((x) => <TextLink key={x.key} label={`Tới ${x.label.toLowerCase()}`} accessibilityLabel={`Tới mục ${x.label}`} onPress={() => jumpTo(x.key as FieldKey)} />)}
+          {problems.filter((x) => x.key).map((x) => <TextLink key={x.key} label={`Tới ${x.label.toLowerCase()} (bước ${GROUP_OF[x.key as FieldKey] + 1})`} accessibilityLabel={`Tới mục ${x.label}, bước ${GROUP_OF[x.key as FieldKey] + 1}`} onPress={() => jumpTo(x.key as FieldKey)} />)}
         </View>
       ) : null}
-      <Button label={visible ? 'Lưu và công bố cho bệnh nhân' : 'Lưu đánh giá (chỉ bác sĩ)'} icon="save-outline" onPress={save} disabled={imageMismatch} reason="Ảnh tham chiếu không thuộc vết thương này." />
+
+      {step === 0 && (
+        <Card>
+          {/* R-05, UX-16 (Đợt 10): ảnh tham chiếu nhỏ, ngày chụp, diện tích bác sĩ đo. Cùng dữ liệu như trước. */}
+          {img ? (
+            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+              <WoundPhoto image={img} style={{ width: 88, height: 66, borderRadius: 10 }} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ fontWeight: '700', color: C.text }}>Ảnh tham chiếu {img.id}</Text>
+                <Muted>{img.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : `Chụp ${fmtDate(img.captureDate)}`}</Muted>
+              </View>
+            </View>
+          ) : <InfoRow label="Ảnh tham chiếu" value="Không có" />}
+          <InfoRow label="Diện tích bác sĩ đo" value={formatAreaDisplay(img?.areaCm2 ?? null)} />
+          <Muted>Ứng dụng chỉ lưu nhận định của bác sĩ; không tự suy luận tình trạng hay đề xuất liệu trình.</Muted>
+          {/* P1-03b: xem lại lần đánh giá trước của cùng vết, chỉ đọc. Không có nút chép, không điền thêm trường nào. */}
+          {lastEval ? (
+            <>
+              <Divider />
+              <Disclosure title={`Lần đánh giá trước ${fmtDate(lastEval.date)}`} summary={`${account(lastEval.doctorId)?.name ?? 'Bác sĩ không rõ'} · chỉ để tham khảo, không tự điền`}>
+                <View testID="lan-danh-gia-truoc" style={{ gap: space.xs }}>
+                  <InfoRow label="Mức độ" value={lastEval.severity ? SEVERITY[lastEval.severity].label : 'Không ghi'} />
+                  <InfoRow label="Diễn biến" value={TREND[lastEval.trend].label} />
+                  <InfoRow label="Phân loại" value={lastEval.assessment ? assessmentSummary(lastEval.assessment) : 'Không ghi'} />
+                  <InfoRow label="Diện tích lúc đó" value={formatAreaDisplay(lastEval.areaCm2)} />
+                  {lastEval.characteristics ? <InfoRow label="Đặc điểm" value={lastEval.characteristics} /> : null}
+                  {lastEval.symptoms ? <InfoRow label="Triệu chứng" value={lastEval.symptoms} /> : null}
+                  <InfoRow label="Hướng dẫn" value={lastEval.instructions || 'Không ghi'} />
+                  <Muted>Giá trị lần trước không được chép vào biểu mẫu. Bác sĩ nhập lại theo nhận định hôm nay.</Muted>
+                </View>
+              </Disclosure>
+            </>
+          ) : null}
+        </Card>
+      )}
+
+      {/* PP-09 và giai đoạn 2: mỗi bước là một nhóm cũ, cùng trường, cùng thứ tự, cùng câu chữ. Tiêu đề bước kèm dòng "Đã điền x/y". */}
+      {g ? (
+        <Card>
+          <View testID="tieu-de-buoc" accessible accessibilityRole="header" accessibilityLabel={`Bước ${step + 1} trên ${STEPS.length}: ${GROUP_TITLES[step]}, ${groupSummary(g)}`} style={{ gap: space.xxs }}>
+            <Text style={{ color: C.textSoft, fontSize: T.small }}>{`Bước ${step + 1} trên ${STEPS.length}`}</Text>
+            <Text style={{ color: C.text, fontWeight: '700', fontSize: T.cardTitle }}>{GROUP_TITLES[step]}</Text>
+            <Text style={{ color: g.missing.length ? C.amber : C.textSoft, fontSize: T.small }}>{groupSummary(g)}</Text>
+          </View>
+          <Divider />
+          {step === 0 && (
+            <View style={{ gap: space.s }}>
+              <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '700' }}>Bắt buộc</Text>
+              <InfoRow label="Tuổi vết thương (tự tính)" value={`${woundAge(w.startDate, todayIso())}, từ ${w.startDate.split('-').reverse().join('/')}`} />
+              <Q label="Loại vết thương" required help={HELP.woundType} error={errOf('woundType')} anchor={anchor('woundType')}><Choices value={a.woundType ?? ''} onChange={set('woundType')} options={WOUND_TYPES.map((v) => ({ value: v, label: v }))} /></Q>
+              {/* P0 DS-04: giá trị điền sẵn từ lần trước được ghi rõ nguồn cho tới khi bác sĩ chọn lại. */}
+              {prevEval && prev?.woundType && a.woundType === prev.woundType && (a.woundType !== PRESSURE || a.pressureStage === prev.pressureStage) ? (
+                <Muted>{`Lấy từ đánh giá ngày ${fmtDate(prevEval.date)}${a.woundType === PRESSURE && prev.pressureStage ? ' (cả giai đoạn)' : ''}. Kiểm tra lại trước khi lưu.`}</Muted>
+              ) : null}
+              {a.woundType === PRESSURE && (
+                <Q label="Giai đoạn (NPIAP)" required help={HELP.pressureStage} error={errOf('pressureStage')} anchor={anchor('pressureStage')}><Choices value={a.pressureStage ?? ''} onChange={set('pressureStage')} options={PRESSURE_STAGES.map((v) => ({ value: v, label: v }))} /></Q>
+              )}
+              <Q label="Dịch tiết" required help={HELP.exudate} error={errOf('exudate')} anchor={anchor('exudate')}><Choices value={a.exudate ?? ''} onChange={set('exudate')} options={EXUDATE.map((v) => ({ value: v, label: v }))} /></Q>
+              <Q label="Dấu hiệu nhiễm trùng" required help={HELP.infection} error={errOf('infection')} anchor={anchor('infection')}><Choices value={a.infection ?? ''} onChange={set('infection')} options={INFECTION.map((v) => ({ value: v, label: v }))} /></Q>
+              {/* P1-03c (QĐ-P1-5 A): câu không bắt buộc gom xuống cụm "Bổ sung"; câu chữ và lựa chọn giữ nguyên. */}
+              <Divider />
+              <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '700' }}>Bổ sung (không bắt buộc)</Text>
+              <Q label="Mô hạt" help={HELP.granulation}><Choices value={a.granulation ?? ''} onChange={set('granulation')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
+              <Q label="Biểu mô hóa" help={HELP.epithelial}><Choices value={a.epithelial ?? ''} onChange={set('epithelial')} options={PERCENT_BANDS.map((v) => ({ value: v, label: v }))} /></Q>
+              <Muted>Danh mục là bản nháp cho demo, cần bác sĩ trong nhóm chọn thang đánh giá chính thức.</Muted>
+            </View>
+          )}
+          {step === 1 && (
+            <View style={{ gap: space.s }}>
+              <View ref={anchor('severity')} style={{ gap: space.xs }}>
+                <Text style={{ fontWeight: '700', fontSize: 17 }}>Mức độ vết thương</Text>
+                {errOf('severity') ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600', fontSize: T.caption }}>{errOf('severity')}</Text> : null}
+                <Choices<Severity | ''> value={severity} onChange={(v) => { setSeverity(v); clearErr('severity'); }} options={(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))} />
+              </View>
+              <Muted>Bác sĩ chọn mức độ sau khi đánh giá; mức độ không tự tính từ diện tích hay diễn biến.</Muted>
+              <Field optional label="Đặc điểm vết thương" value={characteristics} onChangeText={setCharacteristics} multiline placeholder="Nền, bờ, da xung quanh, dịch tiết, mô hạt…" />
+              <Field optional label="Triệu chứng" value={symptoms} onChangeText={setSymptoms} multiline placeholder="Đau, khó chịu…" />
+              <Field optional label="Nguồn thông tin triệu chứng" value={symptomSource} onChangeText={setSymptomSource} />
+            </View>
+          )}
+          {step === 2 && (
+            <View style={{ gap: space.s }}>
+              <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Diễn biến theo nhận định bác sĩ</Text>
+              <View ref={anchor('trend')}>
+                <Choices<Trend> value={trend} onChange={setTrend} options={(['improving', 'stable', 'worsening', 'insufficient'] as const).map((t) => ({ value: t, label: TREND[t].label }))} />
+              </View>
+              <Field optional label="Hướng dẫn tiếp theo" value={instructions} onChangeText={setInstructions} multiline placeholder="Theo dõi, chăm sóc, thay đổi liệu trình nếu có…" />
+              <View ref={anchor('nextReview')}>
+                <Field optional label="Ngày tái đánh giá" value={nextReview} onChangeText={(v) => { setNextReview(v); clearErr('nextReview'); }} placeholder="dd/mm/yyyy" error={errOf('nextReview')} />
+              </View>
+            </View>
+          )}
+        </Card>
+      ) : null}
+
+      {/* Bước 4 "Xem lại và lưu": mọi trường đã nhập theo từng bước, mục bắt buộc còn trống ghi "Chưa chọn", mỗi nhóm có "Sửa".
+          Nút lưu ở chân màn gọi đúng hàm save cũ (một đường lưu, chặn lưu trùng bằng saving). */}
+      {step === 3 && (
+        <>
+          <View testID="se-luu" style={{ gap: space.s }}>
+            <Card>
+              <Text style={{ fontWeight: '700', color: C.text }}>Sẽ lưu</Text>
+              <SummaryRow label="Vết thương" value={`${w.code} · ${w.location}`} />
+              <SummaryRow label="Ảnh tham chiếu" value={img ? `${img.id}, ${formatAreaDisplay(img.areaCm2)}` : 'Không có'} />
+            </Card>
+            <Card>
+              <GroupHead title={`1. ${GROUP_TITLES[0]}`} summary={groupSummary(g1)} warn={g1.missing.length > 0} onEdit={() => goStep(0)} />
+              <SummaryRow label="Loại vết thương" value={a.woundType ? `${a.woundType}${a.woundType === PRESSURE ? `, ${a.pressureStage ?? 'chưa chọn giai đoạn'}` : ''}` : 'Chưa chọn'} missing={!a.woundType || (a.woundType === PRESSURE && !a.pressureStage)} onEdit={() => jumpTo(!a.woundType || a.woundType !== PRESSURE || a.pressureStage ? 'woundType' : 'pressureStage')} />
+              <SummaryRow label="Dịch tiết" value={a.exudate ?? 'Chưa chọn'} missing={!a.exudate} onEdit={() => jumpTo('exudate')} />
+              <SummaryRow label="Nhiễm trùng" value={a.infection ?? 'Chưa chọn'} missing={!a.infection} onEdit={() => jumpTo('infection')} />
+              <SummaryRow label="Mô hạt" value={val(a.granulation)} />
+              <SummaryRow label="Biểu mô hóa" value={val(a.epithelial)} />
+            </Card>
+            <Card>
+              <GroupHead title={`2. ${GROUP_TITLES[1]}`} summary={groupSummary(g2)} warn={g2.missing.length > 0} onEdit={() => goStep(1)} />
+              <SummaryRow label="Mức độ" value={severity ? SEVERITY[severity].label : 'Chưa chọn'} missing={!severity} onEdit={() => jumpTo('severity')} />
+              <SummaryRow label="Đặc điểm" value={val(characteristics)} />
+              <SummaryRow label="Triệu chứng" value={val(symptoms)} />
+              <SummaryRow label="Nguồn triệu chứng" value={val(symptomSource)} />
+            </Card>
+            <Card>
+              <GroupHead title={`3. ${GROUP_TITLES[2]}`} summary={groupSummary(g3)} onEdit={() => goStep(2)} />
+              <SummaryRow label="Diễn biến" value={TREND[trend].label} onEdit={() => jumpTo('trend')} />
+              <SummaryRow label="Hướng dẫn" value={val(instructions)} />
+              <SummaryRow label="Tái đánh giá" value={val(nextReview)} missing={!!nextReviewError(nextReview)} onEdit={() => jumpTo('nextReview')} />
+            </Card>
+          </View>
+          {/* R-05, UX-06 (Đợt 10): ai sẽ thấy đánh giá, đặt ngay trên nút Lưu. Mặc định giữ nguyên (QĐ-2 chưa đổi). Nội dung xem trước lấy
+              đúng như trang chủ bệnh nhân (lời dặn, nếu trống thì đặc điểm) và trang vết thương (các trường đã nhập). */}
+          <View style={{ gap: space.s, padding: 14, borderRadius: 14, borderWidth: 2, borderColor: visible ? C.primary : C.cardBorder, backgroundColor: C.card }}>
+            <SwitchRow label="Bệnh nhân sẽ xem đánh giá này" value={visible} onChange={setVisible} />
+            {visible ? (
+              <>
+                <Text style={{ color: C.text }}>Lời dặn trên trang chủ bệnh nhân: {(instructions.trim() || characteristics.trim()) ? `“${instructions.trim() || characteristics.trim()}”` : 'chưa có lời dặn.'}</Text>
+                {!instructions.trim() && characteristics.trim() ? <Muted>Chưa có hướng dẫn nên trang chủ hiện đặc điểm vết thương thay lời dặn.</Muted> : null}
+                {patientSees.length ? <Muted>Trang vết thương còn hiện: {patientSees.join(', ')}.</Muted> : null}
+              </>
+            ) : <Muted>Chỉ bác sĩ thấy đánh giá này.</Muted>}
+          </View>
+          {imageMismatch ? <Muted>Ảnh tham chiếu không thuộc vết thương này.</Muted> : null}
+        </>
+      )}
     </Screen>
+  );
+}
+
+/** Giai đoạn 2: đầu nhóm ở bước "Xem lại và lưu", kèm "Sửa" đưa về bước đó. */
+function GroupHead({ title, summary, warn, onEdit }: { title: string; summary: string; warn?: boolean; onEdit: () => void }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
+      <View style={{ flex: 1, gap: space.xxs }}>
+        <Text style={{ fontWeight: '700', color: C.text }}>{title}</Text>
+        <Text style={{ color: warn ? C.amber : C.textSoft, fontSize: T.small }}>{summary}</Text>
+      </View>
+      <TextLink label="Sửa" accessibilityLabel={`Sửa bước ${title}`} onPress={onEdit} />
+    </View>
   );
 }
 
@@ -321,8 +409,12 @@ function Q({ label, required, help, error, anchor, children }: { label: string; 
 }
 
 const FIELD_KEYS = ['woundType', 'pressureStage', 'exudate', 'infection', 'severity', 'trend', 'nextReview'] as const;
+/** Giai đoạn 2 (QĐ-TB-1 = B): ba nhóm trường cũ (PP-09) là ba bước, bước 4 xem lại và lưu. Nhãn ngắn cho thanh bước, tên đầy đủ ở đầu bước. */
+const STEPS = ['Phân loại', 'Mức độ', 'Diễn biến', 'Xem lại'];
+const GROUP_TITLES = ['Phân loại vết thương', 'Mức độ và triệu chứng', 'Diễn biến và hướng dẫn'];
+type StepIndex = 0 | 1 | 2 | 3;
 type FieldKey = (typeof FIELD_KEYS)[number];
-/** Nhóm chứa từng trường bắt buộc hoặc có kiểm tra (0, 1, 2 theo thứ tự Disclosure). */
+/** Bước chứa từng trường bắt buộc hoặc có kiểm tra (0, 1, 2 là ba bước nhập, cùng thứ tự nhóm cũ). */
 const GROUP_OF: Record<FieldKey, 0 | 1 | 2> = { woundType: 0, pressureStage: 0, exudate: 0, infection: 0, severity: 1, trend: 2, nextReview: 2 };
 
 /** P0 SV-04: một dòng của thẻ "Sẽ lưu". Mục bắt buộc còn trống ghi chữ "Chưa chọn" màu cảnh báo, không chỉ dựa vào màu. */
