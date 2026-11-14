@@ -11,6 +11,7 @@ import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, Mu
 import { notify } from '@/lib/dialog';
 import { ClosureActions } from '@/components/ClosureActions';
 import { ClinicalContext } from '@/components/ClinicalContext';
+import { WoundTimeline } from '@/components/WoundTimeline';
 import { SEVERITY_ROLE, SOURCE, TREND_ROLE, WOUND } from '@/theme.status';
 import { DoseRows, PhaseList, ProgressRows, ReviewNote } from '@/components/CourseCard';
 import { areaReview, courseProgress, followUpDates, phasesOf, localDay, sessionsForWound } from '@/lib/course';
@@ -166,7 +167,7 @@ export default function WoundDetail() {
           <>
             {/* P2-02c (QĐ-P2-2 A): bệnh nhân xem biểu đồ đường và câu thay đổi trung tính; bỏ chip xanh/cam "Giảm X% từ đầu đợt". */}
             {compareTitle('Tiến triển diện tích')}
-            <AreaProgress code={w.code} woundId={w.id} images={images} evaluations={data.evaluations} today={today} isDoctor={false} accountName={(id) => account(id)?.name} />
+            <AreaProgress code={w.code} woundId={w.id} images={images} evaluations={data.evaluations} today={today} isDoctor={false} accountName={(id) => account(id)?.name} photoStrip />
           </>
         )}
       </Card>
@@ -260,8 +261,17 @@ export default function WoundDetail() {
       {evals.length > 1 && <Button variant="ghost" label={showOldEvals ? 'Ẩn đánh giá cũ' : `Xem đánh giá cũ (${evals.length - 1})`} onPress={() => setShowOldEvals(!showOldEvals)} />}
       </Card>
 
+      {/* P2-07a (R2-07): dòng thời gian chỉ của vết này, phía bệnh nhân. Buổi không gắn vết không đưa vào (A26). */}
+      {!isDoctor && (
+        <Card>
+          <WoundTimeline images={images} evaluations={evals} sessions={dev ? sessionsOf(dev.id).filter((s) => s.woundId === w.id) : []} doctorName={(id) => account(id)?.name} />
+        </Card>
+      )}
+
+      {/* P2-03a: phía bệnh nhân, ảnh nằm ở dải "Ảnh theo thời gian" trong thẻ Tiến triển diện tích; album giữ cho bác sĩ. */}
+      {isDoctor && <>
       <SectionTitle icon="albums-outline">Album ảnh</SectionTitle>
-      {images.length === 0 && <Muted>{isDoctor ? 'Chưa có ảnh. Chụp hoặc tải ảnh lên để bắt đầu.' : 'Chưa có ảnh do bác sĩ chụp.'}</Muted>}
+      {images.length === 0 && <Muted>Chưa có ảnh. Chụp hoặc tải ảnh lên để bắt đầu.</Muted>}
       {shownDates.map(([date, ims]) => (
         <View key={date} style={{ gap: 8 }}>
           <Text style={{ color: C.textSoft, fontWeight: '700', fontSize: T.small }}>Chụp {fmtDate(date)}</Text>
@@ -273,6 +283,7 @@ export default function WoundDetail() {
         </View>
       ))}
       {dates.length > 2 && <Button variant="ghost" label={showAllPhotos ? 'Thu gọn album' : `Xem tất cả (${dates.length} ngày chụp)`} onPress={() => setShowAllPhotos(!showAllPhotos)} />}
+      </>}
     </Screen>
   );
 }

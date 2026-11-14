@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { AreaLineChart, type ChartMarker, type MarkShape } from '@/components/AreaLineChart';
 import { ImageTile } from '@/components/items';
 import { Text } from '@/components/Text';
-import { Button, Disclosure, Muted, Segmented, SimBadge, StatusChip, TextLink } from '@/components/ui';
+import { Button, Disclosure, Muted, Segmented, SimBadge, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
 import {
   dayDiff, excludedText, inRange, methodLabel, progressInput, progressSummary, rangeOptions, RANGE_LABEL, rangeStart, splitByMethod, summaryText,
   type AreaPoint, type RangeKey,
@@ -28,9 +28,11 @@ const CAVEAT = 'Số đo cho biết kích thước vết thương. Việc vết 
  * QĐ-P2-1 = C: chỉ vẽ phương pháp của lần đo gần nhất; nhóm khác ẩn sau nút; phần trăm luôn trong nhóm chính.
  * QĐ-P2-2 = A: nói thay đổi bằng chữ và mũi tên, một màu cho tăng và giảm; không câu khích lệ; chữ đánh giá chỉ từ bác sĩ.
  */
-export function AreaProgress({ code, woundId, images, evaluations, today, isDoctor, markers = [], accountName }: {
+export function AreaProgress({ code, woundId, images, evaluations, today, isDoctor, markers = [], accountName, photoStrip = false }: {
   code: string; woundId: string; images: WoundImage[]; evaluations: Evaluation[]; today: string; isDoctor: boolean;
   markers?: ChartMarker[]; accountName: (id: string) => string | undefined;
+  /** P2-03a: dải "Ảnh theo thời gian" (màn bệnh nhân), chạm ảnh có số đo thì chọn đúng điểm của chính ảnh đó. */
+  photoStrip?: boolean;
 }) {
   const saved = session.get(woundId) ?? { range: 'all' as RangeKey, others: false };
   const [range, setRangeState] = useState<RangeKey>(saved.range);
@@ -56,11 +58,38 @@ export function AreaProgress({ code, woundId, images, evaluations, today, isDoct
   const setRange = (v: RangeKey) => { setRangeState(v); keep(v, others); if (selected && !inRange(input.points, v, today).some((p) => p.imageId === selected)) setSelected(null); };
   const toggleOthers = () => { const v = !others; setOthersState(v); keep(r, v); if (!v && selected && !split.main.some((p) => p.imageId === selected)) setSelected(null); };
 
+  // P2-03a (R2-03): ảnh của vết, mới trước. Ảnh là điểm đang vẽ thì chạm chọn điểm (cùng bản ghi, không ghép theo ngày gần);
+  // ảnh khác (chưa đo, cùng ngày, phương pháp đang ẩn, không rõ ngày) thì mở ảnh.
+  const strip = (drawnIds: string[]) => photoStrip && mine.length > 0 ? (
+    <View style={{ gap: 6 }}>
+      <Text style={{ color: C.text, fontWeight: '700' }}>Ảnh theo thời gian</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+        {[...mine].sort((a, b) => b.captureDate.localeCompare(a.captureDate) || a.id.localeCompare(b.id)).map((im) => {
+          const onChart = drawnIds.includes(im.id);
+          const date = im.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(im.captureDate);
+          const tag = im.status === 'labeled' && im.areaCm2 !== null ? `Có số đo: ${formatAreaDisplay(im.areaCm2)}` : im.status === 'excluded' ? 'Bác sĩ không dùng' : 'Chưa đo';
+          return (
+            <Pressable key={im.id} accessibilityRole="button" accessibilityLabel={`Ảnh chụp ${date}, ${tag}. ${onChart ? 'Chạm để xem lần đo trên biểu đồ' : 'Chạm để mở ảnh'}`}
+              accessibilityState={{ selected: im.id === selected }}
+              onPress={() => (onChart ? setSelected(im.id) : router.push({ pathname: '/images/[id]', params: { id: im.id } }))}
+              style={{ width: 128, gap: 4, padding: 4, borderRadius: 14, borderWidth: 2, borderColor: im.id === selected ? C.primary : 'transparent' }}>
+              <WoundPhoto image={im} fit="contain" style={{ width: 116, height: 87, borderRadius: 10 }} />
+              <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>{date}</Text>
+              <Text style={{ color: C.textSoft, fontSize: T.small }}>{tag}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      <Muted>Chạm ảnh có số đo để xem lần đo đó trên biểu đồ.</Muted>
+    </View>
+  ) : null;
+
   if (mine.length === 0) return <Muted>{isDoctor ? 'Chưa có ảnh. Chụp ảnh rồi nhập diện tích.' : 'Chưa có ảnh vết thương. Bác sĩ sẽ chụp và đo ở lần khám.'}</Muted>;
   if (input.points.length === 0) {
     return (
       <View style={{ gap: 8 }}>
         <Muted>{`Chưa có lần đo diện tích. Ảnh đã chụp: ${mine.length}.`}</Muted>
+        {strip([])}
         {isDoctor && newestUnmeasured && <TextLink label={`Đo ${input.excluded.unmeasured} ảnh chưa đo`} onPress={() => router.push({ pathname: '/images/[id]', params: { id: newestUnmeasured.id } })} />}
       </View>
     );
@@ -126,6 +155,7 @@ export function AreaProgress({ code, woundId, images, evaluations, today, isDoct
         </View>
       ) : null}
       {exText && <Muted>{exText}</Muted>}
+      {strip(drawn.map((p) => p.imageId))}
       {isDoctor && input.excluded.unmeasured > 0 && newestUnmeasured && (
         <TextLink label={`Đo ${input.excluded.unmeasured} ảnh chưa đo`} onPress={() => router.push({ pathname: '/images/[id]', params: { id: newestUnmeasured.id } })} />
       )}

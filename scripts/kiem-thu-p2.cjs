@@ -43,7 +43,8 @@ const helpers = (b) => {
     await p.screenshot({ path: path.join(OUT, file) }); await p.setViewportSize({ width: w, height: 844 }); await p.waitForTimeout(200);
     return H;
   };
-  const overflow = (p) => p.evaluate(() => { const W = window.innerWidth; return [...document.querySelectorAll('div,span')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.right > W + 1 && getComputedStyle(e).position !== 'fixed'; }).length; });
+  // Bỏ qua phần tử nằm trong vùng cuộn ngang có chủ đích (dải ảnh), chỉ tính tràn của trang.
+  const overflow = (p) => p.evaluate(() => { const W = window.innerWidth; const inHScroll = (e) => { for (let a = e.parentElement; a; a = a.parentElement) { const ox = getComputedStyle(a).overflowX; if ((ox === 'auto' || ox === 'scroll') && a.getBoundingClientRect().right <= W + 1) return true; } return false; }; return [...document.querySelectorAll('div,span')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.right > W + 1 && getComputedStyle(e).position !== 'fixed' && !inHScroll(e); }).length; });
   // Phần tử bấm được nhỏ hơn 44 px trên màn đang xem (bỏ qua phần tử ẩn của tab khác).
   const small = (p) => p.evaluate(() => [...document.querySelectorAll('[role="button"],[role="radio"],[role="tab"],[role="link"]')].filter((e) => { const r = e.getBoundingClientRect(); if (!(r.width > 0 && r.height > 0)) return false; const hit = document.elementFromPoint(Math.min(window.innerWidth - 1, r.x + r.width / 2), Math.max(0, Math.min(window.innerHeight - 1, r.y + r.height / 2))); return r.y >= 0 && r.bottom <= window.innerHeight && hit && (e.contains(hit) || hit.contains(e)) && (r.height < 44 || r.width < 44); }).map((e) => `${(e.getAttribute('aria-label') || e.textContent || '').slice(0, 30)} ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`));
   const inView = (p, loc) => loc.evaluate((e) => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= window.innerHeight + 1; });
@@ -319,6 +320,63 @@ GROUPS['p2-2'] = async (b, h) => {
       await p.getByRole('button', { name: 'Mở ảnh để xem hoặc sửa số đo' }).click(); await p.waitForTimeout(1200);
       rec('P22-38', 'G20: "Mở ảnh để xem hoặc sửa số đo" mở B11 của điểm chọn', /\/images\/IMG0003/.test(p.url()), p.url());
     }
+    await p.context().close();
+  }
+};
+
+// PR-P2-3: ảnh theo thời gian nối với điểm biểu đồ, lịch sử vết thương ở N05, N04 sắp lại.
+GROUPS['p2-3'] = async (b, h) => {
+  const { newPage, login, go, has, mutate, overflow } = h;
+  for (const w of WIDTHS) {
+    const p = await newPage(w); await login(p, 'benhnhan'); await go(p, '/wounds/w-1');
+    const tiles = await p.getByRole('button', { name: /^Ảnh chụp / }).evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
+    const ds = tiles.map((l) => (l.match(/(\d\d)\/(\d\d)\/(\d{4})/) || []).slice(1).reverse().join(''));
+    rec(`P23-01-${w}`, `N05 ${w}px: "Ảnh theo thời gian" có đủ 4 ảnh, mới trước, ghi "Có số đo" hoặc "Chưa đo"`, await has(p, 'Ảnh theo thời gian') && tiles.length === 4 && ds.every((d, i) => i === 0 || ds[i - 1] >= d) && tiles.filter((l) => l.includes('Có số đo:')).length === 3 && tiles.filter((l) => l.includes('Chưa đo')).length === 1, tiles.length + ' ảnh');
+    rec(`P23-02-${w}`, `N05 ${w}px: phía bệnh nhân không còn mục Album ảnh`, !(await has(p, 'Album ảnh')));
+    rec(`P23-03-${w}`, `N05 ${w}px: không tràn ngang, không lỗi JS`, (await overflow(p)) === 0 && p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+  {
+    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/wounds/w-1');
+    await p.getByRole('button', { name: /^Ảnh chụp .*Có số đo: 10,2 cm²/ }).click(); await p.waitForTimeout(300);
+    const det = await p.getByTestId('chi-tiet-lan-do').innerText().catch(() => '');
+    rec('P23-04', 'G13: chạm ảnh có số đo trong dải chọn đúng điểm của chính ảnh đó (IMG0002, 10,2 cm²)', det.includes('10,2 cm²') && det.includes('IMG0002'), det.split('\n')[0]);
+    const m = await marks(p); const sel = m.pts.find((q) => q.r === 7);
+    rec('P23-05', 'Điểm được chọn trên biểu đồ là điểm giữa (vòng to hơn)', !!sel && sel.x === m.pts[1].x);
+    await p.getByRole('button', { name: /^Ảnh chụp .*Chưa đo/ }).click(); await p.waitForTimeout(1200);
+    rec('P23-06', 'Chạm ảnh chưa đo mở ảnh đó (IMG0004)', /\/images\/IMG0004/.test(p.url()), p.url());
+    await go(p, '/wounds/w-1');
+    const tl = p.getByText(/^Lịch sử vết thương \(\d+\)$/);
+    rec('P23-07', 'N05 có "Lịch sử vết thương", thu gọn mặc định', (await tl.count()) === 1 && (await p.getByTestId('muc-lich-su').count()) === 0);
+    await tl.click(); await p.waitForTimeout(300);
+    const items = await p.getByTestId('muc-lich-su').evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
+    rec('P23-08', 'Lịch sử: lần đo "Đo 8,4 cm²", ảnh chưa đo, nhận xét đã công bố; mới trước', items.some((l) => l.startsWith('Lần đo: Đo 8,4 cm²')) && items.some((l) => l.startsWith('Ảnh: Ảnh, chưa có số đo')) && items.some((l) => l.startsWith('Nhận xét: ')), items.slice(0, 3).join(' / ').slice(0, 200));
+    // Đánh giá chưa công bố không vào lịch sử của bệnh nhân; buổi có woundId đúng vết thì vào.
+    await mutate(p, `const e = d.evaluations.find((x) => x.woundId === 'w-1'); d.evaluations.push({ ...e, id: 'e-kt-noi-bo', date: '2026-11-12', visibleToPatient: false });
+      const pt = d.patients.find((x) => x.id === 'p-1'); const s0 = d.sessions.find((x) => x.deviceId === pt.deviceId); d.sessions.push({ ...s0, sessionId: 'kt-gan-vet', start: '2026-11-12T08:00:00.000Z', woundId: 'w-1' }); d.sessions.push({ ...s0, sessionId: 'kt-khong-gan', start: '2026-11-12T09:00:00.000Z', durationMin: 7, woundId: undefined });`);
+    await go(p, '/wounds/w-1'); await p.getByText(/^Lịch sử vết thương \(\d+\)$/).click(); await p.waitForTimeout(300);
+    const items2 = await p.getByTestId('muc-lich-su').evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
+    rec('P23-09', 'Buổi không gắn vết (7 phút, minh họa) không đưa vào lịch sử của vết (A26)', !items2.some((l) => l.includes('Buổi điều trị 7 phút')));
+    rec('P23-10', 'Buổi có woundId đúng vết vào lịch sử; đánh giá nội bộ không vào', items2.some((l) => l.includes('16:00 12/11/2026') || l.includes('15:00 12/11/2026') || l.includes('08:00 12/11/2026')) && items2.filter((l) => l.startsWith('Nhận xét')).length === items.filter((l) => l.startsWith('Nhận xét')).length, `${items.length} → ${items2.length}`);
+    rec('P23-11', 'Không lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+  for (const w of WIDTHS) {
+    const p = await newPage(w); await login(p, 'benhnhan'); await go(p, '/patient/history');
+    const ys = []; for (const t of ['Vết thương đang theo dõi', 'Các buổi điều trị gần đây', 'Thông tin cá nhân']) ys.push(await yOf(p, t));
+    rec(`P23-12-${w}`, `N04 ${w}px: vết thương lên đầu, rồi buổi điều trị, thông tin cá nhân cuối`, ys.every((y) => y != null) && ys[0] < ys[1] && ys[1] < ys[2], JSON.stringify(ys));
+    rec(`P23-13-${w}`, `N04 ${w}px: không tràn ngang, không lỗi JS`, (await overflow(p)) === 0 && p.errors.length === 0);
+    await p.context().close();
+  }
+  {
+    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/patient');
+    await mutate(p, TWO_WOUNDS + `const pt = d.patients.find((x) => x.id === 'p-1'); const s0 = d.sessions.find((x) => x.deviceId === pt.deviceId); d.sessions.push({ ...s0, sessionId: 'kt-khong-gan', start: new Date().toISOString(), woundId: undefined });`); await go(p, '/patient/history');
+    rec('P23-14', 'N04 hai vết: buổi không gắn vết ghi "Chưa gắn vết thương", buổi gắn vết ghi mã vết', (await p.getByRole('button', { name: /^Buổi .*Chưa gắn vết thương\./ }).count()) === 1 && (await p.getByRole('button', { name: /^Buổi .*, VT01\./ }).count()) > 0);
+    await p.context().close();
+  }
+  {
+    const p = await newPage(); await login(p, 'bacsi'); await go(p, '/wounds/w-1');
+    rec('P23-15', 'B05 bác sĩ giữ Album ảnh, không có dải ảnh và lịch sử mới', await has(p, 'Album ảnh') && !(await has(p, 'Ảnh theo thời gian')) && !(await p.getByText(/^Lịch sử vết thương/).count()));
     await p.context().close();
   }
 };
