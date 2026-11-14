@@ -87,9 +87,9 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
       treatDay && !!lb && !!sb && sb.y < lb.y && await has(p, '0/3') && await has(p, 'Làm xong các bước này rồi hãy nạp vào máy.') && !(await has(p, 'Không lau khô hẳn vết thương')),
       `ngày điều trị ${treatDay}, y danh sách ${sb?.y}, y nút ${lb?.y}`);
     await p.getByText('Trước khi điều trị').first().click(); await p.waitForTimeout(200);
-    const allThree = await has(p, 'Rửa tay, thay băng và làm sạch vết thương theo dặn') && await has(p, 'Không lau khô hẳn vết thương') && await has(p, 'Lắp đầu phát riêng của mình') && await has(p, 'Theo hướng dẫn chung, bác sĩ có thể dặn khác.');
+    const allThree = await has(p, 'Rửa tay, thay băng và làm sạch vết thương theo dặn') && await has(p, 'Không lau khô hẳn vết thương') && await has(p, 'Lắp đầu phát riêng của mình') && await has(p, 'Hướng dẫn chung (tham khảo), không thay lời dặn của bác sĩ.'); // P2-05a đổi câu, câu mới luôn hiện
     await p.getByRole('checkbox', { name: 'Không lau khô hẳn vết thương' }).click(); await p.waitForTimeout(150);
-    rec('D11-02', 'Mở danh sách: đủ 3 bước và câu "bác sĩ có thể dặn khác" giữ nguyên; tích 1 bước thành 1/3', allThree && await has(p, '1/3'));
+    rec('D11-02', 'Mở danh sách: đủ 3 bước và câu "Hướng dẫn chung (tham khảo)…" (P2-05a); tích 1 bước thành 1/3', allThree && await has(p, '1/3'));
     // Bỏ qua danh sách: nút nạp vẫn dùng được (không thêm chặn).
     await p.getByText('Nạp liệu trình vào máy', { exact: true }).first().click(); await p.waitForTimeout(1200);
     rec('D11-03', 'Chưa làm đủ bước vẫn bấm được "Nạp liệu trình vào máy" (không thêm bước chặn), mở T01', await has(p, 'Kết nối'));
