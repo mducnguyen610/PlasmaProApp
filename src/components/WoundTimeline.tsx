@@ -19,11 +19,11 @@ const SESSION_STATUS = { completed: 'Đủ thời gian', interrupted: 'Bị ng�
  * nhận xét của bác sĩ đã công bố, buổi điều trị có woundId đúng vết. Buổi không gắn vết không đưa vào (A26).
  * Mặc định thu gọn, 10 mục gần nhất, "Xem thêm".
  */
-export function WoundTimeline({ images, evaluations, sessions, doctorName }: {
-  images: WoundImage[]; evaluations: Evaluation[]; sessions: DeviceSession[]; doctorName: (id: string) => string | undefined;
-}) {
-  const [all, setAll] = useState(false);
-  const items: Item[] = [
+type TimelineInput = { images: WoundImage[]; evaluations: Evaluation[]; sessions: DeviceSession[]; doctorName: (id: string) => string | undefined };
+
+/** Các mục của dòng thời gian, mới trước. Tách ra để N05 hiện số mục và mục gần nhất mà không dựng lại danh sách. */
+export function woundTimelineItems({ images, evaluations, sessions, doctorName }: TimelineInput): Item[] {
+  return [
     ...images.filter((im) => im.status !== 'excluded').map((im): Item => {
       const date = im.capture?.sourceDateKnown === false ? null : im.captureDate;
       return im.status === 'labeled' && im.areaCm2 !== null
@@ -33,9 +33,16 @@ export function WoundTimeline({ images, evaluations, sessions, doctorName }: {
     ...evaluations.map((e): Item => ({ key: 'e' + e.id, at: e.date, icon: 'clipboard-outline', kind: 'Nhận xét', text: `Nhận xét của bác sĩ: ${TREND[e.trend].label.toLowerCase()}`, sub: `${fmtDate(e.date)} · ${doctorName(e.doctorId) ?? 'Bác sĩ'}` })),
     ...sessions.map((s): Item => ({ key: 's' + s.sessionId + s.start, at: s.start, icon: 'flash-outline', kind: 'Buổi điều trị', text: `Buổi điều trị ${s.durationMin} phút`, sub: `${fmtDateTime(s.start)} · ${SESSION_STATUS[s.status]}` })),
   ].sort((a, b) => b.at.localeCompare(a.at) || a.key.localeCompare(b.key));
+}
+
+/** expanded: hiện danh sách ngay, không bọc mục thu gọn (màn "Lịch sử vết thương" riêng của N05). Mặc định như cũ. */
+export function WoundTimeline({ expanded, ...input }: TimelineInput & { expanded?: boolean }) {
+  const [all, setAll] = useState(false);
+  const items = woundTimelineItems(input);
   const shown = all ? items : items.slice(0, 10);
-  return (
-    <Disclosure icon="git-commit-outline" title={`Lịch sử vết thương (${items.length})`} summary={items[0] ? `Gần nhất: ${items[0].kind.toLowerCase()} ${items[0].sub?.split(' · ')[0] ?? ''}` : 'Chưa có mục nào'}>
+  const list = (
+    <>
+      {items.length === 0 && expanded ? <Text style={{ color: C.textSoft }}>Chưa có mục nào.</Text> : null}
       {shown.map((it, i) => {
         const body = (
           <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
@@ -53,6 +60,12 @@ export function WoundTimeline({ images, evaluations, sessions, doctorName }: {
           : <View key={it.key} testID="muc-lich-su" accessible accessibilityLabel={`${it.kind}: ${it.text}, ${it.sub}`} style={style}>{body}</View>;
       })}
       {items.length > 10 && <TextLink label={all ? 'Thu gọn' : `Xem thêm (${items.length - 10})`} onPress={() => setAll(!all)} />}
+    </>
+  );
+  if (expanded) return list;
+  return (
+    <Disclosure icon="git-commit-outline" title={`Lịch sử vết thương (${items.length})`} summary={items[0] ? `Gần nhất: ${items[0].kind.toLowerCase()} ${items[0].sub?.split(' · ')[0] ?? ''}` : 'Chưa có mục nào'}>
+      {list}
     </Disclosure>
   );
 }

@@ -163,7 +163,7 @@ export default function WoundHistory() {
                 Tiến triển diện tích
               </SectionTitle>
               {/* Cùng biểu đồ đường và tham số với giai đoạn 1 (P2-02d, QĐ-P2-5): vạch ngày bắt đầu từng đợt chỉ ở phía bác sĩ. */}
-              <AreaProgress code={w.code} woundId={w.id} images={images} evaluations={data.evaluations} today={localDay()} isDoctor={isDoctor} markers={isDoctor ? courseMarkers : []} accountName={(id) => account(id)?.name} />
+              <AreaProgress code={w.code} woundId={w.id} images={images} evaluations={data.evaluations} today={localDay()} isDoctor={isDoctor} markers={isDoctor ? courseMarkers : []} accountName={(id) => account(id)?.name} photoStrip={!isDoctor} />
             </Card>
           ) : (
             <MeasurementList

@@ -204,9 +204,11 @@ const addImg = (id, woundId, daysAgo, area, method, status = 'labeled') => `
     history: ${area === null ? '[]' : `[{ at: day + 'T09:00:00.000Z', by: src.history[0]?.by ?? 'u-bs', fromStatus: 'unlabeled', toStatus: 'labeled', fromArea: null, toArea: ${area} }]`}, capture: { ...(src.capture || {}), sourceDateKnown: true, manualReference: undefined } });
 `;
 GROUPS['p2-2'] = async (b, h) => {
+  // N05 trang tổng quan: biểu đồ đầy đủ của bệnh nhân chuyển sang màn riêng "Lịch sử đo" (wound-history, thẻ Số đo), cùng AreaProgress.
+  // Các ca giữ nguyên, chỉ đổi màn kiểm. Nhãn "N05" trong tên ca giữ để đối chiếu với kết quả cũ.
   const { newPage, login, go, has, mutate, overflow } = h;
   for (const w of WIDTHS) {
-    const p = await newPage(w); await login(p, 'benhnhan'); await go(p, '/wounds/w-1');
+    const p = await newPage(w); await login(p, 'benhnhan'); await go(p, '/wound-history/w-1?tab=dien-tich');
     const m = await marks(p); const txt = await cardText(p);
     rec(`P22-01-${w}`, `N05 ${w}px (G04): biểu đồ đường, 3 dấu điểm, 1 đường, không còn cột`, !!m && m.pts.length === 3 && m.lines === 1, JSON.stringify(m && { n: m.pts.length, l: m.lines }));
     rec(`P22-02-${w}`, `N05 ${w}px (G05, C15): "↓ Giảm 32,8% so với lần đo đầu", câu có ngày hai mốc`, txt.includes('↓ Giảm 32,8% so với lần đo đầu') && /Diện tích giảm từ 12,5 cm² \(\d\d\/\d\d\) xuống 8,4 cm² \(\d\d\/\d\d\), sau 14 ngày\./.test(txt));
@@ -221,7 +223,7 @@ GROUPS['p2-2'] = async (b, h) => {
     await p.context().close();
   }
   {
-    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/wounds/w-1');
+    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/wound-history/w-1?tab=dien-tich');
     const head = p.getByText('↓ Giảm 32,8% so với lần đo đầu', { exact: true });
     const color = await head.evaluate((e) => getComputedStyle(e).color);
     rec('P22-09', 'G05: dòng giảm dùng màu nhấn của ứng dụng (#0B6B6F), không xanh lá', color === 'rgb(11, 107, 111)', color);
@@ -249,9 +251,9 @@ GROUPS['p2-2'] = async (b, h) => {
   }
   // G11, G22: hai phương pháp. Lần đo gần nhất bằng phần mềm thì phần mềm là nhóm chính.
   {
-    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/wounds/w-1');
+    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/wound-history/w-1?tab=dien-tich');
     await mutate(p, `d.images.find((i) => i.id === 'IMG0003').measureMethod = 'Phần mềm đo trên ảnh';` + addImg('IMG-KT01', 'w-1', 5, 7.9, 'Phần mềm đo trên ảnh'));
-    await go(p, '/wounds/w-1');
+    await go(p, '/wound-history/w-1?tab=dien-tich');
     const off = await marks(p); const t0 = await cardText(p);
     rec('P22-18', 'G11 tắt: chỉ vẽ nhóm chính (2 điểm), dòng "Ẩn 2 lần đo bằng phương pháp khác."', off.pts.length === 2 && off.rects === 0 && t0.includes('Đang hiện 2 lần đo bằng Phần mềm đo trên ảnh. Ẩn 2 lần đo bằng phương pháp khác.'), JSON.stringify({ n: off.pts.length }));
     const pct0 = (t0.match(/[↓↑] (Giảm|Tăng) [\d,]+%/) || [])[0];
@@ -262,7 +264,7 @@ GROUPS['p2-2'] = async (b, h) => {
     rec('P22-21', 'G11: nút đổi thành "Chỉ hiện phương pháp chính"', (await p.getByRole('button', { name: 'Chỉ hiện phương pháp chính' }).count()) === 1);
     // G22: chỉ một phương pháp thì không có dòng ẩn, nút, chú thích.
     await mutate(p, `d.images.forEach((i) => { if (i.woundId === 'w-1' && i.areaCm2 !== null) i.measureMethod = 'Phần mềm đo trên ảnh'; });`);
-    await go(p, '/wounds/w-1');
+    await go(p, '/wound-history/w-1?tab=dien-tich');
     const one = await marks(p); const t2 = await cardText(p);
     rec('P22-22', 'G22: một phương pháp: một đường liền, không nút, không chú thích phương pháp', one.lines === 1 && one.pts.length === 4 && !t2.includes('Hiện cả phương pháp khác') && !t2.includes('Đang hiện'));
     // G08: 7 ngày rồi 7 ngày rồi khoảng tới IMG-KT01; khoảng cách tỉ lệ số ngày.
@@ -273,7 +275,7 @@ GROUPS['p2-2'] = async (b, h) => {
     rec('P22-23', 'G08: khoảng cách X tỉ lệ số ngày giữa các lần đo', Math.abs(ratio - want) < 0.05, `đo ${ratio.toFixed(2)}, cần ${want.toFixed(2)}`);
     // G14: thêm lần đo cũ 200 ngày: có bộ chọn khoảng; "1 tháng" lọc bớt.
     await mutate(p, addImg('IMG-KT02', 'w-1', 200, 15, 'Phần mềm đo trên ảnh'));
-    await go(p, '/wounds/w-1');
+    await go(p, '/wound-history/w-1?tab=dien-tich');
     const tabs = await p.getByRole('tab').allInnerTexts();
     rec('P22-24', 'G14: có lần đo ngoài 6 tháng thì hiện bộ chọn 1/3/6 tháng và Toàn bộ', ['1 tháng', '3 tháng', '6 tháng', 'Toàn bộ'].every((x) => tabs.includes(x)), tabs.join(','));
     const nAll = (await marks(p)).pts.length;
@@ -289,13 +291,13 @@ GROUPS['p2-2'] = async (b, h) => {
   // G01, G02, G06: vết không ảnh, vết một lần đo, vết tăng.
   {
     const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/patient');
-    await mutate(p, TWO_WOUNDS); await go(p, '/wounds/w-kt2');
+    await mutate(p, TWO_WOUNDS); await go(p, '/wound-history/w-kt2?tab=dien-tich');
     rec('P22-27', 'G01: vết chưa có ảnh: câu trạng thái, không vẽ trục', await has(p, 'Chưa có ảnh vết thương. Bác sĩ sẽ chụp và đo ở lần khám.') && !(await marks(p)));
-    await mutate(p, addImg('IMG-KT03', 'w-kt2', 10, null, '', 'unlabeled')); await go(p, '/wounds/w-kt2');
+    await mutate(p, addImg('IMG-KT03', 'w-kt2', 10, null, '', 'unlabeled')); await go(p, '/wound-history/w-kt2?tab=dien-tich');
     rec('P22-28', 'G01: có ảnh chưa đo: "Chưa có lần đo diện tích. Ảnh đã chụp: 1."', await has(p, 'Chưa có lần đo diện tích. Ảnh đã chụp: 1.') && !(await marks(p)));
-    await mutate(p, addImg('IMG-KT04', 'w-kt2', 8, 6, 'Phần mềm đo trên ảnh')); await go(p, '/wounds/w-kt2');
+    await mutate(p, addImg('IMG-KT04', 'w-kt2', 8, 6, 'Phần mềm đo trên ảnh')); await go(p, '/wound-history/w-kt2?tab=dien-tich');
     rec('P22-29', 'G02: một lần đo: thẻ số, câu cần thêm lần đo, không đường', await has(p, 'Mới có 1 lần đo. Cần thêm lần đo để thấy sự thay đổi.') && !(await marks(p)));
-    await mutate(p, addImg('IMG-KT05', 'w-kt2', 1, 6.75, 'Phần mềm đo trên ảnh')); await go(p, '/wounds/w-kt2');
+    await mutate(p, addImg('IMG-KT05', 'w-kt2', 1, 6.75, 'Phần mềm đo trên ảnh')); await go(p, '/wound-history/w-kt2?tab=dien-tich');
     const up = p.getByText('↑ Tăng 12,5% so với lần đo đầu', { exact: true });
     const c = (await up.count()) ? await up.evaluate((e) => getComputedStyle(e).color) : '';
     rec('P22-30', 'G06: tăng: "↑ Tăng 12,5%", cùng màu nhấn, không cảnh báo', c === 'rgb(11, 107, 111)' && !(await has(p, /chậm|cảnh báo|bất thường/i, false)), c);
@@ -334,7 +336,7 @@ GROUPS['p2-2'] = async (b, h) => {
 GROUPS['p2-3'] = async (b, h) => {
   const { newPage, login, go, has, mutate, overflow } = h;
   for (const w of WIDTHS) {
-    const p = await newPage(w); await login(p, 'benhnhan'); await go(p, '/wounds/w-1');
+    const p = await newPage(w); await login(p, 'benhnhan'); await go(p, '/wound-history/w-1?tab=dien-tich');
     const tiles = await p.getByRole('button', { name: /^Ảnh chụp / }).evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
     const ds = tiles.map((l) => (l.match(/(\d\d)\/(\d\d)\/(\d{4})/) || []).slice(1).reverse().join(''));
     rec(`P23-01-${w}`, `N05 ${w}px: "Ảnh theo thời gian" có đủ 4 ảnh, mới trước, ghi "Có số đo" hoặc "Chưa đo"`, await has(p, 'Ảnh theo thời gian') && tiles.length === 4 && ds.every((d, i) => i === 0 || ds[i - 1] >= d) && tiles.filter((l) => l.includes('Có số đo:')).length === 3 && tiles.filter((l) => l.includes('Chưa đo')).length === 1, tiles.length + ' ảnh');
@@ -343,7 +345,7 @@ GROUPS['p2-3'] = async (b, h) => {
     await p.context().close();
   }
   {
-    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/wounds/w-1');
+    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/wound-history/w-1?tab=dien-tich');
     await p.getByRole('button', { name: /^Ảnh chụp .*Có số đo: 10,2 cm²/ }).click(); await p.waitForTimeout(300);
     const det = await p.getByTestId('chi-tiet-lan-do').innerText().catch(() => '');
     rec('P23-04', 'G13: chạm ảnh có số đo trong dải chọn đúng điểm của chính ảnh đó (IMG0002, 10,2 cm²)', det.includes('10,2 cm²') && det.includes('IMG0002'), det.split('\n')[0]);
@@ -352,15 +354,16 @@ GROUPS['p2-3'] = async (b, h) => {
     await p.getByRole('button', { name: /^Ảnh chụp .*Chưa đo/ }).click(); await p.waitForTimeout(1200);
     rec('P23-06', 'Chạm ảnh chưa đo mở ảnh đó (IMG0004)', /\/images\/IMG0004/.test(p.url()), p.url());
     await go(p, '/wounds/w-1');
+    // N05 trang tổng quan: "Lịch sử vết thương (n)" là dòng mở màn riêng (dong-thoi-gian), danh sách giữ nguyên.
     const tl = p.getByText(/^Lịch sử vết thương \(\d+\)$/);
-    rec('P23-07', 'N05 có "Lịch sử vết thương", thu gọn mặc định', (await tl.count()) === 1 && (await p.getByTestId('muc-lich-su').count()) === 0);
-    await tl.click(); await p.waitForTimeout(300);
+    rec('P23-07', 'N05 có dòng "Lịch sử vết thương (n)", danh sách không nằm trên N05', (await tl.count()) === 1 && (await p.getByTestId('muc-lich-su').count()) === 0);
+    await tl.click(); await p.waitForTimeout(1200);
     const items = await p.getByTestId('muc-lich-su').evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
     rec('P23-08', 'Lịch sử: lần đo "Đo 8,4 cm²", ảnh chưa đo, nhận xét đã công bố; mới trước', items.some((l) => l.startsWith('Lần đo: Đo 8,4 cm²')) && items.some((l) => l.startsWith('Ảnh: Ảnh, chưa có số đo')) && items.some((l) => l.startsWith('Nhận xét: ')), items.slice(0, 3).join(' / ').slice(0, 200));
     // Đánh giá chưa công bố không vào lịch sử của bệnh nhân; buổi có woundId đúng vết thì vào.
     await mutate(p, `const e = d.evaluations.find((x) => x.woundId === 'w-1'); d.evaluations.push({ ...e, id: 'e-kt-noi-bo', date: '2026-11-12', visibleToPatient: false });
       const pt = d.patients.find((x) => x.id === 'p-1'); const s0 = d.sessions.find((x) => x.deviceId === pt.deviceId); d.sessions.push({ ...s0, sessionId: 'kt-gan-vet', start: '2026-11-12T08:00:00.000Z', woundId: 'w-1' }); d.sessions.push({ ...s0, sessionId: 'kt-khong-gan', start: '2026-11-12T09:00:00.000Z', durationMin: 7, woundId: undefined });`);
-    await go(p, '/wounds/w-1'); await p.getByText(/^Lịch sử vết thương \(\d+\)$/).click(); await p.waitForTimeout(300);
+    await go(p, '/wound-history/w-1/dong-thoi-gian');
     const items2 = await p.getByTestId('muc-lich-su').evaluateAll((es) => es.map((e) => e.getAttribute('aria-label')));
     rec('P23-09', 'Buổi không gắn vết (7 phút, minh họa) không đưa vào lịch sử của vết (A26)', !items2.some((l) => l.includes('Buổi điều trị 7 phút')));
     rec('P23-10', 'Buổi có woundId đúng vết vào lịch sử; đánh giá nội bộ không vào', items2.some((l) => l.includes('16:00 12/11/2026') || l.includes('15:00 12/11/2026') || l.includes('08:00 12/11/2026')) && items2.filter((l) => l.startsWith('Nhận xét')).length === items.filter((l) => l.startsWith('Nhận xét')).length, `${items.length} → ${items2.length}`);
