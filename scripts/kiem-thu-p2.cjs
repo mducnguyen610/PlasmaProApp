@@ -105,6 +105,45 @@ GROUPS['p2-1'] = async (b, h) => {
   }
 };
 
+// PR-P2-5: lịch trình (mốc dự kiến, mốc đã qua, ghi chú của bác sĩ về đợt).
+GROUPS['p2-5'] = async (b, h) => {
+  const { newPage, login, go, has, mutate, overflow } = h;
+  for (const w of WIDTHS) {
+    const p = await newPage(w); await login(p, 'benhnhan'); await go(p, '/schedule');
+    rec(`P25-01-${w}`, `N03 ${w}px: mục "Mốc dự kiến" kèm câu "Ngày do ứng dụng tính…"`, await has(p, 'Mốc dự kiến') && await has(p, 'Ngày do ứng dụng tính từ lịch bác sĩ đặt. Hãy xác nhận với bác sĩ.'));
+    rec(`P25-02-${w}`, `N03 ${w}px: không còn chữ "Lịch hẹn sắp tới"`, !(await has(p, 'Lịch hẹn sắp tới')));
+    rec(`P25-03-${w}`, `N03 ${w}px: không tràn ngang`, (await overflow(p)) === 0);
+    rec(`P25-04-${w}`, `N03 ${w}px: không lỗi JS`, p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+  {
+    const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/schedule');
+    const st = await h.store(p);
+    const plan = (st.plans || []).find((x) => x.patientId === 'p-1' && x.status === 'confirmed') || (st.plans || []).find((x) => x.patientId === 'p-1');
+    if (plan) {
+      await mutate(p, `const pl = d.plans.find((x) => x.id === '${plan.id}'); pl.notes = 'Ghi chú đợt (minh họa)';`);
+      await go(p, '/schedule');
+      const v = p.getByText('Ghi chú đợt (minh họa)', { exact: true });
+      rec('P25-05', 'Ghi chú của bác sĩ về đợt hiện ngay, không cần mở "Các giai đoạn"', (await v.count()) > 0 && await v.first().isVisible() && await has(p, 'Ghi chú của bác sĩ về đợt'));
+    } else rec('P25-05', 'Ghi chú của bác sĩ về đợt', 'note', 'Không có đợt của p-1');
+    const before = await has(p, 'Mốc đã qua');
+    await mutate(p, `const e = d.evaluations.find((x) => x.woundId === 'w-1' && x.visibleToPatient); d.evaluations.push({ ...e, id: 'e-kt-past', date: '2026-09-01', nextReview: '2026-09-15', instructions: 'Lời dặn cũ (minh họa)' });`);
+    await go(p, '/schedule');
+    const dis = p.getByText('Mốc đã qua', { exact: true });
+    rec('P25-06', 'Có ngày tái đánh giá đã qua: hiện mục "Mốc đã qua" (thu gọn)', (await dis.count()) > 0, `trước khi thêm: ${before}`);
+    if (await dis.count()) {
+      await dis.first().click(); await p.waitForTimeout(500);
+      rec('P25-07', 'Mở "Mốc đã qua": có dòng "Tái đánh giá với bác sĩ VT01" và câu không ghi đã khám', await has(p, 'Tái đánh giá với bác sĩ VT01') && await has(p, 'Ứng dụng chỉ ghi ngày dự kiến, không ghi đã khám hay chưa.'));
+    }
+    await mutate(p, `d.evaluations = d.evaluations.map((x) => x.id === 'e-kt-past' ? { ...x, visibleToPatient: false } : x);`);
+    await go(p, '/schedule');
+    await has(p, 'Mốc đã qua') && await p.getByText('Mốc đã qua', { exact: true }).first().click();
+    rec('P25-08', 'Đánh giá chưa công bố không tạo mốc đã qua', !(await has(p, /15\/09\/2026/, false)) && !(await p.getByLabel(/^15\/09\/2026: /).count()));
+    rec('P25-09', 'Không lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
+    await p.context().close();
+  }
+};
+
 (async () => {
   const b = await chromium.launch();
   const h = helpers(b);
