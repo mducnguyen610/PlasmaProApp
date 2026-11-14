@@ -206,8 +206,17 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
   // P1-07c: lựa chọn phương pháp dẫn xuất từ chữ trong ô; giá trị cũ ngoài danh sách hiện là "Khác" và giữ nguyên chữ.
   const methodChoice = (MEASURE_METHODS as readonly string[]).includes(method.trim()) ? method.trim() : method.trim() || otherMethod ? 'khac' : '';
 
+  // Giai đoạn 3 giao diện theo tác vụ (QĐ-TB-2 theo khuyến nghị A): khi bác sĩ đang nhập hoặc sửa số đo, màn chuyển sang chế độ đo.
+  // Ẩn tạm (không xóa) liên kết điều hướng và các mục phụ; nút Hủy, Lưu ở chân màn. Không đổi cách kiểm, cách lưu hay hàng đợi.
+  const measuring = isDoctor && editing;
   return (
-    <Screen header={<Header back title={`Ảnh ${im.id}`} />}>
+    <Screen header={<Header back title={measuring ? `Đo ảnh ${im.id}` : `Ảnh ${im.id}`} />}
+      footer={measuring ? (
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Button style={{ flex: 1 }} label="Hủy" variant="secondary" onPress={() => setEditing(false)} />
+          <Button style={{ flex: 1 }} label={replacing ? 'Lưu số mới' : 'Lưu diện tích'} icon="checkmark" disabled={!preview} onPress={save} />
+        </View>
+      ) : undefined}>
       {/* P0 G1, ID-01: bệnh nhân và vết thương của ảnh; báo rõ khi vừa chuyển sang bệnh nhân khác. */}
       <ClinicalContext patient={p} wound={w} patientChanged={patientChanged} />
       {retry && editing && (
@@ -227,7 +236,8 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
         )}
       </Pressable>
 
-      {/* P1-06b: đi giữa các ảnh của cùng vết; luôn ghi mã vết để không nhầm với hàng đợi "Ảnh chưa đo tiếp theo". */}
+      {/* P1-06b: đi giữa các ảnh của cùng vết; luôn ghi mã vết để không nhầm với hàng đợi "Ảnh chưa đo tiếp theo". Ẩn khi đang đo. */}
+      {!measuring && <>
       <View testID="anh-cung-vet" style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', columnGap: 12 }}>
         {nb.prev ? <TextLink label={`← Ảnh trước của ${w.code} (${dayOf(nb.prev)})`} accessibilityLabel={`Ảnh trước của ${w.code}, ${nb.prev.id}, ${dayOf(nb.prev)}`} onPress={() => router.replace({ pathname: '/images/[id]', params: { id: nb.prev!.id } })} /> : <Muted>{`Ảnh đầu tiên của ${w.code}`}</Muted>}
         {nb.next ? <TextLink label={`Ảnh sau của ${w.code} (${dayOf(nb.next)}) →`} accessibilityLabel={`Ảnh sau của ${w.code}, ${nb.next.id}, ${dayOf(nb.next)}`} onPress={() => router.replace({ pathname: '/images/[id]', params: { id: nb.next!.id } })} /> : <Muted>{`Ảnh mới nhất của ${w.code}`}</Muted>}
@@ -236,6 +246,7 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
         <TextLink label={`Mở ${w.code}`} accessibilityLabel={`Mở vết thương ${w.code}`} onPress={() => router.push(`/wounds/${w.id}`)} />
         <TextLink label="So sánh với ảnh khác" accessibilityLabel={`So sánh ảnh ${im.id} với ảnh khác của ${w.code}`} onPress={() => router.push({ pathname: '/compare/[woundId]', params: { woundId: w.id, sau: im.id } })} />
       </View>
+      </>}
 
       {justSaved && im.areaCm2 !== null && (
         <Notice tone="green" icon="checkmark-circle-outline">{replacedFrom !== null ? `Đã thay ${formatAreaDisplay(replacedFrom)} bằng ${formatAreaDisplay(im.areaCm2)} cho ảnh ${im.id}.` : `Đã lưu diện tích ${formatAreaDisplay(im.areaCm2)} cho ảnh ${im.id}.`}</Notice>
@@ -277,6 +288,8 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
             <Text accessibilityRole="header" style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>
               {mode === 'full' ? 'Sửa tên đầy đủ' : im.areaCm2 === null ? 'Nhập diện tích bác sĩ đã đo' : 'Sửa số đo'}
             </Text>
+            {/* Giai đoạn 3: trạng thái rõ ràng; số chỉ thành số đo của ảnh khi bấm Lưu ở chân màn. */}
+            <View style={{ flexDirection: 'row' }}><Chip label="Đang nhập, chưa lưu" tone="amber" icon="create-outline" /></View>
             <Muted>Ứng dụng không tự đo diện tích. Nhập số đo bác sĩ đã đo bên ngoài; ứng dụng ghép thành tên đúng quy ước.</Muted>
             {mode === 'area' ? (
               <>
@@ -294,6 +307,8 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
                 {prevText ? <Muted>{`Lần đo trước của ${w.code}: ${prevText}`}</Muted> : <Muted>{`Chưa có lần đo trước của ${w.code}.`}</Muted>}
                 <Segmented<AreaUnit> value={unit} onChange={setUnit} options={[{ value: 'cm2', label: 'cm²' }, { value: 'mm2', label: 'mm² (quy đổi sang cm²)' }]} />
                 {aiBlock}
+                {/* Lối "Sửa tên đầy đủ" vốn nằm trong mục kỹ thuật (đang ẩn khi đo), đưa vào đây để vẫn dùng được. */}
+                <TextLink label="Sửa tên đầy đủ" onPress={() => setMode('full')} />
               </>
             ) : (
               <>
@@ -321,10 +336,8 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
                 </Text>
               )}
             </View>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Button style={{ flex: 1 }} label="Hủy" variant="secondary" onPress={() => setEditing(false)} />
-              <Button style={{ flex: 1 }} label={replacing ? 'Lưu số mới' : 'Lưu diện tích'} icon="checkmark" disabled={!preview} onPress={save} reason="Nhập diện tích hợp lệ để có tên xem trước." />
-            </View>
+            {/* Hủy, Lưu chuyển xuống chân màn (giai đoạn 3); lý do nút Lưu đang khóa hiện ở đây. */}
+            {!preview ? <Muted>Nhập diện tích hợp lệ để có tên xem trước và bật nút Lưu.</Muted> : null}
             {im.areaCm2 !== null && (
               <Pressable
                 accessibilityRole="button"
@@ -344,8 +357,9 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
         )}
       </Card>
 
-      {/* Thao tác ít dùng và thông tin kỹ thuật thu gọn (R-06). Nội dung đang gõ trong các mục này giữ nguyên khi đóng mở. */}
-      <Card style={{ gap: 6 }}>
+      {/* Thao tác ít dùng và thông tin kỹ thuật thu gọn (R-06). Nội dung đang gõ trong các mục này giữ nguyên khi đóng mở.
+          Giai đoạn 3: ẩn khi đang đo; ô chữ trong các mục là state của màn nên không mất. */}
+      {!measuring && <Card style={{ gap: 6 }}>
         {isDoctor && (
           <>
             <Pressable accessibilityRole="button" accessibilityLabel="Ghi đánh giá với ảnh này"
@@ -449,7 +463,7 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
             </Disclosure>
           </>
         )}
-      </Card>
+      </Card>}
 
       <Modal visible={zoom} animationType="fade" onRequestClose={() => setZoom(false)}>
         <View style={{ flex: 1, backgroundColor: '#000' }}>

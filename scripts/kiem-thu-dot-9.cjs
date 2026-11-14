@@ -46,6 +46,8 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   const pick = async (p) => {
     const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.getByText('Chọn ảnh có sẵn', { exact: true }).click()]);
     await fc.setFiles(PHOTO); await p.waitForTimeout(3000);
+    // Giai đoạn 3: số AR và ô diện tích ở bước "Nhập số đo", sau nút "Tiếp: nhập số đo".
+    await p.getByRole('button', { name: 'Tiếp: nhập số đo', exact: true }).click(); await p.waitForTimeout(500);
   };
   const areaBox = (p) => p.getByRole('textbox').filter({ hasNot: p.locator('[type=password]') }).first();
   const areaVal = async (p) => (await areaBox(p).inputValue());
@@ -86,7 +88,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     await areaBox(p).fill('0'); await save(p);
     rec('D9-06', 'Nhập "abc" rồi "0": bị chặn như luồng cũ, không tạo ảnh', e1 && (await imgs(p)).length === n0 && await has(p, 'Diện tích phải lớn hơn 0. Để trống nếu chưa đo.'));
     // Chụp / chọn lại sau khi nhập.
-    await areaBox(p).fill('7'); await p.getByText('Chụp / chọn lại', { exact: true }).click(); await p.waitForTimeout(800); await pick(p);
+    await areaBox(p).fill('7'); await p.getByRole('button', { name: 'Bước trước', exact: true }).click(); await p.waitForTimeout(300); await p.getByText('Chụp / chọn lại', { exact: true }).click(); await p.waitForTimeout(800); await pick(p);
     rec('D9-07', 'Gõ số rồi "Chụp / chọn lại": ô về trống, không mang số AR', (await areaVal(p)) === '');
     // Lưu không nhập số.
     await save(p);
