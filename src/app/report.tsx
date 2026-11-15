@@ -35,10 +35,18 @@ export default function Report() {
   const hasPain = kind === 'symptom' && pain !== null;
   const canSend = !!content.trim() || hasPain;
 
-  const send = () => {
+  const send = async () => {
     if (sent) return;
-    setSent(true); allowLeave();
-    addReport({ patientId: me.patientId!, kind, content: content.trim() || `Mức đau ${pain}/10`, painLevel: kind === 'symptom' && pain !== null ? pain : undefined });
+    setSent(true);
+    try {
+      await addReport({ patientId: me.patientId!, kind, content: content.trim() || `Mức đau ${pain}/10`, painLevel: kind === 'symptom' && pain !== null ? pain : undefined });
+    } catch (e) {
+      // Stage 9C (gói D): chưa lưu được thì giữ nguyên nội dung đang nhập, mở lại nút Gửi, không rời màn.
+      setSent(false);
+      notify('Chưa gửi được', `${e instanceof Error ? e.message : String(e)} Nếu đau tăng, sốt, chảy máu hoặc mủ nhiều, hãy gọi 115 hoặc đến cơ sở y tế.`);
+      return;
+    }
+    allowLeave();
     // Không hứa thời gian phản hồi: bản demo lưu cục bộ, bác sĩ chỉ thấy khi mở ứng dụng.
     notify('Đã ghi nhận', 'Bác sĩ phụ trách sẽ xem khi mở ứng dụng. Nếu đau tăng, sốt, chảy máu hoặc mủ nhiều, hãy gọi 115 hoặc đến cơ sở y tế. Đừng chờ trả lời trong ứng dụng.');
     router.back();

@@ -6,6 +6,7 @@ import { Text } from '@/components/Text';
 import { Chip, Empty, Header, LinkRow, ListCard, Screen, Segmented } from '@/components/ui';
 import { groupErrorsByDay } from '@/lib/adminView';
 import { fmtDate, fmtDateTime } from '@/lib/format';
+import { notify } from '@/lib/dialog';
 import { useStore } from '@/lib/store';
 import { C, T } from '@/theme';
 
@@ -43,7 +44,7 @@ export default function AdminLogs() {
                   accessibilityLabel={`${e.message}, ${fmtDateTime(e.at)}, ${e.resolved ? 'đã xử lý' : 'chưa xử lý'}. Mở chi tiết`}
                   onPress={() => router.push({ pathname: '/admin-log/[id]', params: { id: e.id } })} />
                 {!e.resolved && (
-                  <Pressable onPress={() => resolveSyncError(e.id)} accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center', paddingLeft: 48 }}>
+                  <Pressable onPress={async () => { try { await resolveSyncError(e.id); } catch (x) { notify('Chưa đánh dấu được', x instanceof Error ? x.message : String(x)); } }} accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center', paddingLeft: 48 }}>
                     <Text style={{ color: C.primary, fontWeight: '600' }}>Đánh dấu đã xử lý</Text>
                   </Pressable>
                 )}

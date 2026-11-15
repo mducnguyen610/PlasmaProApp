@@ -191,7 +191,15 @@ export default function Evaluate() {
         <Card>
           <Text style={{ fontWeight: '700', color: C.text }}>{n} báo cáo triệu chứng của bệnh nhân đã được điền vào đánh giá</Text>
           <Muted>Báo cáo vẫn ở trạng thái chưa xử lý cho tới khi bác sĩ đánh dấu.</Muted>
-          <Button label={`Đánh dấu ${n} báo cáo đã xử lý`} icon="checkmark-done-outline" onPress={() => { saved.reportIds.forEach((id) => setReportHandled(id)); router.back(); }} />
+          <Button label={`Đánh dấu ${n} báo cáo đã xử lý`} icon="checkmark-done-outline" onPress={async () => {
+            try {
+              for (const id of saved.reportIds) await setReportHandled(id);
+            } catch (e) {
+              notify('Chưa đánh dấu được', e instanceof Error ? e.message : String(e));
+              return;
+            }
+            router.back();
+          }} />
           <Button label="Để sau, quay lại hồ sơ" variant="secondary" onPress={() => router.back()} />
         </Card>
       </Screen>

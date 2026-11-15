@@ -141,8 +141,13 @@ export default function PatientHome() {
               label="Báo vết thương mở lại"
               icon="alert-circle-outline"
               variant="secondary"
-              onPress={() => {
-                addReport({ patientId: p.id, kind: 'symptom', content: `Vết thương ${followUp.w.code} (${followUp.w.location}) có dấu hiệu mở lại.` });
+              onPress={async () => {
+                try {
+                  await addReport({ patientId: p.id, kind: 'symptom', content: `Vết thương ${followUp.w.code} (${followUp.w.location}) có dấu hiệu mở lại.` });
+                } catch (e) {
+                  notify('Chưa gửi được', `${e instanceof Error ? e.message : String(e)} Nếu chảy máu, có mủ hoặc sốt, hãy gọi 115 hoặc đến cơ sở y tế.`);
+                  return;
+                }
                 notify('Đã ghi nhận', 'Bác sĩ phụ trách sẽ xem khi mở ứng dụng. Hãy gọi cho bác sĩ để hẹn khám. Nếu chảy máu, có mủ hoặc sốt, hãy gọi 115 hoặc đến cơ sở y tế, không chờ phản hồi trong ứng dụng.');
               }}
             />

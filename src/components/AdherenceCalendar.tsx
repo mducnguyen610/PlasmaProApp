@@ -197,9 +197,9 @@ export function SessionNoteForm({ sessionId, onDone }: { sessionId: string; onDo
   const [before, setBefore] = useState<number | undefined>(n?.painBefore);
   const [after, setAfter] = useState<number | undefined>(n?.painAfter);
   const [flags, setFlags] = useState<Flags>({ burning: n?.burning, stinging: n?.stinging, rednessNextDay: n?.rednessNextDay, swellingNextDay: n?.swellingNextDay });
-  const save = () => {
+  const save = async () => {
     try {
-      setSessionPain(sessionId, { painBefore: before, painAfter: after, ...flags });
+      await setSessionPain(sessionId, { painBefore: before, painAfter: after, ...flags });
       if (flags.rednessNextDay || flags.swellingNextDay) {
         notify('Đã ghi phản ứng da', 'Bác sĩ sẽ thấy ghi chú này trong hồ sơ của bạn. Nếu đỏ hoặc sưng lan rộng, có mủ hay sốt, hãy liên hệ bác sĩ ngay.');
       }
