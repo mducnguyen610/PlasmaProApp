@@ -226,7 +226,7 @@ GROUPS['p2-2'] = async (b, h) => {
     const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/wound-history/w-1?tab=dien-tich');
     const head = p.getByText('↓ Giảm 32,8% so với lần đo đầu', { exact: true });
     const color = await head.evaluate((e) => getComputedStyle(e).color);
-    rec('P22-09', 'G05: dòng giảm dùng màu nhấn của ứng dụng (#0B6B6F), không xanh lá', color === 'rgb(11, 107, 111)', color);
+    rec('P22-09', 'G05: dòng giảm dùng màu nhấn của ứng dụng (C.primary, Stage 9A: #1F67A3), không xanh lá', color === 'rgb(31, 103, 163)', color);
     const label = await p.getByTestId('bieu-do-dien-tich').getAttribute('aria-label');
     rec('P22-10', 'G16: nhãn trợ năng tóm tắt, ngày viết đầy đủ, không từ chủ quan', /^Biểu đồ đường diện tích vết thương VT01\. 3 lần đo từ ngày \d+ tháng \d+ năm \d{4} đến ngày \d+ tháng \d+ năm \d{4}\. Trục dọc từ 0 đến 15 xăng ti mét vuông\. Lần đầu 12,5; gần nhất 8,4\.$/.test(label || '') && !BAN.some((x) => (label || '').includes(x)), label);
     const m = await marks(p);
@@ -300,7 +300,7 @@ GROUPS['p2-2'] = async (b, h) => {
     await mutate(p, addImg('IMG-KT05', 'w-kt2', 1, 6.75, 'Phần mềm đo trên ảnh')); await go(p, '/wound-history/w-kt2?tab=dien-tich');
     const up = p.getByText('↑ Tăng 12,5% so với lần đo đầu', { exact: true });
     const c = (await up.count()) ? await up.evaluate((e) => getComputedStyle(e).color) : '';
-    rec('P22-30', 'G06: tăng: "↑ Tăng 12,5%", cùng màu nhấn, không cảnh báo', c === 'rgb(11, 107, 111)' && !(await has(p, /chậm|cảnh báo|bất thường/i, false)), c);
+    rec('P22-30', 'G06: tăng: "↑ Tăng 12,5%", cùng màu nhấn, không cảnh báo', c === 'rgb(31, 103, 163)' && !(await has(p, /chậm|cảnh báo|bất thường/i, false)), c);
     rec('P22-31', 'G21: vết chưa có đánh giá công bố: không chip xu hướng, không chữ "Cải thiện"', !(await cardText(p)).includes('Cải thiện'));
     rec('P22-32', 'Không lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
     await p.context().close();
@@ -409,7 +409,7 @@ GROUPS['p2-4'] = async (b, h) => {
   {
     const p = await newPage(); await login(p, 'benhnhan'); await go(p, '/patient');
     const color = await p.getByText(/^↓ Giảm 32,8%/).first().evaluate((e) => getComputedStyle(e).color);
-    rec('P24-06', 'Dòng thay đổi dùng màu nhấn của ứng dụng, không xanh lá', color === 'rgb(11, 107, 111)', color);
+    rec('P24-06', 'Dòng thay đổi dùng màu nhấn của ứng dụng, không xanh lá', color === 'rgb(31, 103, 163)', color);
     await p.getByRole('button', { name: /^VT01: .*Xem tiến triển$/ }).click(); await p.waitForTimeout(1200);
     rec('P24-07', 'Chạm thẻ mở N05 của VT01, có chip mức độ ở N05', p.url().includes('/wounds/w-1') && await has(p, /^Mức độ /, false));
     await go(p, '/patient'); await mutate(p, TWO_WOUNDS); await go(p, '/patient');

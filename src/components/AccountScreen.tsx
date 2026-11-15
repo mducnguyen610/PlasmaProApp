@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Divider, Chip, Disclosure, Header, IconBadge, InfoRow, Muted, Screen, SwitchRow, type IconName } from '@/components/ui';
+import { Button, Card, Divider, Chip, Disclosure, Header, InfoRow, Muted, Screen, SwitchRow, type IconName, PatientAvatar } from '@/components/ui';
 import { confirm } from '@/lib/dialog';
 import { localDay } from '@/lib/course';
 import { fmtDate } from '@/lib/format';
@@ -31,11 +31,11 @@ export function AccountScreen() {
   if (!me) return null;
   return (
     <Screen header={<Header title="Cá nhân" />}>
-      <Card>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <IconBadge icon="person" size={48} />
+      <Card hero>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <PatientAvatar name={me.name.replace(/^(BS|KTV)\.?\s+/i, '')} size={52} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 17, fontWeight: '700', color: C.text }}>{me.name}</Text>
+            <Text style={{ fontSize: T.titleM, fontWeight: '700', color: C.text }}>{me.name}</Text>
             <Text style={{ color: C.textSoft }}>@{me.username}{me.title ? ` · ${me.title}` : ''}</Text>
           </View>
         </View>

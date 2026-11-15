@@ -19,7 +19,7 @@ import { woundSummary } from '@/lib/woundSummary';
 import { assessmentSummary } from '@/lib/assessment';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
-import { C, T } from '@/theme';
+import { C, numeric, radius, T } from '@/theme';
 
 // BS04 – Chi tiết vết thương: vị trí, ngày bắt đầu, album ảnh theo ngày, diện tích đã nhập, lịch sử đánh giá.
 export default function WoundDetail() {
@@ -75,9 +75,9 @@ export default function WoundDetail() {
   const areaBlock = (showDate: boolean) => latest && (
           <View style={{ gap: 8 }}>
             {/* Màn bác sĩ: số lớn có nhãn "Diện tích" vì tiêu đề khối là "Hiện trạng". */}
-            {!showDate ? <Text style={{ color: C.textSoft, fontWeight: '600' }}>Diện tích</Text> : null}
+            {!showDate ? <Text style={{ color: C.textSoft, fontWeight: '600', fontSize: T.caption }}>Diện tích</Text> : null}
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-              <Text style={{ fontSize: 36, fontWeight: '800', color: C.text }}>{formatAreaDisplay(latest.areaCm2)}</Text>
+              <Text style={[{ fontSize: T.clinical, lineHeight: 40, fontWeight: '700', color: C.navy }, numeric]}>{formatAreaDisplay(latest.areaCm2)}</Text>
               {showDate ? <Muted>{fmtDate(latest.captureDate)}</Muted> : null}
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -121,9 +121,9 @@ export default function WoundDetail() {
           Vị trí và nhóm tổn thương luôn hiện đủ để tránh nhầm vết (R15). */}
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <IconBadge icon="body-outline" tone="teal" size={44} />
+          <IconBadge icon="body-outline" tone="blue" size={44} />
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontWeight: '700', fontSize: T.cardTitle, color: C.text }}>{w.location}</Text>
+            <Text accessibilityRole="header" style={{ fontWeight: '700', fontSize: T.titleM, lineHeight: 24, color: C.text }}>{w.location}</Text>
             {w.group ? <Text style={{ color: C.textSoft }}>{w.group}</Text> : null}
           </View>
         </View>
@@ -141,18 +141,24 @@ export default function WoundDetail() {
         {isDoctor && !archived && (
           <TextLink label="Chỉnh sửa vị trí" accessibilityLabel={`Chỉnh sửa vị trí ${w.code}`} onPress={() => router.push({ pathname: '/wound-edit/[id]', params: { id: w.id } })} />
         )}
-        <Divider />
+      </Card>
         {isDoctor ? (
           <>
             {/* PP-02: khối Hiện trạng ở màn đầu: diện tích kèm nguồn, thay đổi từ đầu đợt, ngày đo, xu hướng bác sĩ đánh giá, đợt đang áp dụng.
-                Chỉ dùng dữ liệu sẵn có; không suy ra mức độ hay xu hướng từ diện tích (chip thay đổi diện tích giữ màu cam theo quyết định PP-07). */}
+                Chỉ dùng dữ liệu sẵn có; không suy ra mức độ hay xu hướng từ diện tích (chip thay đổi diện tích giữ màu cam theo quyết định PP-07).
+                Stage 9A: Hiện trạng tách thành khối chính riêng; số đo chính lớn, giá trị tham chiếu (ngày đo, lần đo trước) nằm trong ô nền nhạt. */}
             <SectionTitle icon="pulse-outline">Hiện trạng</SectionTitle>
+            <Card hero testID="hien-trang">
             {latest ? areaBlock(false) : <Muted>Chưa có số đo. Chụp ảnh rồi nhập diện tích.</Muted>}
+            {latest ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                <RefValue label="Ảnh đo chụp ngày" value={fmtDate(latest.captureDate)} />
+                {sum.previous ? <RefValue label="Lần đo trước" value={`${formatAreaDisplay(sum.previous.areaCm2)} · chụp ${fmtDate(sum.previous.captureDate)}`} /> : null}
+              </View>
+            ) : null}
             <View>
-              {latest ? <InfoRow label="Ảnh đo chụp ngày" value={fmtDate(latest.captureDate)} /> : null}
               {latest ? <InfoRow label="Nhập bởi" value={src ? `${account(src.by)?.name ?? 'Tài khoản không còn trong danh sách'}${src.at ? ` lúc ${fmtDateTime(src.at)}` : ''}` : 'Chưa có thông tin người nhập'} /> : null}
               {latest ? <InfoRow label="Phương pháp đo" value={latest.measureMethod?.trim() || 'Chưa ghi'} /> : null}
-              {sum.previous ? <InfoRow label="Lần đo trước" value={`${formatAreaDisplay(sum.previous.areaCm2)} · chụp ${fmtDate(sum.previous.captureDate)}`} /> : null}
               <InfoRow label="Xu hướng (bác sĩ đánh giá)" stack value={evals[0]
                 ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}><StatusChip status={TREND_ROLE[evals[0].trend]} label={TREND[evals[0].trend].label} /><Muted>{fmtDate(evals[0].date)}</Muted></View>
                 : 'Chưa có đánh giá'} />
@@ -164,16 +170,17 @@ export default function WoundDetail() {
                 <TextLink label={`Nhập số đo cho ${sum.newerUnmeasured[0].id}`} onPress={() => router.push({ pathname: '/images/[id]', params: { id: sum.newerUnmeasured[0].id } })} />
               </View>
             )}
+            </Card>
           </>
         ) : null}
-      </Card>
 
       {/* Giai đoạn 1 giao diện theo tác vụ: mỗi việc với vết thương một lối vào riêng, ngay dưới thẻ tổng quan.
           Biểu đồ, album, đánh giá cũ và buổi điều trị chuyển sang màn "Tiến triển và lịch sử" (wound-history), mở đúng thẻ.
           Hai việc hay làm nhất (ghi đánh giá, chụp ảnh) nằm ở vùng nút cố định cuối màn (UX-29). Mọi lối vào mang woundId (và patientId khi màn đích cần). */}
       {isDoctor && (
-        <Card>
-          <SectionTitle icon="list-outline">Việc với vết thương</SectionTitle>
+        <>
+        <SectionTitle icon="list-outline">Việc với vết thương</SectionTitle>
+        <Card style={{ paddingVertical: 6 }}>
           <View testID="loi-vao-vet-thuong">
             <LinkRow icon="flash-outline" tone="violet" title="Đợt điều trị" accessibilityLabel={`Đợt điều trị, ${plan ? `phiên bản ${plan.version}, ${PLAN_STATUS[plan.status].label.toLowerCase()}` : 'chưa lập đợt'}`}
               sub={plan ? `Phiên bản ${plan.version} · ${PLAN_STATUS[plan.status].label.toLowerCase()} · lập hoặc sửa phiên bản` : 'Chưa lập đợt · lập đợt mới'}
@@ -204,13 +211,12 @@ export default function WoundDetail() {
             )}
           </View>
         </Card>
+        </>
       )}
 
       {/* Đợt điều trị: một dòng tóm tắt; giai đoạn, liều, tuân thủ và mốc xem lại nằm trong phần thu gọn. */}
+      <SectionTitle icon="flash-outline">Đợt điều trị</SectionTitle>
       <Card>
-        <SectionTitle icon="flash-outline">
-          Đợt điều trị
-        </SectionTitle>
         {plan && isDoctor && <DoseRows plan={plan} />}
         {plan ? (
           <Disclosure
@@ -228,12 +234,8 @@ export default function WoundDetail() {
       </Card>
 
       {/* Thẻ 3: đánh giá gần nhất và các đánh giá cũ trong cùng một thẻ, tách bằng đường kẻ. */}
+      <SectionTitle icon="clipboard-outline">{isDoctor ? 'Đánh giá gần nhất' : 'Nhận xét của bác sĩ'}</SectionTitle>
       <Card>
-      <SectionTitle
-        icon="clipboard-outline"
->
-        {isDoctor ? 'Đánh giá gần nhất' : 'Nhận xét của bác sĩ'}
-      </SectionTitle>
       {evals.length === 0 && <Muted>Chưa có đánh giá.</Muted>}
       {shownEvals.map((e, i) => {
         // Đánh giá gần nhất mặc định 3 dòng; các trường còn lại mở bằng "Xem đầy đủ".
@@ -274,3 +276,13 @@ export default function WoundDetail() {
   );
 }
 
+/** Ô giá trị tham chiếu (Stage 9A): nền nhạt, nhãn nhỏ, giá trị cỡ thân bài, để không lẫn với số đo chính. */
+function RefValue({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <View accessible accessibilityLabel={`${label}: ${value}${sub ? `, ${sub}` : ''}`} style={{ flexGrow: 1, flexBasis: '45%', paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.s + 2, backgroundColor: C.surfaceMuted }}>
+      <Text style={{ fontSize: T.caption, color: C.textSoft }}>{label}</Text>
+      <Text style={[{ fontSize: T.label, fontWeight: '600', color: C.textBody }, numeric]}>{value}</Text>
+      {sub ? <Text style={[{ fontSize: T.caption, color: C.textSoft }, numeric]}>{sub}</Text> : null}
+    </View>
+  );
+}

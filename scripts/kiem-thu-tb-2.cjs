@@ -34,8 +34,8 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
   const store = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2') || '{}'));
   const heading = async (p) => (await p.getByTestId('tieu-de-buoc').count()) ? (await p.getByTestId('tieu-de-buoc').innerText()).replace(/\s+/g, ' ') : '';
   const radio = (p, name) => p.getByRole('radio', { name, exact: true }).first();
-  // Bản web không xuất aria-checked cho Choices; lựa chọn đang chọn có nền màu chính (C.primary).
-  const checked = async (p, name) => (await radio(p, name).evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(11, 107, 111)';
+  // Bản web không xuất aria-checked cho Choices; lựa chọn đang chọn có nền màu chính (C.primary; Stage 9A đổi #0B6B6F thành #1F67A3).
+  const checked = async (p, name) => (await radio(p, name).evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(31, 103, 163)';
   const btn = (p, name) => p.getByRole('button', { name, exact: typeof name === 'string' });
   const click = async (loc, t = 350) => { await loc.click(); await loc.page().waitForTimeout(t); };
   const footerIn = (p) => p.evaluate(() => { const f = document.querySelector('[data-testid="screen-footer"]'); if (!f) return false; const r = f.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight + 1; });

@@ -6,7 +6,7 @@ import { InfoRow, type IconName } from '@/components/ui';
 import { DEVICE_STATUS_LABEL, type DeviceStatusKey } from '@/lib/deviceStatusView';
 import { LINK_LABEL } from '@/lib/device/labels';
 import type { LinkState } from '@/lib/device/transport';
-import { C, semantic, typeScale, type Semantic } from '@/theme';
+import { C, radius, semantic, T, typeScale, type Semantic } from '@/theme';
 
 /**
  * Stage 7: thanh trạng thái thiết bị cố định dưới tiêu đề T01 và T02 (không cuộn theo nội dung),
@@ -44,7 +44,7 @@ export function DeviceStatusBar({ status, deviceCode, linkState, simulated, sess
   return (
     <View testID="device-status-bar" accessible accessibilityRole="summary" accessibilityLiveRegion="polite"
       accessibilityLabel={`Trạng thái thiết bị: ${label}. Máy ${deviceCode ?? 'chưa giao'}. Cáp USB: ${LINK_LABEL[linkState]}. Phiên: ${sessionText}.${at ? ` Cập nhật lúc ${at}.` : ''}${simulated ? ' Thiết bị giả lập.' : ''}`}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 12, backgroundColor: semantic[st.role].bg, borderWidth: 1, borderColor: C.border }}>
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, paddingVertical: 8, paddingRight: 10, paddingLeft: 10, borderRadius: radius.m, backgroundColor: semantic[st.role].bg, borderLeftWidth: 4, borderLeftColor: semantic[st.role].bar }}>
       <Ionicons name={st.icon} size={22} color={semantic[st.role].fg} />
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: typeScale.body.size, lineHeight: 22, fontWeight: '700', color: semantic[st.role].fg }}>
@@ -74,6 +74,39 @@ export function DeviceOverviewRows({ deviceCode, linkState, readyText, sessionTe
       <InfoRow label="Phiên trên máy" value={sessionText} />
       {errorText && <InfoRow label="Lỗi" value={errorText} />}
       <InfoRow label="Cập nhật gần nhất" value={time(updatedAt) ?? 'Chưa có'} />
+    </View>
+  );
+}
+
+/**
+ * Sơ đồ đường nối điện thoại và máy (Stage 9A, T01): hai ô biểu tượng nối bằng một vạch theo trạng thái cáp.
+ * Đã kết nối: vạch liền màu thành công; đang kết nối: vạch màu thông tin; còn lại: vạch đứt xám. Luôn kèm chữ (không chỉ màu).
+ * Chỉ hiển thị, không gọi lệnh nào tới máy.
+ */
+export function LinkDiagram({ linkState, deviceCode }: { linkState: LinkState; deviceCode: string | null }) {
+  const on = linkState === 'connected';
+  const busy = linkState === 'connecting';
+  const role: Semantic = on ? 'success' : busy ? 'info' : 'neutral';
+  const tile = (icon: IconName, label: string) => (
+    <View style={{ alignItems: 'center', gap: 4, width: 84 }}>
+      <View style={{ width: 52, height: 52, borderRadius: radius.m + 2, backgroundColor: on ? C.navy : C.surfaceMuted, borderWidth: 1, borderColor: on ? C.navy : C.border, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={icon} size={24} color={on ? C.onPrimary : C.textSoft} />
+      </View>
+      <Text numberOfLines={1} style={{ fontSize: T.caption, color: C.textBody, fontWeight: '600' }}>{label}</Text>
+    </View>
+  );
+  return (
+    <View testID="so-do-ket-noi" accessible accessibilityLabel={`Điện thoại và máy ${deviceCode ?? 'chưa giao'}: ${LINK_LABEL[linkState]}`}
+      style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', paddingVertical: 4 }}>
+      {tile('phone-portrait-outline', 'Điện thoại')}
+      <View style={{ flex: 1, maxWidth: 140, alignItems: 'center', paddingTop: 16, gap: 6 }}>
+        <View style={{ alignSelf: 'stretch', height: 0, borderTopWidth: 3, borderStyle: on || busy ? 'solid' : 'dashed', borderColor: semantic[role].bar }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Ionicons name={on ? 'checkmark-circle' : busy ? 'sync-outline' : 'unlink-outline'} size={14} color={semantic[role].fg} />
+          <Text style={{ fontSize: T.caption, fontWeight: '700', color: semantic[role].fg }}>{LINK_LABEL[linkState]}</Text>
+        </View>
+      </View>
+      {tile('hardware-chip-outline', deviceCode ?? 'Chưa giao máy')}
     </View>
   );
 }

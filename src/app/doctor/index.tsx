@@ -74,17 +74,16 @@ export default function DoctorHome() {
 
   return (
     <Screen header={<Header title="Trang chủ" subtitle={`Xin chào, ${me?.name ?? ''}`} right={<DateBadge />} />}>
-      <SectionTitle>Việc cần làm</SectionTitle>
+      <SectionTitle caption={tasks.length ? `${tasks.reduce((n, t) => n + t.count, 0)} mục đang chờ, chạm ô để mở danh sách` : undefined}>Việc cần làm</SectionTitle>
       {/* Ô số lớn làm điểm neo. UX-17 (Đợt 12): "Báo cáo mới" mở B02 lọc "Có báo cáo", "Ảnh chưa đo" mở B12 lọc "Chưa đo"; các ô khác mở việc đầu tiên như cũ. */}
       {tasks.length === 0 ? <Card><Muted>Không có việc nào đang chờ.</Muted></Card> : (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {tasks.map((t) => <NumberTile key={t.key} value={t.count} label={t.label} icon={t.icon} tone={t.tone} onPress={t.onPress} />)}
         </View>
       )}
 
-      <SectionTitle action="Danh sách" onAction={() => router.navigate('/doctor/patients')}>{`Bệnh nhân cần xem (${waiting.length})`}</SectionTitle>
-      {/* PP-10: nêu tiêu chí xếp, theo đúng thứ tự trọng số trong src/lib/attention.ts (không đổi cách xếp). */}
-      <Muted>Xếp theo mức cần xử lý: báo cáo chưa xử lý, mức độ bác sĩ đánh giá, buổi bỏ lỡ trong 7 ngày, chưa có dữ liệu hôm nay.</Muted>
+      {/* PP-10: nêu tiêu chí xếp, theo đúng thứ tự trọng số trong src/lib/attention.ts (không đổi cách xếp). Stage 9A: thành dòng chú thích dưới tiêu đề. */}
+      <SectionTitle action="Danh sách" onAction={() => router.navigate('/doctor/patients')} caption="Xếp theo mức cần xử lý: báo cáo chưa xử lý, mức độ bác sĩ đánh giá, buổi bỏ lỡ trong 7 ngày, chưa có dữ liệu hôm nay.">{`Bệnh nhân cần xem (${waiting.length})`}</SectionTitle>
       {waiting.length === 0 ? <Card><Muted>Không có bệnh nhân nào có việc chờ theo các tiêu chí trên.</Muted></Card> : (
         <ListCard>
           {waiting.map((a) => {
@@ -97,9 +96,11 @@ export default function DoctorHome() {
       {rest > 0 && <TextLink label={`Còn ${rest} bệnh nhân không có việc chờ theo tiêu chí trên · Xem danh sách`} onPress={() => router.navigate('/doctor/patients')} />}
 
       {recent.length > 0 && (
-        <Disclosure icon="time-outline" title="Vừa xử lý" summary={`${recent.length} việc gần nhất của bạn`}>
-          {recent.map((r) => <TaskRow key={r.key} icon={r.key.startsWith('m-') ? 'resize-outline' : 'clipboard-outline'} tone="blue" title={r.title} detail={r.detail} onPress={r.onPress} />)}
-        </Disclosure>
+        <Card style={{ paddingVertical: 4 }}>
+          <Disclosure icon="time-outline" title="Vừa xử lý" summary={`${recent.length} việc gần nhất của bạn`}>
+            {recent.map((r) => <TaskRow key={r.key} icon={r.key.startsWith('m-') ? 'resize-outline' : 'clipboard-outline'} tone="blue" title={r.title} detail={r.detail} onPress={r.onPress} />)}
+          </Disclosure>
+        </Card>
       )}
       <SimBadge />
     </Screen>

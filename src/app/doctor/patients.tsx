@@ -7,7 +7,7 @@ import { useRankedPatients } from '@/components/useRankedPatients';
 import { patientSeverity, SEVERITY } from '@/lib/access';
 import { TODAY_LABEL, type TodayState } from '@/lib/attention';
 import type { Severity } from '@/lib/types';
-import { Button, Choices, Empty, Header, HeaderButton, LinkRow, ListCard, Muted, Screen, SearchField } from '@/components/ui';
+import { Button, Card, Choices, Empty, Header, HeaderButton, LinkRow, ListCard, Muted, Screen, SearchField, SectionTitle } from '@/components/ui';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
 
@@ -75,11 +75,15 @@ export default function PatientList() {
   }
 
   return (
-    <Screen header={<Header title="Bệnh nhân" right={<HeaderButton icon="add" label="Thêm mới" onPress={() => router.push('/patients/new')} />} />}>
+    // Stage 9A: ô tìm kiếm nằm trong thanh nhận diện (luôn ở đầu màn), bộ lọc gom thành một khối có nhãn nhóm.
+    <Screen header={<Header title="Bệnh nhân" subtitle={`${mine.length} hồ sơ đang theo dõi`} right={<HeaderButton icon="add" label="Thêm mới" onPress={() => router.push('/patients/new')} />}>
       <SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã bệnh nhân…" />
+    </Header>}>
+      <Card style={{ gap: 10 }}>
+      <Text style={{ color: C.textSoft, fontSize: T.caption, fontWeight: '600' }}>Lọc theo hồ sơ</Text>
       <Choices<Severity | 'all' | 'reports' | 'drafts'> value={level} onChange={setLevel} options={[{ value: 'all', label: 'Tất cả' }, { value: 'reports', label: `Có báo cáo (${reportCount})` }, ...(draftCount > 0 || level === 'drafts' ? [{ value: 'drafts' as const, label: `Có đợt nháp (${draftCount})` }] : []), ...(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))]} />
       {/* P1-01b: hàng lọc thứ hai theo việc hôm nay. Kết hợp với hàng trên (cả hai cùng đúng). Thứ tự trong kết quả vẫn theo rankPatients. */}
-      <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '600' }}>Hôm nay</Text>
+      <Text style={{ color: C.textSoft, fontSize: T.caption, fontWeight: '600', marginTop: 4 }}>Hôm nay</Text>
       <Choices<TodayFilter>
         value={today}
         onChange={setToday}
@@ -90,9 +94,10 @@ export default function PatientList() {
           ...(offline.size > 0 || today === 'offline' ? [{ value: 'offline' as const, label: `Máy chưa đồng bộ (${offline.size})`, a11y: `Máy chưa đồng bộ, ${offline.size} bệnh nhân` }] : []),
         ]}
       />
+      </Card>
       {list.length === 0 && <Empty icon="search" text="Không tìm thấy bệnh nhân phù hợp." />}
       {/* PP-10: cùng tiêu chí xếp với trang chủ (src/lib/attention.ts). */}
-      {list.length > 0 && <Muted>Xếp theo mức cần xử lý: báo cáo chưa xử lý, mức độ bác sĩ đánh giá, buổi bỏ lỡ trong 7 ngày, chưa có dữ liệu hôm nay.</Muted>}
+      {list.length > 0 && <SectionTitle caption="Xếp theo mức cần xử lý: báo cáo chưa xử lý, mức độ bác sĩ đánh giá, buổi bỏ lỡ trong 7 ngày, chưa có dữ liệu hôm nay.">{`Kết quả (${list.length})`}</SectionTitle>}
       <ListCard>
         {list.map((p) => <PatientCard key={p.id} patient={p} attention={attentionOf.get(p.id)} />)}
       </ListCard>

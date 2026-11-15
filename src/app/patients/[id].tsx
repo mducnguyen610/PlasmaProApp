@@ -7,7 +7,7 @@ import { Text } from '@/components/Text';
 import { ActivationCode } from '@/components/ActivationCode';
 import { noteNeedsAttention, noteText } from '@/components/AdherenceCalendar';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, LinkRow, ListCard, Muted, Notice, Screen, SectionTitle, WoundPhoto, SwitchRow, StatusChip, Empty } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, LinkRow, ListCard, Muted, Notice, PatientAvatar, Screen, SectionTitle, WoundPhoto, SwitchRow, StatusChip, Empty, TextLink } from '@/components/ui';
 import { isPendingActivation } from '@/lib/auth';
 import { confirm, notify } from '@/lib/dialog';
 import { buildReportHtml, shareReport } from '@/lib/report';
@@ -17,7 +17,7 @@ import { archiveBlocker } from '@/lib/patientRecord';
 import { woundSummary } from '@/lib/woundSummary';
 import type { TreatmentPlan } from '@/lib/types';
 import { useLookups, useStore, type Activation } from '@/lib/store';
-import { C, T } from '@/theme';
+import { C, numeric, T } from '@/theme';
 import { CLOUD_LINK, SOURCE, WOUND, cloudState } from '@/theme.status';
 import { courseProgress, localDay, sessionsForWound } from '@/lib/course';
 
@@ -125,13 +125,14 @@ export default function PatientDetail() {
   return (
     <Screen header={<Header back title="Hồ sơ bệnh nhân" subtitle={`${p.name} · ${p.code}`} />}>
       {/* P1-02a: thứ tự theo việc lâm sàng: định danh, vết thương, cần xử lý, đợt điều trị, rồi thiết bị và tài khoản, thông tin hồ sơ. */}
-      <Card>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <IconBadge icon="person-outline" size={48} />
+      {/* Stage 9A: khối định danh là khối chính của màn (hero): ký hiệu chữ cái đầu, họ tên lớn, dòng mã, rồi trạng thái. */}
+      <Card hero style={{ gap: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <PatientAvatar name={p.name} size={52} muted={archived} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{p.name}</Text>
+            <Text accessibilityRole="header" style={{ fontSize: T.titleL, lineHeight: 26, fontWeight: '700', color: C.text }}>{p.name}</Text>
             {/* P1-07a: cùng định dạng với thanh ngữ cảnh và thẻ B02. */}
-            <Text style={{ color: C.textSoft, fontSize: T.small }}>{`${p.code} · sinh ${p.birthYear} · ${p.sex}`}</Text>
+            <Text style={[{ color: C.textSoft, fontSize: T.small }, numeric]}>{`${p.code} · sinh ${p.birthYear} · ${p.sex}`}</Text>
           </View>
         </View>
         {/* Giai đoạn 1 giao diện theo tác vụ: trạng thái cần biết ngay ở thẻ định danh (máy và kết nối, việc chờ xử lý).
@@ -165,11 +166,11 @@ export default function PatientDetail() {
           <Pressable key={w.id} testID="dong-vet" accessibilityRole="button" accessibilityLabel={`${w.code}, ${w.location}, ${WOUND_STATUS[w.status].label}. ${areaLine}. ${evalLine}.${isDoctor && sum.newerUnmeasured.length ? ` Có ${sum.newerUnmeasured.length} ảnh mới chưa đo.` : ''}`}
             onPress={() => router.push({ pathname: '/wounds/[id]', params: { id: w.id } })} style={({ pressed }) => ({ paddingVertical: 12, opacity: pressed ? 0.7 : 1 })}>
             <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-              {last ? <WoundPhoto image={last} style={{ width: 64, height: 64, borderRadius: 12 }} /> : <IconBadge icon="image-outline" size={64} tone="gray" />}
+              {last ? <WoundPhoto image={last} style={{ width: 72, height: 72, borderRadius: 10 }} /> : <IconBadge icon="image-outline" size={72} tone="gray" />}
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={{ fontWeight: '700', color: C.text }}>{w.code} · {w.location}</Text>
                 <StatusChip status={WOUND[w.status]} label={WOUND_STATUS[w.status].label} />
-                <Text style={{ color: C.text, fontSize: T.small }}>{areaLine}</Text>
+                <Text style={[{ color: C.text, fontSize: T.small, fontWeight: '500' }, numeric]}>{areaLine}</Text>
                 <Muted>{evalLine}</Muted>
                 {isDoctor && sum.newerUnmeasured.length > 0 ? <Text style={{ color: C.amber, fontSize: T.small, fontWeight: '600' }}>{`Có ${sum.newerUnmeasured.length} ảnh mới chưa đo`}</Text> : null}
               </View>
@@ -333,7 +334,7 @@ export default function PatientDetail() {
 /** Một báo cáo của bệnh nhân. Nội dung và nút giữ như trước P1-02a; chỉ tách nhóm chưa xử lý và đã xử lý. */
 function ReportRow({ r, isDoctor, onHandle }: { r: { id: string; kind: 'symptom' | 'device'; painLevel?: number; date: string; content: string; handled: boolean }; isDoctor: boolean; onHandle?: () => void }) {
   return (
-    <View testID={r.handled ? 'bao-cao-da-xu-ly' : 'bao-cao-chua-xu-ly'} style={{ gap: 4, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border }}>
+    <View testID={r.handled ? 'bao-cao-da-xu-ly' : 'bao-cao-chua-xu-ly'} style={{ gap: 4, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.divider }}>
       <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
         <Chip label={r.kind === 'device' ? 'Sự cố thiết bị' : 'Triệu chứng'} tone={r.kind === 'device' ? 'teal' : 'red'} />
         {r.painLevel !== undefined && <Chip label={`Mức đau ${r.painLevel}/10`} tone="gray" />}
@@ -345,9 +346,8 @@ function ReportRow({ r, isDoctor, onHandle }: { r: { id: string; kind: 'symptom'
       {r.handled ? (
         <Chip label="Đã xử lý" tone="green" icon="checkmark" />
       ) : isDoctor ? (
-        <Pressable onPress={onHandle}>
-          <Text style={{ color: C.primary, fontWeight: '600' }}>Đánh dấu đã xử lý</Text>
-        </Pressable>
+        // Stage 9A: vùng chạm tối thiểu 44 (trước đây chỉ bằng dòng chữ); hành động giữ nguyên.
+        <View style={{ flexDirection: 'row' }}><TextLink label="Đánh dấu đã xử lý" onPress={onHandle ?? (() => {})} /></View>
       ) : <Chip label="Đang chờ bác sĩ" tone="amber" />}
     </View>
   );
