@@ -9,6 +9,7 @@ import { getTransport, onTransportChange, PROTOCOL } from './index';
 import { toDeviceMessage } from './protocol';
 import type { DeviceMessage, TreatmentConfig } from './protocol';
 import { identifyDevice, sendConfig } from './sender';
+import { createSingleFlight } from './configCommand';
 import { createSessionTracker } from './session-tracker';
 import type { FinishedSession } from './session-tracker';
 import type { DeviceIdentity, SendResult } from './sender';
@@ -19,6 +20,11 @@ export type StatusMessage = Extract<DeviceMessage, { kind: 'status' }>;
 // Trạng thái giữ ở mức mô-đun để các màn dùng chung một kết nối thấy cùng một thông tin.
 let lastState: LinkState = 'disconnected';
 let lastIdentity: DeviceIdentity | null = null;
+/**
+ * Stage 9C (gói C): lệnh nạp đang chờ máy trả lời, dùng chung mọi màn. Một lúc chỉ một lệnh CFG trên dây:
+ * lần gọi thứ hai khi lệnh trước chưa xong nhận lại đúng kết quả của lệnh trước, không gửi khung mới.
+ */
+const sendFlight = createSingleFlight<SendResult>();
 
 export interface DeviceLinkOptions {
   /** Gọi khi chuỗi STA cho thấy một phiên vừa kết thúc (running rồi done, stopped hoặc error). */
@@ -42,6 +48,7 @@ export function useDeviceLink(opts: DeviceLinkOptions = {}) {
   useEffect(
     () =>
       onTransportChange(() => {
+        sendFlight.reset();
         lastState = 'disconnected';
         lastIdentity = null;
         setState('disconnected');
@@ -116,13 +123,14 @@ export function useDeviceLink(opts: DeviceLinkOptions = {}) {
   }, [transport]);
 
   const send = useCallback(
-    (cfg: TreatmentConfig): Promise<SendResult> =>
-      sendConfig(transport, cfg, caps, PROTOCOL, {
+    (cfg: TreatmentConfig): Promise<SendResult> => {
+      return sendFlight.run(() => sendConfig(transport, cfg, caps, PROTOCOL, {
         // Máy đã trả INF: kiểm phiên bản. Đặc tả không có lệnh hỏi: bỏ qua. Còn lại (chưa hỏi, không trả lời): chặn gửi.
         deviceVersion: identity?.kind === 'known' ? (identity.info ? identity.info.protocolVersion : undefined) : null,
         // Ngày giờ lấy lại ở mỗi lần gửi, không dùng lúc vẽ màn.
         now: () => new Date(),
-      }),
+      }));
+    },
     [transport, caps, identity],
   );
 
