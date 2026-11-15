@@ -5,6 +5,7 @@ import { createCommitQueue } from './commitQueue';
 import { canAddReport, canHandleReport, canManagePatient, canResolveSyncError, TERMS_VERSION } from './access';
 import { ACTIVATION_DAYS, generateActivationCode, hashDemoPassword, isPendingActivation, isRecordUsername, MAX_ACTIVATION_ATTEMPTS, normalizeUsername, verifyPassword } from './auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createPersistence } from './persistence';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform } from 'react-native';
 
@@ -19,8 +20,8 @@ import type {
 } from './types';
 
 // v2: dữ liệu demo theo đợt điều trị (ngày tính từ hôm nay); bản v1 cũ không được đọc lại.
-const STORAGE_KEY = 'plasmapro.demo.v2';
-const SESSION_KEY = 'plasmapro.session.v1';
+// Stage 9C (gói B, D): đọc ghi bền qua tầng hạ tầng src/lib/persistence.ts (một hàng ghi, giữ bản sao khi dữ liệu hỏng).
+const persistence = createPersistence<AppData>(AsyncStorage);
 
 export const nowIso = () => new Date().toISOString();
 export const todayIso = () => localDay();
@@ -100,7 +101,20 @@ interface Store {
    * Trả false khi hồ sơ chưa được giao máy, vì phiên phải gắn với một thiết bị.
    */
   recordDeviceSession: (entry: { patientId: string; woundId?: string; startedAt: string; durationSec: number; outcome: 'done' | 'stopped' | 'error' }) => Promise<boolean>;
+  /** Stage 9C (gói D): sự cố lưu trữ đang có (null là bình thường). Màn hình chung hiện thông báo khi khác null. */
+  persistIssue: PersistIssue | null;
+  /** Ghi lại bản dữ liệu đang hiển thị sau một lần ghi nền lỗi. */
+  retryPersist: () => Promise<void>;
+  /** Ẩn thông báo dữ liệu cũ không đọc được (bản sao vẫn giữ). */
+  dismissPersistIssue: () => void;
 }
+
+/**
+ * write_failed: một lần ghi nền lỗi, thay đổi đang hiển thị chưa chắc đã ghi bền.
+ * unreadable: dữ liệu cũ không đọc được, đã chép sang backupKey, ứng dụng dùng dữ liệu mẫu.
+ * read_failed: kho không đọc được; ứng dụng không ghi để khỏi đè dữ liệu cũ.
+ */
+export type PersistIssue = { kind: 'write_failed' } | { kind: 'unreadable'; backupKey: string | null } | { kind: 'read_failed' };
 
 /**
  * Đăng nhập đúng mật khẩu nhưng tài khoản chưa đồng ý phiên bản điều khoản hiện hành (R8).
@@ -130,6 +144,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(createSeed);
   const [meId, setMeId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [persistIssue, setPersistIssue] = useState<PersistIssue | null>(null);
+  // Kho không đọc được lúc mở: không ghi gì, để dữ liệu mẫu không đè lên dữ liệu thật chưa đọc được.
+  const readFailedRef = useRef(false);
   const dataRef = useRef(data);
   useEffect(() => {
     dataRef.current = data;
@@ -137,10 +154,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
+      const loaded = await persistence.load();
+      if (loaded.kind === 'unreadable') setPersistIssue({ kind: 'unreadable', backupKey: loaded.backupKey });
+      if (loaded.kind === 'failed') { readFailedRef.current = true; setPersistIssue({ kind: 'read_failed' }); }
       try {
-        const [raw, sess] = await Promise.all([AsyncStorage.getItem(STORAGE_KEY), AsyncStorage.getItem(SESSION_KEY)]);
-        if (raw) {
-          const saved: AppData = JSON.parse(raw);
+        const sess = loaded.kind === 'failed' ? null : loaded.session;
+        if (loaded.kind === 'loaded') {
+          const saved: AppData = loaded.data;
           saved.sessionNotes ??= [];
           saved.deviceLinks ??= [];
           saved.patients = saved.patients.map(p => ({ ...p, researchCode: p.researchCode ?? 'RS-' + Crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase() }));
@@ -161,8 +181,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const persistedRef = useRef<AppData | null>(null);
   useEffect(() => {
     if (!ready) return;
-    if (data === persistedRef.current) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).then(() => { persistedRef.current = data; }).catch(() => {});
+    if (data === persistedRef.current || readFailedRef.current) return;
+    // Ghi nền cho các thao tác không qua commit (mô phỏng IoMT, đăng nhập). Lỗi ghi không còn bị bỏ qua: ghi nhận để màn hình báo.
+    persistence.saveData(data).then(() => { persistedRef.current = data; setPersistIssue((x) => (x?.kind === 'write_failed' ? null : x)); }, () => setPersistIssue({ kind: 'write_failed' }));
   }, [data, ready]);
 
   const update = useCallback((fn: (d: AppData) => AppData) => {
@@ -178,7 +199,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const commitQueue = useRef<((fn: (d: AppData) => AppData) => Promise<AppData>) | null>(null);
   commitQueue.current ??= createCommitQueue<AppData>({
     read: () => dataRef.current,
-    write: async (next) => { await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)); persistedRef.current = next; },
+    write: async (next) => {
+      if (readFailedRef.current) throw new Error('Chưa đọc được bộ nhớ máy nên chưa lưu, để không ghi đè dữ liệu cũ.');
+      await persistence.saveData(next);
+      persistedRef.current = next;
+    },
     apply: (next) => update(() => next),
     wrapWriteError: (e) => new PersistError(e),
   });
@@ -193,12 +218,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback((id: string) => {
     setMeId(id);
-    AsyncStorage.setItem(SESSION_KEY, id).catch(() => {});
+    persistence.saveSession(id).catch(() => {});
   }, []);
   const logout = useCallback(() => {
     meRef.current = null;
     setMeId(null);
-    AsyncStorage.removeItem(SESSION_KEY).catch(() => {});
+    persistence.clearSession().catch(() => {});
   }, []);
   const finishOnboarding = () => {
     const actor = meRef.current;
@@ -457,7 +482,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       areaCm2: null, status: 'unlabeled', history: [], capture: storedCapture,
     };
     // Confirm persistence before leaving review; quota errors must keep the selected photo retryable.
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...dataRef.current, images: [...dataRef.current.images, image] }));
+    if (readFailedRef.current) throw new PersistError(new Error('Chưa đọc được bộ nhớ máy.'));
+    await persistence.saveData({ ...dataRef.current, images: [...dataRef.current.images, image] });
     update((d) => ({ ...d, images: [...d.images, image], counters: { ...d.counters, image: Math.max(d.counters.image, n) } }));
     return image;
   };
@@ -794,10 +820,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  // Ghi lại bản đang hiển thị qua đúng hàng commit (hàm đồng nhất): lỗi ghi ném PersistError, thành công thì bỏ thông báo.
+  const retryPersist = useCallback(async () => {
+    await commit((d) => d);
+    setPersistIssue((x) => (x?.kind === 'write_failed' ? null : x));
+  }, [commit]);
+  const dismissPersistIssue = () => setPersistIssue((x) => (x?.kind === 'unreadable' ? null : x));
+
   const value: Store = {
     ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, setPatientArchived, addWound, updateWound, addImage, labelImage,
     setExcluded, requestRetake, addEvaluation, savePlan, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
     setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle, recordDeviceLink, recordDeviceSession,
+    persistIssue, retryPersist, dismissPersistIssue,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
