@@ -165,7 +165,7 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
   const arArea = im.capture?.automaticMeasurement.areaCm2 ?? null;
 
   // UX-17: hàng đợi ảnh chưa đo của bác sĩ, cùng bộ lọc và thứ tự với B12 (mới chụp trước). Chỉ để mở ảnh kế tiếp.
-  const myPatients = new Set(data.patients.filter((x) => x.doctorId === me?.id).map((x) => x.id));
+  const myPatients = new Set(data.patients.filter((x) => x.doctorId === me?.id && !x.archivedAt).map((x) => x.id));
   const queue = data.images
     .filter((x) => myPatients.has(x.patientId) && x.status === 'unlabeled' && x.id !== im.id)
     .sort((a, b) => b.captureDate.localeCompare(a.captureDate));

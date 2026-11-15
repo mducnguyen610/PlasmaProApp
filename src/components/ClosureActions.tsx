@@ -25,8 +25,11 @@ export function ClosureActions({ woundId, status, check1, followUpFrom, today, h
   if (status === 'active') {
     return (
       <View style={{ gap: 8 }}>
-        <Button label="Ghi nhận biểu mô đã khép (lần 1)" icon="checkmark-circle-outline" variant="secondary"
-          onPress={() => run('check1', 'Biểu mô đã khép', 'Dừng điều trị plasma và hẹn khám lại sau 2 tuần để xác nhận đã liền. Thiết bị sẽ không phát trong thời gian chờ.', 'Ghi nhận')} />
+        {/* "Đánh dấu đã lành" là lần 1 của quy trình hai lần khám (bước check1, không đổi). Trạng thái đã liền chỉ ghi ở lần 2,
+            do bác sĩ bấm; ứng dụng không tự suy ra đã lành từ diện tích, AI, so sánh ảnh hay thời gian. */}
+        <Button label="Đánh dấu đã lành" icon="checkmark-circle-outline" variant="secondary"
+          onPress={() => run('check1', 'Đánh dấu đã lành', `Ghi nhận lần 1: biểu mô đã khép. Đợt điều trị tạm dừng, thiết bị không phát trong thời gian chờ. Vết thương chuyển sang "Chờ xác nhận liền"; trạng thái đã liền chỉ được ghi khi bác sĩ xác nhận lần 2, cách lần 1 ít nhất ${CLOSURE_CONFIRM_DAYS} ngày. Ảnh, số đo, đánh giá và buổi điều trị giữ nguyên.`, 'Ghi nhận lần 1')} />
+        <Muted>{`Lần 1 trong 2 lần xác nhận liền thương (cách ${CLOSURE_CONFIRM_DAYS} ngày).`}</Muted>
         <Button label="Tạm dừng đợt" icon="pause-outline" variant="ghost" onPress={() => run('pause', 'Tạm dừng', 'Thiết bị sẽ không phát cho tới khi bác sĩ tiếp tục đợt.', 'Tạm dừng')} />
       </View>
     );

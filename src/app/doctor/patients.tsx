@@ -7,7 +7,7 @@ import { useRankedPatients } from '@/components/useRankedPatients';
 import { patientSeverity, SEVERITY } from '@/lib/access';
 import { TODAY_LABEL, type TodayState } from '@/lib/attention';
 import type { Severity } from '@/lib/types';
-import { Choices, Empty, Header, HeaderButton, ListCard, Muted, Screen, SearchField } from '@/components/ui';
+import { Button, Choices, Empty, Header, HeaderButton, LinkRow, ListCard, Muted, Screen, SearchField } from '@/components/ui';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
 
@@ -22,6 +22,7 @@ export default function PatientList() {
   const [level, setLevel] = useState<Severity | 'all' | 'reports' | 'drafts'>('all');
   const [today, setToday] = useState<TodayFilter>('all');
   const [q, setQ] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
   // UX-17: mở từ ô "Báo cáo mới" ở B01 thì lọc sẵn bệnh nhân có báo cáo chưa xử lý.
   // P1-01a: mở từ ô "Thiết bị chưa đồng bộ" (từ 2 máy) thì lọc sẵn bệnh nhân giữ máy chưa đồng bộ.
   // Mỗi lần chạm ô có mốc t riêng, nên chạm lại vẫn lọc lại dù tab đã mở từ trước.
@@ -33,8 +34,13 @@ export default function PatientList() {
     setLevel(loc === 'bao-cao' ? 'reports' : loc === 'dot-nhap' ? 'drafts' : 'all');
     setToday(loc === 'chua-dong-bo' ? 'offline' : 'all');
     setQ('');
+    setShowArchived(false);
   }
-  const mine = data.patients.filter((p) => p.doctorId === me?.id);
+  // Danh sách mặc định chỉ gồm hồ sơ đang theo dõi; hồ sơ đã lưu trữ xem ở chế độ riêng (nút cuối danh sách).
+  const all = data.patients.filter((p) => p.doctorId === me?.id);
+  const mine = all.filter((p) => !p.archivedAt);
+  const archivedList = all.filter((p) => !!p.archivedAt).sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? ''));
+  const archivedReports = data.reports.filter((r) => !r.handled && archivedList.some((p) => p.id === r.patientId)).length;
   const withReports = new Set(data.reports.filter((r) => !r.handled).map((r) => r.patientId));
   const reportCount = mine.filter((p) => withReports.has(p.id)).length;
   const withDrafts = new Set(data.plans.filter((x) => x.status === 'draft').map((x) => x.patientId));
@@ -52,6 +58,21 @@ export default function PatientList() {
     .filter((p) => matchesToday(p.id, today))
     .filter((p) => !q || norm(`${p.name} ${p.code}`).includes(norm(q)))
     .sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9));
+
+  if (showArchived) {
+    const found = archivedList.filter((p) => !q || norm(`${p.name} ${p.code}`).includes(norm(q)));
+    return (
+      <Screen header={<Header title="Hồ sơ đã lưu trữ" subtitle={`${archivedList.length} hồ sơ`} />}>
+        <Button label="Về danh sách đang theo dõi" icon="arrow-back" variant="secondary" onPress={() => setShowArchived(false)} />
+        <SearchField label="Tìm hồ sơ đã lưu trữ" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã bệnh nhân…" />
+        <Muted>Hồ sơ đã lưu trữ chỉ xem được, lịch sử lâm sàng giữ nguyên. Mở hồ sơ để khôi phục.</Muted>
+        {found.length === 0 && <Empty icon="archive-outline" text={archivedList.length ? 'Không tìm thấy hồ sơ phù hợp.' : 'Chưa có hồ sơ nào được lưu trữ.'} />}
+        <ListCard>
+          {found.map((p) => <PatientCard key={p.id} patient={p} />)}
+        </ListCard>
+      </Screen>
+    );
+  }
 
   return (
     <Screen header={<Header title="Bệnh nhân" right={<HeaderButton icon="add" label="Thêm mới" onPress={() => router.push('/patients/new')} />} />}>
@@ -75,6 +96,15 @@ export default function PatientList() {
       <ListCard>
         {list.map((p) => <PatientCard key={p.id} patient={p} attention={attentionOf.get(p.id)} />)}
       </ListCard>
+      {/* Lối vào hồ sơ đã lưu trữ: chỉ hiện khi có, để màn mặc định không đổi với bác sĩ chưa lưu trữ hồ sơ nào. */}
+      {archivedList.length > 0 && (
+        <ListCard>
+          <LinkRow icon="archive-outline" tone="gray" title={`Hồ sơ đã lưu trữ (${archivedList.length})`}
+            // Bệnh nhân của hồ sơ đã lưu trữ vẫn gửi được báo cáo từ ứng dụng; nêu số báo cáo chưa xử lý để không bị bỏ sót.
+            sub={archivedReports ? `Chỉ xem · ${archivedReports} báo cáo chưa xử lý` : 'Chỉ xem, lịch sử giữ nguyên'}
+            testID="loi-vao-luu-tru" onPress={() => { setQ(''); setShowArchived(true); }} />
+        </ListCard>
+      )}
     </Screen>
   );
 }
