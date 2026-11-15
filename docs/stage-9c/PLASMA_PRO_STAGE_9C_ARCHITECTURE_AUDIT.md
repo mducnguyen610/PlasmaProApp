@@ -28,7 +28,7 @@ Kết quả là quan sát mã tĩnh, độ tin cậy cao cho số đếm; phân 
 | Thiết bị | `src/lib/device/**`, `modules/plasma-usb` | Đặc tả giao thức khai báo, codec, sender, transport (giả lập, USB Android) |
 | AI, chụp ảnh | `src/lib/ai/**`, `src/lib/capture/**` | Mô-đun nhận diện tích hợp sẵn, chất lượng ảnh, AR |
 
-## 4. Số đếm import giữa tầng
+## 4. Số đếm import giữa tầng (đo trên nền 9B, trước khi sửa)
 
 | Từ | Đến | Số import |
 |---|---|---|

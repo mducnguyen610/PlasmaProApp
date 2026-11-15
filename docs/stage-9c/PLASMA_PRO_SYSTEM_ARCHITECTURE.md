@@ -41,7 +41,9 @@ Backend, cơ sở dữ liệu: chưa có (KT1: dữ liệu một máy, chỉ đ�
 
 ## 4. Luồng dữ liệu
 
-- **Ghi**: màn hình gọi hàm store (ví dụ `labelImage`) → `commit(fn)` xếp hàng → tính dữ liệu mới, kiểm quyền → ghi AsyncStorage → thành công thì cập nhật trạng thái React; lỗi ghi ném `PersistError`, trạng thái giữ nguyên. Từ 9C, hiệu ứng nền không ghi lại bản vừa commit.
+- **Ghi qua commit** (9 hàm, ví dụ `labelImage`, `savePlan`): `commit(fn)` xếp hàng → tính dữ liệu mới, kiểm quyền → ghi AsyncStorage → thành công thì cập nhật trạng thái React; lỗi ghi ném `PersistError`, trạng thái giữ nguyên. Từ 9C, hiệu ứng nền không ghi lại bản vừa commit.
+- **Ghi qua update** (21 hàm, ví dụ `markCareDone`, `setSessionPain`): cập nhật trạng thái React ngay, hiệu ứng nền ghi sau và nuốt lỗi ghi. Đây là khoảng trống đã biết (D-R3), chưa sửa.
+- **addImage**: ghi trực tiếp ngoài hàng đợi (D-R1).
 - **Đọc**: khởi động đọc khóa dữ liệu và khóa phiên, bổ sung trường mặc định, rồi dùng chung qua context.
 - **Liệu trình đến máy**: bác sĩ lập liệu trình (B07) → bệnh nhân mở T01 → `planToConfig` → `checkTreatmentConfig` (kiểm giới hạn theo năng lực máy) → `sender` gửi CFG, chờ ACK/NAK → T02 theo dõi trạng thái.
 - **Ảnh**: chụp → kiểm chất lượng (`capture`) → `addImage` lưu tệp (native) hoặc data URL (web) → bác sĩ đo, ghi diện tích ở B11. Giá trị AR ở B10 chỉ để tham khảo, không tự điền, không tự lưu.

@@ -52,8 +52,17 @@ So sánh tệp tổng hợp `tong.txt` của 9B và 9C bằng `diff`: không kh�
 
 Cả hai lỗi giống trên master và trên 9B. Kịch bản không bị sửa để qua.
 
-## 4. Không chạy ở đây
+## 4. Kiểm định cuối (15/11/2026, tối)
 
-- Kịch bản hồi quy hình ảnh Stage 9A (nằm ở nhánh PR 60).
+Chạy lại trên bản dựng mới từ head PR 62 và trên bản dựng PR 60 (Stage 9A). Stage 9A không có kịch bản riêng; hồi quy 9A là 22 kịch bản trên bản dựng 9A, với tb-2, tb-3, p2 lấy từ nhánh PR 60 (đổi hằng màu) và 5 kịch bản PR 58 nguyên bản (nhãn B11 cũ, vì 9A không có S8-B10).
+
+| Bản dựng | 22 kịch bản | kiem-thu-9b | Hiệu năng | Toàn vẹn trình duyệt |
+|---|---|---|---|---|
+| 9C (head PR 62) | 781 đạt, 2 lỗi, giống 9B | 18/18 | 1 lần ghi, 14 454 byte, lưu đúng 5/5 | 0 lỗi |
+| 9A (PR 60) | 781 đạt, 2 lỗi (cùng 2 lỗi tb-8) | Không áp dụng | Không đo | Không đo |
+| 9B (PR 61, đo lại) | Kết quả lưu trước | 18/18 (lần trước) | 2 lần ghi, 28 908 byte, lưu đúng 5/5 | Không đo |
+
+## 5. Không chạy ở đây
+
 - dot-9 (cần bản dựng tiêm dữ liệu AR riêng).
 - Kiểm trên điện thoại thật, máy Plasma Pro thật: không có. Kết quả giả lập không phải xác minh phần cứng.
