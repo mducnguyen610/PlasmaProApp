@@ -146,6 +146,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           saved.patients = saved.patients.map(p => ({ ...p, researchCode: p.researchCode ?? 'RS-' + Crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase() }));
           setData(saved);
           dataRef.current = saved;
+          persistedRef.current = saved; // vừa đọc từ bộ nhớ máy: không cần ghi lại
         }
         if (sess) setMeId(sess);
       } catch {
@@ -155,9 +156,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
+  // Stage 9C (gói F): bản đã ghi bền gần nhất. commit() vừa ghi bản này thì hiệu ứng dưới không ghi lại lần hai
+  // (trước đây mỗi lần lưu ghi toàn bộ dữ liệu 2 lần, đo bằng scripts/do-hieu-nang-9c.cjs). Nội dung ghi không đổi.
+  const persistedRef = useRef<AppData | null>(null);
   useEffect(() => {
     if (!ready) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).catch(() => {});
+    if (data === persistedRef.current) return;
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).then(() => { persistedRef.current = data; }).catch(() => {});
   }, [data, ready]);
 
   const update = useCallback((fn: (d: AppData) => AppData) => {
@@ -173,7 +178,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const commitQueue = useRef<((fn: (d: AppData) => AppData) => Promise<AppData>) | null>(null);
   commitQueue.current ??= createCommitQueue<AppData>({
     read: () => dataRef.current,
-    write: (next) => AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)),
+    write: async (next) => { await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)); persistedRef.current = next; },
     apply: (next) => update(() => next),
     wrapWriteError: (e) => new PersistError(e),
   });
