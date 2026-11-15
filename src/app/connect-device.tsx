@@ -11,8 +11,8 @@ import { fmtDuration } from '@/lib/course';
 import { modeLabel } from '@/lib/device/capabilities';
 import { planToConfig, PROTOCOL } from '@/lib/device';
 import { CONFIG_ERROR_LABEL, MISSING_LABEL, nakHint, SESSION_LABEL, sendResultLabel } from '@/lib/device/labels';
-import { configToWire, validateConfig } from '@/lib/device/protocol';
 import type { SendResult } from '@/lib/device/sender';
+import { checkTreatmentConfig } from '@/lib/device/treatmentConfig';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
 import { deviceStatusView } from '@/lib/deviceStatusView';
 import { sessionDisplay } from '@/lib/sessionDisplay';
@@ -55,9 +55,8 @@ export default function ConnectDevice() {
 
   const plan = selected?.plan;
   const prepared = plan ? planToConfig(plan, p, new Date()) : null;
-  const cfg = prepared && !('missing' in prepared) ? prepared : null;
-  const errors = cfg ? validateConfig(cfg, link.caps, PROTOCOL) : [];
-  const wire = cfg && errors.length === 0 ? configToWire(cfg, PROTOCOL) : null;
+  // Stage 9C: kiểm cấu hình và giá trị trên dây qua dịch vụ thiết bị, màn không gọi trực tiếp lớp giao thức.
+  const { cfg, errors, wire } = checkTreatmentConfig(prepared, link.caps, PROTOCOL);
   const idInfo = link.identity?.kind === 'known' ? link.identity.info : null;
   const versionMismatch = !!idInfo && idInfo.protocolVersion !== PROTOCOL.protocolVersion;
   const noDevice = !p.deviceId;
