@@ -1,7 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { Asset } from 'expo-asset';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { canManagePatient, TERMS_VERSION } from './access';
+import { canAddReport, canHandleReport, canManagePatient, canResolveSyncError, TERMS_VERSION } from './access';
 import { ACTIVATION_DAYS, generateActivationCode, hashDemoPassword, isPendingActivation, isRecordUsername, MAX_ACTIVATION_ATTEMPTS, normalizeUsername, verifyPassword } from './auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -697,19 +697,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const addReport: Store['addReport'] = (r) =>
+  // Stage 9B (S8-B05): kiểm vai trò như các thao tác khác. Chính sách ở access.ts; chỉ là kiểm tra phía ứng dụng, không thay phân quyền máy chủ.
+  const addReport: Store['addReport'] = (r) => {
+    const actor = dataRef.current.accounts.find((a) => a.id === meRef.current?.id);
+    if (!canAddReport(actor, r.patientId)) throw new Error('Chỉ bệnh nhân gửi được báo cáo cho hồ sơ của mình.');
     update((d) => ({ ...d, reports: [{ ...r, id: `r-${Date.now()}`, date: nowIso(), handled: false }, ...d.reports] }));
+  };
 
-  const setReportHandled: Store['setReportHandled'] = (id) =>
+  const setReportHandled: Store['setReportHandled'] = (id) => {
+    const report = dataRef.current.reports.find((r) => r.id === id);
+    if (!report) throw new Error('Không tìm thấy báo cáo.');
+    const actor = dataRef.current.accounts.find((a) => a.id === meRef.current?.id);
+    // Giữ hành vi cũ với hồ sơ đã lưu trữ (B04 vẫn cho bác sĩ phụ trách đánh dấu): chỉ kiểm bác sĩ phụ trách, không chặn theo lưu trữ.
+    if (!canHandleReport(actor, dataRef.current.patients.find((p) => p.id === report.patientId))) throw new Error('Chỉ bác sĩ phụ trách được đánh dấu báo cáo đã xử lý.');
     update((d) => ({ ...d, reports: d.reports.map((r) => (r.id === id ? { ...r, handled: true } : r)) }));
+  };
 
   const updateAccount: Store['updateAccount'] = (id, patch) => {
     if (meRef.current?.role !== 'admin' || meRef.current.locked) throw new Error('Cần quyền quản trị.');
     update(d => ({ ...d, accounts: d.accounts.map(a => a.id === id ? { ...a, locked: patch.locked ?? a.locked, pendingApproval: patch.pendingApproval ?? a.pendingApproval, researchAccess: patch.researchAccess ?? a.researchAccess } : a) }));
   };
 
-  const resolveSyncError: Store['resolveSyncError'] = (id) =>
+  const resolveSyncError: Store['resolveSyncError'] = (id) => {
+    if (!canResolveSyncError(meRef.current)) throw new Error('Cần quyền quản trị.');
     update((d) => ({ ...d, syncErrors: d.syncErrors.map((s) => (s.id === id ? { ...s, resolved: true } : s)) }));
+  };
 
   // Bệnh nhân ghi mức đau cho phiên của thiết bị mình đang được gán.
   const setSessionPain: Store['setSessionPain'] = (sessionId, pain) => {
