@@ -2,7 +2,8 @@ import type { AppData } from './types';
 
 /**
  * Stage 9C (gói D): kiểm quan hệ giữa các thực thể trong dữ liệu một máy (AsyncStorage).
- * Chỉ đọc và báo cáo, không sửa dữ liệu, không chạy tự động trong ứng dụng.
+ * Chỉ đọc và báo cáo, không sửa dữ liệu. Từ gói D bổ sung: store gọi newIntegrityIssues trước mỗi lần ghi (commit) và từ chối
+ * lần ghi làm phát sinh lỗi quan hệ mới. Lỗi đã có từ trước không chặn ghi (dữ liệu cũ không bị khóa).
  * Dùng trong kiểm thử (dữ liệu mẫu, dữ liệu sau các luồng) và làm đặc tả ràng buộc cho cơ sở dữ liệu sau này
  * (khóa ngoại, ràng buộc cùng bệnh nhân). Không thay cho ràng buộc ở máy chủ.
  */
@@ -28,7 +29,8 @@ export function checkIntegrity(d: AppData): IntegrityIssue[] {
   }
   for (const p of d.patients) {
     const doc = accounts.get(p.doctorId);
-    if (!doc || doc.role !== 'doctor') add('orphan', 'patient', p.id, `Bác sĩ phụ trách không có hoặc không phải bác sĩ: ${p.doctorId}`);
+    // doctorId rỗng: bệnh nhân tự đăng ký, chờ quản trị phân công (trạng thái hợp lệ, không phải mồ côi).
+    if (p.doctorId && (!doc || doc.role !== 'doctor')) add('orphan', 'patient', p.id, `Bác sĩ phụ trách không có hoặc không phải bác sĩ: ${p.doctorId}`);
     if (p.deviceId) {
       const dev = devices.get(p.deviceId);
       if (!dev) add('orphan', 'patient', p.id, `Thiết bị không có: ${p.deviceId}`);
@@ -79,4 +81,13 @@ export function checkIntegrity(d: AppData): IntegrityIssue[] {
     if (!plans.has(l.planId)) add('orphan', 'deviceLink', l.id, `Đợt không có: ${l.planId}`);
   }
   return out;
+}
+
+const issueKey = (x: IntegrityIssue) => `${x.code}|${x.entity}|${x.id}|${x.detail}`;
+
+/** Lỗi có ở `next` mà chưa có ở `base`: lần ghi này làm phát sinh. */
+export function newIntegrityIssues(base: AppData, next: AppData): IntegrityIssue[] {
+  if (base === next) return [];
+  const before = new Set(checkIntegrity(base).map(issueKey));
+  return checkIntegrity(next).filter((x) => !before.has(issueKey(x)));
 }

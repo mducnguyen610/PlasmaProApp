@@ -1,11 +1,12 @@
 import * as Crypto from 'expo-crypto';
 import { Asset } from 'expo-asset';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { createCommitQueue } from './commitQueue';
+import { createWritePath } from './writePath';
 import { canAddReport, canHandleReport, canManagePatient, canResolveSyncError, TERMS_VERSION } from './access';
 import { ACTIVATION_DAYS, generateActivationCode, hashDemoPassword, isPendingActivation, isRecordUsername, MAX_ACTIVATION_ATTEMPTS, normalizeUsername, verifyPassword } from './auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createPersistence } from './persistence';
+import { newIntegrityIssues, type IntegrityIssue } from './integrity';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform } from 'react-native';
 
@@ -128,6 +129,16 @@ export class TermsRequiredError extends Error {
 }
 
 /** Ghi vào bộ nhớ máy thất bại (đầy bộ nhớ, bị chặn). Dữ liệu chưa được lưu. */
+/** Lần ghi bị từ chối vì làm phát sinh lỗi quan hệ dữ liệu (gói D). Dữ liệu trên màn và trong bộ nhớ máy không đổi. */
+export class IntegrityError extends Error {
+  issues: IntegrityIssue[];
+  constructor(issues: IntegrityIssue[]) {
+    super('Chưa lưu vì dữ liệu sẽ bị sai liên kết: ' + issues.map((x) => x.detail).join('; ') + '.');
+    this.name = 'IntegrityError';
+    this.issues = issues;
+  }
+}
+
 export class PersistError extends Error {
   constructor(public cause: unknown) {
     super('Không ghi được vào bộ nhớ máy (có thể bộ nhớ đã đầy). Dữ liệu này chưa được lưu');
@@ -197,14 +208,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    */
   // Stage 9B (S8-B06): các commit xếp hàng, mỗi commit tính từ bản mới nhất lúc tới lượt (src/lib/commitQueue.ts).
   const commitQueue = useRef<((fn: (d: AppData) => AppData) => Promise<AppData>) | null>(null);
-  commitQueue.current ??= createCommitQueue<AppData>({
+  // Stage 9C (gói D): đường ghi ở src/lib/writePath.ts (xếp hàng, kiểm quan hệ, ghi bền rồi mới đổi màn hình).
+  commitQueue.current ??= createWritePath<AppData>({
     read: () => dataRef.current,
-    write: async (next) => {
-      if (readFailedRef.current) throw new Error('Chưa đọc được bộ nhớ máy nên chưa lưu, để không ghi đè dữ liệu cũ.');
-      await persistence.saveData(next);
-      persistedRef.current = next;
-    },
+    save: (next) => persistence.saveData(next),
     apply: (next) => update(() => next),
+    // Từ chối bản mới nếu nó làm phát sinh lỗi quan hệ (mồ côi, gắn chéo bệnh nhân, trùng mã).
+    check: (base, next) => {
+      const added = newIntegrityIssues(base, next);
+      return added.length ? new IntegrityError(added) : null;
+    },
+    blocked: () => (readFailedRef.current ? 'Chưa đọc được bộ nhớ máy nên chưa lưu, để không ghi đè dữ liệu cũ.' : null),
+    onPersisted: (next) => { persistedRef.current = next; },
     wrapWriteError: (e) => new PersistError(e),
   });
   const commit = useCallback(async (fn: (d: AppData) => AppData) => {
@@ -536,12 +551,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!w) throw new Error('Không tìm thấy vết thương.');
     const actor = requireDoctor(w.patientId);
     if (!e.severity || !['mild', 'moderate', 'severe'].includes(e.severity)) throw new Error('Hãy chọn mức độ vết thương.');
+    // Gói D: ảnh dẫn chứng phải là ảnh của chính vết thương này (không gắn ảnh vết khác hay bệnh nhân khác).
+    if (e.imageId && dataRef.current.images.find((i) => i.id === e.imageId)?.woundId !== e.woundId) throw new Error('Ảnh được chọn không thuộc vết thương này.');
     await commit(d => ({ ...d, evaluations: [...d.evaluations, { ...e, id: 'e-' + Crypto.randomUUID(), doctorId: actor.id }] }));
   };
 
   const savePlan: Store['savePlan'] = (p) =>
     commit((d) => {
       requireDoctor(p.patientId);
+      // Gói D: đợt điều trị chỉ gắn với vết thương của chính bệnh nhân này.
+      if (p.woundId && d.wounds.find((w) => w.id === p.woundId)?.patientId !== p.patientId) throw new Error('Vết thương không thuộc hồ sơ này.');
       // Đợt điều trị gắn với vết thương: phiên bản đánh số riêng cho từng vết.
       const sameWound = (x: TreatmentPlan) => x.patientId === p.patientId && (x.woundId ?? null) === (p.woundId ?? null);
       const prev = d.plans.filter(sameWound);
@@ -800,6 +819,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const d0 = dataRef.current;
     const dev = d0.devices.find((x) => x.id === d0.patients.find((p) => p.id === entry.patientId)?.deviceId);
     if (!dev) return false;
+    // Gói D: phiên chỉ gắn vết thương khi vết đó thuộc chính hồ sơ này. Không tự gán vết khi không rõ (woundId để trống).
+    if (entry.woundId && d0.wounds.find((w) => w.id === entry.woundId)?.patientId !== entry.patientId) throw new Error('Vết thương không thuộc hồ sơ này.');
     // ICD chưa có mã phiên của máy: ghép mã thiết bị với mốc bắt đầu, sessionsOf bỏ bản ghi trùng theo mã này.
     const session: DeviceSession = {
       sessionId: `${dev.code}-${new Date(entry.startedAt).getTime()}`,
