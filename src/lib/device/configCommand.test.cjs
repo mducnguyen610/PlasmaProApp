@@ -16,7 +16,7 @@ function load(file) {
   cache[full] = mod.exports;
   return mod.exports;
 }
-const { configCommandView, sendTreatmentConfig, createSingleFlight } = load('configCommand');
+const { configCommandView, sendTreatmentConfig, sendTreatmentConfigOnce, createSingleFlight } = load('configCommand');
 const { nakHint } = load('labels');
 
 // Logic cũ trong connect-device.tsx (trước Stage 9C gói C), chép nguyên văn để so.
@@ -90,6 +90,18 @@ for (const r of [{ kind: 'nacked', code: 'BUSY', attempts: 1 }, { kind: 'incompa
     // Lệnh lỗi không kẹt hàng.
     await assert.rejects(f.run(async () => { throw new Error('io'); }));
     await f.run(async () => { starts++; return ack; }); assert.equal(starts, 3);
+  }
+  // Bấm nạp hai lần liền: một khung CFG, một dòng nhật ký, hai lần bấm nhận cùng kết quả.
+  {
+    let sends = 0; let logs = 0; let release;
+    const deps = { send: () => { sends++; return new Promise((r) => { release = r; }); }, record: async () => { logs++; } };
+    const a = sendTreatmentConfigOnce(deps, {}, meta); const b2 = sendTreatmentConfigOnce(deps, {}, meta);
+    release(ack);
+    const [x, y] = await Promise.all([a, b2]);
+    assert.equal(sends, 1); assert.equal(logs, 1); assert.equal(x, y);
+    // Lần trước xong thì lần bấm sau gửi bình thường.
+    const c = sendTreatmentConfigOnce(deps, {}, meta); release(ack); await c;
+    assert.equal(sends, 2); assert.equal(logs, 2);
   }
   console.log(`configCommand.test: đạt (${n} tổ hợp so với logic cũ)`);
 })().catch((e) => { console.error(e); process.exit(1); });

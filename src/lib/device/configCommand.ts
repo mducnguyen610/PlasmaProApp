@@ -144,3 +144,14 @@ export function createSingleFlight<R>() {
     },
   };
 }
+
+export type SendOutcome = Awaited<ReturnType<typeof sendTreatmentConfig>>;
+const treatmentFlight = createSingleFlight<SendOutcome>();
+
+/**
+ * Lối vào cho màn T01: cả lượt "gửi rồi ghi nhật ký" là một lệnh. Bấm hai lần liền (trước khi màn kịp khóa nút)
+ * chỉ gửi một khung CFG và ghi một dòng nhật ký; lần bấm sau nhận đúng kết quả của lần đầu.
+ */
+export function sendTreatmentConfigOnce<C>(...args: Parameters<typeof sendTreatmentConfig<C>>): Promise<SendOutcome> {
+  return treatmentFlight.run(() => sendTreatmentConfig(...args));
+}

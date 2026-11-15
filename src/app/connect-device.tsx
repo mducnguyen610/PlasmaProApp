@@ -12,7 +12,7 @@ import { modeLabel } from '@/lib/device/capabilities';
 import { planToConfig, PROTOCOL } from '@/lib/device';
 import { CONFIG_ERROR_LABEL, MISSING_LABEL, SESSION_LABEL, sendResultLabel } from '@/lib/device/labels';
 import type { SendResult } from '@/lib/device/sender';
-import { configCommandView, sendTreatmentConfig } from '@/lib/device/configCommand';
+import { configCommandView, sendTreatmentConfigOnce } from '@/lib/device/configCommand';
 import { checkTreatmentConfig } from '@/lib/device/treatmentConfig';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
 import { deviceStatusView } from '@/lib/deviceStatusView';
@@ -75,7 +75,7 @@ export default function ConnectDevice() {
     setSending(true);
     try {
       // Gửi một lần rồi ghi nhật ký (dịch vụ thiết bị). Lỗi ghi nhật ký không đổi kết quả máy trả lời, chỉ được báo thêm.
-      const { result: r, at, logError } = await sendTreatmentConfig({ send: link.send, record: recordDeviceLink }, cfg, {
+      const { result: r, at, logError } = await sendTreatmentConfigOnce({ send: link.send, record: recordDeviceLink }, cfg, {
         deviceId: p.deviceId!,
         patientId: p.id,
         planId: plan.id,
