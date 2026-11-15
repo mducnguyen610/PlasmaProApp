@@ -25,7 +25,7 @@ Nhánh `refactor/stage-9c-on-dinh`, xếp chồng trên `fix/stage-9b-backlog` (
 | f90ad18 | D | `integrity.ts` chỉ đọc |
 | 950644d | F | `persistedRef` bỏ lần ghi trùng, `scripts/do-hieu-nang-9c.cjs` |
 | cb86f37 | G | Thêm 3 kiểm thử vào `npm test` |
-| (commit tài liệu) | G | 9 tài liệu `docs/stage-9c/` |
+| aefabad | G | 9 tài liệu `docs/stage-9c/` |
 
 ## 3. So sánh trước và sau
 
