@@ -1,6 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { Asset } from 'expo-asset';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { createCommitQueue } from './commitQueue';
 import { canAddReport, canHandleReport, canManagePatient, canResolveSyncError, TERMS_VERSION } from './access';
 import { ACTIVATION_DAYS, generateActivationCode, hashDemoPassword, isPendingActivation, isRecordUsername, MAX_ACTIVATION_ATTEMPTS, normalizeUsername, verifyPassword } from './auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -168,15 +169,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    * CR-01 (SV-01, AL-03): ghi bản dữ liệu mới vào bộ nhớ máy trước, chỉ khi ghi xong mới cập nhật màn hình.
    * Ghi lỗi thì ném PersistError và dữ liệu đang hiển thị giữ nguyên, để màn hình không báo "Đã lưu" khi chưa có bằng chứng.
    */
+  // Stage 9B (S8-B06): các commit xếp hàng, mỗi commit tính từ bản mới nhất lúc tới lượt (src/lib/commitQueue.ts).
+  const commitQueue = useRef<((fn: (d: AppData) => AppData) => Promise<AppData>) | null>(null);
+  commitQueue.current ??= createCommitQueue<AppData>({
+    read: () => dataRef.current,
+    write: (next) => AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)),
+    apply: (next) => update(() => next),
+    wrapWriteError: (e) => new PersistError(e),
+  });
   const commit = useCallback(async (fn: (d: AppData) => AppData) => {
-    const next = fn(dataRef.current);
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch (e) {
-      throw new PersistError(e);
-    }
-    update(() => next);
-  }, [update]);
+    await commitQueue.current!(fn);
+  }, []);
   const me = data.accounts.find((a) => a.id === meId && !a.locked && !a.pendingApproval) ?? null;
   const meRef = useRef(me);
   useEffect(() => {
