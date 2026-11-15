@@ -5,7 +5,7 @@ import { useStore } from '@/lib/store';
 
 export default function DoctorTabs() {
   const { data, me } = useStore();
-  const mine = new Set(data.patients.filter((p) => p.doctorId === me?.id).map((p) => p.id));
+  const mine = new Set(data.patients.filter((p) => p.doctorId === me?.id && !p.archivedAt).map((p) => p.id));
   const unlabeled = data.images.filter((i) => mine.has(i.patientId) && i.status === 'unlabeled').length;
   return (
     <RoleTabs

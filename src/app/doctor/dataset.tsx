@@ -24,7 +24,7 @@ export default function Dataset() {
   // P1-01a: mở từ ô "Ảnh cần chụp lại" (khi có từ 2 ảnh) thì về nhóm "Chụp lại", cùng cách bỏ bộ lọc như UX-17.
   const target = loc === 'chua-do' ? 'unlabeled' : loc === 'chup-lai' ? 'retake' : null;
   if (target && `${loc}:${t}` !== seen) { setSeen(`${loc}:${t}`); setFilter(target); setPf('all'); setWf('all'); setRange('all'); setSince(''); }
-  const mine = new Set(data.patients.filter((p) => p.doctorId === me?.id).map((p) => p.id));
+  const mine = new Set(data.patients.filter((p) => p.doctorId === me?.id && !p.archivedAt).map((p) => p.id));
   const images = data.images.filter((i) => mine.has(i.patientId));
   const count = (s: LabelStatus) => images.filter((i) => i.status === s).length;
   const retakeCount = images.filter((i) => i.retakeRequested).length;

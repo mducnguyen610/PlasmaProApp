@@ -19,7 +19,8 @@ type Task = { key: string; icon: IconName; tone: 'amber' | 'red' | 'blue' | 'vio
 export default function DoctorHome() {
   const { data, me } = useStore();
   const { device, patient, wound } = useLookups();
-  const mine = data.patients.filter((p) => p.doctorId === me?.id);
+  // Hồ sơ đã lưu trữ không vào việc cần làm hôm nay; lịch sử vẫn mở được từ B02.
+  const mine = data.patients.filter((p) => p.doctorId === me?.id && !p.archivedAt);
   // Xếp người bệnh theo mức cần chú ý (FR10); cách tính ở src/lib/attention.ts, dùng chung với B02 (V09).
   const ranked = useRankedPatients();
   const ids = new Set(mine.map((p) => p.id));

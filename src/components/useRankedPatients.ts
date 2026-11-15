@@ -12,7 +12,7 @@ export function useRankedPatients() {
   return useMemo(() => {
     const today = localDay();
     const inputs: AttentionInput[] = data.patients
-      .filter((p) => p.doctorId === me?.id)
+      .filter((p) => p.doctorId === me?.id && !p.archivedAt)
       .map((p) => {
         const plans = woundsOf(p.id)
           .filter((w) => w.status === 'active')

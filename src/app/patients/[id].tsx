@@ -7,12 +7,13 @@ import { Text } from '@/components/Text';
 import { ActivationCode } from '@/components/ActivationCode';
 import { noteNeedsAttention, noteText } from '@/components/AdherenceCalendar';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, LinkRow, ListCard, Muted, Screen, SectionTitle, WoundPhoto, SwitchRow, StatusChip, Empty } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, LinkRow, ListCard, Muted, Notice, Screen, SectionTitle, WoundPhoto, SwitchRow, StatusChip, Empty } from '@/components/ui';
 import { isPendingActivation } from '@/lib/auth';
 import { confirm, notify } from '@/lib/dialog';
 import { buildReportHtml, shareReport } from '@/lib/report';
 import { fmtDate, fmtDateTime, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
+import { archiveBlocker } from '@/lib/patientRecord';
 import { woundSummary } from '@/lib/woundSummary';
 import type { TreatmentPlan } from '@/lib/types';
 import { useLookups, useStore, type Activation } from '@/lib/store';
@@ -23,7 +24,7 @@ import { courseProgress, localDay, sessionsForWound } from '@/lib/course';
 // BS03 – Hồ sơ bệnh nhân: thông tin, bác sĩ phụ trách, thiết bị, liệu trình, vết thương.
 export default function PatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, me, updatePatient, addWound, setReportHandled, issueActivation, assignDevice, setLifecycle } = useStore();
+  const { data, me, updatePatient, setPatientArchived, addWound, setReportHandled, issueActivation, assignDevice, setLifecycle } = useStore();
   const { patient, account, device, woundsOf, imagesOf, sessionsOf, coursePlan } = useLookups();
   const p = patient(id);
   const canView = useCanView(p);
@@ -31,11 +32,15 @@ export default function PatientDetail() {
   const [reporting, setReporting] = useState(false);
   const [activation, setActivation] = useState<Activation | null>(null);
   const [issuing, setIssuing] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [now] = useState(() => Date.now());
   if (!p) return <NoAccess notFound />;
   if (!canView) return <NoAccess />;
 
   const isDoctor = me?.role === 'doctor';
+  // Hồ sơ đã lưu trữ: chỉ xem. Ẩn các nút tạo dữ liệu mới; store cũng từ chối (requireDoctor), không chỉ dựa vào việc ẩn nút.
+  const archived = !!p.archivedAt;
+  const canEdit = isDoctor && !archived;
   const dev = device(p.deviceId);
   const cloud = dev ? CLOUD_LINK[cloudState(dev.online, dev.lastSync, now)] : null;
   const wounds = woundsOf(p.id);
@@ -82,6 +87,30 @@ export default function PatientDetail() {
         notify('Chưa thu hồi được', e instanceof Error ? e.message : String(e));
       }
     }, 'Thu hồi');
+  const archiveWhy = archiveBlocker(p, data.devices);
+  const runArchive = async (next: boolean) => {
+    if (archiving) return;
+    setArchiving(true);
+    try {
+      await setPatientArchived(p.id, next);
+      notify(next ? 'Đã lưu trữ hồ sơ' : 'Đã khôi phục hồ sơ', next
+        ? `${p.name} (${p.code}) không còn trong danh sách đang theo dõi. Xem lại ở mục "Hồ sơ đã lưu trữ" của màn Bệnh nhân.`
+        : `${p.name} (${p.code}) đã trở lại danh sách đang theo dõi.`);
+    } catch (e) {
+      notify(next ? 'Chưa lưu trữ được' : 'Chưa khôi phục được', e instanceof Error ? e.message : String(e));
+    } finally {
+      setArchiving(false);
+    }
+  };
+  const askArchive = () =>
+    confirm(
+      `Lưu trữ hồ sơ ${p.name}?`,
+      `Hồ sơ ${p.code} sẽ được lưu trữ, không bị xóa. Hồ sơ rời danh sách đang theo dõi và chỉ xem được: không thêm ảnh, đánh giá, đợt điều trị, vết thương hay giao máy mới. Toàn bộ lịch sử lâm sàng (vết thương, ảnh, số đo, đánh giá, đợt và buổi điều trị) được giữ nguyên. Có thể khôi phục hồ sơ sau.`,
+      () => { void runArchive(true); },
+      'Lưu trữ hồ sơ',
+    );
+  const askRestore = () =>
+    confirm(`Khôi phục hồ sơ ${p.name}?`, `Hồ sơ ${p.code} trở lại danh sách đang theo dõi và có thể thêm dữ liệu mới.`, () => { void runArchive(false); }, 'Khôi phục');
   const issue = async () => {
     setIssuing(true);
     try {
@@ -108,6 +137,9 @@ export default function PatientDetail() {
         {/* Giai đoạn 1 giao diện theo tác vụ: trạng thái cần biết ngay ở thẻ định danh (máy và kết nối, việc chờ xử lý).
             Chỉ đếm và hiển thị dữ liệu sẵn có; nội dung báo cáo vẫn ở mục "Triệu chứng và sự cố" bên dưới. */}
         <View testID="trang-thai-ho-so" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {isDoctor && (archived
+            ? <Chip label={`Đã lưu trữ ${fmtDate(localDay(p.archivedAt!))}`} tone="gray" icon="archive-outline" />
+            : <Chip label="Đang theo dõi" tone="blue" icon="pulse-outline" />)}
           {dev && cloud ? <StatusChip status={cloud} label={`${dev.code} · ${cloud.label}`} /> : <Chip label="Chưa gán thiết bị" tone="gray" icon="hardware-chip-outline" />}
           {/* Tài khoản chỉ hiện khi còn việc (chưa kích hoạt); trạng thái đầy đủ ở mục "Thiết bị và tài khoản". */}
           {isDoctor && pending && <StatusChip status={{ role: 'warning', icon: 'time-outline' }} label={codeLive ? 'Chờ kích hoạt' : 'Chưa kích hoạt'} />}
@@ -115,7 +147,11 @@ export default function PatientDetail() {
           {openReports.length + flaggedNotes.length > 0 && <Chip tone="amber" icon="alert-circle-outline"
             label={`Cần xem: ${[openReports.length ? `${openReports.length} báo cáo` : '', flaggedNotes.length ? `${flaggedNotes.length} ghi chú` : ''].filter(Boolean).join(', ')}`} />}
         </View>
+        {canEdit && <Button label="Chỉnh sửa hồ sơ" icon="create-outline" variant="secondary" onPress={() => router.push({ pathname: '/patient-edit/[id]', params: { id: p.id } })} />}
       </Card>
+      {isDoctor && archived && (
+        <Notice icon="archive-outline" tone="gray">{`Hồ sơ đã lưu trữ ngày ${fmtDate(localDay(p.archivedAt!))}${account(p.archivedBy ?? '')?.name ? ` bởi ${account(p.archivedBy ?? '')!.name}` : ''}. Lịch sử vẫn xem được; thêm hoặc sửa dữ liệu cần khôi phục hồ sơ.`}</Notice>
+      )}
 
       <SectionTitle icon="bandage-outline">Vết thương đang quản lý</SectionTitle>
       <ListCard>
@@ -143,7 +179,7 @@ export default function PatientDetail() {
         );
       })}
       {wounds.length === 0 && <Muted>Chưa có vết thương.</Muted>}
-      {isDoctor && <View style={{ paddingVertical: 4 }}><Disclosure icon="add-circle-outline" title="Thêm vết thương">
+      {canEdit && <View style={{ paddingVertical: 4 }}><Disclosure icon="add-circle-outline" title="Thêm vết thương">
         <Field label="Vị trí vết thương" value={newWound} onChangeText={setNewWound} placeholder="Ví dụ: Gót chân phải" />
         <Button
           label="Thêm vết thương"
@@ -212,7 +248,7 @@ export default function PatientDetail() {
             <LinkRow icon="key-outline" tone={pending ? 'amber' : 'green'} title="Tài khoản" sub={login ? `@${login.username}` : 'Chưa có tài khoản'}
               right={<StatusChip status={{ role: !pending ? 'success' : 'warning', icon: !pending ? 'checkmark-circle-outline' : 'time-outline' }} label={!pending ? 'Đã kích hoạt' : codeLive ? 'Chờ kích hoạt' : 'Chưa kích hoạt'} />} />
             {activation && <ActivationCode activation={activation} />}
-            {pending && !activation && (
+            {pending && !activation && !archived && (
               <>
                 <Muted>
                   {codeLive
@@ -231,7 +267,7 @@ export default function PatientDetail() {
           </>
         )}
         {/* Giao máy, thu hồi thuộc bác sĩ phụ trách (UR11). */}
-        {isDoctor && (
+        {canEdit && (
           <Disclosure icon="hardware-chip-outline" title="Giao máy" summary={dev ? `Đang giữ ${dev.code}` : freeDevices.length ? `${freeDevices.length} máy sẵn sàng` : 'Không có máy sẵn sàng'}>
             {dev ? (
               <Button label={`Thu hồi ${dev.code}`} variant="secondary" icon="return-down-back-outline" onPress={takeBack} />
@@ -252,13 +288,16 @@ export default function PatientDetail() {
             muted
             label="Đồng ý dùng ảnh cho nghiên cứu"
             detail={p.researchConsent ? `Ghi nhận ngày ${fmtDate(p.consentDate)}` : 'Chưa đồng ý: ảnh không được đưa vào bộ dữ liệu xuất'}
-            disabled={!isDoctor}
+            disabled={!canEdit}
             value={p.researchConsent}
             onChange={(v) =>
               confirm(
                 v ? 'Ghi nhận đồng ý' : 'Rút lại đồng ý',
                 v ? 'Xác nhận bệnh nhân đã đồng ý bằng văn bản cho việc dùng ảnh (đã mã hóa) để nghiên cứu.' : 'Ảnh của bệnh nhân sẽ không còn được xuất vào bộ dữ liệu.',
-                () => updatePatient(p.id, { researchConsent: v, consentDate: v ? localDay() : undefined }),
+                () => {
+                  updatePatient(p.id, { researchConsent: v, consentDate: v ? localDay() : undefined })
+                    .catch((e) => notify('Chưa lưu được', e instanceof Error ? e.message : String(e)));
+                },
               )
             }
           />
@@ -283,6 +322,10 @@ export default function PatientDetail() {
           }
         }}
       />
+      {/* Lưu trữ đặt cuối màn, tách khỏi việc lâm sàng hằng ngày; luôn hỏi xác nhận, không xóa dữ liệu. */}
+      {isDoctor && (archived
+        ? <Button label="Khôi phục hồ sơ" icon="arrow-undo-outline" variant="secondary" loading={archiving} onPress={askRestore} />
+        : <Button label="Lưu trữ hồ sơ" icon="archive-outline" variant="danger" loading={archiving} disabled={!!archiveWhy} reason={archiveWhy ?? undefined} onPress={askArchive} />)}
     </Screen>
   );
 }

@@ -43,6 +43,8 @@ export default function WoundDetail() {
       </Screen>
     );
   }
+  // Hồ sơ đã lưu trữ: B05 chỉ xem (không chụp, đánh giá, đổi trạng thái hay sửa vị trí); store cũng từ chối.
+  const archived = !!p.archivedAt;
   const images = imagesOf(w.id);
   const today = localDay();
   const plan = coursePlan(w.id, { patientView: !isDoctor });
@@ -105,7 +107,7 @@ export default function WoundDetail() {
 
   // Ba thẻ: tổng quan (vị trí, trạng thái, mức độ, diện tích), đợt điều trị, đánh giá. Album không đóng khung.
   return (
-    <Screen header={<Header back title={`Vết thương ${w.code}`} />} footer={isDoctor ? (
+    <Screen header={<Header back title={`Vết thương ${w.code}`} />} footer={isDoctor && !archived ? (
       // Vùng nút cố định: hai việc chính của bác sĩ luôn thấy, không phải cuộn (giai đoạn 1 giao diện theo tác vụ).
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Button style={{ flex: 1 }} label="Ghi đánh giá" variant="secondary" onPress={() => router.push({ pathname: '/evaluate/[woundId]', params: { woundId: w.id } })} />
@@ -114,6 +116,7 @@ export default function WoundDetail() {
     ) : undefined}>
       {/* P0 G1: bệnh nhân và vết thương đang thao tác. */}
       <ClinicalContext patient={p} wound={w} />
+      {archived && <Notice icon="archive-outline" tone="gray">Hồ sơ bệnh nhân đã lưu trữ. Vết thương và lịch sử chỉ xem được.</Notice>}
       {/* Thẻ 1, tổng quan: vị trí, trạng thái, mức độ, cảnh báo chụp lại và diện tích (điểm neo) trong một thẻ.
           Vị trí và nhóm tổn thương luôn hiện đủ để tránh nhầm vết (R15). */}
       <Card>
@@ -135,6 +138,9 @@ export default function WoundDetail() {
           )}
         </View>
         <Text style={{ color: C.textSoft }}>Theo dõi từ {fmtDate(w.startDate)}, {images.length} ảnh</Text>
+        {isDoctor && !archived && (
+          <TextLink label="Chỉnh sửa vị trí" accessibilityLabel={`Chỉnh sửa vị trí ${w.code}`} onPress={() => router.push({ pathname: '/wound-edit/[id]', params: { id: w.id } })} />
+        )}
         <Divider />
         {isDoctor ? (
           <>
@@ -218,7 +224,7 @@ export default function WoundDetail() {
             {pr && isDoctor && <ProgressRows pr={pr} />}
           </Disclosure>
         ) : <Muted>Chưa có đợt điều trị cho vết thương này.</Muted>}
-        {isDoctor && <ClosureActions woundId={w.id} status={w.status} check1={w.closureCheck1} followUpFrom={w.followUpFrom} today={today} hasPlan={!!plan} onNewCourse={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />}
+        {isDoctor && !archived && <ClosureActions woundId={w.id} status={w.status} check1={w.closureCheck1} followUpFrom={w.followUpFrom} today={today} hasPlan={!!plan} onNewCourse={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />}
       </Card>
 
       {/* Thẻ 3: đánh giá gần nhất và các đánh giá cũ trong cùng một thẻ, tách bằng đường kẻ. */}

@@ -49,6 +49,13 @@ export interface Patient {
   researchConsent: boolean;
   consentDate?: string;
   createdAt: string;
+  /**
+   * Lưu trữ hồ sơ (xóa mềm): thời điểm bác sĩ phụ trách lưu trữ. Có giá trị thì hồ sơ rời danh sách đang theo dõi,
+   * mọi dữ liệu lâm sàng giữ nguyên. Trường tùy chọn để dữ liệu cũ đọc được, không cần chuyển đổi.
+   */
+  archivedAt?: string;
+  /** Tài khoản đã lưu trữ hồ sơ. */
+  archivedBy?: string;
 }
 
 export interface Wound {

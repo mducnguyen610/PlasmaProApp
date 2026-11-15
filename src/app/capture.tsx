@@ -14,7 +14,7 @@ import { C, T } from '@/theme';
 export default function Capture() {
   const { data, me } = useStore();
   const { woundsOf, imagesOf } = useLookups();
-  const patients = data.patients.filter((p) => p.doctorId === me?.id);
+  const patients = data.patients.filter((p) => p.doctorId === me?.id && !p.archivedAt);
   // Không chọn sẵn bệnh nhân khi có từ 2 hồ sơ trở lên, để tránh chụp nhầm vào hồ sơ đứng đầu danh sách.
   const [pid, setPid] = useState(patients.length === 1 ? patients[0].id : '');
   const wounds = pid ? woundsOf(pid).filter((w) => w.status !== 'closed') : [];

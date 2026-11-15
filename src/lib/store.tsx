@@ -11,6 +11,7 @@ import { reassignDevice } from './devices';
 import { CLOSURE_CONFIRM_DAYS, addDays, isScheduled, localDay } from './course';
 import { CARE_ITEMS, LIFECYCLE } from './maintenance';
 import { buildFilename } from './naming';
+import { archiveBlocker, isArchived, splitDoctorPatientPatch, validatePatientEdit, validateWoundLocation } from './patientRecord';
 import { createSeed, DEMO_ASSETS } from './seed';
 import type {
   Account, AppData, Device, DeviceLifecycle, DeviceLinkLog, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
@@ -61,9 +62,16 @@ interface Store {
   addPatient: (p: Omit<Patient, 'id' | 'code' | 'createdAt' | 'researchCode'>, woundLocation?: string) => Promise<{ patient: Patient; activation: Activation }>;
   issueActivation: (patientId: string) => Promise<Activation>;
   activateAccount: (input: { username: string; code: string; password: string; agreed: boolean }) => Promise<void>;
-  updatePatient: (id: string, patch: Partial<Patient>) => void;
+  /**
+   * Quản trị: chỉ đổi bác sĩ phụ trách (Q01, giữ nguyên như cũ). Bác sĩ phụ trách: họ tên, năm sinh, số điện thoại, đồng ý nghiên cứu;
+   * trường khác (doctorId, id, code, lưu trữ) bị từ chối. Nhánh bác sĩ ghi bộ nhớ máy trước rồi mới cập nhật (CR-01).
+   */
+  updatePatient: (id: string, patch: Partial<Patient>) => Promise<void>;
+  /** Lưu trữ (xóa mềm) hoặc khôi phục hồ sơ; chỉ bác sĩ phụ trách. Không xóa dữ liệu nào. */
+  setPatientArchived: (id: string, archived: boolean) => Promise<void>;
   addWound: (patientId: string, location: string, group?: string) => Wound;
-  updateWound: (id: string, patch: Partial<Wound>) => void;
+  /** Sửa vị trí (và nhóm tổn thương) của vết thương; giữ woundId, patientId, mã vết. Trạng thái chỉ đổi qua recordClosure. */
+  updateWound: (id: string, patch: Partial<Wound>) => Promise<void>;
   addImage: (args: { woundId: string; uri: string; ext: WoundImage['ext']; captureDate: string; source: 'doctor' | 'patient'; capture?: WoundImage['capture'] }) => Promise<WoundImage>;
   // CR-01: các thao tác lưu lâm sàng chỉ hoàn tất khi đã ghi xong vào bộ nhớ máy; lỗi ghi thì từ chối và dữ liệu trên màn không đổi.
   labelImage: (imageId: string, area: number | null, method: string | undefined, note?: string) => Promise<void>;
@@ -238,9 +246,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       counters: { ...d.counters, patient: d.counters.patient + (isPatient ? 1 : 0) },
     }));
   };
-  const requireDoctor = (patientId: string) => {
+  // allowArchived: chỉ các thao tác được làm trên hồ sơ đã lưu trữ (khôi phục, thu hồi máy). Mặc định hồ sơ đã lưu trữ chỉ xem,
+  // để không phát sinh ảnh, đánh giá, đợt điều trị, vết thương hay giao máy mới.
+  const requireDoctor = (patientId: string, opts?: { allowArchived?: boolean }) => {
     const actor = dataRef.current.accounts.find(a => a.id === meRef.current?.id);
-    if (!canManagePatient(actor, dataRef.current.patients.find(p => p.id === patientId))) throw new Error('Chỉ bác sĩ phụ trách được thực hiện thao tác này.');
+    const patient = dataRef.current.patients.find(p => p.id === patientId);
+    if (!canManagePatient(actor, patient)) throw new Error('Chỉ bác sĩ phụ trách được thực hiện thao tác này.');
+    if (!opts?.allowArchived && isArchived(patient)) throw new Error('Hồ sơ đã lưu trữ, chỉ xem được. Khôi phục hồ sơ trước khi thêm hoặc sửa dữ liệu.');
     return actor!;
   };
   const setResearchConsent: Store['setResearchConsent'] = (consent) => {
@@ -338,11 +350,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updatePatient: Store['updatePatient'] = (id, patch) => {
     const actor = meRef.current;
     if (actor?.role === 'admin' && !actor.locked) {
+      // Q01 "Phân công": giữ nguyên hành vi cũ (cập nhật ngay, chỉ đổi doctorId).
       update(d => ({ ...d, patients: d.patients.map(p => p.id === id ? { ...p, doctorId: patch.doctorId ?? p.doctorId } : p) }));
-    } else {
-      requireDoctor(id);
-      update(d => ({ ...d, patients: d.patients.map(p => p.id === id ? { ...p, researchConsent: patch.researchConsent ?? p.researchConsent, consentDate: patch.consentDate } : p) }));
+      return Promise.resolve();
     }
+    return (async () => {
+      requireDoctor(id);
+      const { allowed, forbidden } = splitDoctorPatientPatch(patch);
+      // Không dựa vào việc ẩn nút: bác sĩ không đổi được phân công, mã hồ sơ hay trạng thái lưu trữ qua hàm này.
+      if (forbidden.length) throw new Error(`Bác sĩ không được sửa: ${forbidden.join(', ')}. Phân công bác sĩ do quản trị thực hiện ở Q01.`);
+      const current = dataRef.current.patients.find(p => p.id === id)!;
+      const demographic = 'name' in allowed || 'birthYear' in allowed || 'phone' in allowed;
+      let profile: { name: string; birthYear: number; phone: string } | undefined;
+      if (demographic) {
+        const { errors, value } = validatePatientEdit({
+          name: allowed.name ?? current.name, birthYear: String(allowed.birthYear ?? current.birthYear), phone: allowed.phone ?? current.phone,
+        }, current, dataRef.current.patients);
+        if (!value) throw new Error(Object.values(errors).join(' '));
+        profile = value;
+      }
+      const consent = 'researchConsent' in allowed;
+      await commit(d => ({ ...d, patients: d.patients.map(p => p.id !== id ? p : {
+        ...p,
+        ...(profile ?? {}),
+        // Đồng ý nghiên cứu: giữ đúng cách cũ (ghi kèm consentDate, rút lại thì bỏ ngày) và chỉ khi lời gọi có trường này.
+        ...(consent ? { researchConsent: allowed.researchConsent ?? p.researchConsent, consentDate: allowed.consentDate } : {}),
+      }) }));
+    })();
+  };
+
+  const setPatientArchived: Store['setPatientArchived'] = async (id, archived) => {
+    const actor = requireDoctor(id, { allowArchived: true });
+    const patient = dataRef.current.patients.find(p => p.id === id)!;
+    if (archived) {
+      const why = archiveBlocker(patient, dataRef.current.devices);
+      if (why) throw new Error(why);
+    } else if (!patient.archivedAt) throw new Error('Hồ sơ đang theo dõi, không cần khôi phục.');
+    // Chỉ đổi hai trường lưu trữ; vết thương, ảnh, đánh giá, đợt, phiên, báo cáo và phân công giữ nguyên.
+    await commit(d => ({ ...d, patients: d.patients.map(p => p.id !== id ? p : archived
+      ? { ...p, archivedAt: nowIso(), archivedBy: actor.id }
+      : { ...p, archivedAt: undefined, archivedBy: undefined }) }));
   };
 
   const addWound: Store['addWound'] = (patientId, location, group) => {
@@ -356,11 +403,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return wound;
   };
 
-  const updateWound: Store['updateWound'] = (id, patch) => {
+  const updateWound: Store['updateWound'] = async (id, patch) => {
     const wound = dataRef.current.wounds.find(w => w.id === id);
-    if (!wound) return;
+    if (!wound) throw new Error('Không tìm thấy vết thương.');
     requireDoctor(wound.patientId);
-    update(d => ({ ...d, wounds: d.wounds.map(w => w.id === id ? { ...w, status: patch.status ?? w.status, location: patch.location ?? w.location, group: patch.group ?? w.group } : w) }));
+    const forbidden = Object.keys(patch).filter(k => k !== 'location' && k !== 'group');
+    // Trạng thái (kể cả đã lành) chỉ đổi qua recordClosure để giữ quy trình xác nhận hai lần; mã, bệnh nhân, ngày bắt đầu không đổi.
+    if (forbidden.length) throw new Error(`Không sửa được ${forbidden.join(', ')} ở đây. Trạng thái vết thương đổi bằng các nút của đợt điều trị.`);
+    let location = wound.location;
+    if (patch.location !== undefined) {
+      const r = validateWoundLocation(patch.location, wound);
+      if (!r.value) throw new Error(r.error);
+      location = r.value;
+    }
+    await commit(d => ({ ...d, wounds: d.wounds.map(w => w.id === id ? { ...w, location, group: patch.group !== undefined ? (patch.group.trim() || undefined) : w.group } : w) }));
   };
 
   const addImage: Store['addImage'] = async ({ woundId, uri, ext, captureDate, source, capture }) => {
@@ -570,7 +626,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const dev = dataRef.current.devices.find((x) => x.id === deviceId);
     if (!dev) throw new Error('Không tìm thấy thiết bị.');
     if (patientId) requireDoctor(patientId);
-    if (dev.patientId && dev.patientId !== patientId) requireDoctor(dev.patientId);
+    if (dev.patientId && dev.patientId !== patientId) requireDoctor(dev.patientId, { allowArchived: !patientId });
     if (!patientId && !dev.patientId) return;
     if (patientId && (dev?.lifecycle === 'returned' || dev?.lifecycle === 'disinfected')) throw new Error('Thiết bị chưa khử khuẩn và kiểm tra xong, chưa cấp được cho bệnh nhân khác.');
     update((d) => {
@@ -590,7 +646,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Thu hồi máy khỏi người bệnh thuộc bác sĩ phụ trách (UR11); khử khuẩn, kiểm tra là việc kỹ thuật của quản trị.
     if (next === 'returned') {
       if (!dev.patientId) throw new Error('Thiết bị chưa giao cho bệnh nhân nào.');
-      requireDoctor(dev.patientId);
+      requireDoctor(dev.patientId, { allowArchived: true });
     } else requireAdmin();
     if (LIFECYCLE[dev.lifecycle ?? 'ready']?.next !== next) throw new Error('Bước này chưa làm được ở trạng thái hiện tại.');
     update((d) => {
@@ -719,7 +775,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const value: Store = {
-    ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, addWound, updateWound, addImage, labelImage,
+    ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, setPatientArchived, addWound, updateWound, addImage, labelImage,
     setExcluded, requestRetake, addEvaluation, savePlan, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
     setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle, recordDeviceLink, recordDeviceSession,
   };
