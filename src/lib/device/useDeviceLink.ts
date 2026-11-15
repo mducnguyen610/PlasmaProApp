@@ -144,5 +144,11 @@ export function useDeviceLink(opts: DeviceLinkOptions = {}) {
     lastStatusAt,
     startSession: simulated ? transport.startSession : undefined,
     stopSession: simulated ? transport.stopSession : undefined,
+    /**
+     * Stage 9B (S8-B07): chỉ có ở thiết bị giả lập. Máy giả lập đang giữ liệu trình đã nạp hay không (đọc lúc vẽ, không gửi lệnh).
+     * Tải lại trang tạo máy giả lập mới nên liệu trình mất; T02 dùng cờ này để không hiện "Bắt đầu điều trị" khi máy chưa có liệu trình.
+     * Thiết bị thật: undefined (không đổi hành vi).
+     */
+    simConfigLoaded: simulated && transport.lastConfig ? transport.lastConfig() !== null : undefined,
   };
 }
