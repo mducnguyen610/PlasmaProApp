@@ -4,6 +4,7 @@ import { DeviceView } from '@/components/DeviceView';
 import { Button, Card, Empty, Header, Notice, Screen } from '@/components/ui';
 import { courseProgress, courseStatus, localDay } from '@/lib/course';
 import { fmtDate } from '@/lib/format';
+import { monitorTarget } from '@/lib/monitorTarget';
 import { useLookups, useStore } from '@/lib/store';
 import { semantic } from '@/theme';
 
@@ -19,12 +20,20 @@ export default function PatientDevice() {
   const sessions = p?.deviceId && treating ? sessionsOf(p.deviceId).filter((x) => !x.woundId || x.woundId === treating.w.id) : [];
   const status = treating?.plan ? courseStatus(courseProgress(treating.plan, sessions, today, lastSyncDay), fmtDate) : null;
   const treatToday = status?.kind === 'treat';
+  // Stage 9B (S8-B04): mở T02 kèm đúng vết thương khi chỉ có một đợt đang áp dụng (cùng điều kiện T01 chọn đợt);
+  // nhiều đợt thì mở T01 để chọn vết rõ ràng; không có đợt thì giữ hành vi cũ.
+  const openMonitor = () => {
+    const t = p ? monitorTarget(woundsOf(p.id).map((w) => ({ woundId: w.id, plan: coursePlan(w.id) }))) : { kind: 'none' as const };
+    if (t.kind === 'monitor') router.push({ pathname: '/session-monitor', params: { woundId: t.woundId } });
+    else if (t.kind === 'choose') router.push('/connect-device');
+    else router.push('/session-monitor');
+  };
   return (
     <Screen header={<Header title="Thiết bị của tôi" subtitle={d?.code} />}>
       {/* Chỉ nạp liệu trình khi bác sĩ đã giao máy (FR13): phiên và nhật ký phải gắn với một thiết bị. */}
       {p && d && !treatToday && status && <Notice tone={semantic.neutral.tone} icon={status.kind === 'rest' ? 'moon-outline' : 'information-circle-outline'}>{`${status.title}. Không cần nạp liệu trình hôm nay.`}</Notice>}
       {p && d && <Button label="Nạp liệu trình vào máy" variant={treatToday ? 'primary' : 'secondary'} icon="arrow-down-circle-outline" onPress={() => router.push('/connect-device')} />}
-      {p && d && <Button label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={() => router.push('/session-monitor')} />}
+      {p && d && <Button label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={openMonitor} />}
       <Button label="Báo sự cố thiết bị" variant="secondary" icon="warning-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'device' } })} />
       {/* Giai đoạn 5 giao diện theo tác vụ (TB-05): việc cần làm (trạng thái hôm nay, nạp liệu trình, theo dõi phiên, báo sự cố)
           lên đầu màn; thông tin máy và số lần điều trị 7 ngày (tham khảo) xuống dưới. Điều kiện hiện nút giữ nguyên. */}
