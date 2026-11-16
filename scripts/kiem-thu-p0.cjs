@@ -4,6 +4,7 @@
 // Dữ liệu kiểm thử thêm vào bộ nhớ trình duyệt khi cần (không đổi dữ liệu mẫu trong mã). Hộp xác nhận trên web là window.confirm.
 // Kết quả ghi ĐẠT, LỖI, hoặc GHI NHẬN (bằng chứng cho hạng mục ngoài phạm vi UI, ví dụ CR-01).
 const { chromium } = require('playwright');
+const { ganNgayCoLich } = require('./ngay-co-lich.cjs');
 const fs = require('fs');
 const path = require('path');
 const BASE = process.argv[2] || 'http://localhost:8502';
@@ -18,6 +19,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
   const b = await chromium.launch();
   const newPage = async (w = 390, h = 844) => {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, locale: 'vi-VN' });
+    await ganNgayCoLich(ctx); // Stage 8: không phụ thuộc thứ trong tuần (xem scripts/ngay-co-lich.cjs)
     const p = await ctx.newPage();
     p.dialogs = []; p.errors = []; p.answer = true;
     p.on('dialog', (d) => { p.dialogs.push(`${d.type()}: ${d.message().replace(/\n+/g, ' | ')}`); if (d.type() === 'alert' || p.answer) d.accept(); else d.dismiss(); });

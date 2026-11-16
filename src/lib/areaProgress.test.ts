@@ -1,7 +1,7 @@
 // Chạy: node src/lib/areaProgress.test.ts
 // Ca C01 đến C16 trong PLASMA_PRO_P2_TEST_PLAN. Dữ liệu chỉ dùng cho kiểm thử (minh họa), không vào seed.
 import assert from 'node:assert/strict';
-import { addMonths, changeLine, chartLabel, excludedText, fmtPct, inRange, niceAxis, progressInput, progressSummary, rangeOptions, splitByMethod, summaryText, xScale } from './areaProgress.ts';
+import { addMonths, changeLine, chartLabel, excludedText, noPointsText, fmtPct, inRange, niceAxis, progressInput, progressSummary, rangeOptions, splitByMethod, summaryText, xScale } from './areaProgress.ts';
 import { measurementSource } from './measurementSource.ts';
 import { chartPoints } from './woundSummary.ts';
 
@@ -99,4 +99,11 @@ assert.equal(changeLine(c15), '↓ Giảm 32,8% so với lần đo 01/10');
 assert.equal(changeLine(progressSummary(pts([I('A', '2026-10-01', 8), I('B', '2026-10-29', 9)]))), '↑ Tăng 12,5% so với lần đo 01/10');
 assert.equal(changeLine(progressSummary(pts([I('A', '2026-10-01', 8), I('B', '2026-10-29', 8)]))), 'Không đổi so với lần đo 01/10');
 assert.equal(changeLine(one), null); assert.equal(changeLine(m2), null); assert.equal(changeLine(c10), null);
+// Stage 8 (S8-B03): biểu đồ trống vì ảnh có số đo nhưng không rõ ngày chụp: không báo "Chưa có lần đo diện tích".
+const z0 = { unmeasured: 0, unknownDate: 0, invalid: 0, sameDayHidden: 0, rejected: 0 };
+const s8a = progressInput([I('IMG9', '2026-10-01', 5.5, { capture: { sourceDateKnown: false } })], 'w1', T);
+assert.equal(s8a.points.length, 0);
+assert.equal(noPointsText(s8a.excluded, 1), 'Chưa có lần đo nào vẽ được trên biểu đồ. Ảnh đã chụp: 1. Không đưa vào biểu đồ: 1 ảnh không rõ ngày chụp.');
+assert.equal(noPointsText({ ...z0, unmeasured: 2 }, 2), 'Chưa có lần đo diện tích. Ảnh đã chụp: 2.');
+assert.equal(noPointsText({ ...z0, unmeasured: 1, invalid: 1 }, 2), 'Chưa có lần đo nào vẽ được trên biểu đồ. Ảnh đã chụp: 2. Không đưa vào biểu đồ: 1 ảnh chưa đo, 1 ảnh có số đo hoặc ngày không hợp lệ.');
 console.log('areaProgress: ok');

@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useSegments } from 'expo-router';
-import { Children, useState, type ComponentProps, type ReactNode } from 'react';
+import { Children, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, View, type ScrollViewInstance, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
@@ -256,14 +256,24 @@ export function IconBadge({ icon, tone = 'blue', size = 40 }: { icon: IconName; 
 }
 
 export function Button({
-  label, onPress, icon, variant = 'primary', disabled, loading, style, reason,
+  label, onPress, icon, variant = 'primary', disabled, loading, style, reason, armAfterMs,
 }: {
   /** dangerSolid: hành động dừng hoặc nguy hiểm cần thấy ngay (Dừng chiếu ở T02), nền đỏ đặc, cao size.buttonDanger. */
   label: string; onPress: () => void; icon?: IconName; variant?: 'primary' | 'secondary' | 'danger' | 'dangerSolid' | 'ghost';
   disabled?: boolean; loading?: boolean; style?: StyleProp<ViewStyle>;
   /** Lý do nút đang khóa, hiện ngay dưới nút (V20). Chỉ hiện khi disabled. */
   reason?: string;
+  /**
+   * Stage 8: bỏ qua lần chạm trong khoảng này (ms) kể từ khi nút hiện ra hoặc vừa hết khóa. Dùng cho nút thay chỗ nút khác
+   * ở chân màn, để chạm hai lần vào nút cũ không bấm luôn nút mới. Cần `key` riêng để nút mới được gắn lại.
+   * Không dùng cho nút Dừng điều trị (không được làm chậm lệnh dừng).
+   */
+  armAfterMs?: number;
 }) {
+  const active = !disabled && !loading;
+  const armedAt = useRef(0);
+  useEffect(() => { if (active) armedAt.current = Date.now(); }, [active]);
+  const press = armAfterMs ? () => { if (Date.now() - armedAt.current >= armAfterMs) onPress(); } : onPress;
   const off = !!disabled && !loading;
   const fg = off ? interaction.disabled.fg : { primary: C.onPrimary, secondary: C.primary, danger: C.red, dangerSolid: C.onPrimary, ghost: C.primary }[variant];
   const inner = (
@@ -278,7 +288,7 @@ export function Button({
       accessibilityLabel={label}
       accessibilityHint={off ? reason : undefined}
       accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
-      onPress={onPress}
+      onPress={press}
       disabled={disabled || loading}
       style={({ pressed }) => [{ opacity: pressed && !off ? interaction.pressedOpacity : 1 }, variant === 'primary' && !off && s.btnShadow, !reason && style]}>
       {/* Nút khóa: nền neutral, chữ textSoft (6,58:1), không bóng; bản cũ giảm độ mờ còn 2,2:1. */}

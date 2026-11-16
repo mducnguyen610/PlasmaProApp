@@ -6,7 +6,7 @@ import { AreaLineChart } from '@/components/AreaLineChart';
 import { Text } from '@/components/Text';
 import { Card, Chip, LinkRow, Muted, SectionTitle, Segmented, SimBadge, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
 import { SEVERITY } from '@/lib/access';
-import { progressInput, progressSummary, splitByMethod, summaryText } from '@/lib/areaProgress';
+import { noPointsText, progressInput, progressSummary, splitByMethod, summaryText } from '@/lib/areaProgress';
 import { courseProgress, localDay, phasesOf, sessionsForWound } from '@/lib/course';
 import { fmtDate, fmtDateTime, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
 import { measurementSource } from '@/lib/measurementSource';
@@ -106,7 +106,7 @@ export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patie
             <Muted>{CAVEAT}</Muted>
           </>
         ) : (
-          <Muted>{images.length ? `Chưa có lần đo diện tích. Ảnh đã chụp: ${images.length}.` : 'Chưa có ảnh vết thương. Bác sĩ sẽ chụp và đo ở lần khám.'}</Muted>
+          <Muted>{images.length ? noPointsText(input.excluded, images.length) : 'Chưa có ảnh vết thương. Bác sĩ sẽ chụp và đo ở lần khám.'}</Muted>
         )}
       </Card>
 
