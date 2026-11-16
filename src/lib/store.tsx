@@ -15,6 +15,7 @@ import { CLOSURE_CONFIRM_DAYS, addDays, isScheduled, localDay } from './course';
 import { CARE_ITEMS, LIFECYCLE } from './maintenance';
 import { buildFilename } from './naming';
 import { archiveBlocker, isArchived, splitDoctorPatientPatch, validatePatientEdit, validateWoundLocation } from './patientRecord';
+import { committedImageOf, EMPTY_PENDING_FORM, findPhoneDuplicate, isPendingCapture, validateNewPatientForm, type PendingCapture, type PendingPatientForm } from './pendingCapture';
 import { createSeed, DEMO_ASSETS } from './seed';
 import type {
   Account, AppData, Device, DeviceLifecycle, DeviceLinkLog, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
@@ -51,6 +52,31 @@ async function persistImageFile(uri: string, imageId: string, ext: string): Prom
   return dest.uri;
 }
 
+/** Xóa tệp ảnh của ứng dụng (tệp tạm của ảnh chờ, hoặc tệp đã chép khi lần ghi dữ liệu lỗi). Trên web ảnh là data URL nên không có tệp. */
+async function removeImageFile(uri: string | undefined): Promise<void> {
+  if (!uri || Platform.OS === 'web' || uri.startsWith('data:')) return;
+  try {
+    const { File } = await import('expo-file-system');
+    const f = new File(uri);
+    if (f.exists) f.delete();
+  } catch {
+    // Xóa tệp là dọn dẹp, không ảnh hưởng dữ liệu; lỗi xóa không chặn thao tác.
+  }
+}
+
+/** Hồ sơ có cùng số điện thoại (quy tắc trùng của addPatient). Màn hình bắt lỗi này để cho bác sĩ xem hồ sơ trùng. */
+export class DuplicatePatientError extends Error {
+  constructor(public duplicate: Patient) {
+    super(`Số điện thoại đã có hồ sơ ${duplicate.code}. Nếu bệnh nhân đã tự đăng ký, nhờ quản trị phân công hồ sơ đó cho bạn thay vì tạo hồ sơ mới.`);
+    this.name = 'DuplicatePatientError';
+  }
+}
+
+/** Đích gắn ảnh chờ: hồ sơ mới (tạo cùng vết thương đầu tiên), hoặc hồ sơ có sẵn mà bác sĩ đã xem và xác nhận. */
+export type PendingTarget =
+  | { kind: 'new'; form: PendingPatientForm }
+  | { kind: 'existing'; patientId: string; woundId?: string; woundLocation?: string };
+
 interface Store {
   ready: boolean;
   data: AppData;
@@ -76,6 +102,22 @@ interface Store {
   /** Sửa vị trí (và nhóm tổn thương) của vết thương; giữ woundId, patientId, mã vết. Trạng thái chỉ đổi qua recordClosure. */
   updateWound: (id: string, patch: Partial<Wound>) => Promise<void>;
   addImage: (args: { woundId: string; uri: string; ext: WoundImage['ext']; captureDate: string; source: 'doctor' | 'patient'; capture?: WoundImage['capture'] }) => Promise<WoundImage>;
+  /** Ảnh chờ gắn hồ sơ của bác sĩ đang đăng nhập (luồng "Chụp cho bệnh nhân mới"); null với vai trò khác hoặc khi không có. */
+  pendingCapture: PendingCapture | null;
+  /**
+   * Đưa ảnh vừa chụp ở B10 vào trạng thái chờ: chép tệp vào thư mục ứng dụng và ghi bản chờ (khóa riêng, ngoài dữ liệu chính).
+   * Cùng captureId với bản chờ đang có thì cập nhật (giữ tệp và thông tin đã nhập). Ghi bộ nhớ máy lỗi thì vẫn giữ trong phiên (durable false).
+   */
+  holdPendingCapture: (p: Omit<PendingCapture, 'id' | 'doctorId' | 'heldAt' | 'durable' | 'form'>) => Promise<PendingCapture>;
+  /** Ghi thông tin bác sĩ đang nhập ở biểu mẫu vào bản chờ. */
+  updatePendingForm: (form: PendingPatientForm) => Promise<void>;
+  /** Bỏ ảnh chờ (bác sĩ chọn hủy); xóa tệp tạm. */
+  discardPendingCapture: () => Promise<void>;
+  /**
+   * Gắn ảnh chờ vào hồ sơ trong một lần ghi duy nhất: hồ sơ mới (kèm tài khoản, vết thương đầu tiên) hoặc hồ sơ có sẵn đã xác nhận,
+   * cùng ảnh. Lỗi ở bất kỳ bước nào thì không ghi gì, ảnh chờ giữ nguyên. Không ghi số đo; số đo ghi bằng labelImage như B10.
+   */
+  commitPendingCapture: (target: PendingTarget) => Promise<{ patient: Patient; wound: Wound; image: WoundImage; activation?: Activation; reused?: boolean }>;
   // CR-01: các thao tác lưu lâm sàng chỉ hoàn tất khi đã ghi xong vào bộ nhớ máy; lỗi ghi thì từ chối và dữ liệu trên màn không đổi.
   labelImage: (imageId: string, area: number | null, method: string | undefined, note?: string) => Promise<void>;
   setExcluded: (imageId: string, reason: string | null) => Promise<void>;
@@ -158,6 +200,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [persistIssue, setPersistIssue] = useState<PersistIssue | null>(null);
   // Kho không đọc được lúc mở: không ghi gì, để dữ liệu mẫu không đè lên dữ liệu thật chưa đọc được.
   const readFailedRef = useRef(false);
+  // Ảnh chờ gắn hồ sơ (luồng "Chụp cho bệnh nhân mới"), ngoài AppData.
+  // Mỗi tài khoản bác sĩ giữ tối đa một ảnh chờ (máy demo dùng chung cho nhiều tài khoản): ảnh của bác sĩ này không bị bác sĩ khác thay.
+  const [pending, setPending] = useState<Record<string, PendingCapture>>({});
+  const pendingRef = useRef<Record<string, PendingCapture>>({});
+  const committingPending = useRef(false);
   const dataRef = useRef(data);
   useEffect(() => {
     dataRef.current = data;
@@ -180,6 +227,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           persistedRef.current = saved; // vừa đọc từ bộ nhớ máy: không cần ghi lại
         }
         if (sess) setMeId(sess);
+        const held = await persistence.loadPending();
+        if (held && typeof held === 'object') {
+          const restored: Record<string, PendingCapture> = {};
+          for (const [k, v] of Object.entries(held as Record<string, unknown>)) if (isPendingCapture(v) && v.doctorId === k) restored[k] = { ...v, durable: true };
+          pendingRef.current = restored; setPending(restored);
+        }
       } catch {
         // Bộ nhớ không đọc được: dùng dữ liệu mô phỏng mặc định.
       }
@@ -248,6 +301,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const resetDemo = () => {
     if (meRef.current?.role !== 'admin') throw new Error('Cần quyền quản trị.');
     update(() => createSeed()); logout();
+    // Dữ liệu mẫu mới không có hồ sơ nào của ảnh chờ cũ: bỏ ảnh chờ cùng lúc.
+    const held = Object.values(pendingRef.current);
+    pendingRef.current = {}; setPending({});
+    persistence.clearPending().catch(() => {});
+    for (const h of held) void removeImageFile(h.uri);
   };
   // Chỉ hỏi đồng ý điều khoản khi tài khoản chưa đồng ý phiên bản hiện hành (đề xuất 4, rủi ro R8).
   const authenticate: Store['authenticate'] = async (username, password, agreed) => {
@@ -345,9 +403,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const addPatient: Store['addPatient'] = async (p, woundLocation) => {
     if (meRef.current?.role !== 'doctor' || p.doctorId !== meRef.current.id) throw new Error('Cần quyền bác sĩ phụ trách.');
-    const phone = p.phone.replace(/\s/g, '');
-    const dup = phone ? dataRef.current.patients.find(x => x.phone.replace(/\s/g, '') === phone) : undefined;
-    if (dup) throw new Error(`Số điện thoại đã có hồ sơ ${dup.code}. Nếu bệnh nhân đã tự đăng ký, nhờ quản trị phân công hồ sơ đó cho bạn thay vì tạo hồ sơ mới.`);
+    // Cùng quy tắc và câu báo như trước; luồng tạo hồ sơ từ ảnh dùng chung hàm so trùng này.
+    const dup = findPhoneDuplicate(dataRef.current.patients, p.phone);
+    if (dup) throw new DuplicatePatientError(dup);
     const n = dataRef.current.counters.patient + 1;
     const patient: Patient = { ...p, researchCode: 'RS-' + Crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase(), id: `p-${Date.now()}`, code: `BN${String(n).padStart(3, '0')}`, createdAt: todayIso() };
     const wound: Wound | null = woundLocation
@@ -500,6 +558,176 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Stage 9C (gói D, D-R1): ghi qua hàng commit như các thao tác lâm sàng khác, tính trên bản mới nhất nên không đè thay đổi chạy xen.
     await commit((d) => ({ ...d, images: [...d.images, image], counters: { ...d.counters, image: Math.max(d.counters.image, n) } }));
     return image;
+  };
+
+  // ===== Luồng "Chụp cho bệnh nhân mới" =====
+  const mine = (doctorId: string) => pendingRef.current[doctorId] ?? null;
+  /** Đặt (hoặc bỏ, khi next là null) ảnh chờ của một bác sĩ rồi ghi cả bảng ảnh chờ. Ghi lỗi: vẫn giữ trong phiên, durable false. */
+  const putPending = async (doctorId: string, next: PendingCapture | null): Promise<PendingCapture | null> => {
+    const map = { ...pendingRef.current };
+    if (next) map[doctorId] = next; else delete map[doctorId];
+    let durable = true;
+    try {
+      if (Object.keys(map).length) await persistence.savePending(map); else await persistence.clearPending();
+    } catch { durable = false; }
+    if (next) map[doctorId] = { ...next, durable };
+    pendingRef.current = map; setPending(map);
+    return next ? map[doctorId] : null;
+  };
+  const requireDoctorRole = () => {
+    const actor = dataRef.current.accounts.find(a => a.id === meRef.current?.id);
+    if (!actor || actor.locked || actor.role !== 'doctor') throw new Error('Chỉ bác sĩ được chụp ảnh cho bệnh nhân mới.');
+    return actor;
+  };
+  const holdPendingCapture: Store['holdPendingCapture'] = async (input) => {
+    const actor = requireDoctorRole();
+    const current = mine(actor.id);
+    if (input.capture.geometry !== null || (input.capture.automaticMeasurement.areaCm2 !== null && !input.capture.ar)) throw new Error('Diện tích tự động chỉ được lưu khi có dữ liệu phiên AR.');
+    if (input.capture.distance.valueM !== null && !input.capture.ar) throw new Error('Khoảng cách chỉ được lưu khi có dữ liệu phiên AR.');
+    const same = current && current.capture.captureId === input.capture.captureId ? current : null;
+    // Chỉ giữ một ảnh chờ và không bao giờ âm thầm bỏ ảnh: ảnh chờ khác phải được gắn hoặc bỏ trước (B09 cũng khóa nút).
+    if (current && !same) throw new Error('Đang có một ảnh khác chờ tạo hồ sơ. Ở màn Chụp ảnh, tiếp tục tạo hồ sơ cho ảnh đó hoặc bỏ ảnh đó trước.');
+    const id = same?.id ?? 'CHO-' + Crypto.randomUUID().slice(0, 8);
+    // Chép ảnh khỏi thư mục tạm của camera để không bị hệ điều hành dọn mất khi ứng dụng đóng.
+    const uri = same ? same.uri : await persistImageFile(input.uri, `cho-${id}`, input.ext);
+    let capture = input.capture;
+    if (same?.capture.ar?.depth && capture.ar?.depth) {
+      capture = { ...capture, ar: { ...capture.ar, depth: same.capture.ar.depth } };
+    } else if (capture.ar?.depth && Platform.OS !== 'web') {
+      const depth = capture.ar.depth;
+      const depthUri = await persistImageFile(depth.uri, `cho-${id}-depth`, depth.format === 'uint16_mm_le' ? 'depth16' : 'depth32');
+      const confidenceUri = depth.confidenceUri ? await persistImageFile(depth.confidenceUri, `cho-${id}-confidence`, 'confidence8') : undefined;
+      capture = { ...capture, ar: { ...capture.ar, depth: { ...depth, uri: depthUri, ...(confidenceUri ? { confidenceUri } : {}) } } };
+    }
+    const next: PendingCapture = {
+      ...input, id, doctorId: actor.id, heldAt: same?.heldAt ?? nowIso(), uri, capture, form: same?.form ?? EMPTY_PENDING_FORM, durable: false,
+    };
+    return (await putPending(actor.id, next))!;
+  };
+  const updatePendingForm: Store['updatePendingForm'] = async (form) => {
+    const actor = requireDoctorRole();
+    const current = mine(actor.id);
+    if (!current) return;
+    await putPending(actor.id, { ...current, form });
+  };
+  const clearPendingStorage = async (held: PendingCapture) => {
+    if (mine(held.doctorId)?.id === held.id) await putPending(held.doctorId, null);
+    void removeImageFile(held.uri);
+    void removeImageFile(held.capture.ar?.depth?.uri);
+    void removeImageFile(held.capture.ar?.depth?.confidenceUri);
+  };
+  const discardPendingCapture: Store['discardPendingCapture'] = async () => {
+    const actor = requireDoctorRole();
+    const held = mine(actor.id);
+    if (held) await clearPendingStorage(held);
+  };
+  const commitPendingCapture: Store['commitPendingCapture'] = async (target) => {
+    // Chặn bấm lặp ở tầng store (màn hình cũng khóa nút): hai lời gọi chồng nhau không tạo hai hồ sơ.
+    if (committingPending.current) throw new Error('Đang lưu hồ sơ, chờ một chút.');
+    committingPending.current = true;
+    const written: string[] = [];
+    try {
+      const actor = requireDoctorRole();
+      const held = mine(actor.id);
+      if (!held) throw new Error('Không còn ảnh chờ gắn hồ sơ. Chụp lại từ màn Chụp ảnh.');
+      // Ảnh này đã được ghi ở lần trước (ví dụ ghi xong nhưng chưa kịp xóa bản chờ): không tạo lần hai, trả lại bản đã có.
+      const already = committedImageOf(dataRef.current, held);
+      if (already) {
+        const w = dataRef.current.wounds.find(x => x.id === already.woundId)!;
+        const p = dataRef.current.patients.find(x => x.id === already.patientId)!;
+        await clearPendingStorage(held);
+        return { patient: p, wound: w, image: already, reused: true };
+      }
+      const d0 = dataRef.current;
+      let patient: Patient;
+      let account: Account | undefined;
+      let activation: Activation | undefined;
+      let wound: Wound;
+      let newWound = true;
+      if (target.kind === 'new') {
+        const { errors, value } = validateNewPatientForm(target.form);
+        if (!value) throw new Error(Object.values(errors).join(' '));
+        const dup = findPhoneDuplicate(d0.patients, value.phone);
+        if (dup) throw new DuplicatePatientError(dup);
+        const n = d0.counters.patient + 1;
+        const at = Date.now();
+        patient = {
+          name: value.name, birthYear: value.birthYear, sex: target.form.sex, phone: value.phone, doctorId: actor.id,
+          researchConsent: target.form.consent, consentDate: target.form.consent ? localDay() : undefined,
+          researchCode: 'RS-' + Crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase(), id: `p-${at}`, code: `BN${String(n).padStart(3, '0')}`, createdAt: todayIso(),
+        };
+        // Vết thương đầu tiên như addPatient: VT01, ngày bắt đầu hôm nay, đang điều trị; vị trí do bác sĩ nhập.
+        wound = { id: `w-${at}`, patientId: patient.id, code: 'VT01', location: value.woundLocation, startDate: todayIso(), status: 'active' };
+        ({ account, activation } = await newActivation(patient, undefined, d0.accounts));
+      } else {
+        requireDoctor(target.patientId);
+        patient = d0.patients.find(p => p.id === target.patientId)!;
+        if (target.woundId) {
+          const w = d0.wounds.find(x => x.id === target.woundId);
+          // Không gắn ảnh vào vết của hồ sơ khác, hay vết đã kết thúc theo dõi (B09 cũng không cho chọn vết đó).
+          if (!w || w.patientId !== patient.id) throw new Error('Vết thương không thuộc hồ sơ đã chọn.');
+          if (w.status === 'closed') throw new Error('Vết thương đã kết thúc theo dõi, không thêm ảnh được.');
+          wound = w; newWound = false;
+        } else {
+          const loc = (target.woundLocation ?? '').trim().replace(/\s+/g, ' ');
+          if (!loc) throw new Error('Nhập vị trí vết thương trong ảnh.');
+          const existing = d0.wounds.filter((w) => w.patientId === patient.id).length;
+          wound = { id: `w-${Date.now()}`, patientId: patient.id, code: `VT${String(existing + 1).padStart(2, '0')}`, location: loc, startDate: todayIso(), status: 'active' };
+        }
+      }
+      const n = d0.counters.image + 1;
+      const id = `IMG${String(n).padStart(4, '0')}`;
+      // Chép tệp chờ sang tên theo mã ảnh như addImage. Lỗi ở đây: chưa ghi dữ liệu nào, ảnh chờ giữ nguyên.
+      const stored = await persistImageFile(held.uri, id, held.ext);
+      if (stored !== held.uri) written.push(stored);
+      let storedCapture = held.capture;
+      if (held.capture.ar?.depth && Platform.OS !== 'web') {
+        const depth = held.capture.ar.depth;
+        const depthUri = await persistImageFile(depth.uri, `${id}-depth`, depth.format === 'uint16_mm_le' ? 'depth16' : 'depth32');
+        written.push(depthUri);
+        const confidenceUri = depth.confidenceUri ? await persistImageFile(depth.confidenceUri, `${id}-confidence`, 'confidence8') : undefined;
+        if (confidenceUri) written.push(confidenceUri);
+        storedCapture = { ...held.capture, ar: { ...held.capture.ar, depth: { ...depth, uri: depthUri, ...(confidenceUri ? { confidenceUri } : {}) } } };
+      }
+      if (meRef.current?.id !== actor.id) throw new Error('Phiên đăng nhập đã thay đổi.');
+      const image: WoundImage = {
+        id, woundId: wound.id, patientId: patient.id, uri: stored, ext: held.ext,
+        filename: buildFilename(patient.code, wound.code, id, null, held.ext),
+        // Ngày chụp và siêu dữ liệu chụp (capturedAt, chất lượng, khoanh vùng, AR) giữ nguyên từ lúc chụp; ngày tải lên là ngày ghi.
+        captureDate: held.captureDate, uploadDate: todayIso(), uploadedBy: actor.id, source: 'doctor',
+        areaCm2: null, status: 'unlabeled', history: [], capture: storedCapture,
+      };
+      // Một lần ghi duy nhất (qua hàng commit, có kiểm quan hệ): hồ sơ, tài khoản, vết thương, ảnh cùng có hoặc cùng không.
+      await commit((d) => {
+        if (target.kind === 'new') {
+          const dup = findPhoneDuplicate(d.patients, patient.phone);
+          if (dup) throw new DuplicatePatientError(dup);
+          if (d.patients.some(p => p.id === patient.id || p.code === patient.code)) throw new Error('Mã hồ sơ vừa cấp đã được dùng. Bấm lưu lại.');
+        } else {
+          requireDoctor(patient.id);
+          if (!newWound && !d.wounds.some(w => w.id === wound.id && w.patientId === patient.id && w.status !== 'closed')) throw new Error('Vết thương đã thay đổi. Chọn lại vết thương.');
+        }
+        if (d.images.some(i => i.id === image.id)) throw new Error('Mã ảnh vừa cấp đã được dùng. Bấm lưu lại.');
+        if (d.images.some(i => i.capture?.captureId === held.capture.captureId)) throw new Error('Ảnh này đã được gắn vào hồ sơ.');
+        return {
+          ...d,
+          patients: target.kind === 'new' ? [...d.patients, patient] : d.patients,
+          accounts: account ? [...d.accounts, account] : d.accounts,
+          wounds: newWound ? [...d.wounds, wound] : d.wounds,
+          images: [...d.images, image],
+          counters: { ...d.counters, patient: target.kind === 'new' ? Math.max(d.counters.patient, Number(patient.code.slice(2))) : d.counters.patient, image: Math.max(d.counters.image, n) },
+        };
+      });
+      written.length = 0;
+      await clearPendingStorage(held);
+      return { patient, wound, image, activation };
+    } catch (e) {
+      // Ghi dữ liệu lỗi sau khi đã chép tệp: xóa tệp vừa chép để không có tệp mồ côi; tệp chờ giữ nguyên để thử lại.
+      for (const u of written) void removeImageFile(u);
+      throw e;
+    } finally {
+      committingPending.current = false;
+    }
   };
 
   const labelImage: Store['labelImage'] = (imageId, area, method, note) =>
@@ -852,6 +1080,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setExcluded, requestRetake, addEvaluation, savePlan, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
     setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle, recordDeviceLink, recordDeviceSession,
     persistIssue, retryPersist, dismissPersistIssue,
+    pendingCapture: me?.role === 'doctor' ? pending[me.id] ?? null : null,
+    holdPendingCapture, updatePendingForm, discardPendingCapture, commitPendingCapture,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
