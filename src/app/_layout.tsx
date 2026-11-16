@@ -3,10 +3,11 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { StoreProvider, useStore } from '@/lib/store';
+import { PersistBanner } from '@/components/PersistBanner';
 import { FontScaleContext } from '@/components/Text';
 import { C, ROLE_SCALE } from '@/theme';
 
@@ -37,7 +38,11 @@ function Root() {
   return (
     <FontScaleContext.Provider value={me ? ROLE_SCALE[me.role] : 1}>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} />
+      {/* Stage 9C (gói D): thông báo sự cố lưu trữ ở đầu màn, chỉ hiện khi có sự cố. Cây cố định để không dựng lại điều hướng. */}
+      <View style={{ flex: 1, backgroundColor: C.bg }}>
+        <PersistBanner />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} />
+      </View>
     </FontScaleContext.Provider>
   );
 }

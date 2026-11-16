@@ -66,8 +66,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
   const cloud = CLOUD_LINK[cloudState(device.online, device.lastSync, now)];
   const show = (t: typeof tab) => !tech || tab === t;
   const doCare = (itemId: string, label: string) =>
-    confirm(label, 'Ghi nhận đã làm xong; bộ đếm của mục này bắt đầu lại từ 0.', () => {
-      try { markCareDone(device.id, itemId); } catch (e) { notify('Chưa ghi được', e instanceof Error ? e.message : String(e)); }
+    confirm(label, 'Ghi nhận đã làm xong; bộ đếm của mục này bắt đầu lại từ 0.', async () => {
+      try { await markCareDone(device.id, itemId); } catch (e) { notify('Chưa ghi được', e instanceof Error ? e.message : String(e)); }
     }, 'Đã làm xong');
   const unsyncedDays = perDay.filter((x) => !lastSyncDay || x.d > lastSyncDay);
   const syncedDays = perDay.filter((x) => lastSyncDay && x.d <= lastSyncDay);
@@ -194,8 +194,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           label={LIFECYCLE[device.lifecycle ?? 'ready'].action!}
           icon="arrow-forward-circle-outline"
           variant="secondary"
-          onPress={() => confirm(LIFECYCLE[device.lifecycle ?? 'ready'].action!, device.lifecycle === 'in_use' ? 'Gỡ thiết bị khỏi bệnh nhân và bỏ đầu phát đang dùng.' : 'Ghi nhận bước này đã làm xong.', () => {
-            try { setLifecycle(device.id, LIFECYCLE[device.lifecycle ?? 'ready'].next as NonNullable<Device['lifecycle']>); } catch (e) { notify('Chưa ghi được', e instanceof Error ? e.message : String(e)); }
+          onPress={() => confirm(LIFECYCLE[device.lifecycle ?? 'ready'].action!, device.lifecycle === 'in_use' ? 'Gỡ thiết bị khỏi bệnh nhân và bỏ đầu phát đang dùng.' : 'Ghi nhận bước này đã làm xong.', async () => {
+            try { await setLifecycle(device.id, LIFECYCLE[device.lifecycle ?? 'ready'].next as NonNullable<Device['lifecycle']>); } catch (e) { notify('Chưa ghi được', e instanceof Error ? e.message : String(e)); }
           }, 'Xác nhận')}
         />
         </>}

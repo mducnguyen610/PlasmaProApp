@@ -6,7 +6,7 @@ import { Text } from '@/components/Text';
 import { NoAccess } from '@/components/Guard';
 import { Button, Card, Chip, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
 import { ACCOUNT_STATUS, accountDisplayName, accountStatus, ROLE_LABEL, ROLE_PERMISSIONS } from '@/lib/adminView';
-import { confirm } from '@/lib/dialog';
+import { confirm, notify } from '@/lib/dialog';
 import { useStore } from '@/lib/store';
 import type { Account } from '@/lib/types';
 import { C } from '@/theme';
@@ -26,7 +26,15 @@ export default function AdminAccountDetail() {
   const isMe = a.id === me.id;
   const managed = a.role === 'doctor' ? data.patients.filter((p) => p.doctorId === a.id).length : 0;
   const research = (a.role === 'doctor' || a.role === 'admin') && !a.pendingApproval;
-  const run = (patch: Partial<Account>, message: string) => { updateAccount(a.id, patch); setDone(message); };
+  const run = async (patch: Partial<Account>, message: string) => {
+    try {
+      await updateAccount(a.id, patch);
+    } catch (e) {
+      notify('Chưa lưu được', e instanceof Error ? e.message : String(e));
+      return;
+    }
+    setDone(message);
+  };
 
   const lock = () => confirm(
     `Khóa tài khoản ${a.name}?`,

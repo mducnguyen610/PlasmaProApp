@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { NoAccess } from '@/components/Guard';
 import { Button, Card, Chip, Header, InfoRow, Muted, Notice, Screen } from '@/components/ui';
 import { fmtDateTime } from '@/lib/format';
+import { notify } from '@/lib/dialog';
 import { useStore } from '@/lib/store';
 import { Text } from '@/components/Text';
 import { C } from '@/theme';
@@ -28,7 +29,15 @@ export default function AdminLogDetail() {
         <InfoRow label="Mã bản ghi" value={e.id} mono />
       </Card>
       {dev && <Button label={`Xem nhật ký ${dev.code}`} variant="secondary" icon="list-outline" onPress={() => router.push({ pathname: '/devices/[id]', params: { id: dev.id } })} />}
-      {!e.resolved && <Button label="Đánh dấu đã xử lý" icon="checkmark-done-outline" onPress={() => { resolveSyncError(e.id); setDone(true); }} />}
+      {!e.resolved && <Button label="Đánh dấu đã xử lý" icon="checkmark-done-outline" onPress={async () => {
+        try {
+          await resolveSyncError(e.id);
+        } catch (x) {
+          notify('Chưa đánh dấu được', x instanceof Error ? x.message : String(x));
+          return;
+        }
+        setDone(true);
+      }} />}
       <Muted>Bản ghi lỗi được giữ nguyên, không xóa được trong ứng dụng.</Muted>
     </Screen>
   );
