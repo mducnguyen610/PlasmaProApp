@@ -1,5 +1,46 @@
 # Plasma Pro, Stage 9A: báo cáo triển khai
 
+# Vòng 2: bố cục riêng 30 màn còn lại (nhánh `ui/stage-9a-bo-cuc-con-lai`)
+
+Tách từ master `6f21314`. Trạng thái Stage 9A sau vòng này: **COMPLETE** ở mức bố cục giao diện web cho cả 43 màn (xem kiểm kê). Kiểm trên Android/iOS thật, camera thật, USB thật, dừng khẩn cấp trên máy thật vẫn **BLOCKED** như các stage trước; đó là giới hạn kiểm chứng, không phải việc giao diện còn dở.
+
+## Commit
+
+| Commit | Nội dung |
+|---|---|
+| `4cd10d8` | Gói 1: C02, C03, C04, C05 |
+| `af40435` | Gói 2: B04a, B05a, B06, B07, B08, B08b, B08c, B08d |
+| `35fdeef` | Gói 3: B09, B10, B11, B12, B13 |
+| `bc1542f` | B05a giữ "Vị trí đang lưu" (WD-02), B06 câu hậu quả sát nút Lưu (D10-06h), N05, N06 |
+| `e7ea7cf` | Gói 4: N01, N03, N04, N07, N08 |
+| `b0db5fd` | Gói 5: Q01, Q01b, Q02, Q03, Q04, Q04b, Q05, Q06 |
+| `719fa41` | Trang Hướng dẫn và giải thích (`/help`), lối vào ở tab Cá nhân |
+
+## Tệp đổi (32 tệp trong `src`, 930 dòng thêm, 432 dòng bớt)
+
+Chỉ tệp màn và ba thành phần dùng ở cấp màn. Không đổi `src/lib/**` (quy tắc lâm sàng, tính diện tích, AI, giao thức USB/UART, lệnh CFG, kho dữ liệu, quyền), `src/theme.ts`, `src/components/ui.tsx` (hệ thống chung). Kiểm bằng `git diff --stat 6f21314..HEAD -- src/lib src/theme.ts src/components/ui.tsx`: 0 dòng.
+
+## Thành phần dùng chung đã đổi và kiểm theo vai trò
+
+| Thành phần | Dùng ở | Cách đổi | Kiểm |
+|---|---|---|---|
+| `DeviceView` | B13 (bác sĩ), N07 (bệnh nhân), Q06 (kỹ thuật) | Nhánh theo `level`: bác sĩ đổi thứ tự thẻ; kỹ thuật nhóm dòng và thu gọn tiến độ; mức bệnh nhân giữ nguyên | tb-6 (Q06 không có nút nạp), tb-7, tb-5, 9b |
+| `PatientWoundDashboard` | N05 (chỉ bệnh nhân) | Đổi thứ tự mục, dòng đợt điều trị vào thẻ tóm tắt | n05 20/20 (gồm N05-12 ở nhiều bề rộng) |
+| `AccountScreen` | B14, N09, Q07 (COMPLETE) | Thêm một dòng "Hướng dẫn và giải thích" cho bác sĩ, quản trị; bệnh nhân không đổi | tb-6 TB6-18, p2, ảnh B14/Q07 |
+
+## Điều không đổi
+
+Quy tắc lâm sàng, cách tính diện tích, suy luận AI, tham số điều trị, giao thức firmware, lệnh USB/UART, hợp đồng API, lược đồ dữ liệu, quan hệ bệnh nhân và vết thương, quyền theo vai trò, QĐ-1 đến QĐ-6. Giữ: kiểm tra biểu mẫu, điều hướng, bản nháp, tìm và lọc, chụp ảnh, so sánh ảnh, lịch sử, luồng thiết bị, nút Dừng, xử lý lỗi. Mọi nhãn mà kịch bản kiểm thử đọc được giữ nguyên chữ (ví dụ "Bước 1 trên 4", "Diện tích bác sĩ đo", "Lưu phiên bản N cho VTxx", "Mức đau (0 là không đau, 10 là đau nhất)").
+
+## Kiểm tra
+
+- `npx tsc --noEmit`: đạt. `npx eslint src --quiet`: đạt. `npm test`: 16 bộ đạt (gồm `architecture.test` 169 tệp, `configCommand.test` 4224 tổ hợp).
+- 24 kịch bản Playwright trên bản dựng web của nhánh: 832 ca đạt, 0 lỗi (chi tiết ở báo cáo hồi quy thị giác).
+
+---
+
+# Vòng 1 (PR 60, 13 màn và hệ thống chung)
+
 Nhánh `ui/stage-9a-thiet-ke-lai`, tách từ master `457ee0c`. Không gộp PR 58 (Stage 8). Ứng dụng chỉ có giao diện và dữ liệu mô phỏng; mọi kiểm thử chạy trên bản dựng web tĩnh.
 
 ## Trạng thái chung: IN PROGRESS

@@ -115,20 +115,32 @@ export default function Onboarding() {
           <View key={k} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: k <= i ? C.primary : C.border }} />
         ))}
       </View>
-      <Card hero style={{ padding: 24, gap: 16 }}>
-        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: step.soft, alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name={step.icon} size={36} color={step.tone} />
-        </View>
-        <Text accessibilityRole="header" style={{ fontSize: 24, fontWeight: '700', color: C.text }}>{step.title}</Text>
-        {step.points.map((t) => (
-          <View key={t} style={{ flexDirection: 'row', gap: 10 }}>
-            <Ionicons name="checkmark-circle-outline" size={20} color={step.tone} style={{ marginTop: 2 }} />
-            <Text style={{ flex: 1, fontSize: 17, lineHeight: 25, color: C.textBody }}>{t}</Text>
+      {/* Stage 9A (bố cục riêng N01): biểu tượng và tiêu đề cùng một hàng để nội dung bước lên cao hơn; câu có số thứ tự (bước nạp
+          liệu trình) hiện số trong vòng tròn thay cho dấu tích, để thấy đây là trình tự phải làm theo; ở bước khẩn cấp, nút "Gọi 115"
+          đứng ngay dưới tiêu đề (trên điện thoại) trước các câu giải thích. Câu chữ các bước giữ nguyên. */}
+      <Card hero style={{ padding: 20, gap: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: step.soft, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name={step.icon} size={28} color={step.tone} />
           </View>
-        ))}
+          <Text accessibilityRole="header" style={{ flex: 1, fontSize: 22, lineHeight: 28, fontWeight: '700', color: C.text }}>{step.title}</Text>
+        </View>
         {step.emergency && Platform.OS !== 'web' && (
           <Button label="Gọi 115" icon="call" variant="danger" onPress={() => Linking.openURL('tel:115').catch(() => {})} />
         )}
+        {step.points.map((t) => {
+          const m = t.match(/^(\d+)\. (.*)$/);
+          return (
+            <View key={t} style={{ flexDirection: 'row', gap: 10 }}>
+              {m ? (
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: step.tone, alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+                  <Text maxFontSizeMultiplier={1.3} style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{m[1]}</Text>
+                </View>
+              ) : <Ionicons name="checkmark-circle-outline" size={20} color={step.tone} style={{ marginTop: 2 }} />}
+              <Text accessibilityLabel={t} style={{ flex: 1, fontSize: 17, lineHeight: 25, color: C.textBody }}>{m ? m[2] : t}</Text>
+            </View>
+          );
+        })}
         {step.emergency && doctor ? <Muted>Bác sĩ phụ trách: {doctor}</Muted> : null}
       </Card>
       <Muted>Bạn có thể xem lại hướng dẫn này trong Tài khoản.</Muted>

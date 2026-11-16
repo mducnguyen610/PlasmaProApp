@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
@@ -58,14 +59,19 @@ export default function Report() {
     // luôn thấy dù đang nhập mô tả. Khóa sau lần bấm đầu để không gửi trùng.
     <Screen header={<Header back title="Báo triệu chứng / sự cố" titleLines={2} />}
       footer={<Button label="Gửi" icon="send" disabled={!canSend || sent} onPress={send} reason={sent ? undefined : kind === 'symptom' ? 'Chọn mức đau hoặc nhập mô tả để gửi.' : 'Nhập mô tả sự cố để gửi.'} />}>
-      <Card style={{ backgroundColor: C.redSoft }}>
-        <Text style={{ color: C.red, fontWeight: '700' }}>Khi khẩn cấp, hãy gọi 115 hoặc đến cơ sở y tế gần nhất.</Text>
-        <Muted>Ứng dụng không thay thế cấp cứu. Không có ai theo dõi ứng dụng liên tục.</Muted>
+      {/* Stage 9A (bố cục riêng N08): cảnh báo khẩn cấp giữ ở đầu màn, gọn trong một hàng có biểu tượng; chọn loại báo cáo đứng riêng
+          ngay dưới; mức đau và mô tả là hai thẻ tách nhau để thấy rõ chỉ cần chọn mức đau là gửi được. Câu chữ, thang đau, ngưỡng cảnh
+          báo và điều kiện gửi giữ nguyên. */}
+      <Card style={{ backgroundColor: C.redSoft, flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+        <Ionicons name="call" size={22} color={C.red} style={{ marginTop: 2 }} />
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={{ color: C.red, fontWeight: '700' }}>Khi khẩn cấp, hãy gọi 115 hoặc đến cơ sở y tế gần nhất.</Text>
+          <Muted>Ứng dụng không thay thế cấp cứu. Không có ai theo dõi ứng dụng liên tục.</Muted>
+        </View>
       </Card>
-      <Card>
-        <Segmented value={kind} onChange={setKind} options={[{ value: 'symptom', label: 'Triệu chứng' }, { value: 'device', label: 'Sự cố thiết bị' }]} />
-        {kind === 'symptom' && (
-          <>
+      <Segmented value={kind} onChange={setKind} options={[{ value: 'symptom', label: 'Triệu chứng' }, { value: 'device', label: 'Sự cố thiết bị' }]} />
+      {kind === 'symptom' && (
+        <Card>
             {/* P2-06 (R2-06): tiêu đề nhóm ghi rõ hai đầu thang; thang, ngưỡng và câu cảnh báo giữ nguyên. */}
             <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Mức đau (0 là không đau, 10 là đau nhất)</Text>
             {/* Các hàng đều cột, chữ mốc ở hai đầu thang (V18); số hàng theo độ rộng màn (A04). */}
@@ -90,8 +96,9 @@ export default function Report() {
                 Mức đau {pain}/10 là cao. Hãy gọi bác sĩ hoặc đến cơ sở y tế ngay. Đồng thời, gửi báo cáo này.
               </Text>
             )}
-          </>
-        )}
+        </Card>
+      )}
+      <Card>
         <Field label={kind === 'symptom' ? 'Mô tả thêm (không bắt buộc)' : 'Mô tả'} value={content} onChangeText={setContent} multiline placeholder={kind === 'symptom' ? 'Đau, rát, chảy dịch, sốt…' : 'Không bật được, mất Wi-Fi, báo lỗi…'} />
       </Card>
       {mine.length > 0 && (

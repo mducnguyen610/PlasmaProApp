@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { NoAccess } from '@/components/Guard';
-import { Button, Chip, Choices, Disclosure, Empty, Header, LinkRow, ListCard, Muted, Notice, NumberTile, Screen, SearchField, Segmented, TextLink } from '@/components/ui';
+import { Button, Chip, Choices, Disclosure, Empty, Header, LinkRow, ListCard, Muted, Notice, NumberTile, Screen, SearchField, SectionTitle, Segmented, TextLink } from '@/components/ui';
 import { ACCOUNT_STATUS, accountDisplayName, accountStatus, filterAccounts, ROLE_LABEL, ROLE_PERMISSIONS, type AccountStatus } from '@/lib/adminView';
 import { confirm } from '@/lib/dialog';
 import { useStore } from '@/lib/store';
@@ -109,22 +109,29 @@ export default function AdminAccounts() {
               <Button label="Bỏ lọc" variant="secondary" onPress={() => { setQuery(''); setStatus('all'); setRole('all'); }} />
             </>
           ) : (
-            <ListCard>
-              {shown.map((a) => {
-                const st = ACCOUNT_STATUS[accountStatus(a)];
-                return (
-                  <View key={a.id} style={{ paddingVertical: 6 }}>
-                    <LinkRow testID={`tai-khoan-${a.id}`}
-                      icon={a.role === 'doctor' ? 'medkit-outline' : a.role === 'patient' ? 'person-outline' : 'construct-outline'}
-                      tone={a.role === 'doctor' ? 'blue' : a.role === 'patient' ? 'green' : 'violet'}
-                      title={accountDisplayName(data, a)} sub={`${ROLE_LABEL[a.role]} · @${a.username}`}
-                      below={<Chip label={st.label} tone={st.tone} />}
-                      accessibilityLabel={`${accountDisplayName(data, a)}, ${ROLE_LABEL[a.role]}, ${st.label}. Mở chi tiết`}
-                      onPress={() => router.push({ pathname: '/admin-account/[id]', params: { id: a.id } })} />
-                  </View>
-                );
-              })}
-            </ListCard>
+            /* Stage 9A (bố cục riêng Q01): danh sách chia theo vai trò, số tài khoản ở cuối dòng tiêu đề nhóm, để thấy ngay cơ cấu
+               tài khoản và tìm đúng nhóm nhanh hơn. Thứ tự trong nhóm, tìm kiếm, bộ lọc và màn chi tiết giữ nguyên. */
+            (['doctor', 'patient', 'admin'] as const).map((r) => ({ r, list: shown.filter((a) => a.role === r) })).filter((g) => g.list.length).map(({ r, list }) => (
+              <View key={r} style={{ gap: 8 }}>
+                <SectionTitle right={<Text style={{ color: C.textSoft, fontSize: T.small }}>{`${list.length}`}</Text>}>{ROLE_LABEL[r]}</SectionTitle>
+                <ListCard>
+                  {list.map((a) => {
+                    const st = ACCOUNT_STATUS[accountStatus(a)];
+                    return (
+                      <View key={a.id} style={{ paddingVertical: 6 }}>
+                        <LinkRow testID={`tai-khoan-${a.id}`}
+                          icon={a.role === 'doctor' ? 'medkit-outline' : a.role === 'patient' ? 'person-outline' : 'construct-outline'}
+                          tone={a.role === 'doctor' ? 'blue' : a.role === 'patient' ? 'green' : 'violet'}
+                          title={accountDisplayName(data, a)} sub={`@${a.username}`}
+                          below={<Chip label={st.label} tone={st.tone} />}
+                          accessibilityLabel={`${accountDisplayName(data, a)}, ${ROLE_LABEL[a.role]}, ${st.label}. Mở chi tiết`}
+                          onPress={() => router.push({ pathname: '/admin-account/[id]', params: { id: a.id } })} />
+                      </View>
+                    );
+                  })}
+                </ListCard>
+              </View>
+            ))
           )}
           {/* C. Vai trò và quyền: chỉ để tham khảo. Vai trò gắn cố định với tài khoản, ứng dụng không có thao tác đổi vai trò. */}
           <Disclosure icon="key-outline" title="Vai trò và quyền" summary="Tham khảo, không chỉnh ở đây">
@@ -139,11 +146,16 @@ export default function AdminAccounts() {
         </>
       ) : (
         <>
-          <Muted>Đổi bác sĩ phụ trách cho từng hồ sơ. Hồ sơ chỉ đổi sau khi xác nhận.</Muted>
           <SearchField label="Tìm mã hồ sơ" placeholder="Tìm mã hồ sơ" value={codeQuery} onChangeText={setCodeQuery} autoCapitalize="characters" />
-          {patients.length === 0 ? <Empty icon="search-outline" text="Không có hồ sơ khớp mã này." /> : (
+          {/* Stage 9A (bố cục riêng Q01): hồ sơ chia theo bác sĩ phụ trách, số hồ sơ ở cuối dòng tiêu đề, để thấy ngay ai đang giữ bao
+              nhiêu hồ sơ trước khi đổi. Quy tắc đổi, hộp xác nhận và Hoàn tác giữ nguyên. */}
+          {patients.length === 0 ? <Empty icon="search-outline" text="Không có hồ sơ khớp mã này." /> : [...new Set(patients.map((p) => p.doctorId))].map((docId) => {
+            const group = patients.filter((p) => p.doctorId === docId);
+            return (
+            <View key={docId || 'none'} style={{ gap: 8 }}>
+            <SectionTitle right={<Text style={{ color: C.textSoft, fontSize: T.small }}>{`${group.length} hồ sơ`}</Text>}>{nameOf(docId)}</SectionTitle>
             <ListCard>
-              {patients.map((p) => {
+              {group.map((p) => {
                 const others = doctors.filter((d) => d.id !== p.doctorId);
                 const changed = lastChange?.patientId === p.id && lastChange.to === p.doctorId ? lastChange : null;
                 return (
@@ -151,7 +163,6 @@ export default function AdminAccounts() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontWeight: '700', color: C.text }}>{p.code}</Text>
-                        <Muted>{nameOf(p.doctorId)}</Muted>
                       </View>
                       {others.length > 0 && (
                         <Button label={picking === p.id ? 'Đóng' : 'Đổi'} variant="secondary"
@@ -177,7 +188,9 @@ export default function AdminAccounts() {
                 );
               })}
             </ListCard>
-          )}
+            </View>
+            );
+          })}
         </>
       )}
     </Screen>

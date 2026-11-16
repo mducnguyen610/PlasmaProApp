@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Chip, Divider, Empty, InfoRow, Muted, Notice, SectionTitle, Segmented, SimBadge, StatusChip, NumberTile } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Empty, InfoRow, Muted, Notice, SectionTitle, Segmented, SimBadge, StatusChip, NumberTile } from '@/components/ui';
 import { noteText } from '@/components/AdherenceCalendar';
 import { ProgressRows } from '@/components/CourseCard';
 import { courseProgress, isScheduled, localDay } from '@/lib/course';
@@ -85,13 +85,29 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           ? `Thiết bị chưa gửi dữ liệu từ ngày ${fmtDate(oldest).slice(0, 5)} đến nay. Hãy bật thiết bị ở nơi có Wi-Fi.`
           : `Chưa có dữ liệu từ ${fmtDate(oldest).slice(0, 5)} đến nay (chưa đồng bộ). Không tính là không sử dụng.`;
 
+  // Stage 9A (bố cục riêng B13, chỉ mức bác sĩ): câu hỏi chính của bác sĩ là bệnh nhân làm đủ buổi chưa, nên thẻ tiến độ đợt lên đầu
+  // (thẻ chính), rồi 7 ngày gần nhất và phiên sử dụng (tổng số phiên và phút ghi ở đầu danh sách thay cho hai ô số), thông tin máy
+  // xuống cuối. Mức kỹ thuật (Q06) và bệnh nhân (N07) dùng bố cục riêng của chúng; dữ liệu và câu chữ không đổi.
+  const doctorView = level === 'doctor';
+  const progressCard = (
+    <Card hero>
+      <SectionTitle icon="ribbon-outline">Tiến độ đợt điều trị</SectionTitle>
+      {!pr ? (
+        <Muted>Bệnh nhân chưa có đợt điều trị đang áp dụng.</Muted>
+      ) : (
+        <>
+          <ProgressRows pr={pr} />
+          <Muted>Chỉ số tuân thủ, không phải đánh giá vết thương. Ngày nghỉ không tính là bỏ lỡ.</Muted>
+        </>
+      )}
+    </Card>
+  );
+
+  const techGroup = { color: C.textSoft, fontSize: T.caption, fontWeight: '700' as const, letterSpacing: 0.6, marginTop: 4 };
   const powerLabel = device.power === 'pending' ? 'Đang chờ thiết bị xác nhận…' : device.power === 'on' ? 'Đang bật' : 'Đang tắt';
 
-  return (
-    <>
-      {device.simulated && <SimBadge />}
-      {tech && <Segmented value={tab} onChange={setTab} options={[{ value: 'overview', label: 'Tổng quan' }, { value: 'care', label: 'Bảo trì' }, { value: 'log', label: 'Nhật ký' }]} />}
-      {show('overview') && <Card>
+  const overviewCard = show('overview') ? (
+    <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
           <Text style={{ fontSize: T.cardTitle, fontWeight: '800', color: C.text, flex: 1 }}>{device.code}</Text>
           {/* Kênh Wi-Fi tới máy chủ, tách chữ với kênh cáp USB ở T01 (V02). */}
@@ -103,15 +119,27 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
             <Text style={{ fontSize: T.body, color: C.textSoft, marginBottom: 6 }}>{restToday ? 'theo lịch hôm nay' : lastSyncDay === today ? 'lần điều trị hôm nay' : 'lần điều trị đã nhận hôm nay'}</Text>
           </View>
         )}
+        {/* Stage 9A (bố cục riêng Q06, chỉ mức kỹ thuật): các dòng chia hai nhóm có nhãn, "Vận hành" (đồng bộ, nguồn, gán cho, vòng
+            đời) trước, "Phần cứng" (mẫu, firmware, đầu phát) sau; mức bác sĩ, bệnh nhân giữ thứ tự cũ. Dữ liệu không đổi. */}
+        {tech ? <>
+          <Text style={techGroup}>VẬN HÀNH</Text>
+          <InfoRow label="Đồng bộ gần nhất" value={device.lastSync ? fmtDateTime(device.lastSync) : 'Chưa từng đồng bộ'} />
+          <InfoRow label="Trạng thái nguồn" value={powerLabel} />
+          <InfoRow label="Gán cho" value={owner ? `${owner.code}` : 'Chưa gán'} />
+          <InfoRow label="Vòng đời" value={LIFECYCLE[device.lifecycle ?? 'ready'].label} />
+          <Text style={techGroup}>PHẦN CỨNG</Text>
+          <InfoRow label="Mẫu" value={device.model} />
+          <InfoRow label="Firmware" value={device.firmware} />
+          <InfoRow label="Đầu phát dùng riêng" value={device.tip ? `${device.tip.code} · cấp ${fmtDate(device.tip.issuedAt)}` : 'Chưa cấp'} />
+        </> : <>
         {patientView
           ? device.tip ? <View style={{ flexDirection: 'row' }}><Chip icon="finger-print-outline" tone="teal" label={`Đầu phát riêng ${device.tip.code}`} /></View> : null
           : <InfoRow label="Đầu phát dùng riêng" value={device.tip ? `${device.tip.code} · cấp ${fmtDate(device.tip.issuedAt)}` : 'Chưa cấp'} />}
         {!patientView && <InfoRow label="Vòng đời" value={LIFECYCLE[device.lifecycle ?? 'ready'].label} />}
-        {tech && <InfoRow label="Mẫu" value={device.model} />}
-        {tech && <InfoRow label="Firmware" value={device.firmware} />}
         <InfoRow label="Đồng bộ gần nhất" value={device.lastSync ? fmtDateTime(device.lastSync) : 'Chưa từng đồng bộ'} />
         {!patientView && <InfoRow label="Gán cho" value={owner ? `${owner.code}` : 'Chưa gán'} />}
         {!patientView && <InfoRow label="Trạng thái nguồn" value={powerLabel} />}
+        </>}
         {patientView && !device.online && <Muted>Số liệu cập nhật khi thiết bị trực tuyến trở lại.</Muted>}
         {canControl && (
           <Button
@@ -129,20 +157,15 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
             }
           />
         )}
-        {!patientView && <>
-        <Divider />
-        <SectionTitle icon="ribbon-outline">Tiến độ đợt điều trị</SectionTitle>
-        {!pr ? (
-          <Muted>Bệnh nhân chưa có đợt điều trị đang áp dụng.</Muted>
-        ) : (
-          <>
-            <ProgressRows pr={pr} />
-            <Muted>Chỉ số tuân thủ, không phải đánh giá vết thương. Ngày nghỉ không tính là bỏ lỡ.</Muted>
-          </>
-        )}
-        </>}
-      </Card>}
+      </Card>
+  ) : null;
 
+  return (
+    <>
+      {device.simulated && <SimBadge />}
+      {tech && <Segmented value={tab} onChange={setTab} options={[{ value: 'overview', label: 'Tổng quan' }, { value: 'care', label: 'Bảo trì' }, { value: 'log', label: 'Nhật ký' }]} />}
+      {!doctorView && overviewCard}
+      {doctorView && progressCard}
       {/* Chăm sóc thiết bị (mẫu myAir). Bệnh nhân chỉ thấy mục đến hạn; kỹ thuật thấy đủ thanh tuổi thọ. */}
       {patientView && patientDue.map((c) => (
         <Card key={c.item.id} style={{ borderWidth: 1.5, borderColor: C.amber }}>
@@ -217,10 +240,25 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
       </Card>}
 
 
-      {!patientView && show('overview') && <View style={{ flexDirection: 'row', gap: 10 }}>
+      {tech && show('overview') && <View style={{ flexDirection: 'row', gap: 10 }}>
         <NumberTile value={sessions.length} label={tech ? 'Số phiên (đã bỏ bản trùng)' : 'Số phiên'} tone="gray" icon="pulse-outline" />
         <NumberTile value={`${totalMin} phút`} label="Tổng thời gian" tone="gray" icon="time-outline" />
       </View>}
+      {/* Q06: tiến độ đợt là chỉ số tuân thủ của bệnh nhân, với kỹ thuật chỉ để tham khảo nên thu gọn (trước đây nằm cuối thẻ máy). */}
+      {tech && show('overview') && <Card style={{ paddingVertical: 4 }}>
+        <Disclosure icon="ribbon-outline" title="Tiến độ đợt điều trị" summary={pr ? `${pr.done}/${pr.total} buổi` : 'Chưa có đợt đang áp dụng'}>
+          <View style={{ gap: 8, paddingBottom: 10 }}>
+            {!pr ? (
+              <Muted>Bệnh nhân chưa có đợt điều trị đang áp dụng.</Muted>
+            ) : (
+              <>
+                <ProgressRows pr={pr} />
+                <Muted>Chỉ số tuân thủ, không phải đánh giá vết thương. Ngày nghỉ không tính là bỏ lỡ.</Muted>
+              </>
+            )}
+          </View>
+        </Disclosure>
+      </Card>}
       {tech && tab === 'log' && rawCount !== sessions.length && (
         <Muted>Đã bỏ {rawCount - sessions.length} bản ghi thiết bị gửi lại trùng mã phiên.</Muted>
       )}
@@ -254,7 +292,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         </View>
         {!patientView && <>
         <Divider />
-        <SectionTitle icon="list-outline">Phiên sử dụng</SectionTitle>
+        <SectionTitle icon="list-outline" right={doctorView ? <Text style={{ color: C.textSoft, fontSize: T.small }}>{`${sessions.length} phiên · ${totalMin} phút`}</Text> : undefined}>Phiên sử dụng</SectionTitle>
         {sessions.length === 0 && <Empty text="Chưa có phiên nào được ghi nhận." />}
         {sessions.slice(0, allSessions ? 30 : 5).map((s) => (
           <View key={s.sessionId} style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border, gap: space.xxs }}>
@@ -276,6 +314,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         {sessions.length > 5 && <Button label={allSessions ? 'Thu gọn' : `Xem thêm (${Math.min(sessions.length, 30) - 5})`} variant="ghost" onPress={() => setAllSessions(!allSessions)} />}
         </>}
       </Card>}
+      {doctorView && <SectionTitle>Thông tin thiết bị</SectionTitle>}
+      {doctorView && overviewCard}
     </>
   );
 }

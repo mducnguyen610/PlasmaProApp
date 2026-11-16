@@ -32,13 +32,17 @@ export default function PhotoViewer() {
   if (!canView || !im) return <NoAccess />;
 
   const { prev, next } = neighbourImages(images, im);
+  // Stage 9A (bố cục riêng B08d): vị trí ảnh trong album của vết (theo cùng thứ tự với nút Ảnh trước / Ảnh sau).
+  const order = [...images].sort((a, b) => a.captureDate.localeCompare(b.captureDate) || a.id.localeCompare(b.id));
+  const pos = order.findIndex((x) => x.id === im.id) + 1;
   const source = im.uri ? { uri: im.uri } : DEMO_ASSETS[im.demoAsset ?? 1];
   const isDoctor = me?.role === 'doctor';
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Header back title={`Ảnh ${im.id}`} subtitle={`${w.code} · ${photoDay(im)}`} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16, paddingVertical: 8 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8 }}>
+        <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '600', marginRight: 4 }}>{`Ảnh ${pos} trên ${order.length}`}</Text>
         <Chip label={im.areaCm2 === null ? 'Chưa đo' : `Bác sĩ đo ${formatAreaDisplay(im.areaCm2)}`} tone={im.areaCm2 === null ? 'amber' : 'green'} />
         {im.status === 'excluded' && <Chip label="Đã loại khỏi bộ dữ liệu" tone="gray" />}
       </View>

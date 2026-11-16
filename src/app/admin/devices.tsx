@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { Sheet } from '@/components/Sheet';
-import { Button, Disclosure, Field, Header, ListCard, Muted, Notice, Screen, SimBadge, StatusChip } from '@/components/ui';
+import { Button, Disclosure, Field, Header, InfoRow, ListCard, Notice, Screen, SectionTitle, SimBadge, StatusChip } from '@/components/ui';
 import { fmtDateTime } from '@/lib/format';
 import { notify } from '@/lib/dialog';
 import { useStore } from '@/lib/store';
@@ -24,10 +24,14 @@ export default function AdminDevices() {
   const valid = /^TB-\d{3,}$/i.test(code.trim());
 
   return (
-    <Screen header={<Header title="Thiết bị" subtitle="Đăng ký và theo dõi thiết bị" />}>
+    // Stage 9A (bố cục riêng Q03): hai việc của kỹ thuật (đăng ký máy, chẩn đoán cáp) đứng cạnh nhau ở đầu màn; danh sách có tiêu đề
+    // đếm số máy và số máy trực tuyến; câu "bác sĩ giao và thu hồi máy" nêu một lần ở tiêu đề danh sách thay cho lặp trong từng máy.
+    <Screen header={<Header title="Thiết bị" />}>
       <SimBadge />
-      <Button label="Chẩn đoán kết nối USB/UART" variant="secondary" icon="pulse-outline" onPress={() => router.push('/device-diagnostics')} />
-      <Button label={code.trim() ? 'Tiếp tục đăng ký thiết bị' : 'Đăng ký thiết bị mới'} variant="secondary" icon="add-circle-outline" onPress={() => { submitting.current = false; setAdded(null); setSheet(true); }} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        <View style={{ flexGrow: 1, flexBasis: 160 }}><Button label={code.trim() ? 'Tiếp tục đăng ký thiết bị' : 'Đăng ký thiết bị mới'} variant="secondary" icon="add-circle-outline" onPress={() => { submitting.current = false; setAdded(null); setSheet(true); }} /></View>
+        <View style={{ flexGrow: 1, flexBasis: 160 }}><Button label="Chẩn đoán kết nối USB/UART" variant="secondary" icon="pulse-outline" onPress={() => router.push('/device-diagnostics')} /></View>
+      </View>
       {added && <Notice tone="green" icon="checkmark-circle-outline">{`Đã đăng ký thiết bị ${added}.`}</Notice>}
       <Sheet visible={sheet} title="Đăng ký thiết bị mới" onClose={() => setSheet(false)} testID="bang-dang-ky-thiet-bi">
         <Field
@@ -61,15 +65,16 @@ export default function AdminDevices() {
         />
       </Sheet>
       {/* Một thẻ cho cả danh sách: mỗi thiết bị một dòng, gán bệnh nhân và nhật ký nằm trong phần mở rộng. */}
+      <SectionTitle right={<Text style={{ color: C.textSoft, fontSize: T.small }}>{`${data.devices.filter((d) => d.online).length}/${data.devices.length} trực tuyến`}</Text>}
+        caption="Bác sĩ phụ trách giao và thu hồi máy trên hồ sơ bệnh nhân.">{`${data.devices.length} thiết bị`}</SectionTitle>
       <ListCard>
       {/* Thiết bị cần chú ý (ngoại tuyến, lâu chưa đồng bộ) lên đầu (V24); thứ tự còn lại giữ như dữ liệu. */}
       {[...data.devices].sort((a, b) => Number(CLOUD_LINK[cloudState(b.online, b.lastSync, now)].role === 'warning') - Number(CLOUD_LINK[cloudState(a.online, a.lastSync, now)].role === 'warning')).map((d) => (
         <View key={d.id} style={{ paddingVertical: 4 }}>
           <Disclosure icon="hardware-chip-outline" title={d.code} summary={`${data.patients.find((p) => p.id === d.patientId)?.code ?? 'Chưa gán'} · đồng bộ ${d.lastSync ? fmtDateTime(d.lastSync) : 'chưa từng'}`}
             below={<StatusChip status={CLOUD_LINK[cloudState(d.online, d.lastSync, now)]} label={CLOUD_LINK[cloudState(d.online, d.lastSync, now)].label} />}>
-          <Muted>Firmware {d.firmware}</Muted>
-          <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Đang giao cho: {data.patients.find((p) => p.id === d.patientId)?.code ?? 'chưa giao'}</Text>
-          <Muted>Bác sĩ phụ trách giao và thu hồi máy trên hồ sơ bệnh nhân.</Muted>
+          <InfoRow label="Đang giao cho" value={data.patients.find((p) => p.id === d.patientId)?.code ?? 'chưa giao'} />
+          <InfoRow label="Firmware" value={d.firmware} />
           <Button label="Xem nhật ký" variant="ghost" icon="list-outline" onPress={() => router.push({ pathname: '/devices/[id]', params: { id: d.id } })} />
           </Disclosure>
         </View>

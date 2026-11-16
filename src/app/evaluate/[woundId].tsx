@@ -235,40 +235,40 @@ export default function Evaluate() {
         </View>
       ) : null}
 
-      {step === 0 && (
-        <Card>
-          {/* R-05, UX-16 (Đợt 10): ảnh tham chiếu nhỏ, ngày chụp, diện tích bác sĩ đo. Cùng dữ liệu như trước. */}
-          {img ? (
-            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-              <WoundPhoto image={img} style={{ width: 88, height: 66, borderRadius: 10 }} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '700', color: C.text }}>Ảnh tham chiếu {img.id}</Text>
-                <Muted>{img.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : `Chụp ${fmtDate(img.captureDate)}`}</Muted>
+      {/* Stage 9A (bố cục riêng B07): ảnh tham chiếu và diện tích bác sĩ đo là một dải gọn hiện ở cả bốn bước, để số đo luôn trong tầm mắt
+          khi chọn mức độ và diễn biến (trước đây chỉ ở bước 1). Câu "ứng dụng chỉ lưu nhận định của bác sĩ" chuyển vào trang Hướng dẫn;
+          câu tương ứng ở bước Mức độ ("mức độ không tự tính") vẫn giữ tại chỗ. Cùng dữ liệu như trước. */}
+      <Card style={{ gap: space.s }}>
+        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+          {img ? <WoundPhoto image={img} style={{ width: 64, height: 48, borderRadius: 8 }} /> : null}
+          <View style={{ flex: 1, gap: 2 }}>
+            {img ? <Text style={{ fontWeight: '700', color: C.text }}>Ảnh tham chiếu {img.id}</Text> : <Text style={{ fontWeight: '700', color: C.text }}>Ảnh tham chiếu: không có</Text>}
+            {img ? <Muted>{img.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : `Chụp ${fmtDate(img.captureDate)}`}</Muted> : null}
+          </View>
+          <View style={{ alignItems: 'flex-end' }} accessible accessibilityLabel={`Diện tích bác sĩ đo ${formatAreaDisplay(img?.areaCm2 ?? null)}`}>
+            <Text style={{ color: C.textSoft, fontSize: T.caption }}>Diện tích bác sĩ đo</Text>
+            <Text style={{ color: C.navy, fontWeight: '700', fontSize: T.titleM }}>{formatAreaDisplay(img?.areaCm2 ?? null)}</Text>
+          </View>
+        </View>
+        {/* P1-03b: xem lại lần đánh giá trước của cùng vết, chỉ đọc. Không có nút chép, không điền thêm trường nào. Chỉ ở bước 1. */}
+        {step === 0 && lastEval ? (
+          <>
+            <Divider />
+            <Disclosure title={`Lần đánh giá trước ${fmtDate(lastEval.date)}`} summary={`${account(lastEval.doctorId)?.name ?? 'Bác sĩ không rõ'} · chỉ để tham khảo, không tự điền`}>
+              <View testID="lan-danh-gia-truoc" style={{ gap: space.xs }}>
+                <InfoRow label="Mức độ" value={lastEval.severity ? SEVERITY[lastEval.severity].label : 'Không ghi'} />
+                <InfoRow label="Diễn biến" value={TREND[lastEval.trend].label} />
+                <InfoRow label="Phân loại" value={lastEval.assessment ? assessmentSummary(lastEval.assessment) : 'Không ghi'} />
+                <InfoRow label="Diện tích lúc đó" value={formatAreaDisplay(lastEval.areaCm2)} />
+                {lastEval.characteristics ? <InfoRow label="Đặc điểm" value={lastEval.characteristics} /> : null}
+                {lastEval.symptoms ? <InfoRow label="Triệu chứng" value={lastEval.symptoms} /> : null}
+                <InfoRow label="Hướng dẫn" value={lastEval.instructions || 'Không ghi'} />
+                <Muted>Giá trị lần trước không được chép vào biểu mẫu. Bác sĩ nhập lại theo nhận định hôm nay.</Muted>
               </View>
-            </View>
-          ) : <InfoRow label="Ảnh tham chiếu" value="Không có" />}
-          <InfoRow label="Diện tích bác sĩ đo" value={formatAreaDisplay(img?.areaCm2 ?? null)} />
-          <Muted>Ứng dụng chỉ lưu nhận định của bác sĩ; không tự suy luận tình trạng hay đề xuất liệu trình.</Muted>
-          {/* P1-03b: xem lại lần đánh giá trước của cùng vết, chỉ đọc. Không có nút chép, không điền thêm trường nào. */}
-          {lastEval ? (
-            <>
-              <Divider />
-              <Disclosure title={`Lần đánh giá trước ${fmtDate(lastEval.date)}`} summary={`${account(lastEval.doctorId)?.name ?? 'Bác sĩ không rõ'} · chỉ để tham khảo, không tự điền`}>
-                <View testID="lan-danh-gia-truoc" style={{ gap: space.xs }}>
-                  <InfoRow label="Mức độ" value={lastEval.severity ? SEVERITY[lastEval.severity].label : 'Không ghi'} />
-                  <InfoRow label="Diễn biến" value={TREND[lastEval.trend].label} />
-                  <InfoRow label="Phân loại" value={lastEval.assessment ? assessmentSummary(lastEval.assessment) : 'Không ghi'} />
-                  <InfoRow label="Diện tích lúc đó" value={formatAreaDisplay(lastEval.areaCm2)} />
-                  {lastEval.characteristics ? <InfoRow label="Đặc điểm" value={lastEval.characteristics} /> : null}
-                  {lastEval.symptoms ? <InfoRow label="Triệu chứng" value={lastEval.symptoms} /> : null}
-                  <InfoRow label="Hướng dẫn" value={lastEval.instructions || 'Không ghi'} />
-                  <Muted>Giá trị lần trước không được chép vào biểu mẫu. Bác sĩ nhập lại theo nhận định hôm nay.</Muted>
-                </View>
-              </Disclosure>
-            </>
-          ) : null}
-        </Card>
-      )}
+            </Disclosure>
+          </>
+        ) : null}
+      </Card>
 
       {/* PP-09 và giai đoạn 2: mỗi bước là một nhóm cũ, cùng trường, cùng thứ tự, cùng câu chữ. Tiêu đề bước kèm dòng "Đã điền x/y". */}
       {g ? (

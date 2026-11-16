@@ -1,5 +1,41 @@
 # Plasma Pro, Stage 9A: báo cáo hồi quy thị giác và chức năng
 
+# Vòng 2: 30 màn còn lại
+
+## Ảnh trước/sau
+
+- 36 trạng thái màn ở 390 × 844, trang đầy đủ, và màn đầu ở 320 px (N01 có 5 bước). Trước: master `6f21314` (cổng 8580). Sau: nhánh này (cổng 8590). Công cụ `chup30.cjs`.
+- Ảnh ghép trong repo: `anh/con-lai/truoc-sau-con-lai-1-c.jpg`, `-2-b.jpg`, `-3-b.jpg`, `-4-n.jpg`, `-5-q.jpg`. Từng cặp và bộ đầy đủ: `/mnt/project-files/datn/stage-9a/bo-cuc-con-lai/anh/`.
+- Màn COMPLETE của vòng 1 (C01, B01 đến B05, B14, B15, N02, N09, Q07, T01, T02) không sửa bố cục; ảnh hồi quy của chúng nằm trong các kịch bản `giao-dien`, `tb-7`, `tb-8`, `p0` dưới đây và bộ đo responsive.
+
+## Kiểm thử chạy trên bản cuối của nhánh
+
+| Kịch bản | Kết quả |
+|---|---|
+| giao-dien | 41/41 |
+| p0 | 47/47 |
+| p1, p1-01d, p1-02, p1-03, p1-04, p1-05-06 | 16, 3, 15, 12, 10, 20 (đạt hết) |
+| p2 | 238/238 |
+| dot-8, dot-10, dot-11, dot-12 | 33, 24, 34, 53 (đạt hết) |
+| n05 | 20/20 |
+| tb-2, tb-3, tb-4, tb-5, tb-6, tb-7, tb-8 | 22, 20, 31, 14, 21, 30, 34 (đạt hết) |
+| quan-ly-ho-so | 55/55 |
+| 9b, 9c-bcd | 18, 21 (đạt hết) |
+| Tổng | 832 ca, 0 lỗi |
+
+## Lỗi hồi quy tìm thấy trong quá trình và đã sửa
+
+| Mã ca | Hiện tượng | Sửa |
+|---|---|---|
+| WD-02 | B05a không còn hiện nguyên văn vị trí đang lưu | Khôi phục dòng "Vị trí đang lưu" (`bc1542f`) |
+| D10-06h | B06: câu hậu quả trạng thái cách nút Lưu 854 px sau khi nút xuống chân màn | Câu chuyển vào chân màn, ngay trên nút Lưu ở bước 3 (`bc1542f`) |
+| TB6-04 | Q01b: "@tên đăng nhập" gộp với vai trò thành một chuỗi | Trả lại dòng "Tên đăng nhập" riêng |
+| TB6-12 | Q02: tiêu đề "Bộ ảnh đã gán diện tích" có số đếm cùng hàng làm kịch bản không tìm thấy tiêu đề | Số đếm chuyển xuống chú thích tiêu đề |
+
+---
+
+# Vòng 1 (PR 60, 13 màn và hệ thống chung)
+
 ## 1. Ảnh trước/sau
 
 - 49 cặp ảnh ở 390 × 844 (49 trạng thái màn, gồm T01 ba trạng thái, T02 ba trạng thái, B06 ba bước), trước là master `457ee0c`, sau là nhánh này. Không có lỗi JS trên 49 màn sau.

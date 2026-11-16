@@ -3,13 +3,12 @@ import { useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Text } from '@/components/Text';
+import { ClinicalContext } from '@/components/ClinicalContext';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
-import { Button, Card, Field, Header, InfoRow, Muted, Notice, Screen } from '@/components/ui';
+import { Button, Card, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { patientEditDirty, validatePatientEdit, type PatientEditErrors } from '@/lib/patientRecord';
 import { useLookups, useStore } from '@/lib/store';
-import { C } from '@/theme';
 
 // B04a – Chỉnh sửa hồ sơ (bác sĩ phụ trách): họ tên, năm sinh, số điện thoại. Mã hồ sơ, giới tính và bác sĩ phụ trách chỉ xem.
 // Lưu gọi updatePatient (cùng hàm với đồng ý nghiên cứu); quyền và kiểm tra nằm ở store, màn này chỉ hiện lỗi theo ô.
@@ -65,29 +64,41 @@ export default function PatientEdit() {
     }
   };
 
+  // Stage 9A (bố cục riêng): thanh định danh bệnh nhân đầu màn (như các màn lâm sàng khác) thay cho dòng phụ đề;
+  // ô sửa và phần chỉ xem tách thành hai nhóm có tiêu đề; năm sinh và số điện thoại một hàng khi đủ rộng; lỗi lưu nằm ngay trên nút.
   return (
     <Screen
-      header={<Header back title="Chỉnh sửa hồ sơ" subtitle={`${p.name} · ${p.code}`} />}
+      header={<Header back title="Chỉnh sửa hồ sơ" />}
       footer={
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Button style={{ flex: 1 }} label="Hủy" variant="secondary" disabled={busy} onPress={() => leave()} />
-          <Button style={{ flex: 1 }} label="Lưu" icon="save-outline" loading={busy} disabled={!dirty} onPress={save} />
+        <View style={{ gap: 8 }}>
+          {failure && <Notice tone="red" icon="alert-circle-outline">{`Chưa lưu được: ${failure}`}</Notice>}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Button style={{ flex: 1 }} label="Hủy" variant="secondary" disabled={busy} onPress={() => leave()} />
+            <Button style={{ flex: 1 }} label="Lưu" icon="save-outline" loading={busy} disabled={!dirty} onPress={save} />
+          </View>
         </View>
       }>
-      <Card>
+      <ClinicalContext patient={p} />
+      <SectionTitle>Thông tin sửa được</SectionTitle>
+      <Card style={{ gap: 14 }}>
         <Field label="Họ và tên" value={name} onChangeText={(v) => { setName(v); setErrors((x) => ({ ...x, name: undefined })); }} error={errors.name} />
-        <Field label="Năm sinh" value={birthYear} onChangeText={(v) => { setBirthYear(v); setErrors((x) => ({ ...x, birthYear: undefined })); }} keyboardType="number-pad" maxLength={4} error={errors.birthYear} />
-        <Field label="Số điện thoại" optional value={phone} onChangeText={(v) => { setPhone(v); setErrors((x) => ({ ...x, phone: undefined })); }} keyboardType="phone-pad"
-          error={errors.phone} hint="10 số bắt đầu bằng 0, hoặc +84 và 9 số" />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+          <View style={{ flexGrow: 1, flexBasis: 120 }}>
+            <Field label="Năm sinh" value={birthYear} onChangeText={(v) => { setBirthYear(v); setErrors((x) => ({ ...x, birthYear: undefined })); }} keyboardType="number-pad" maxLength={4} error={errors.birthYear} />
+          </View>
+          <View style={{ flexGrow: 2, flexBasis: 220 }}>
+            <Field label="Số điện thoại" optional value={phone} onChangeText={(v) => { setPhone(v); setErrors((x) => ({ ...x, phone: undefined })); }} keyboardType="phone-pad"
+              error={errors.phone} hint="10 số bắt đầu bằng 0, hoặc +84 và 9 số" />
+          </View>
+        </View>
       </Card>
+      <SectionTitle>Không đổi ở màn này</SectionTitle>
       <Card>
-        <Text style={{ fontWeight: '700', color: C.text }}>Không đổi ở màn này</Text>
         <InfoRow label="Mã hồ sơ" value={p.code} />
         <InfoRow label="Giới tính" value={p.sex} />
         <InfoRow label="Bác sĩ phụ trách" value={account(p.doctorId)?.name ?? '—'} />
         <Muted>{'Đổi bác sĩ phụ trách do quản trị thực hiện. Đồng ý nghiên cứu sửa ở mục "Thông tin hồ sơ".'}</Muted>
       </Card>
-      {failure && <Notice tone="red" icon="alert-circle-outline">{`Chưa lưu được: ${failure}`}</Notice>}
     </Screen>
   );
 }

@@ -6,7 +6,10 @@ import { courseProgress, courseStatus, localDay } from '@/lib/course';
 import { fmtDate } from '@/lib/format';
 import { monitorTarget } from '@/lib/monitorTarget';
 import { useLookups, useStore } from '@/lib/store';
-import { semantic } from '@/theme';
+import { View } from 'react-native';
+
+import { Text } from '@/components/Text';
+import { C, semantic, T } from '@/theme';
 
 export default function PatientDevice() {
   const { me } = useStore();
@@ -31,10 +34,19 @@ export default function PatientDevice() {
   return (
     <Screen header={<Header title="Thiết bị của tôi" subtitle={d?.code} />}>
       {/* Chỉ nạp liệu trình khi bác sĩ đã giao máy (FR13): phiên và nhật ký phải gắn với một thiết bị. */}
-      {p && d && !treatToday && status && <Notice tone={semantic.neutral.tone} icon={status.kind === 'rest' ? 'moon-outline' : 'information-circle-outline'}>{`${status.title}. Không cần nạp liệu trình hôm nay.`}</Notice>}
-      {p && d && <Button label="Nạp liệu trình vào máy" variant={treatToday ? 'primary' : 'secondary'} icon="arrow-down-circle-outline" onPress={() => router.push('/connect-device')} />}
-      {p && d && <Button label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={openMonitor} />}
-      <Button label="Báo sự cố thiết bị" variant="secondary" icon="warning-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'device' } })} />
+      {/* Stage 9A (bố cục riêng N07): một thẻ "Hôm nay" gom trạng thái lịch hôm nay và nút nạp liệu trình (việc chính); hai việc phụ
+          (theo dõi phiên, báo sự cố) đứng cạnh nhau ngay dưới, rồi mới tới thông tin máy. Điều kiện hiện nút và đích đến giữ nguyên. */}
+      {p && d && (
+        <Card hero testID="n07-hom-nay">
+          {status && treatToday ? <Text style={{ color: C.text, fontSize: T.cardTitle, fontWeight: '700' }}>{status.title}</Text> : null}
+          {!treatToday && status && <Notice tone={semantic.neutral.tone} icon={status.kind === 'rest' ? 'moon-outline' : 'information-circle-outline'}>{`${status.title}. Không cần nạp liệu trình hôm nay.`}</Notice>}
+          <Button label="Nạp liệu trình vào máy" variant={treatToday ? 'primary' : 'secondary'} icon="arrow-down-circle-outline" onPress={() => router.push('/connect-device')} />
+        </Card>
+      )}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        {p && d && <View style={{ flexGrow: 1, flexBasis: 150 }}><Button label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={openMonitor} /></View>}
+        <View style={{ flexGrow: 1, flexBasis: 150 }}><Button label="Báo sự cố thiết bị" variant="secondary" icon="warning-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'device' } })} /></View>
+      </View>
       {/* Giai đoạn 5 giao diện theo tác vụ (TB-05): việc cần làm (trạng thái hôm nay, nạp liệu trình, theo dõi phiên, báo sự cố)
           lên đầu màn; thông tin máy và số lần điều trị 7 ngày (tham khảo) xuống dưới. Điều kiện hiện nút giữ nguyên. */}
       {d ? <DeviceView device={d} level="patient" /> : <Card><Empty icon="hardware-chip-outline" text="Chưa được gán thiết bị." /></Card>}
