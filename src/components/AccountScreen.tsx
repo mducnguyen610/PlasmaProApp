@@ -50,6 +50,8 @@ export function AccountScreen() {
         <View>
         <SettingRow icon="shield-checkmark-outline" title="Điều khoản và quyền riêng tư" value={me.termsAcceptedAt ? `Đã đồng ý ${fmtDate(localDay(me.termsAcceptedAt))}` : 'Chưa đồng ý bản mới'} onPress={() => router.push('/terms')} />
         {me.role === 'patient' && <SettingRow icon="help-circle-outline" title="Hướng dẫn sử dụng" onPress={() => router.push({ pathname: '/onboarding', params: { review: '1' } })} />}
+        {/* Stage 9A: bác sĩ và quản trị có trang Hướng dẫn chứa các câu giải thích chung đã chuyển khỏi màn làm việc. */}
+        {me.role !== 'patient' && <SettingRow icon="help-circle-outline" title="Hướng dẫn và giải thích" onPress={() => router.push('/help')} />}
         <SettingRow icon="document-text-outline" title="Căn cứ pháp lý" onPress={() => router.push('/compliance')} last />
         </View>
       {me.role === 'patient' && <>
