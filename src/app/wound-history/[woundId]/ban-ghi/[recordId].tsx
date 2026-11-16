@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
@@ -41,7 +42,8 @@ export default function HistoryRecord() {
   const meta = KIND_META[entry.kind];
   const openPhoto = (id: string) => router.push({ pathname: '/wound-history/[woundId]/anh/[imageId]', params: { woundId: w.id, imageId: id } });
   const day = entry.dateKnown ? fmtDate(entry.at) : 'ngày chụp chưa rõ';
-  const head = <Header back title={`${meta.label} ${day}`} subtitle={`Vết thương ${w.code}`} />;
+  // Stage 9A: thanh ngữ cảnh ngay dưới đã ghi mã vết, nên tiêu đề không lặp lại dòng phụ "Vết thương VTxx".
+  const head = <Header back title={`${meta.label} ${day}`} />;
   const stateRow = <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}><SaveStateChip kind={entry.kind} state={entry.state} /></View>;
 
   if (entry.kind === 'danh-gia') {
@@ -51,7 +53,10 @@ export default function HistoryRecord() {
     return (
       <Screen header={head}>
         <ClinicalContext patient={p} wound={w} />
-        <Card hero>
+        {/* Stage 9A (bố cục riêng B08c): đầu thẻ là người đánh giá, diễn biến và trạng thái; hai số cần đọc nhanh (diện tích, ngày tái đánh giá)
+            thành hai ô cạnh nhau; lời dặn bệnh nhân là khối nổi bật riêng; đặc điểm, triệu chứng xếp sau. Ảnh dùng cho đánh giá thu thành
+            một dòng có ảnh nhỏ, chạm để xem. Cùng trường và câu chữ như trước. */}
+        <Card hero style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={{ fontWeight: '700', color: C.text, flex: 1 }}>{fmtDate(e.date)} · {account(e.doctorId)?.name ?? 'Bác sĩ'}</Text>
             <StatusChip status={TREND_ROLE[e.trend]} label={TREND[e.trend].label} />
@@ -60,21 +65,37 @@ export default function HistoryRecord() {
             <SaveStateChip kind="danh-gia" state={entry.state} />
             {isDoctor && <Chip label={e.visibleToPatient ? 'Bệnh nhân xem được' : 'Chỉ nội bộ'} tone={e.visibleToPatient ? 'blue' : 'gray'} />}
           </View>
-          {/* Cùng các trường với thẻ đánh giá ở giai đoạn 1 và chế độ "Xem đầy đủ" ở B05. */}
-          <InfoRow label="Diện tích ghi trong đánh giá" value={formatAreaDisplay(e.areaCm2)} />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: C.surfaceMuted, gap: 2 }} accessible accessibilityLabel={`Diện tích ghi trong đánh giá ${formatAreaDisplay(e.areaCm2)}`}>
+              <Text style={{ color: C.textSoft, fontSize: T.caption }}>Diện tích ghi trong đánh giá</Text>
+              <Text style={{ color: C.navy, fontWeight: '700', fontSize: T.titleM }}>{formatAreaDisplay(e.areaCm2)}</Text>
+            </View>
+            <View style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: C.surfaceMuted, gap: 2 }}>
+              <Text style={{ color: C.textSoft, fontSize: T.caption }}>Tái đánh giá</Text>
+              <Text style={{ color: C.text, fontWeight: '700', fontSize: T.titleM }}>{e.nextReview ? fmtDate(e.nextReview) : 'Chưa hẹn'}</Text>
+            </View>
+          </View>
+          {e.instructions ? (
+            <View style={{ padding: 12, borderRadius: 10, borderLeftWidth: 3, borderLeftColor: C.primary, backgroundColor: C.primarySoft, gap: 4 }}>
+              <Text style={{ color: C.textSoft, fontSize: T.caption, fontWeight: '700' }}>HƯỚNG DẪN</Text>
+              <Text style={{ color: C.text }}>Hướng dẫn: {e.instructions}</Text>
+            </View>
+          ) : null}
           {isDoctor && e.assessment ? <Text style={{ color: C.text }}>{assessmentSummary(e.assessment)}</Text> : null}
           {e.characteristics ? <Muted>Đặc điểm: {e.characteristics}</Muted> : null}
           {e.symptoms ? <Muted>Triệu chứng: {e.symptoms} (nguồn: {e.symptomSource || 'chưa ghi'})</Muted> : null}
-          {e.instructions ? <Text style={{ color: C.text }}>Hướng dẫn: {e.instructions}</Text> : null}
-          {e.nextReview ? <Muted>Tái đánh giá: {fmtDate(e.nextReview)}</Muted> : null}
         </Card>
         {linked && (
           <Card>
-            <SectionTitle icon="image-outline">Ảnh dùng cho lần đánh giá</SectionTitle>
-            <Pressable onPress={() => openPhoto(linked.id)} accessibilityRole="button" accessibilityLabel={`Xem ảnh ${linked.id}, ${photoDay(linked)}`}>
-              <WoundPhoto image={linked} fit="contain" style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 14 }} />
+            <Pressable onPress={() => openPhoto(linked.id)} accessibilityRole="button" accessibilityLabel={`Xem ảnh ${linked.id}, ${photoDay(linked)}`}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, opacity: pressed ? 0.7 : 1 })}>
+              <WoundPhoto image={linked} style={{ width: 80, height: 60, borderRadius: 10 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '700', color: C.text }}>Ảnh dùng cho lần đánh giá</Text>
+                <Muted>{`${linked.id} · ${photoDay(linked)}`}</Muted>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
             </Pressable>
-            <Muted>{`${linked.id} · ${photoDay(linked)}`}</Muted>
           </Card>
         )}
       </Screen>

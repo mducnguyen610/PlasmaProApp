@@ -9,7 +9,7 @@ import { NoAccess, useCanView } from '@/components/Guard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { CheckRow } from '@/components/Consent';
 import { PLAN } from '@/theme.status';
-import { Button, Card, Chip, Choices, Disclosure, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Field, Header, InfoRow, ListCard, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
 import { capabilitiesFor, modeLabel } from '@/lib/device/capabilities';
 import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, phasesOf, suggestDurationSec } from '@/lib/course';
 import { confirm, notify } from '@/lib/dialog';
@@ -39,13 +39,9 @@ const PATTERNS: { value: PhasePattern; label: string }[] = [
   { value: 'n_per_week', label: 'N buổi mỗi tuần' },
 ];
 
-function PlanCard({ plan, editorName }: { plan: TreatmentPlan; editorName?: string }) {
+function PlanDetails({ plan, editorName }: { plan: TreatmentPlan; editorName?: string }) {
   return (
-    <Card>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Text style={{ fontWeight: '700', color: C.text, flex: 1 }}>Phiên bản {plan.version}</Text>
-        <StatusChip status={PLAN[plan.status]} label={PLAN_STATUS[plan.status].label} />
-      </View>
+    <>
       <PhaseList plan={plan} />
       <DoseRows plan={plan} />
       {plan.minIntervalMin != null && <InfoRow label="Giãn cách giữa hai lần" value={`${plan.minIntervalMin} phút`} />}
@@ -56,6 +52,44 @@ function PlanCard({ plan, editorName }: { plan: TreatmentPlan; editorName?: stri
       {plan.notes ? <Muted>Ghi chú: {plan.notes}</Muted> : null}
       <Muted>Sửa bởi {editorName ?? '—'} lúc {fmtDateTime(plan.editedAt)} · Lý do: {plan.reason || '—'}</Muted>
       <Chip label={plan.confirmed ? 'Bác sĩ đã xác nhận' : 'Chưa xác nhận'} tone={plan.confirmed ? 'green' : 'gray'} />
+    </>
+  );
+}
+
+function PlanCard({ plan, editorName }: { plan: TreatmentPlan; editorName?: string }) {
+  return (
+    <Card>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={{ fontWeight: '700', color: C.text, flex: 1 }}>Phiên bản {plan.version}</Text>
+        <StatusChip status={PLAN[plan.status]} label={PLAN_STATUS[plan.status].label} />
+      </View>
+      <PlanDetails plan={plan} editorName={editorName} />
+    </Card>
+  );
+}
+
+/**
+ * Stage 9A (bố cục riêng B06): tóm tắt phiên bản đang so sánh (đang áp dụng, hoặc gần nhất) đặt trên biểu mẫu,
+ * để bác sĩ thấy lịch và liều hiện hành trước khi lập phiên bản mới. Chỉ hiển thị giá trị đã lưu, không suy ra giá trị thiếu.
+ */
+function CurrentPlanSummary({ plan }: { plan: TreatmentPlan }) {
+  const dose = [
+    plan.doseLevel != null ? `Mức ${plan.doseLevel}` : 'Chưa đặt mức',
+    plan.treatmentMode ? modeLabel(plan.treatmentMode) : null,
+    plan.durationSec != null ? `${fmtDuration(plan.durationSec)} mỗi lần` : 'chưa đặt thời gian',
+    `${plan.sessionsPerDay ?? 1} lần mỗi buổi`,
+  ].filter(Boolean).join(' · ');
+  return (
+    <Card hero style={{ gap: 8 }} testID="b06-dang-ap-dung">
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text accessibilityRole="header" style={{ flex: 1, fontWeight: '700', color: C.text, fontSize: T.titleM }}>Phiên bản {plan.version}</Text>
+        <StatusChip status={PLAN[plan.status]} label={PLAN_STATUS[plan.status].label} />
+      </View>
+      {phasesOf(plan).map((ph, i) => (
+        <Text key={i} style={{ color: C.textBody }}>{`${i + 1}. ${phaseLabel(ph)}, ${fmtDate(ph.from)} đến ${fmtDate(ph.to)}`}</Text>
+      ))}
+      <Text style={{ color: C.text, fontWeight: '600' }}>{dose}</Text>
+      <Text style={{ color: C.textSoft, fontSize: T.small }}>{`Xem lại hiệu quả ngày thứ ${plan.reviewAtDay ?? DEFAULT_REVIEW_DAY} · ${plan.confirmed ? 'Bác sĩ đã xác nhận' : 'Chưa xác nhận'}`}</Text>
     </Card>
   );
 }
@@ -270,20 +304,39 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
     notify('Đã lưu phiên bản mới', 'Bệnh nhân nạp mức, chế độ và thời gian xuống máy qua cáp USB ở màn Thiết bị (bản demo: thiết bị giả lập).');
   };
 
+  // Stage 9A (bố cục riêng B06): thứ tự theo việc của bác sĩ: ai, vết nào (ngữ cảnh), đang áp dụng gì (tóm tắt), lập phiên bản mới
+  // (ba bước, nút chuyển bước và nút Lưu ở chân màn nên luôn thấy), rồi lịch sử phiên bản thu gọn. Quy tắc lưu và kiểm tra giữ nguyên.
+  const older = plans.filter((x) => x.id !== base?.id);
   return (
-    <Screen header={<Header back title="Đợt điều trị" />}>
+    <Screen
+      header={<Header back title="Đợt điều trị" />}
+      footer={
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {step > 0 && <View style={{ flex: 1 }}><Button label="Quay lại" variant="ghost" onPress={() => setStep(step - 1)} /></View>}
+          {step < 2
+            ? <View style={{ flex: step > 0 ? 2 : 1 }}><Button label="Tiếp" icon="arrow-forward" onPress={() => setStep(step + 1)} /></View>
+            : <View style={{ flex: 2 }}><Button label={`Lưu phiên bản ${nextVersion}${w ? ` cho ${w.code}` : ''}`} icon="save-outline" onPress={save} /></View>}
+        </View>
+      }>
       {/* P0 G1: bệnh nhân và vết thương của đợt đang lập. */}
       <ClinicalContext patient={p} wound={w ?? null} />
       {wounds.length > 1 && (
-        <Card>
-          <SectionTitle icon="bandage-outline">Vết thương</SectionTitle>
+        <View style={{ gap: 8 }}>
+          <SectionTitle>Vết thương</SectionTitle>
           <Choices<string> value={woundId} onChange={changeWound} options={wounds.map((w) => ({ value: w.id, label: `${w.code} · ${w.location}` }))} />
-        </Card>
+        </View>
       )}
+      {base && (
+        <View style={{ gap: 8 }}>
+          <SectionTitle>{base.status === 'active' ? 'Đang áp dụng' : 'Phiên bản gần nhất'}</SectionTitle>
+          <CurrentPlanSummary plan={base} />
+          <Disclosure title={`Chi tiết phiên bản ${base.version}`} summary="Lịch tái khám, ghi chú, người sửa">
+            <Card style={{ gap: 6 }}><PlanDetails plan={base} editorName={account(base.editedBy)?.name} /></Card>
+          </Disclosure>
+        </View>
+      )}
+      <SectionTitle caption="Mỗi vết thương một đợt. Giá trị điều trị cụ thể do nhóm chuyên môn đặt; ứng dụng không đặt sẵn lịch hay liều.">{`Lập phiên bản ${nextVersion}`}</SectionTitle>
       <Card>
-        <SectionTitle icon="flash-outline">Thiết lập phiên bản mới</SectionTitle>
-        <Muted>Mỗi vết thương một đợt. Giá trị điều trị cụ thể do nhóm chuyên môn đặt; ứng dụng không đặt sẵn lịch hay liều.</Muted>
-
         {/* Biểu mẫu chia 3 bước (đề xuất 8): Lịch, Liều, Xác nhận. Lỗi đưa người dùng về đúng bước. */}
         {/* Cùng kiểu thanh bước với T01 (V10); vẫn chạm được để chuyển bước như trước. */}
         <StepRow steps={['Lịch', 'Liều', 'Xác nhận']} step={step + 1} onStep={(n) => setStep(n - 1)} />
@@ -400,20 +453,26 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
               <Notice icon="git-branch-outline">{`${willEnd.map((x) => `Phiên bản ${x.version} (${PLAN_STATUS[x.status].label})`).join(', ')} sẽ chuyển sang Kết thúc khi lưu. Các phiên bản cũ vẫn giữ trong danh sách bên dưới.`}</Notice>
             )}
             <Notice tone="blue" icon="information-circle-outline">{STATUS_EFFECT[status]}</Notice>
-            <Button label={`Lưu phiên bản ${nextVersion}${w ? ` cho ${w.code}` : ''}`} icon="save-outline" onPress={save} />
           </>
         )}
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          {step > 0 && <View style={{ flex: 1 }}><Button label="Quay lại" variant="ghost" onPress={() => setStep(step - 1)} /></View>}
-          {step < 2 && <View style={{ flex: 1 }}><Button label="Tiếp" icon="arrow-forward" onPress={() => setStep(step + 1)} /></View>}
-        </View>
       </Card>
 
-      <SectionTitle icon="git-branch-outline">Các phiên bản</SectionTitle>
+      <SectionTitle>Lịch sử phiên bản</SectionTitle>
       {plans.length === 0 && <Muted>Chưa có phiên bản nào.</Muted>}
-      {plans.map((pl) => (
-        <PlanCard key={pl.id} plan={pl} editorName={account(pl.editedBy)?.name} />
-      ))}
+      {base && older.length === 0 && <Muted>Chỉ có phiên bản đang hiển thị ở trên.</Muted>}
+      {older.length > 0 && (
+        <ListCard>
+          {older.map((pl) => (
+            <View key={pl.id} style={{ paddingVertical: 2 }}>
+              <Disclosure
+                title={`Phiên bản ${pl.version}`}
+                summary={`${PLAN_STATUS[pl.status].label} · sửa ${fmtDateTime(pl.editedAt)}${pl.reason ? ` · ${pl.reason}` : ''}`}>
+                <View style={{ gap: 6, paddingBottom: 10 }}><PlanDetails plan={pl} editorName={account(pl.editedBy)?.name} /></View>
+              </Disclosure>
+            </View>
+          ))}
+        </ListCard>
+      )}
     </Screen>
   );
 }

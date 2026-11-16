@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
-import { Button, Card, Field, Header, InfoRow, Muted, Notice, Screen } from '@/components/ui';
+import { Button, Card, Field, Header, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
 import { confirm, notify } from '@/lib/dialog';
 import { validateWoundLocation } from '@/lib/patientRecord';
 import { useLookups, useStore } from '@/lib/store';
@@ -78,23 +78,27 @@ export default function WoundEdit() {
     confirm(`Lưu thay đổi cho ${w.code}?`, lines.join('\n'), () => { void doSave(patch); }, 'Lưu thay đổi');
   };
 
+  // Stage 9A (bố cục riêng): thanh ngữ cảnh đã ghi mã vết và vị trí đang lưu nên bỏ dòng phụ đề và dòng "Vị trí đang lưu" trùng;
+  // vị trí cũ chuyển thành gợi ý ngay dưới ô để so khi sửa. Lỗi lưu nằm ngay trên nút.
   return (
     <Screen
-      header={<Header back title="Chỉnh sửa vị trí" subtitle={`${w.code} · ${p.name}`} />}
+      header={<Header back title="Chỉnh sửa vị trí" />}
       footer={
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Button style={{ flex: 1 }} label="Hủy" variant="secondary" disabled={busy} onPress={() => leave()} />
-          <Button style={{ flex: 1 }} label="Lưu" icon="save-outline" loading={busy} disabled={!dirty} onPress={save} />
+        <View style={{ gap: 8 }}>
+          {failure && <Notice tone="red" icon="alert-circle-outline">{`Chưa lưu được: ${failure}`}</Notice>}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Button style={{ flex: 1 }} label="Hủy" variant="secondary" disabled={busy} onPress={() => leave()} />
+            <Button style={{ flex: 1 }} label="Lưu" icon="save-outline" loading={busy} disabled={!dirty} onPress={save} />
+          </View>
         </View>
       }>
       <ClinicalContext patient={p} wound={w} />
-      <Card>
-        <InfoRow label="Vị trí đang lưu" value={w.location} />
-        <Field label="Vị trí mới" value={location} onChangeText={(v) => { setLocation(v); setError(null); }} placeholder="Ví dụ: Gót chân phải" error={error} />
+      <SectionTitle>Vị trí và nhóm tổn thương</SectionTitle>
+      <Card style={{ gap: 14 }}>
+        <Field label="Vị trí mới" value={location} onChangeText={(v) => { setLocation(v); setError(null); }} placeholder="Ví dụ: Gót chân phải" error={error} hint={`Đang lưu: ${w.location}`} />
         <Field label="Nhóm tổn thương" optional value={group} onChangeText={setGroup} hint="Để trống nếu chưa ghi" />
-        <Muted>{`Mã vết (${w.code}) và trạng thái không đổi ở màn này. Trạng thái đổi bằng các nút ở thẻ "Đợt điều trị".`}</Muted>
       </Card>
-      {failure && <Notice tone="red" icon="alert-circle-outline">{`Chưa lưu được: ${failure}`}</Notice>}
+      <Muted>{`Mã vết (${w.code}) và trạng thái không đổi ở màn này. Trạng thái đổi bằng các nút ở thẻ "Đợt điều trị".`}</Muted>
     </Screen>
   );
 }

@@ -34,7 +34,7 @@ export default function Compare() {
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
   if (images.length < 2) {
     return (
-      <Screen header={<Header back title="So sánh trước / sau" subtitle={`Vết thương ${w.code}`} />}>
+      <Screen header={<Header back title="So sánh trước / sau" />}>
         <ClinicalContext patient={p} wound={w} />
         <Empty icon="images-outline" text={images.length === 0 ? `${w.code} chưa có ảnh nào để so sánh.` : `${w.code} mới có 1 ảnh. Cần ít nhất 2 ảnh để so sánh.`} />
         <Button label="Quay lại" variant="secondary" onPress={back} />
@@ -95,7 +95,7 @@ export default function Compare() {
 
   return (
     <Screen
-      header={<Header back title="So sánh trước / sau" subtitle={`Vết thương ${w.code}`} />}
+      header={<Header back title="So sánh trước / sau" />}
       footer={
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {[A, B].map((im, i) => (
@@ -112,35 +112,41 @@ export default function Compare() {
       <ClinicalContext patient={p} wound={w} />
       {invalid && <Notice icon="alert-circle-outline">{`Ảnh được chỉ định không thuộc ${w.code} hoặc không còn trong dữ liệu nên không hiện. Đang dùng ảnh mặc định của ${w.code}.`}</Notice>}
       {same && <Notice icon="copy-outline">Hai bên đang là cùng một ảnh. Đổi một bên để so sánh.</Notice>}
+      {/* Stage 9A (bố cục riêng B08): kết quả so sánh (chênh lệch, số ngày) lên đầu, ngay dưới ngữ cảnh; các cảnh báo đọc số
+          (đảo thứ tự, khác phương pháp) đặt ngay trên kết quả. Hai ảnh và thông tin từng ảnh ở dưới. Cách tính và câu chữ giữ nguyên. */}
+      {reversed && <Notice icon="swap-vertical-outline">{`Ảnh "Trước" (${fmtDate(A.captureDate)}) chụp sau ảnh "Sau" (${fmtDate(B.captureDate)}). Chênh lệch bên dưới đang tính ngược thời gian.`}</Notice>}
+      {methodsDiffer && <Notice icon="alert-circle-outline">{`Hai số đo dùng phương pháp khác nhau (${methodOf(A) ?? 'chưa ghi'} và ${methodOf(B) ?? 'chưa ghi'}). Chênh lệch có thể do cách đo.`}</Notice>}
+      <Card hero style={{ gap: 6 }} testID="b08-ket-qua">
+        <Text style={{ fontWeight: '700', color: same || diff === null ? C.text : C.navy, fontSize: same || diff === null ? T.body : T.titleM }}>
+          {same ? 'Chọn hai ảnh khác nhau để xem chênh lệch.' : diff === null ? 'Chưa đủ số đo để so sánh diện tích.' : `Chênh lệch: ${diff > 0 ? '+' : ''}${formatAreaDisplay(Math.round(diff * 1000) / 1000)}`}
+        </Text>
+        {gapDays !== null && <Text style={{ color: C.textBody }}>{`Hai ảnh chụp cách nhau ${gapDays} ngày.`}</Text>}
+        {!same && (!dateKnown(A) || !dateKnown(B)) && <Muted>Một ảnh chưa rõ ngày chụp nên không tính số ngày cách nhau.</Muted>}
+        <Muted>Số đo do bác sĩ nhập; nếu phương pháp đo thay đổi giữa hai lần, cần lưu ý khi so sánh. Hệ thống không đánh giá tiến triển từ hình ảnh.</Muted>
+      </Card>
       <View style={{ flexDirection: 'row', gap: 10 }}>
         {[A, B].map((im, i) => (
           <View key={i} style={{ flex: 1, gap: 6 }}>
-            <Text style={{ fontWeight: '700', color: C.text }}>{i === 0 ? 'Trước' : 'Sau'}</Text>
-            {/* Ngày chụp ngay trên ảnh để luôn thấy cùng ảnh. */}
-            <Text style={{ color: C.text, fontWeight: '600' }}>{dateKnown(im) ? fmtDate(im.captureDate) : 'Ngày chụp chưa xác định'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 6 }}>
+              <Text style={{ fontWeight: '700', color: C.text }}>{i === 0 ? 'Trước' : 'Sau'}</Text>
+              {/* Ngày chụp ngay trên ảnh để luôn thấy cùng ảnh. */}
+              <Text style={{ color: C.text, fontWeight: '600' }}>{dateKnown(im) ? fmtDate(im.captureDate) : 'Ngày chụp chưa xác định'}</Text>
+            </View>
             {/* Chạm ảnh mở trình xem riêng (phóng to, ảnh gốc); quay lại vẫn giữ cặp. P1-04b: contain để không cắt mép ảnh gốc. */}
             <Pressable onPress={() => router.push({ pathname: '/wound-history/[woundId]/anh/[imageId]', params: { woundId: w.id, imageId: im.id } })} accessibilityRole="button" accessibilityLabel={`Mở ảnh ${im.id}, ${dayText(im)}`}>
               <WoundPhoto image={im} fit="contain" style={{ width: '100%', aspectRatio: 3 / 4, borderRadius: 14 }} />
             </Pressable>
-            <Text style={{ fontSize: T.caption, color: C.textSoft }}>{im.id}</Text>
-            <Muted>{im.areaCm2 === null ? 'Chưa đo' : formatAreaDisplay(im.areaCm2)}</Muted>
-            {im.areaCm2 !== null && <View style={{ flexDirection: 'row' }}><StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} /></View>}
-            {im.areaCm2 !== null && <Muted>{`Phương pháp: ${methodOf(im) ?? 'chưa ghi'}`}</Muted>}
-            {im.areaCm2 !== null && <Muted>{sourceText(im)}</Muted>}
-            {im.status === 'excluded' && <View style={{ flexDirection: 'row' }}><Chip label="Đã loại khỏi bộ dữ liệu" tone="gray" /></View>}
+            <View style={{ gap: 4, paddingTop: 2 }}>
+              <Text style={{ color: im.areaCm2 === null ? C.textSoft : C.text, fontWeight: '700', fontSize: T.body }}>{im.areaCm2 === null ? 'Chưa đo' : formatAreaDisplay(im.areaCm2)}</Text>
+              <Text style={{ fontSize: T.caption, color: C.textSoft }}>{im.id}</Text>
+              {im.areaCm2 !== null && <View style={{ flexDirection: 'row' }}><StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} /></View>}
+              {im.areaCm2 !== null && <Muted>{`Phương pháp: ${methodOf(im) ?? 'chưa ghi'}`}</Muted>}
+              {im.areaCm2 !== null && <Muted>{sourceText(im)}</Muted>}
+              {im.status === 'excluded' && <View style={{ flexDirection: 'row' }}><Chip label="Đã loại khỏi bộ dữ liệu" tone="gray" /></View>}
+            </View>
           </View>
         ))}
       </View>
-      {reversed && <Notice icon="swap-vertical-outline">{`Ảnh "Trước" (${fmtDate(A.captureDate)}) chụp sau ảnh "Sau" (${fmtDate(B.captureDate)}). Chênh lệch bên dưới đang tính ngược thời gian.`}</Notice>}
-      {methodsDiffer && <Notice icon="alert-circle-outline">{`Hai số đo dùng phương pháp khác nhau (${methodOf(A) ?? 'chưa ghi'} và ${methodOf(B) ?? 'chưa ghi'}). Chênh lệch có thể do cách đo.`}</Notice>}
-      <Card>
-        <Text style={{ fontWeight: '700', color: C.text }}>
-          {same ? 'Chọn hai ảnh khác nhau để xem chênh lệch.' : diff === null ? 'Chưa đủ số đo để so sánh diện tích.' : `Chênh lệch: ${diff > 0 ? '+' : ''}${formatAreaDisplay(Math.round(diff * 1000) / 1000)}`}
-        </Text>
-        {gapDays !== null && <Muted>{`Hai ảnh chụp cách nhau ${gapDays} ngày.`}</Muted>}
-        {!same && (!dateKnown(A) || !dateKnown(B)) && <Muted>Một ảnh chưa rõ ngày chụp nên không tính số ngày cách nhau.</Muted>}
-        <Muted>Số đo do bác sĩ nhập; nếu phương pháp đo thay đổi giữa hai lần, cần lưu ý khi so sánh. Hệ thống không đánh giá tiến triển từ hình ảnh.</Muted>
-      </Card>
     </Screen>
   );
 }

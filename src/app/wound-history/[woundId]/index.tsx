@@ -91,23 +91,25 @@ export default function WoundHistory() {
   ) : undefined;
 
   return (
-    <Screen header={<Header back title="Lịch sử vết thương" subtitle={`Vết thương ${w.code}`} />} footer={footer}>
+    <Screen header={<Header back title="Lịch sử vết thương" />} footer={footer}>
       <ClinicalContext patient={p} wound={w} />
       <Segmented value={tab} options={options} onChange={setTab} />
 
+      {/* Stage 9A (bố cục riêng B08b): bộ lọc nằm ngoài thẻ, ngay dưới thanh thẻ; danh sách chia theo tháng để đọc theo dòng thời gian.
+          Thứ tự, bản ghi và lối mở chi tiết giữ nguyên. */}
+      {tab === 'lich-su' && (isDoctor || evalCount > 0) ? (
+        <Choices
+          value={filter}
+          onChange={(v) => router.setParams({ tab: 'lich-su', loc: v })}
+          options={[
+            { value: 'kham' as const, label: isDoctor ? 'Khám và đánh giá' : 'Tất cả' },
+            { value: 'danh-gia' as const, label: `Chỉ đánh giá (${evalCount})` },
+            ...(isDoctor ? [{ value: 'buoi' as const, label: `Buổi điều trị (${sessionCount})` }] : []),
+          ]}
+        />
+      ) : null}
       {tab === 'lich-su' && (
         <Card>
-          {isDoctor || evalCount > 0 ? (
-            <Choices
-              value={filter}
-              onChange={(v) => router.setParams({ tab: 'lich-su', loc: v })}
-              options={[
-                { value: 'kham' as const, label: isDoctor ? 'Khám và đánh giá' : 'Tất cả' },
-                { value: 'danh-gia' as const, label: `Chỉ đánh giá (${evalCount})` },
-                ...(isDoctor ? [{ value: 'buoi' as const, label: `Buổi điều trị (${sessionCount})` }] : []),
-              ]}
-            />
-          ) : null}
           {/* N05: bệnh nhân mở "Lịch sử vết thương" từ trang tổng quan, cạnh thẻ Ảnh và Số đo. Bộ lọc "Tất cả" dùng dòng thời gian P2-07a
               (ảnh và lần đo, nhận xét đã công bố, buổi có woundId đúng vết, A26) như trước đây trên N05; "Chỉ đánh giá" giữ danh sách B08. */}
           {patientTimeline && (
@@ -119,12 +121,18 @@ export default function WoundHistory() {
             <Empty icon="time-outline" text={filter === 'danh-gia' ? 'Chưa có đánh giá.' : filter === 'buoi' ? 'Chưa có buổi nào được ghi.' : 'Vết thương này chưa có lịch sử khám, ảnh hoặc đợt điều trị.'} />
           )}
           {/* Buổi điều trị nhiều (mỗi ngày một buổi): hiện 30 buổi gần nhất như trước. */}
-          {(patientTimeline ? [] : filter === 'buoi' ? shown.slice(0, 30) : shown).map((t, i) => (
-            <View key={`${t.kind}-${t.id}-${i}`}>
-              {i > 0 && <Divider />}
-              {timelineRow(t)}
-            </View>
-          ))}
+          {(patientTimeline ? [] : filter === 'buoi' ? shown.slice(0, 30) : shown).map((t, i, arr) => {
+            const month = monthOf(t);
+            const newMonth = i === 0 || monthOf(arr[i - 1]) !== month;
+            return (
+              <View key={`${t.kind}-${t.id}-${i}`}>
+                {newMonth ? (
+                  <Text accessibilityRole="header" style={{ color: C.textSoft, fontWeight: '700', fontSize: T.caption, textTransform: 'uppercase', letterSpacing: 0.4, paddingTop: i === 0 ? 4 : 14, paddingBottom: 4 }}>{month}</Text>
+                ) : <Divider />}
+                {timelineRow(t)}
+              </View>
+            );
+          })}
           {filter === 'buoi' && shown.length > 30 && <Muted>{`Hiện 30 buổi gần nhất trên ${shown.length}. Xem đủ ở màn thiết bị.`}</Muted>}
           {filter === 'buoi' && dev && <TextLink label={`Mở thiết bị ${dev.code}`} onPress={() => router.push({ pathname: '/devices/[id]', params: { id: dev.id } })} />}
         </Card>
@@ -185,6 +193,10 @@ export default function WoundHistory() {
       )}
     </Screen>
   );
+
+  function monthOf(entry: TimelineEntry) {
+    return entry.dateKnown ? `Tháng ${fmtDate(entry.at).slice(3)}` : 'Ngày chưa rõ';
+  }
 
   function timelineRow(entry: TimelineEntry) {
     const meta = KIND_META[entry.kind];
