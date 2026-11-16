@@ -4,12 +4,12 @@ import { View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { NoAccess } from '@/components/Guard';
-import { Button, Card, Chip, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Header, InfoRow, Muted, Notice, PatientAvatar, Screen, SectionTitle } from '@/components/ui';
 import { ACCOUNT_STATUS, accountDisplayName, accountStatus, ROLE_LABEL, ROLE_PERMISSIONS } from '@/lib/adminView';
 import { confirm, notify } from '@/lib/dialog';
 import { useStore } from '@/lib/store';
 import type { Account } from '@/lib/types';
-import { C } from '@/theme';
+import { C, T } from '@/theme';
 
 // Q01b Chi tiết tài khoản (Stage 6): tác vụ toàn màn, mở từ danh sách Q01. Phần trên chỉ xem (thông tin, trạng thái, quyền);
 // phần "Thao tác" là các thao tác cũ của Q01; tất cả đều hỏi xác nhận (Đợt 8 chỉ hỏi khi khóa và cấp quyền). Không có thao tác đổi vai trò, sửa tên hay tạo tài khoản vì kho dữ liệu chưa hỗ trợ.
@@ -68,25 +68,44 @@ export default function AdminAccountDetail() {
     'Cấp quyền',
   );
 
+  // Stage 9A (bố cục riêng Q01b): đầu màn là thẻ nhận diện (chữ cái đầu, tên, @tên đăng nhập, trạng thái); tài khoản chờ duyệt có nút
+  // Duyệt ngay trong thẻ này (việc chính). Cấp/thu quyền xuất dữ liệu nằm cạnh trạng thái quyền; khóa/mở khóa ở mục cuối riêng.
+  // Hộp xác nhận, quyền và quy tắc giữ nguyên.
   return (
-    <Screen header={<Header back title={name} subtitle={ROLE_LABEL[a.role]} />}>
+    <Screen header={<Header back title={name} />}>
       {done && <Notice tone="green" icon="checkmark-circle-outline">{done}</Notice>}
       <Card hero>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <PatientAvatar name={a.role === 'patient' ? name : a.name} size={48} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontSize: T.titleM, fontWeight: '700', color: C.text }}>{name}</Text>
+            <Text style={{ color: C.textSoft, fontSize: T.small }}>{ROLE_LABEL[a.role]}</Text>
+          </View>
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Chip label={st.label} tone={st.tone} />
           {isMe && <Chip label="Đang đăng nhập" tone="gray" />}
         </View>
         <InfoRow label="Tên đăng nhập" value={`@${a.username}`} />
-        <InfoRow label="Vai trò" value={ROLE_LABEL[a.role]} />
         {a.title ? <InfoRow label="Chức danh" value={a.title} /> : null}
         {a.role === 'doctor' && <InfoRow label="Bệnh nhân phụ trách" value={String(managed)} />}
         {a.role === 'patient' && <Muted>Tài khoản bệnh nhân chỉ hiện mã hồ sơ, không hiện họ tên và dữ liệu lâm sàng.</Muted>}
+        {a.pendingApproval && (
+          <Button label="Duyệt tài khoản" icon="checkmark-circle-outline" onPress={approve} />
+        )}
       </Card>
 
       <SectionTitle>Quyền</SectionTitle>
       <Card>
         {research ? (
-          <InfoRow label="Xuất dữ liệu nghiên cứu" value={<Chip label={a.researchAccess ? 'Được cấp' : 'Chưa cấp'} tone={a.researchAccess ? 'green' : 'gray'} />} />
+          <>
+            <InfoRow label="Xuất dữ liệu nghiên cứu" value={<Chip label={a.researchAccess ? 'Được cấp' : 'Chưa cấp'} tone={a.researchAccess ? 'green' : 'gray'} />} />
+            {a.researchAccess ? (
+              <Button label="Thu quyền xuất dữ liệu" variant="secondary" icon="remove-circle-outline" onPress={revoke} />
+            ) : (
+              <Button label="Cấp quyền xuất dữ liệu" variant="secondary" icon="key-outline" onPress={grant} />
+            )}
+          </>
         ) : (
           <Muted>{a.role === 'patient' ? 'Vai trò bệnh nhân không có quyền xuất dữ liệu.' : 'Duyệt tài khoản trước khi cấp quyền xuất dữ liệu.'}</Muted>
         )}
@@ -96,11 +115,8 @@ export default function AdminAccountDetail() {
         </Disclosure>
       </Card>
 
-      <SectionTitle>Thao tác</SectionTitle>
+      <SectionTitle caption="Mọi thao tác ở đây đều hỏi xác nhận trước khi đổi.">Đăng nhập</SectionTitle>
       <Card>
-        {a.pendingApproval && (
-          <Button label="Duyệt tài khoản" icon="checkmark-circle-outline" onPress={approve} />
-        )}
         {isMe ? (
           <Muted>Tài khoản đang đăng nhập, không khóa được.</Muted>
         ) : a.locked ? (
@@ -108,12 +124,6 @@ export default function AdminAccountDetail() {
         ) : (
           <Button label="Khóa tài khoản" variant="danger" icon="lock-closed-outline" onPress={lock} />
         )}
-        {research && (a.researchAccess ? (
-          <Button label="Thu quyền xuất dữ liệu" variant="secondary" icon="remove-circle-outline" onPress={revoke} />
-        ) : (
-          <Button label="Cấp quyền xuất dữ liệu" variant="secondary" icon="key-outline" onPress={grant} />
-        ))}
-        <Text style={{ color: C.textSoft }}>Mọi thao tác ở đây đều hỏi xác nhận trước khi đổi.</Text>
       </Card>
     </Screen>
   );

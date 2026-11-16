@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { UsbLinkStatus } from '@/components/UsbLinkStatus';
-import { Button, Card, Chip, Header, InfoRow, Muted, Notice, Screen, SectionTitle, Empty } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle, Empty } from '@/components/ui';
 import { PROTOCOL, setTransportPreference, transportPreference, usbAndroidAvailable } from '@/lib/device';
 import { LINK_LABEL, sendResultLabel } from '@/lib/device/labels';
 import { checkSpec } from '@/lib/device/spec-check';
@@ -45,44 +45,37 @@ export default function DeviceDiagnostics() {
     setNote(sendResultLabel(r));
   };
 
+  // Stage 9A (bố cục riêng Q05): việc chính là kết nối và hỏi máy, nên thẻ "Đường truyền" (trạng thái, nút Kết nối/Ngắt, chọn USB
+  // thật hay giả lập) lên đầu; kết quả hỏi máy ngay dưới; bản ghi byte tiếp theo. Đặc tả đang dùng là thông tin tham chiếu, thu vào một
+  // mục có tóm tắt (phiên bản, đã/chưa xác nhận); đặc tả có lỗi thì báo đỏ ở đầu màn. Lệnh gửi, điều kiện và câu chữ giữ nguyên.
+  const specSummary = `Giao thức ${PROTOCOL.protocolVersion} · ${PROTOCOL.confirmed ? 'đã xác nhận' : 'chưa được firmware xác nhận'}${problems.length ? ` · ${problems.length} lỗi` : ''}`;
   return (
     <Screen header={<Header back title="Chẩn đoán kết nối" subtitle={LINK_LABEL[link.state]} />}>
-      <Card>
-        <Text style={{ fontWeight: '700', color: C.text }}>Đặc tả đang dùng</Text>
-        <InfoRow label="Kiểu khung" value={fr.kind === 'text' ? 'Văn bản ASCII' : 'Nhị phân'} />
-        <InfoRow label="Checksum" value={PROTOCOL.checksum} mono />
-        <InfoRow label="Phiên bản giao thức" value={String(PROTOCOL.protocolVersion)} />
-        <InfoRow label="UART" value={`${PROTOCOL.uart.baudRate} ${PROTOCOL.uart.dataBits}${PROTOCOL.uart.parity[0].toUpperCase()}${PROTOCOL.uart.stopBits}`} mono />
-        <InfoRow label="Nguồn" value={PROTOCOL.source} stack />
-        {PROTOCOL.confirmed ? <Chip label="Đã xác nhận" tone="green" /> : <Chip label="Chưa được firmware xác nhận" tone="amber" />}
-        {problems.length === 0 ? <Muted>Đặc tả hợp lệ.</Muted> : problems.map((x) => <Text key={x} style={{ color: C.red }}>{x}</Text>)}
-      </Card>
-
-      <Card>
+      {problems.length > 0 && <Notice tone="red" icon="alert-circle-outline">{problems.join('\n')}</Notice>}
+      <Card hero>
         <Text style={{ fontWeight: '700', color: C.text }}>Đường truyền</Text>
         <UsbLinkStatus state={link.state} simulated={link.kind === 'simulated'} />
         <InfoRow label="Đang dùng" value={link.kind === 'usb-android' ? 'USB thật (Android)' : link.kind === 'simulated' ? 'Thiết bị giả lập' : link.kind} />
         {link.detail ? <Muted>{link.detail}</Muted> : null}
+        {link.state === 'connected' ? (
+          <Button label="Ngắt" variant="secondary" icon="close-circle-outline" onPress={link.disconnect} />
+        ) : (
+          <Button label="Kết nối" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />
+        )}
         {usbAndroidAvailable() ? (
           transportPreference() === 'auto' ? (
-            <Button label="Chuyển sang thiết bị giả lập" variant="secondary" icon="flask-outline" onPress={() => void setTransportPreference('simulated')} />
+            <Button label="Chuyển sang thiết bị giả lập" variant="ghost" icon="flask-outline" onPress={() => void setTransportPreference('simulated')} />
           ) : (
-            <Button label="Dùng USB thật" variant="secondary" icon="hardware-chip-outline" onPress={() => void setTransportPreference('auto')} />
+            <Button label="Dùng USB thật" variant="ghost" icon="hardware-chip-outline" onPress={() => void setTransportPreference('auto')} />
           )
         ) : (
           <Muted>USB thật chỉ có trong bản dựng Android (không có trong Expo Go hay bản web).</Muted>
         )}
       </Card>
 
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {link.state === 'connected' ? (
-          <Button label="Ngắt" variant="secondary" icon="close-circle-outline" onPress={link.disconnect} style={{ flex: 1 }} />
-        ) : (
-          <Button label="Kết nối" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} style={{ flex: 1 }} />
-        )}
-      </View>
       {link.state === 'connected' && (
         <Card>
+          <Text style={{ fontWeight: '700', color: C.text }}>Máy đang kết nối</Text>
           <InfoRow label="Giao thức của máy" value={idInfo ? String(idInfo.protocolVersion) : link.identity?.kind === 'no_reply' ? 'Máy không trả lời' : 'Không rõ'} />
           {idInfo && <InfoRow label="Firmware" value={idInfo.firmwareVersion} />}
           {idInfo && <InfoRow label="Mã mẫu" value={idInfo.model} />}
@@ -109,6 +102,19 @@ export default function DeviceDiagnostics() {
           </Card>
         ))
       )}
+      <Card style={{ paddingVertical: 4 }}>
+        <Disclosure icon="document-text-outline" title="Đặc tả đang dùng" summary={specSummary}>
+          <View style={{ gap: 8, paddingBottom: 10 }}>
+            <InfoRow label="Kiểu khung" value={fr.kind === 'text' ? 'Văn bản ASCII' : 'Nhị phân'} />
+            <InfoRow label="Checksum" value={PROTOCOL.checksum} mono />
+            <InfoRow label="Phiên bản giao thức" value={String(PROTOCOL.protocolVersion)} />
+            <InfoRow label="UART" value={`${PROTOCOL.uart.baudRate} ${PROTOCOL.uart.dataBits}${PROTOCOL.uart.parity[0].toUpperCase()}${PROTOCOL.uart.stopBits}`} mono />
+            <InfoRow label="Nguồn" value={PROTOCOL.source} stack />
+            <View style={{ flexDirection: 'row' }}>{PROTOCOL.confirmed ? <Chip label="Đã xác nhận" tone="green" /> : <Chip label="Chưa được firmware xác nhận" tone="amber" />}</View>
+            {problems.length === 0 ? <Muted>Đặc tả hợp lệ.</Muted> : problems.map((x) => <Text key={x} style={{ color: C.red }}>{x}</Text>)}
+          </View>
+        </Disclosure>
+      </Card>
     </Screen>
   );
 }

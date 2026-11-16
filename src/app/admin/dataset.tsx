@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { NoAccess } from '@/components/Guard';
 import { MONO, Text } from '@/components/Text';
-import { Button, Card, Chip, Choices, Disclosure, Empty, Header, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Empty, Header, Muted, Notice, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
 import { researchImages } from '@/lib/access';
 import { notify } from '@/lib/dialog';
 import { buildCsv, exportDataset } from '@/lib/export';
@@ -22,33 +22,36 @@ export default function TechnicalDataset() {
   const subjects = [...new Set(eligible.map(im => data.patients.find(p => p.id === im.patientId)!.researchCode!))];
   const shown = eligible.filter(im => subject === 'all' || data.patients.find(p => p.id === im.patientId)?.researchCode === subject);
   // Q02 (Stage 6): bộ lọc và thẻ tải lên trên lưới ảnh; điều kiện tắt nút tải (chưa có quyền, không có ảnh) giữ nguyên.
+  // Stage 9A (bố cục riêng Q02): một thẻ chính cho việc xuất: số ảnh sẵn sàng, trạng thái quyền, chọn mã nghiên cứu, nút tải và
+  // nội dung tệp ZIP ngay dưới nút. Hai câu về bảo vệ dữ liệu gom vào một khung có biểu tượng khiên ngay dưới thẻ, không bỏ câu nào.
+  const download = async () => {
+    if (running.current) return;
+    running.current = true; setBusy(true);
+    try { const result = await exportDataset(data, shown, me.id); notify('Đã xuất dữ liệu', result.count + ' ảnh · ' + result.location); }
+    catch(e) { notify('Chưa xuất được dữ liệu', String(e)); }
+    finally { running.current = false; setBusy(false); }
+  };
   return <Screen header={<Header title="Kho dữ liệu kỹ thuật" subtitle="Ảnh và diện tích do bác sĩ cung cấp" />}>
     <Card hero>
-      <Chip label={me.researchAccess ? 'Đã cấp quyền nghiên cứu' : 'Chưa có quyền nghiên cứu'} tone={me.researchAccess ? 'green' : 'amber'} />
-      <Text style={{ fontSize: typeScale.stat.size, fontWeight: '700' }}>{eligible.length} ảnh sẵn sàng</Text>
-      <Muted>Chỉ gồm ảnh được bác sĩ kiểm tra và bệnh nhân đồng ý nghiên cứu. Dùng mã nghiên cứu; không hiển thị họ tên, số điện thoại, năm sinh hay hồ sơ lâm sàng.</Muted>
-      <Muted>Bản ảnh nghiên cứu đã bỏ metadata. Nội dung ảnh được bác sĩ kiểm tra trước khi chia sẻ.</Muted>
-    </Card>
-    <Choices value={subject} onChange={setSubject} options={[{ value: 'all', label: 'Tất cả' }, ...subjects.map(value => ({ value, label: value }))]} />
-    <Card>
-      <Text style={{ fontWeight: '700' }}>Tải dữ liệu theo bộ lọc</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <Text style={{ flex: 1, minWidth: 160, fontSize: typeScale.stat.size, fontWeight: '700', color: C.navy }}>{eligible.length} ảnh sẵn sàng</Text>
+        <Chip label={me.researchAccess ? 'Đã cấp quyền nghiên cứu' : 'Chưa có quyền nghiên cứu'} tone={me.researchAccess ? 'green' : 'amber'} />
+      </View>
+      <Text style={{ fontWeight: '700', color: C.text }}>Tải dữ liệu theo bộ lọc</Text>
+      <Choices value={subject} onChange={setSubject} options={[{ value: 'all', label: 'Tất cả' }, ...subjects.map(value => ({ value, label: value }))]} />
+      <Button label={'Tải bộ dữ liệu (' + shown.length + ' ảnh)'} icon="download-outline" disabled={!shown.length || !me.researchAccess} loading={busy} onPress={download}
+        reason={!me.researchAccess ? "Tài khoản chưa được cấp quyền xuất dữ liệu nghiên cứu." : "Không có ảnh nào khớp bộ lọc."} />
       <Muted>ZIP gồm {shown.length} ảnh PNG và labels.csv. Ảnh cùng một người được giữ trong cùng tập train/validation/test.</Muted>
-      {/* Stage 6: bản xem trước là thông tin tham khảo nên thu gọn; nút tải lên ngay dưới mô tả. */}
+      {/* Stage 6: bản xem trước là thông tin tham khảo nên thu gọn. */}
       <Disclosure icon="document-text-outline" title="Xem trước labels.csv" summary="4 dòng đầu">
         {/* Mỗi dòng CSV giữ nguyên trên một dòng, cuộn ngang trong khối thay vì bẻ giữa tên tệp (A22). */}
         <ScrollView horizontal style={{ backgroundColor: C.surfaceMuted, borderRadius: radius.s }} contentContainerStyle={{ padding: 10 }}>
           <Text selectable style={{ fontFamily: MONO, fontSize: T.caption, color: C.text }}>{buildCsv(data, shown).split('\n').slice(0, 4).join('\n')}</Text>
         </ScrollView>
       </Disclosure>
-      <Button label={'Tải bộ dữ liệu (' + shown.length + ' ảnh)'} icon="download-outline" disabled={!shown.length || !me.researchAccess} loading={busy} onPress={async () => {
-        if (running.current) return;
-        running.current = true; setBusy(true);
-        try { const result = await exportDataset(data, shown, me.id); notify('Đã xuất dữ liệu', result.count + ' ảnh · ' + result.location); }
-        catch(e) { notify('Chưa xuất được dữ liệu', String(e)); }
-        finally { running.current = false; setBusy(false); }
-      }} reason={!me.researchAccess ? "Tài khoản chưa được cấp quyền xuất dữ liệu nghiên cứu." : "Không có ảnh nào khớp bộ lọc."} />
     </Card>
-    <SectionTitle>Bộ ảnh đã gán diện tích</SectionTitle>
+    <Notice tone="gray" icon="shield-checkmark-outline">{'Chỉ gồm ảnh được bác sĩ kiểm tra và bệnh nhân đồng ý nghiên cứu. Dùng mã nghiên cứu; không hiển thị họ tên, số điện thoại, năm sinh hay hồ sơ lâm sàng.\nBản ảnh nghiên cứu đã bỏ metadata. Nội dung ảnh được bác sĩ kiểm tra trước khi chia sẻ.'}</Notice>
+    <SectionTitle caption={`${shown.length} ảnh theo bộ lọc đang chọn`}>Bộ ảnh đã gán diện tích</SectionTitle>
     {shown.length === 0 && <Empty text={me.researchAccess ? 'Chưa có ảnh đủ điều kiện. Bác sĩ cần nhập diện tích và xác nhận chia sẻ.' : 'Quản trị cần cấp quyền nghiên cứu cho tài khoản này.'} />}
     {/* Lưới 2 cột ảnh vuông như danh sách ảnh của bác sĩ (V25); tên tệp đầy đủ vẫn chọn sao chép được. */}
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>

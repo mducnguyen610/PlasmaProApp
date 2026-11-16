@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Chip, Empty, Header, LinkRow, ListCard, Screen, Segmented } from '@/components/ui';
+import { Chip, Empty, Header, LinkRow, ListCard, Screen, SectionTitle, Segmented } from '@/components/ui';
 import { groupErrorsByDay } from '@/lib/adminView';
 import { fmtDate, fmtDateTime } from '@/lib/format';
 import { notify } from '@/lib/dialog';
@@ -34,7 +34,9 @@ export default function AdminLogs() {
       )}
       {groups.map((g) => (
         <View key={g.day} style={{ gap: 8 }}>
-          <Text accessibilityRole="header" style={{ color: C.textSoft, fontSize: T.small, fontWeight: '700' }}>{fmtDate(g.day)}</Text>
+          {/* Stage 9A (bố cục riêng Q04): tiêu đề ngày có số lỗi và số lỗi chưa xử lý của ngày đó ở cuối dòng, để thấy ngày nào còn việc. */}
+          <SectionTitle right={<Text style={{ color: g.items.some((e) => !e.resolved) ? C.red : C.textSoft, fontSize: T.small, fontWeight: '600' }}>
+            {`${g.items.length} lỗi${g.items.some((e) => !e.resolved) ? `, ${g.items.filter((e) => !e.resolved).length} chưa xử lý` : ''}`}</Text>}>{fmtDate(g.day)}</SectionTitle>
           <ListCard>
             {g.items.map((e) => (
               <View key={e.id} style={{ gap: 4, paddingVertical: 8 }}>
