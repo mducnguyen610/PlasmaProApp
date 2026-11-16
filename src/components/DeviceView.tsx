@@ -85,13 +85,28 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           ? `Thiết bị chưa gửi dữ liệu từ ngày ${fmtDate(oldest).slice(0, 5)} đến nay. Hãy bật thiết bị ở nơi có Wi-Fi.`
           : `Chưa có dữ liệu từ ${fmtDate(oldest).slice(0, 5)} đến nay (chưa đồng bộ). Không tính là không sử dụng.`;
 
+  // Stage 9A (bố cục riêng B13, chỉ mức bác sĩ): câu hỏi chính của bác sĩ là bệnh nhân làm đủ buổi chưa, nên thẻ tiến độ đợt lên đầu
+  // (thẻ chính), rồi 7 ngày gần nhất và phiên sử dụng (tổng số phiên và phút ghi ở đầu danh sách thay cho hai ô số), thông tin máy
+  // xuống cuối. Mức kỹ thuật (Q06) và bệnh nhân (N07) dùng bố cục riêng của chúng; dữ liệu và câu chữ không đổi.
+  const doctorView = level === 'doctor';
+  const progressCard = (
+    <Card hero>
+      <SectionTitle icon="ribbon-outline">Tiến độ đợt điều trị</SectionTitle>
+      {!pr ? (
+        <Muted>Bệnh nhân chưa có đợt điều trị đang áp dụng.</Muted>
+      ) : (
+        <>
+          <ProgressRows pr={pr} />
+          <Muted>Chỉ số tuân thủ, không phải đánh giá vết thương. Ngày nghỉ không tính là bỏ lỡ.</Muted>
+        </>
+      )}
+    </Card>
+  );
+
   const powerLabel = device.power === 'pending' ? 'Đang chờ thiết bị xác nhận…' : device.power === 'on' ? 'Đang bật' : 'Đang tắt';
 
-  return (
-    <>
-      {device.simulated && <SimBadge />}
-      {tech && <Segmented value={tab} onChange={setTab} options={[{ value: 'overview', label: 'Tổng quan' }, { value: 'care', label: 'Bảo trì' }, { value: 'log', label: 'Nhật ký' }]} />}
-      {show('overview') && <Card>
+  const overviewCard = show('overview') ? (
+    <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s }}>
           <Text style={{ fontSize: T.cardTitle, fontWeight: '800', color: C.text, flex: 1 }}>{device.code}</Text>
           {/* Kênh Wi-Fi tới máy chủ, tách chữ với kênh cáp USB ở T01 (V02). */}
@@ -129,7 +144,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
             }
           />
         )}
-        {!patientView && <>
+        {tech && <>
         <Divider />
         <SectionTitle icon="ribbon-outline">Tiến độ đợt điều trị</SectionTitle>
         {!pr ? (
@@ -141,8 +156,15 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           </>
         )}
         </>}
-      </Card>}
+      </Card>
+  ) : null;
 
+  return (
+    <>
+      {device.simulated && <SimBadge />}
+      {tech && <Segmented value={tab} onChange={setTab} options={[{ value: 'overview', label: 'Tổng quan' }, { value: 'care', label: 'Bảo trì' }, { value: 'log', label: 'Nhật ký' }]} />}
+      {!doctorView && overviewCard}
+      {doctorView && progressCard}
       {/* Chăm sóc thiết bị (mẫu myAir). Bệnh nhân chỉ thấy mục đến hạn; kỹ thuật thấy đủ thanh tuổi thọ. */}
       {patientView && patientDue.map((c) => (
         <Card key={c.item.id} style={{ borderWidth: 1.5, borderColor: C.amber }}>
@@ -217,7 +239,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
       </Card>}
 
 
-      {!patientView && show('overview') && <View style={{ flexDirection: 'row', gap: 10 }}>
+      {tech && show('overview') && <View style={{ flexDirection: 'row', gap: 10 }}>
         <NumberTile value={sessions.length} label={tech ? 'Số phiên (đã bỏ bản trùng)' : 'Số phiên'} tone="gray" icon="pulse-outline" />
         <NumberTile value={`${totalMin} phút`} label="Tổng thời gian" tone="gray" icon="time-outline" />
       </View>}
@@ -254,7 +276,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         </View>
         {!patientView && <>
         <Divider />
-        <SectionTitle icon="list-outline">Phiên sử dụng</SectionTitle>
+        <SectionTitle icon="list-outline" right={doctorView ? <Text style={{ color: C.textSoft, fontSize: T.small }}>{`${sessions.length} phiên · ${totalMin} phút`}</Text> : undefined}>Phiên sử dụng</SectionTitle>
         {sessions.length === 0 && <Empty text="Chưa có phiên nào được ghi nhận." />}
         {sessions.slice(0, allSessions ? 30 : 5).map((s) => (
           <View key={s.sessionId} style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border, gap: space.xxs }}>
@@ -276,6 +298,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         {sessions.length > 5 && <Button label={allSessions ? 'Thu gọn' : `Xem thêm (${Math.min(sessions.length, 30) - 5})`} variant="ghost" onPress={() => setAllSessions(!allSessions)} />}
         </>}
       </Card>}
+      {doctorView && <SectionTitle>Thông tin thiết bị</SectionTitle>}
+      {doctorView && overviewCard}
     </>
   );
 }

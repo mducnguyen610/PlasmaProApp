@@ -269,8 +269,17 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
         </View>
         {/* Khi chưa có số đo, chip trạng thái đã nói "Chưa có nhãn diện tích": không lặp lại ở dòng giá trị (A18). */}
         {/* Stage 9B (S8-B10): cùng nhãn với B10 và B07 ("Diện tích bác sĩ đo"); giá trị đã kèm cm². */}
-        {im.areaCm2 !== null && <InfoRow label="Diện tích bác sĩ đo" value={formatAreaDisplay(im.areaCm2)} />}
-        {im.areaCm2 !== null && <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />}
+        {/* Stage 9A (bố cục riêng B11): số bác sĩ đo là thông tin chính của màn nên hiện thành số lớn (cùng cỡ số đo lâm sàng ở B05),
+            nguồn ngay cạnh; người nhập, phương pháp, ngày chụp xếp dưới thành các dòng phụ. Cùng dữ liệu như trước. */}
+        {im.areaCm2 !== null && (
+          <View accessible accessibilityLabel={`Diện tích bác sĩ đo ${formatAreaDisplay(im.areaCm2)}`} style={{ gap: 4 }}>
+            <Text style={{ color: C.textSoft, fontSize: T.small }}>Diện tích bác sĩ đo</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <Text style={{ color: C.navy, fontWeight: '700', fontSize: T.clinical, lineHeight: T.clinical + 6 }}>{formatAreaDisplay(im.areaCm2)}</Text>
+              <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />
+            </View>
+          </View>
+        )}
         {im.areaCm2 !== null && <InfoRow label="Nhập bởi" value={enteredText} />}
         {im.measureMethod ? <InfoRow label="Phương pháp đo" value={im.measureMethod} /> : null}
         <InfoRow label="Ngày chụp" value={im.capture?.sourceDateKnown === false ? 'Chưa xác định (ảnh thư viện)' : fmtDate(im.captureDate)} />
@@ -305,9 +314,10 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
                   // Không đặt số mẫu trong ô: placeholder dạng số dễ bị đọc nhầm là giá trị đã nhập (A03, audit lần 2).
                   hint="Ví dụ: 12,5. Có thể dùng dấu phẩy hoặc dấu chấm."
                 />
+                {/* Stage 9A: chọn đơn vị ngay dưới ô nhập (đơn vị gắn với số đang gõ); lần đo trước để đối chiếu xếp sau. */}
+                <Segmented<AreaUnit> value={unit} onChange={setUnit} options={[{ value: 'cm2', label: 'cm²' }, { value: 'mm2', label: 'mm² (quy đổi sang cm²)' }]} />
                 {/* P1-06a: số lần trước chỉ để đối chiếu, không điền vào ô, không có nút chép. */}
                 {prevText ? <Muted>{`Lần đo trước của ${w.code}: ${prevText}`}</Muted> : <Muted>{`Chưa có lần đo trước của ${w.code}.`}</Muted>}
-                <Segmented<AreaUnit> value={unit} onChange={setUnit} options={[{ value: 'cm2', label: 'cm²' }, { value: 'mm2', label: 'mm² (quy đổi sang cm²)' }]} />
                 {aiBlock}
                 {/* Lối "Sửa tên đầy đủ" vốn nằm trong mục kỹ thuật (đang ẩn khi đo), đưa vào đây để vẫn dùng được. */}
                 <TextLink label="Sửa tên đầy đủ" onPress={() => setMode('full')} />

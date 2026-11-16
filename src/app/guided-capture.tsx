@@ -11,7 +11,7 @@ import { CheckRow } from '@/components/Consent';
 import { CaptureQualityCard } from '@/components/CaptureQualityCard';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Screen, SectionTitle, StatusChip, StepRow } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Field, Header, InfoRow, Muted, Screen, SectionTitle, StatusChip, StepRow } from '@/components/ui';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { WoundOutline, WoundOverlay } from '@/components/WoundOverlay';
 import { getRecognizer, type RecognitionResult } from '@/lib/ai';
@@ -295,16 +295,29 @@ export default function GuidedCapture() {
         <Button label="Bước trước" icon="chevron-back" variant="secondary" disabled={busy} onPress={() => { setError(''); setStage(2); }} style={{ flexShrink: 0 }} />
         <Button label={saveLabel} icon="save-outline" loading={busy} disabled={analyzing || !capabilities} onPress={save} style={{ flex: 1 }} />
       </View>;
-  return <Screen footer={footer} header={<Header back title={!photo ? 'Chụp vết thương' : stage === 2 ? 'Kiểm tra ảnh' : 'Nhập số đo'} />}>
+  const footerWithError = <View style={{ gap: 8 }}>{error ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{error}</Text> : null}{footer}</View>;
+  return <Screen footer={footerWithError} header={<Header back title={!photo ? 'Chụp vết thương' : stage === 2 ? 'Kiểm tra ảnh' : 'Nhập số đo'} />}>
     {/* P0 G1: ảnh và số đo sẽ lưu vào bệnh nhân và vết thương này. */}
     <ClinicalContext patient={p} wound={w} />
-    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-      <Chip label={useAr ? (capabilities?.arFramework === 'arcore' ? 'ARCore' : 'ARKit') : 'Không có AR'} tone={useAr ? 'teal' : 'gray'} />
-      <Chip label={photo?.imageSource === 'gallery' ? 'Ảnh từ thư viện' : 'Tự khoanh vết thương'} />
+    {/* Stage 9A (bố cục riêng B10): thanh bước đặt ngay dưới ngữ cảnh; chế độ chụp (AR hay không, ảnh thư viện) cùng câu giải thích
+        gom thành một mục thu gọn, thay cho hai chip ở đầu và đoạn chữ ở cuối màn. Chip "Ảnh chưa lưu" vẫn luôn hiện vì là trạng thái
+        cần biết trước khi rời màn. Lỗi hiện ngay trên các nút ở chân màn. */}
+    <StepRow steps={['Chụp', 'Kiểm tra ảnh', 'Nhập số đo']} step={!photo ? 1 : stage} />
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       {/* Giai đoạn 3: trạng thái ảnh rõ ràng. Ảnh chỉ thành bản ghi khi bấm lưu ở bước 3. */}
       {photo ? <Chip label="Ảnh chưa lưu" tone="amber" icon="alert-circle-outline" /> : null}
+      <View style={{ flex: 1, minWidth: 200 }}>
+        <Disclosure
+          title={`Chế độ: ${useAr ? (capabilities?.arFramework === 'arcore' ? 'ARCore' : 'ARKit') : 'Không có AR'}`}
+          summary={photo?.imageSource === 'gallery' ? 'Ảnh từ thư viện' : 'Tự khoanh vết thương'}>
+          <Muted>{useAr
+        ? 'AR đo khoảng cách tới đúng vết thương đang khoanh và độ sáng môi trường. Nút chụp chỉ mở khi vết thương được khoanh, đủ sáng và cách 20–60 cm.'
+        : Platform.OS !== 'web' && !arViewInBuild
+          ? 'Expo Go không có AR: app vẫn khoanh vết thương và kiểm tra độ sáng, nhưng không đo được khoảng cách và diện tích. Cần bản cài riêng để dùng AR.'
+          : 'Không có AR: ứng dụng khoanh vết thương và kiểm tra độ sáng, không đo được khoảng cách.'}</Muted>
+        </Disclosure>
+      </View>
     </View>
-    <StepRow steps={['Chụp', 'Kiểm tra ảnh', 'Nhập số đo']} step={!photo ? 1 : stage} />
     {photo && stage === 2 ? <>
       <View style={{ width: '100%', aspectRatio: photo.width / photo.height, backgroundColor: C.text, borderRadius: 18, overflow: 'hidden' }}>
         <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
@@ -372,12 +385,6 @@ export default function GuidedCapture() {
         <CheckList checks={readiness.checks} />
       </Card>}
       {arAvailable && <Button label={useAr ? 'Dùng camera thường (không có AR)' : 'Dùng camera AR'} icon="swap-horizontal" variant="ghost" disabled={busy} onPress={() => { generation.current++; setLive(false); setReady(false); setTracking(null); setCameraMode(useAr ? 'standard' : 'ar'); }} />}
-      <Muted>{useAr
-        ? 'AR đo khoảng cách tới đúng vết thương đang khoanh và độ sáng môi trường. Nút chụp chỉ mở khi vết thương được khoanh, đủ sáng và cách 20–60 cm.'
-        : Platform.OS !== 'web' && !arViewInBuild
-          ? 'Expo Go không có AR: app vẫn khoanh vết thương và kiểm tra độ sáng, nhưng không đo được khoảng cách và diện tích. Cần bản cài riêng để dùng AR.'
-          : 'Không có AR: ứng dụng khoanh vết thương và kiểm tra độ sáng, không đo được khoảng cách.'}</Muted>
     </> : null}
-    {error ? <Text accessibilityRole="alert" style={{ color: C.red }}>{error}</Text> : null}
   </Screen>;
 }
