@@ -79,6 +79,17 @@ export function progressInput<T extends Img>(images: T[], woundId: string, today
   return { points, sameDay, unmeasuredDates: [...unmeasuredDates].sort(), excluded };
 }
 
+/**
+ * Stage 8 (S8-B03): câu khi biểu đồ không có điểm nào. Ảnh có số đo nhưng không rõ ngày chụp (ảnh thư viện) hoặc số, ngày không hợp lệ
+ * không vào biểu đồ (V3, V4, V5); khi đó không được báo "Chưa có lần đo diện tích" vì bác sĩ đã nhập số. Chỉ đổi câu hiển thị, không đổi quy tắc lọc.
+ */
+export function noPointsText(x: ExcludedCount, imageCount: number): string {
+  const measured = x.unknownDate + x.invalid;
+  const head = measured > 0 ? `Chưa có lần đo nào vẽ được trên biểu đồ. Ảnh đã chụp: ${imageCount}.` : `Chưa có lần đo diện tích. Ảnh đã chụp: ${imageCount}.`;
+  const ex = measured > 0 ? excludedText(x) : null;
+  return ex ? `${head} ${ex}` : head;
+}
+
 /** Câu đếm ảnh không vào biểu đồ. Không có ảnh bị loại thì trả null. */
 export function excludedText(x: ExcludedCount): string | null {
   const parts = [

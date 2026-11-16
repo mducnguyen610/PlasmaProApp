@@ -10,6 +10,7 @@ import { DateTile, TaskRow } from '@/components/items';
 import { Text } from '@/components/Text';
 import { Button, Card, Divider, Header, Muted, Ring, Screen, SectionTitle, SimBadge, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
 import { notify } from '@/lib/dialog';
+import { patientHomeCourses } from '@/lib/patientHome';
 import { changeLine, progressInput, progressSummary, splitByMethod } from '@/lib/areaProgress';
 import { fmtDate, fmtDateTime, TREND, WOUND_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
@@ -43,10 +44,9 @@ export default function PatientHome() {
   const next = upcoming[0];
   const wounds = woundsOf(p.id);
   const courses = wounds.map((w) => ({ w, plan: coursePlan(w.id, { patientView: true }) }));
-  const treating = courses.find((c) => c.plan?.status === 'active');
+  // Stage 9C (gói B): quy tắc chọn đợt, vết thương cho trang chủ ở tầng nghiệp vụ (src/lib/patientHome.ts), hành vi không đổi.
+  const { treating, followUp, awaiting } = patientHomeCourses(courses);
   const plan = treating?.plan;
-  const followUp = courses.find((c) => c.w.status === 'follow_up');
-  const awaiting = courses.find((c) => c.w.status === 'awaiting_closure');
   const retakes = data.images.filter((i) => i.patientId === p.id && i.retakeRequested);
   const sessions = p.deviceId ? sessionsOf(p.deviceId) : [];
   const dev = device(p.deviceId);
@@ -141,8 +141,13 @@ export default function PatientHome() {
               label="Báo vết thương mở lại"
               icon="alert-circle-outline"
               variant="secondary"
-              onPress={() => {
-                addReport({ patientId: p.id, kind: 'symptom', content: `Vết thương ${followUp.w.code} (${followUp.w.location}) có dấu hiệu mở lại.` });
+              onPress={async () => {
+                try {
+                  await addReport({ patientId: p.id, kind: 'symptom', content: `Vết thương ${followUp.w.code} (${followUp.w.location}) có dấu hiệu mở lại.` });
+                } catch (e) {
+                  notify('Chưa gửi được', `${e instanceof Error ? e.message : String(e)} Nếu chảy máu, có mủ hoặc sốt, hãy gọi 115 hoặc đến cơ sở y tế.`);
+                  return;
+                }
                 notify('Đã ghi nhận', 'Bác sĩ phụ trách sẽ xem khi mở ứng dụng. Hãy gọi cho bác sĩ để hẹn khám. Nếu chảy máu, có mủ hoặc sốt, hãy gọi 115 hoặc đến cơ sở y tế, không chờ phản hồi trong ứng dụng.');
               }}
             />

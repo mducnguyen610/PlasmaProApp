@@ -6,6 +6,7 @@ import { Text } from '@/components/Text';
 import { Sheet } from '@/components/Sheet';
 import { Button, Disclosure, Field, Header, ListCard, Muted, Notice, Screen, SimBadge, StatusChip } from '@/components/ui';
 import { fmtDateTime } from '@/lib/format';
+import { notify } from '@/lib/dialog';
 import { useStore } from '@/lib/store';
 import { C, T } from '@/theme';
 import { CLOUD_LINK, cloudState } from '@/theme.status';
@@ -41,16 +42,17 @@ export default function AdminDevices() {
           label="Đăng ký"
           icon="add"
           disabled={!valid || exists}
-          onPress={() => {
+          onPress={async () => {
             if (submitting.current) return;
             submitting.current = true;
             const c = code.trim().toUpperCase();
             // Khóa giữ đến lần mở bảng sau: lần bấm thứ hai trước khi màn vẽ lại không đăng ký trùng.
             try {
-              registerDevice(c);
+              await registerDevice(c);
             } catch (e) {
               submitting.current = false;
-              throw e;
+              notify('Chưa đăng ký được thiết bị', e instanceof Error ? e.message : String(e));
+              return;
             }
             setCode('');
             setAdded(c);

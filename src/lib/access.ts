@@ -30,3 +30,21 @@ export function researchImages(data: AppData, actor: Account | null | undefined)
   });
 }
 
+
+/**
+ * Stage 9B (S8-B05): chính sách phân quyền ở lớp kho dữ liệu trên máy cho ba thao tác trước đây không kiểm vai trò.
+ * Vai trò lấy từ nơi gọi hiện có (không đổi vai trò dự kiến):
+ * - addReport: bệnh nhân báo triệu chứng, sự cố cho chính hồ sơ của mình (N08 `report.tsx`, N02 "vết thương mở lại").
+ * - setReportHandled: bác sĩ phụ trách hồ sơ (B04 hồ sơ bệnh nhân, B07 sau khi lưu đánh giá).
+ * - resolveSyncError: quản trị viên (Q04 lỗi hệ thống, Q04b chi tiết lỗi), cùng điều kiện với requireAdmin.
+ * Đây là kiểm tra phía ứng dụng; dữ liệu nằm trong bộ nhớ máy nên không thay được phân quyền ở máy chủ.
+ */
+export function canAddReport(actor: Account | null | undefined, patientId: string) {
+  return !!actor && !actor.locked && !actor.pendingApproval && actor.role === 'patient' && !!actor.patientId && actor.patientId === patientId;
+}
+export function canHandleReport(actor: Account | null | undefined, patient?: Patient) {
+  return canManagePatient(actor, patient);
+}
+export function canResolveSyncError(actor: Account | null | undefined) {
+  return !!actor && !actor.locked && actor.role === 'admin';
+}

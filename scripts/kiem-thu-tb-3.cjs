@@ -170,7 +170,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     rec('TB3-12', 'B11 ảnh chưa đo: mở thẳng chế độ đo "Đo ảnh IMG0004", chip "Đang nhập, chưa lưu", ẩn liên kết ảnh cùng vết, so sánh và mục phụ; Hủy và Lưu ở chân màn (Lưu khóa khi chưa nhập)',
       im4?.areaCm2 === null && t === 'Đo ảnh IMG0004' && await has(p, 'Đang nhập, chưa lưu') && hidden && footerOk, `tiêu đề "${t}", ẩn ${hidden}, chân màn ${footerOk}`);
     const noUse = (await p.getByText(/Dùng số này|Dùng giá trị này|Use this value/).count()) === 0;
-    const areaInput = p.getByLabel('Diện tích bác sĩ đã đo').first();
+    const areaInput = p.getByLabel(/^Diện tích bác sĩ đo \((cm|mm)²\)$/).locator('visible=true').first();
     rec('TB3-13', 'B11 QĐ-1: ô diện tích trống khi mở, không có nút "Dùng số này"', (await areaInput.inputValue()) === '' && noUse);
 
     // Hủy: thoát chế độ đo, không ghi gì.
@@ -184,7 +184,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
   }
   {
     const p = await newPage(); await login(p); await go(p, '/images/IMG0004');
-    const areaInput = p.getByLabel('Diện tích bác sĩ đã đo').first();
+    const areaInput = p.getByLabel(/^Diện tích bác sĩ đo \((cm|mm)²\)$/).locator('visible=true').first();
     await areaInput.fill('6,2'); await p.waitForTimeout(300);
     p.answer = false; p.dialogs = [];
     await back(p);
@@ -211,7 +211,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     const viewOk = (await title(p)) === 'Ảnh IMG0003' && (await p.getByTestId('anh-cung-vet').count()) === 1 && (await p.locator('[data-testid="screen-footer"]').count()) === 0;
     await click(p.getByRole('button', { name: /Sửa số đo/ }).first(), 600);
     const editTitle = (await title(p)) === 'Đo ảnh IMG0003';
-    await p.getByLabel('Diện tích bác sĩ đã đo').first().fill('9,9'); await p.waitForTimeout(300);
+    await p.getByLabel(/^Diện tích bác sĩ đo \((cm|mm)²\)$/).locator('visible=true').first().fill('9,9'); await p.waitForTimeout(300);
     const editOk = editTitle && await inFooter(p, 'Lưu số mới').isVisible();
     await click(inFooter(p, 'Hủy'), 600);
     const im3b = (await store(p)).images.find((i) => i.id === 'IMG0003');

@@ -268,7 +268,8 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
           {im.retakeRequested && <Chip label="Đã yêu cầu chụp lại" tone="amber" icon="refresh" />}
         </View>
         {/* Khi chưa có số đo, chip trạng thái đã nói "Chưa có nhãn diện tích": không lặp lại ở dòng giá trị (A18). */}
-        {im.areaCm2 !== null && <InfoRow label="Diện tích bác sĩ đã đo" value={formatAreaDisplay(im.areaCm2)} />}
+        {/* Stage 9B (S8-B10): cùng nhãn với B10 và B07 ("Diện tích bác sĩ đo"); giá trị đã kèm cm². */}
+        {im.areaCm2 !== null && <InfoRow label="Diện tích bác sĩ đo" value={formatAreaDisplay(im.areaCm2)} />}
         {im.areaCm2 !== null && <StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} />}
         {im.areaCm2 !== null && <InfoRow label="Nhập bởi" value={enteredText} />}
         {im.measureMethod ? <InfoRow label="Phương pháp đo" value={im.measureMethod} /> : null}
@@ -293,8 +294,9 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
             <Muted>Ứng dụng không tự đo diện tích. Nhập số đo bác sĩ đã đo bên ngoài; ứng dụng ghép thành tên đúng quy ước.</Muted>
             {mode === 'area' ? (
               <>
+                {/* Stage 9B (S8-B10): cùng nhãn với ô ở B10; đơn vị trong nhãn theo lựa chọn cm² hoặc mm² ngay dưới (mm² được quy đổi sang cm² khi lưu). */}
                 <Field
-                  label="Diện tích bác sĩ đã đo"
+                  label={`Diện tích bác sĩ đo (${unit === 'mm2' ? 'mm²' : 'cm²'})`}
                   value={areaText}
                   onChangeText={setAreaText}
                   keyboardType="decimal-pad"

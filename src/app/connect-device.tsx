@@ -10,13 +10,15 @@ import { Button, Card, Choices, Disclosure, Divider, Header, InfoRow, Muted, Not
 import { fmtDuration } from '@/lib/course';
 import { modeLabel } from '@/lib/device/capabilities';
 import { planToConfig, PROTOCOL } from '@/lib/device';
-import { CONFIG_ERROR_LABEL, MISSING_LABEL, nakHint, SESSION_LABEL, sendResultLabel } from '@/lib/device/labels';
-import { configToWire, validateConfig } from '@/lib/device/protocol';
+import { CONFIG_ERROR_LABEL, MISSING_LABEL, SESSION_LABEL, sendResultLabel } from '@/lib/device/labels';
 import type { SendResult } from '@/lib/device/sender';
+import { configCommandView, sendTreatmentConfigOnce } from '@/lib/device/configCommand';
+import { checkTreatmentConfig } from '@/lib/device/treatmentConfig';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
 import { deviceStatusView } from '@/lib/deviceStatusView';
 import { sessionDisplay } from '@/lib/sessionDisplay';
 import { PATIENT_CONFIG_ERROR, PATIENT_MISSING_LABEL, PATIENT_UNIDENTIFIED, patientIncompatible, patientSendResultLabel } from '@/lib/patientDeviceText';
+import { notify } from '@/lib/dialog';
 import { useLookups, useStore } from '@/lib/store';
 import { C, semantic } from '@/theme';
 import { SEND_RESULT } from '@/theme.status';
@@ -55,45 +57,45 @@ export default function ConnectDevice() {
 
   const plan = selected?.plan;
   const prepared = plan ? planToConfig(plan, p, new Date()) : null;
-  const cfg = prepared && !('missing' in prepared) ? prepared : null;
-  const errors = cfg ? validateConfig(cfg, link.caps, PROTOCOL) : [];
-  const wire = cfg && errors.length === 0 ? configToWire(cfg, PROTOCOL) : null;
+  // Stage 9C: kiểm cấu hình và giá trị trên dây qua dịch vụ thiết bị, màn không gọi trực tiếp lớp giao thức.
+  const { cfg, errors, wire } = checkTreatmentConfig(prepared, link.caps, PROTOCOL);
   const idInfo = link.identity?.kind === 'known' ? link.identity.info : null;
-  const versionMismatch = !!idInfo && idInfo.protocolVersion !== PROTOCOL.protocolVersion;
   const noDevice = !p.deviceId;
-  // Máy chưa trả lời lệnh hỏi thông tin: chưa kiểm được phiên bản, không gửi (RK3).
-  const unidentified = link.state === 'connected' && !!PROTOCOL.messages.query_info && link.identity?.kind !== 'known';
   const isPatient = me?.role === 'patient';
-  const canSend = link.state === 'connected' && !!cfg && errors.length === 0 && !versionMismatch && !unidentified && !noDevice && !sending;
+  // Stage 9C (gói C): điều kiện gửi, bước, vòng đời lệnh (gửi, máy nhận, máy chạy) tính ở dịch vụ thiết bị (configCommand.ts).
+  const command = configCommandView({
+    linkState: link.state, identity: link.identity, hasQueryInfo: !!PROTOCOL.messages.query_info, appProtocolVersion: PROTOCOL.protocolVersion,
+    configReady: !!cfg && errors.length === 0, hasDevice: !noDevice, sending, result, resultAt,
+    sessionState: link.lastStatus?.state ?? null, statusAt: link.lastStatusAt,
+  });
+  const { versionMismatch, unidentified, canSend } = command;
 
   const send = async () => {
     if (!cfg || !plan || !p.deviceId) return;
     setSending(true);
     try {
-      const r = await link.send(cfg);
-      setResult(r);
-      setResultAt(new Date().toISOString());
-      recordDeviceLink({
+      // Gửi một lần rồi ghi nhật ký (dịch vụ thiết bị). Lỗi ghi nhật ký không đổi kết quả máy trả lời, chỉ được báo thêm.
+      const { result: r, at, logError } = await sendTreatmentConfigOnce({ send: link.send, record: recordDeviceLink }, cfg, {
         deviceId: p.deviceId!,
         patientId: p.id,
         planId: plan.id,
         planVersion: plan.version,
         transport: link.kind,
-        result: r.kind,
-        attempts: 'attempts' in r ? r.attempts : 0,
-        code: r.kind === 'nacked' ? r.code : undefined,
         protocolVersion: PROTOCOL.protocolVersion,
         capsSource: link.capsSource,
       });
+      setResult(r);
+      setResultAt(at);
+      if (logError) notify('Chưa ghi được nhật ký nạp', logError instanceof Error ? logError.message : String(logError));
     } finally {
       setSending(false);
     }
   };
 
   // Bước hiện tại của luồng nạp (1 kết nối, 2 gửi, 3 theo dõi phiên), để người bệnh biết đang ở đâu.
-  const step = result?.kind === 'acked' ? 3 : link.state === 'connected' ? 2 : 1;
+  const step = command.step;
   // NAK mà gửi lại cũng vô ích (BAD_FIELDS, mã lạ): ẩn Gửi lại, đưa người bệnh sang báo sự cố.
-  const noRetry = result?.kind === 'nacked' && !nakHint(result.code).retry;
+  const noRetry = command.noRetry;
 
   const capsNote = link.capsSource === 'device' ? 'Năng lực đọc từ máy' : link.identity?.kind === 'no_reply' ? 'Máy không trả lời lệnh hỏi, dùng bảng dự phòng' : link.capsSource === 'table' ? 'Dùng bảng năng lực ghi sẵn' : 'Chưa có năng lực cho mẫu này';
 
@@ -102,8 +104,8 @@ export default function ConnectDevice() {
   const st = link.lastStatus;
   const shown = sessionDisplay({ linkState: link.state, state: st?.state ?? null, statusAt: link.lastStatusAt, now, staleAfterSec: STALE_AFTER_SEC });
   // Đủ điều kiện nạp: đúng điều kiện của nút nạp, bỏ cờ đang gửi.
-  const readyToSend = link.state === 'connected' && !!cfg && errors.length === 0 && !versionMismatch && !unidentified && !noDevice;
-  const nakBusy = result?.kind === 'nacked' && result.code === 'BUSY';
+  const readyToSend = command.readyToSend;
+  const nakBusy = command.nakBusy;
   const status = deviceStatusView({ linkState: link.state, sessionState: st?.state ?? null, sessionView: shown.view, readyToSend, nakBusy, unidentified });
   const sessionText = !st ? 'Chưa nhận trạng thái' : shown.view === 'lost' || shown.view === 'stale' ? 'Không rõ' : SESSION_LABEL[st.state];
   const updatedAt = [link.lastStatusAt, resultAt].filter((x): x is string => !!x).sort().pop() ?? null;
@@ -136,14 +138,15 @@ export default function ConnectDevice() {
       {link.state !== 'connected' ? (
         <>
           {link.state === 'error' && <Notice tone={semantic.danger.tone} icon="alert-circle-outline">{isPatient ? 'Chưa kết nối được máy. Kiểm tra máy đã bật và cáp đã cắm chặt, rồi bấm Kết nối.' : 'Không mở được kết nối. Kiểm tra máy đã bật, cáp đã cắm, rồi bấm Kết nối.'}</Notice>}
-          <Button label="Kết nối" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />
-          {result?.kind === 'acked' && <Button label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={openMonitor} />}
+          <Button key="ket-noi" label="Kết nối" icon="link-outline" onPress={link.connect} loading={link.state === 'connecting'} />
+          {result?.kind === 'acked' && <Button key="theo-doi-phu" label="Theo dõi phiên điều trị" variant="secondary" icon="pulse-outline" onPress={openMonitor} />}
         </>
       ) : result?.kind === 'acked' ? (
-        <Button label="Theo dõi phiên điều trị" icon="pulse-outline" onPress={openMonitor} />
+        <Button key="theo-doi" label="Theo dõi phiên điều trị" icon="pulse-outline" onPress={openMonitor} armAfterMs={ARM_AFTER_MS} />
       ) : (
         <>
-          <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={send} disabled={!canSend} loading={sending} reason={reasonText} />
+          {/* Stage 8 (S8-B01): nút nạp hiện đúng chỗ nút Kết nối vừa bấm; chạm lần hai vào chỗ cũ không được gửi liệu trình. */}
+          <Button key="nap" label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={send} disabled={!canSend} loading={sending} reason={reasonText} armAfterMs={ARM_AFTER_MS} />
           {result && canSend && !noRetry && <Button label="Gửi lại" variant="secondary" icon="refresh-outline" onPress={send} />}
         </>
       )}
@@ -263,6 +266,9 @@ export default function ConnectDevice() {
 
 /** Cùng ngưỡng hiển thị với T02 (session-monitor.tsx). */
 const STALE_AFTER_SEC = 5;
+// Stage 8 (S8-B01, S8-B02): nút ở chân màn đổi chỗ cho nhau sau Kết nối và sau ACK. Lần chạm trong 800 ms đầu bị bỏ qua để chạm đúp
+// không gửi liệu trình hay mở T02 ngoài ý muốn. 800 ms: gấp hơn hai lần ngưỡng chạm đúp mặc định 300 ms của Android; đề xuất, chưa thử người dùng.
+const ARM_AFTER_MS = 800;
 const STEPS = ['Kết nối máy', 'Nạp liệu trình', 'Điều trị'];
 /** Bệnh nhân: "điều trị" thay "chiếu" (duyệt 12/11/2026, C40). */
 const PATIENT_STEPS = ['Kết nối máy', 'Nạp liệu trình', 'Điều trị'];

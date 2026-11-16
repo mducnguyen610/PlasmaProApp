@@ -4,7 +4,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { Button, Card, Divider, Chip, Disclosure, Header, InfoRow, Muted, Screen, SwitchRow, type IconName, PatientAvatar } from '@/components/ui';
-import { confirm } from '@/lib/dialog';
+import { confirm, notify } from '@/lib/dialog';
 import { localDay } from '@/lib/course';
 import { fmtDate } from '@/lib/format';
 import { useStore } from '@/lib/store';
@@ -54,7 +54,7 @@ export function AccountScreen() {
         </View>
       {me.role === 'patient' && <>
         <Divider />
-        <SwitchRow label="Dùng ảnh cho nghiên cứu" detail={data.patients.find(p => p.id === me.patientId)?.researchConsent ? 'Đang cho phép' : 'Không cho phép'} value={!!data.patients.find(p => p.id === me.patientId)?.researchConsent} onChange={setResearchConsent} />
+        <SwitchRow label="Dùng ảnh cho nghiên cứu" detail={data.patients.find(p => p.id === me.patientId)?.researchConsent ? 'Đang cho phép' : 'Không cho phép'} value={!!data.patients.find(p => p.id === me.patientId)?.researchConsent} onChange={async (v: boolean) => { try { await setResearchConsent(v); } catch (e) { notify('Chưa lưu được', e instanceof Error ? e.message : String(e)); } }} />
         <Disclosure title="Điều gì được chia sẻ?">
           <Muted>Tùy chọn. Chỉ chia sẻ ảnh đã được bác sĩ kiểm tra và bỏ thông tin nhận dạng. Rút đồng ý sẽ ngừng chia sẻ mới; không tự thu hồi các tệp đã tải.</Muted>
         </Disclosure>

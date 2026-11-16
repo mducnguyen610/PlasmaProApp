@@ -99,7 +99,8 @@ const KEY = 'plasmapro.demo.v2';
     await go(p, '/patient');
     const n02 = await has(p, 'Vết thương') && await has(p, 'Lời dặn của bác sĩ') && await has(p, 'Báo triệu chứng hoặc sự cố');
     await go(p, '/wounds/w-1');
-    const n05 = await has(p, 'Tiến triển diện tích') && await has(p, 'Nhận xét của bác sĩ') && await has(p, /^Lịch sử vết thương \(\d+\)$/, false);
+    // Stage 8: PR 55 (đã duyệt) gộp "Lịch sử vết thương (n)" thành thẻ "Lịch sử (n)" cạnh thẻ "Ảnh (n)" ở N05.
+    const n05 = await has(p, 'Tiến triển diện tích') && await has(p, 'Nhận xét của bác sĩ') && await has(p, /^Lịch sử \(\d+\)$/, false) && await has(p, /^Ảnh \(\d+\)$/, false);
     await go(p, '/patient/account');
     const n09 = await has(p, 'Hướng dẫn sử dụng') && await has(p, 'Đăng xuất');
     rec('TB5-07', 'N02, N05, N09 giữ nội dung chính', n02 && n05 && n09, `${n02}/${n05}/${n09}`);

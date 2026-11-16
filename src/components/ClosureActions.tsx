@@ -18,8 +18,8 @@ export function ClosureActions({ woundId, status, check1, followUpFrom, today, h
 }) {
   const { recordClosure } = useStore();
   const run = (step: Step, title: string, body: string, ok: string, after?: () => void) =>
-    confirm(title, body, () => {
-      try { recordClosure(woundId, step); after?.(); } catch (e) { notify('Chưa ghi được', e instanceof Error ? e.message : String(e)); }
+    confirm(title, body, async () => {
+      try { await recordClosure(woundId, step); after?.(); } catch (e) { notify('Chưa ghi được', e instanceof Error ? e.message : String(e)); }
     }, ok);
 
   if (status === 'active') {

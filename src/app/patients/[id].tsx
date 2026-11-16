@@ -69,9 +69,9 @@ export default function PatientDetail() {
     confirm(
       `Giao ${code} cho ${p.name}?`,
       `Mã hồ sơ ${p.code}. Liệu trình nạp xuống máy và các phiên điều trị sẽ gắn với hồ sơ này. Nếu giao nhầm, thu hồi sẽ chuyển máy sang chờ khử khuẩn.`,
-      () => {
+      async () => {
         try {
-          assignDevice(deviceId, p.id);
+          await assignDevice(deviceId, p.id);
         } catch (e) {
           notify('Chưa giao được máy', e instanceof Error ? e.message : String(e));
         }
@@ -79,10 +79,10 @@ export default function PatientDetail() {
       `Giao ${code}`,
     );
   const takeBack = () =>
-    confirm('Thu hồi máy', 'Gỡ máy khỏi bệnh nhân và bỏ đầu phát đang dùng. Máy chuyển sang chờ khử khuẩn.', () => {
+    confirm('Thu hồi máy', 'Gỡ máy khỏi bệnh nhân và bỏ đầu phát đang dùng. Máy chuyển sang chờ khử khuẩn.', async () => {
       try {
-        if (dev?.lifecycle === 'in_use') setLifecycle(dev.id, 'returned');
-        else if (dev) assignDevice(dev.id, null);
+        if (dev?.lifecycle === 'in_use') await setLifecycle(dev.id, 'returned');
+        else if (dev) await assignDevice(dev.id, null);
       } catch (e) {
         notify('Chưa thu hồi được', e instanceof Error ? e.message : String(e));
       }
@@ -187,10 +187,14 @@ export default function PatientDetail() {
           variant="secondary"
           icon="add"
           disabled={!newWound.trim()}
-          onPress={() => {
-            const w = addWound(p.id, newWound.trim());
-            setNewWound('');
-            router.push({ pathname: '/wounds/[id]', params: { id: w.id } });
+          onPress={async () => {
+            try {
+              const w = await addWound(p.id, newWound.trim());
+              setNewWound('');
+              router.push({ pathname: '/wounds/[id]', params: { id: w.id } });
+            } catch (e) {
+              notify('Chưa thêm được vết thương', e instanceof Error ? e.message : String(e));
+            }
           }}
         />
       </Disclosure></View>}
@@ -209,7 +213,7 @@ export default function PatientDetail() {
         ))}
       </Card>}
       {reports.length === 0 ? (flaggedNotes.length ? null : <Empty icon="chatbubble-ellipses-outline" text="Bệnh nhân chưa gửi báo cáo triệu chứng hay sự cố nào." />) : <Card>
-        {openReports.length === 0 ? <Muted>Không có báo cáo chưa xử lý.</Muted> : openReports.map((r) => <ReportRow key={r.id} r={r} isDoctor={isDoctor} onHandle={() => setReportHandled(r.id)} />)}
+        {openReports.length === 0 ? <Muted>Không có báo cáo chưa xử lý.</Muted> : openReports.map((r) => <ReportRow key={r.id} r={r} isDoctor={isDoctor} onHandle={async () => { try { await setReportHandled(r.id); } catch (e) { notify('Chưa đánh dấu được', e instanceof Error ? e.message : String(e)); } }} />)}
         {doneReports.length > 0 && (
           <Disclosure title={`Đã xử lý (${doneReports.length})`} summary="Báo cáo bác sĩ đã đánh dấu">
             {doneReports.map((r) => <ReportRow key={r.id} r={r} isDoctor={isDoctor} />)}

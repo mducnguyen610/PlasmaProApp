@@ -2,6 +2,7 @@
 // Chạy: node scripts/kiem-thu-dot-8.cjs <baseURL> <thư mục ảnh>. Dựng web trước: npx expo export -p web, phục vụ dist với SPA fallback.
 // Hộp xác nhận trên web là window.confirm: kịch bản chọn chấp nhận hoặc hủy theo từng bước (p.answer).
 const { chromium } = require('playwright');
+const { ganNgayCoLich } = require('./ngay-co-lich.cjs');
 const BASE = process.argv[2] || 'http://localhost:8099';
 const OUT = process.argv[3] || '.';
 const results = [];
@@ -11,6 +12,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   const b = await chromium.launch();
   const newPage = async (w = 390) => {
     const ctx = await b.newContext({ viewport: { width: w, height: 844 }, locale: 'vi-VN' });
+    await ganNgayCoLich(ctx); // Stage 8: không phụ thuộc thứ trong tuần (xem scripts/ngay-co-lich.cjs)
     const p = await ctx.newPage();
     p.dialogs = []; p.answer = true; p.errors = [];
     p.on('dialog', (d) => { p.dialogs.push(`${d.type()}: ${d.message().split('\n')[0]}`); if (d.type() === 'alert' || p.answer) d.accept(); else d.dismiss(); });
@@ -131,16 +133,20 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const running = await has(p, 'Đang điều trị, còn lại');
     await p.screenshot({ path: `${OUT}/t02-dang-dieu-tri-390.png` });
     // Nhấn nhầm quay lại, rồi chọn ở lại.
+    // Stage 7 (PR 57) đổi hộp thoại window.confirm thành khung hỏi trong chân màn (data-testid="leave-ask"); Stage 8 cập nhật ca này theo giao diện đã duyệt.
+    const askBox = () => p.locator('[data-testid="leave-ask"]:visible');
+    const stay = async () => { await p.getByText('Ở lại màn theo dõi', { exact: true }).last().click(); await p.waitForTimeout(300); };
     p.answer = false; const n1 = p.dialogs.length;
     await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(800);
-    const asked = p.dialogs.slice(n1).some((d) => d.includes('Rời màn theo dõi?'));
-    const stayed = await has(p, 'Đang điều trị, còn lại');
+    const asked = (await askBox().count()) > 0 && (await askBox().getByText('Rời màn theo dõi?').count()) > 0 && p.dialogs.length === n1;
+    await stay();
+    const stayed = await has(p, 'Đang điều trị, còn lại') && (await askBox().count()) === 0;
     const stopVisible = await p.getByText('Dừng điều trị').isVisible();
     rec('D8-03d', 'Đang điều trị, bấm quay lại, chọn ở lại: vẫn ở T02, đồng hồ chạy, nút Dừng còn hiện', running && asked && stayed && stopVisible, `chạy ${running}, hỏi ${asked}, ở lại ${stayed}, Dừng ${stopVisible}`);
     // Nhấn quay lại liên tục 3 lần, đều chọn ở lại: mỗi lần một hộp, không vòng lặp, vẫn ở T02.
-    const n2 = p.dialogs.length;
-    for (let i = 0; i < 3; i++) { await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(400); }
-    rec('D8-03e', 'Bấm quay lại 3 lần, chọn ở lại: đúng 3 hộp, vẫn ở T02', p.dialogs.length - n2 === 3 && await has(p, 'Đang điều trị, còn lại'), `${p.dialogs.length - n2} hộp`);
+    const n2 = p.dialogs.length; let asks = 0;
+    for (let i = 0; i < 3; i++) { await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(400); asks += (await askBox().count()) > 0 ? 1 : 0; await stay(); }
+    rec('D8-03e', 'Bấm quay lại 3 lần, chọn ở lại: mỗi lần hiện câu hỏi trong chân màn (3 lần), không hộp thoại, vẫn ở T02', asks === 3 && p.dialogs.length === n2 && await has(p, 'Đang điều trị, còn lại'), `${asks} lần hỏi, ${p.dialogs.length - n2} hộp thoại`);
     // Nút Dừng điều trị không bị chặn hay hỏi lại.
     const n3 = p.dialogs.length;
     await p.getByText('Dừng điều trị').click(); await p.waitForTimeout(1500);
@@ -154,9 +160,11 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     await p.getByText('Theo dõi phiên điều trị').last().click(); await p.waitForTimeout(1200);
     await p.getByText('Bắt đầu điều trị').click(); await p.waitForTimeout(2000);
     p.answer = true; const n5 = p.dialogs.length;
-    await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(1200);
-    const leftRun = (await p.getByText('Dừng điều trị').count()) === 0;
-    rec('D8-03h', 'Đang điều trị, chọn "Vẫn rời màn": rời màn, chỉ một hộp xác nhận', leftRun && p.dialogs.length - n5 === 1, p.dialogs.slice(n5).join(' | '));
+    await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(600);
+    const askedOnce = (await askBox().count()) > 0;
+    await p.getByText('Vẫn rời màn', { exact: true }).last().click(); await p.waitForTimeout(1200);
+    const leftRun = (await p.locator('[data-testid="screen-footer"]:visible').getByText('Dừng điều trị').count()) === 0;
+    rec('D8-03h', 'Đang điều trị, chọn "Vẫn rời màn": rời màn sau một lần hỏi trong chân màn, không hộp thoại', askedOnce && leftRun && p.dialogs.length === n5, p.dialogs.slice(n5).join(' | '));
     rec('D8-03z', 'Không có lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 120));
     await p.context().close();
   }
@@ -165,6 +173,9 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   {
     const p = await newPage();
     await login(p, 'quantri'); await go(p, '/admin');
+    // Stage 6 (PR 56) đưa phân công vào thẻ "Phân công" của Q01; Stage 8 cập nhật đường vào, giữ nguyên các kiểm tra.
+    const toAssign = async () => { await p.getByRole('tablist').getByRole('tab', { name: 'Phân công' }).click(); await p.waitForTimeout(300); };
+    await toAssign();
     const doc = async () => (await store(p)).patients.find((x) => x.id === 'p-1').doctorId;
     const d0 = await doc();
     // Mở rồi đóng bảng chọn liên tục: không đổi dữ liệu.
@@ -194,33 +205,28 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     await p.getByRole('radio', { name: 'BS. Lê Thu Hà' }).first().click(); await p.waitForTimeout(400);
     await relogin(p, 'bacsi'); await go(p, '/doctor/patients');
     const gone = !(await has(p, /BN001/, false));
-    await relogin(p, 'quantri'); await go(p, '/admin');
+    await relogin(p, 'quantri'); await go(p, '/admin'); await toAssign();
     await p.getByText('Đổi', { exact: true }).first().click(); await p.waitForTimeout(200);
     await p.getByRole('radio', { name: 'BS. Trần Minh An' }).first().click(); await p.waitForTimeout(400);
     rec('D8-04e', 'Hậu quả nêu trong hộp là đúng: sau khi đổi, bác sĩ cũ không còn thấy BN001; đổi lại được', gone && (await doc()) === d0, `mất khỏi danh sách ${gone}`);
-    // UX-05: khóa tài khoản.
+    // UX-05: khóa tài khoản. Stage 6 chuyển công tắc sang trang chi tiết tài khoản (Q01b) dạng nút. Người dùng chốt 14/11/2026
+    // (commit 3779119): khóa, mở khóa, cấp và thu quyền đều hỏi xác nhận, nên D8-05c, D8-05f nay kiểm "có hỏi" thay cho "không hỏi".
     const acc = async (id) => (await store(p)).accounts.find((a) => a.username === id);
-    await p.getByText('BS. Lê Thu Hà', { exact: true }).first().click(); await p.waitForTimeout(300);
-    const sw = p.getByRole('switch', { name: /Khóa tài khoản/ }).first();
-    p.answer = false; const n2 = p.dialogs.length;
-    await sw.click(); await p.waitForTimeout(300);
-    rec('D8-05a', 'Khóa tài khoản rồi hủy: có hộp xác nhận, tài khoản vẫn mở', p.dialogs.length - n2 === 1 && !(await acc('bacsi2')).locked, p.dialogs.slice(n2).join(' | '));
-    p.answer = true;
-    await sw.click(); await p.waitForTimeout(300);
+    await go(p, '/admin-account/u-bs2');
+    const act = async (label, answer) => { p.answer = answer; const n = p.dialogs.length; await p.getByText(label, { exact: true }).first().click(); await p.waitForTimeout(400); return p.dialogs.length - n; };
+    const a1 = await act('Khóa tài khoản', false);
+    rec('D8-05a', 'Khóa tài khoản rồi hủy: có hộp xác nhận, tài khoản vẫn mở', a1 === 1 && !(await acc('bacsi2')).locked, p.dialogs.slice(-1).join(' | '));
+    await act('Khóa tài khoản', true);
     rec('D8-05b', 'Khóa tài khoản, xác nhận: đã khóa', !!(await acc('bacsi2')).locked);
-    const n3 = p.dialogs.length;
-    await sw.click(); await p.waitForTimeout(300);
-    rec('D8-05c', 'Mở khóa: đổi ngay, không hỏi', !(await acc('bacsi2')).locked && p.dialogs.length === n3);
-    const rs = p.getByRole('switch', { name: /Quyền xuất dữ liệu nghiên cứu/ }).first();
+    const a3 = await act('Mở khóa tài khoản', true);
+    rec('D8-05c', 'Mở khóa: hỏi xác nhận một lần (theo quyết định 14/11/2026), đồng ý thì mở', !(await acc('bacsi2')).locked && a3 === 1);
     const r0 = !!(await acc('bacsi2')).researchAccess;
-    p.answer = false; const n4 = p.dialogs.length;
-    await rs.click(); await p.waitForTimeout(300);
-    const r1 = !!(await acc('bacsi2')).researchAccess;
-    rec('D8-05d', 'Cấp quyền xuất dữ liệu rồi hủy: có hộp xác nhận, không cấp', r0 || (p.dialogs.length - n4 === 1 && r1 === false), `trước ${r0}`);
-    p.answer = true; if (!r1) { await rs.click(); await p.waitForTimeout(300); }
+    const a4 = await act('Cấp quyền xuất dữ liệu', false);
+    rec('D8-05d', 'Cấp quyền xuất dữ liệu rồi hủy: có hộp xác nhận, không cấp', !r0 && a4 === 1 && !(await acc('bacsi2')).researchAccess, `trước ${r0}`);
+    await act('Cấp quyền xuất dữ liệu', true);
     rec('D8-05e', 'Cấp quyền, xác nhận: đã cấp', !!(await acc('bacsi2')).researchAccess);
-    const n5 = p.dialogs.length; await rs.click(); await p.waitForTimeout(300);
-    rec('D8-05f', 'Thu quyền: đổi ngay, không hỏi', !(await acc('bacsi2')).researchAccess && p.dialogs.length === n5);
+    const a6 = await act('Thu quyền xuất dữ liệu', true);
+    rec('D8-05f', 'Thu quyền: hỏi xác nhận một lần (theo quyết định 14/11/2026), đồng ý thì thu', !(await acc('bacsi2')).researchAccess && a6 === 1);
     rec('D8-05z', 'Không có lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 120));
     await p.context().close();
   }

@@ -3,6 +3,7 @@
 // Dữ liệu mẫu chỉ có một vết thương mỗi bệnh nhân. Để kiểm UX-20, UX-24, kịch bản thêm vào bộ nhớ trình duyệt một vết thương thứ hai
 // cho BN001 cùng một đợt đã xác nhận và một đánh giá đã công bố (dữ liệu kiểm thử, chép từ bản ghi sẵn có của VT01).
 const { chromium } = require('playwright');
+const { ganNgayCoLich } = require('./ngay-co-lich.cjs');
 const path = require('path');
 const BASE = process.argv[2] || 'http://localhost:8401';
 const OUT = process.argv[3] || '.';
@@ -15,6 +16,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   const b = await chromium.launch();
   const newPage = async (w = 390, clock = false) => {
     const ctx = await b.newContext({ viewport: { width: w, height: 844 }, locale: 'vi-VN' });
+    await ganNgayCoLich(ctx); // Stage 8: không phụ thuộc thứ trong tuần (xem scripts/ngay-co-lich.cjs)
     const p = await ctx.newPage();
     if (clock) await p.clock.install();
     p.dialogs = []; p.errors = [];
