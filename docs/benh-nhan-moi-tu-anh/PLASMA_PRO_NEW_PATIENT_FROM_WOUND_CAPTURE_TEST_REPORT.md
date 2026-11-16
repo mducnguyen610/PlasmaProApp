@@ -9,17 +9,17 @@ Ngày: 16/11/2026. Môi trường: bản dựng web tĩnh (`npx expo export -p w
 | TypeScript (`npx tsc --noEmit`) | Sạch |
 | Lint (`npx expo lint`) | Sạch |
 | `npm test` (52 tệp, thêm `pendingCapture.test.ts`, ca 9 của `persistence.test.ts`, `architecture.test.cjs` 171 tệp) | Đạt |
-| Kịch bản mới `scripts/kiem-thu-benh-nhan-moi-tu-anh.cjs` | **65/65 đạt** |
-| Hồi quy 25 kịch bản cũ, trước và sau | **Sau giống hệt trước**: 841 ca đạt; 4 ca lỗi của `kiem-thu-dot-9` và lần dừng của `kiem-thu-tb-8` có ở cả hai bản (mục 4) |
+| Kịch bản mới `scripts/kiem-thu-benh-nhan-moi-tu-anh.cjs` | **67/67 đạt** (bản phương án 2) |
+| Hồi quy 25 kịch bản cũ, trước và sau | **Sau giống hệt trước**, không ca nào lỗi sau khi sửa môi trường dựng dot-9 và kịch bản tb-8 (mục 4) |
 
-## 2. Kịch bản mới (65 ca)
+## 2. Kịch bản mới (67 ca)
 
 | Nhóm | Ca | Nội dung |
 |---|---|---|
 | A. B09 hai lối vào | NP-01 đến NP-04 | Mặc định "Chọn bệnh nhân hiện có", nội dung lối cũ còn đủ; lối mới; B10 ở luồng mới không có thanh bệnh nhân |
-| B. Thành công và quan hệ dữ liệu | NP-05 đến NP-16 | Ảnh chờ hiện ở biểu mẫu; ảnh chờ không có id và không nằm trong dữ liệu chính; kiểm biểu mẫu; đúng 1 hồ sơ, 1 tài khoản, 1 vết VT01, 1 ảnh; `wound.patientId`, `image.woundId`, `image.patientId`, tên tệp; siêu dữ liệu chụp giữ nguyên; số đo ghi sau; không tạo đánh giá, đợt, thiết bị; ảnh chờ đã xóa; không lỗi quan hệ; mở B05 đúng vết; quay lại B10 về bước 1 |
+| B. Thành công và quan hệ dữ liệu | NP-05 đến NP-16 | Ảnh chờ hiện ở biểu mẫu; ảnh chờ không có id và không nằm trong dữ liệu chính; kiểm biểu mẫu; đúng 1 hồ sơ, 1 tài khoản, 1 vết VT01, 1 ảnh; `wound.patientId`, `image.woundId`, `image.patientId`, tên tệp; siêu dữ liệu chụp giữ nguyên; số đo ghi sau; không tạo đánh giá, đợt, thiết bị; ảnh chờ đã xóa; không lỗi quan hệ; mở thẳng B05 đúng vết, không còn màn trung gian; quay lại B10 về bước 1 |
 | C. Quay lại, giữ nháp, mở lại, hủy | NP-17 đến NP-25 | Quay lại B10 giữ ảnh và số đo; biểu mẫu giữ họ tên; "Để sau"; nút luồng mới khóa khi có ảnh chờ; store từ chối ảnh chờ thứ hai; tải lại trang vẫn còn ảnh chờ và họ tên; Hủy hỏi trước, xác nhận thì bỏ ảnh và không tạo gì |
-| D. Bấm lặp, lỗi ghi, lỗi một phần, ghi lặp | NP-26 đến NP-34 | 5 lần chạm liền; hai lời gọi store chồng nhau; lỗi ghi bộ nhớ máy (QuotaExceeded) không để lại bản ghi, ảnh và họ tên giữ, lưu lại tạo đúng 1; ghi số đo lỗi sau khi tạo hồ sơ: báo rõ, mở B11 điền sẵn; ảnh chờ còn sót sau khi đã ghi không tạo hồ sơ thứ hai |
+| D. Bấm lặp, lỗi ghi, lỗi một phần, ghi lặp | NP-26 đến NP-34, NP-33b, NP-33c | 5 lần chạm liền; hai lời gọi store chồng nhau; lỗi ghi bộ nhớ máy (QuotaExceeded) không để lại bản ghi, ảnh và họ tên giữ, lưu lại tạo đúng 1; ghi số đo lỗi sau khi tạo hồ sơ: mở B11 của ảnh, báo rõ, điền sẵn; ảnh chờ còn sót sau khi đã ghi không tạo hồ sơ thứ hai; ảnh đã có nhưng liên kết sai thì giữ ảnh chờ, không ghi thêm, sửa xong lưu lại được |
 | E. Hồ sơ có thể trùng | NP-35 đến NP-40 | Trùng hồ sơ của mình: hiện mã, họ tên, năm sinh; không tạo; không tự gắn; xác nhận mới gắn đúng vết đã chọn; trùng hồ sơ bác sĩ khác: chỉ mã, không cho gắn; sửa số thì hết cảnh báo |
 | F. Phân quyền | NP-41 đến NP-48 | Bác sĩ khác không thấy, không dùng được ảnh chờ, không gắn được vào hồ sơ không phụ trách; bệnh nhân, quản trị: màn "Không có quyền" và store từ chối; bác sĩ một đăng nhập lại vẫn còn ảnh chờ |
 | G. Bộ lọc B09 | FL-01 đến FL-10 | Mở, đóng; đóng không đổi kết quả; tóm tắt và số bộ lọc khi đóng; bệnh nhân đã chọn giữ; mở lại còn giá trị; tìm theo mã; không có kết quả; lối bệnh nhân mới vẫn thấy; chuyển lối vào vẫn giữ; `aria-expanded` |
@@ -40,7 +40,7 @@ Kết quả từng ca: `ket-qua/ket-qua-benh-nhan-moi-tu-anh.json`. Ảnh: `anh/
 | 7 | Tạo vết xong nhưng gắn ảnh lỗi | NP-28 (cùng một lần ghi), NP-31, NP-32 (số đo) | Vết và ảnh không tách được trong kiến trúc mới; phần tách duy nhất là số đo, đã kiểm |
 | 8 | Tải ảnh xong nhưng tạo hồ sơ lỗi | NP-28, NP-29 | Đạt trên web; xóa tệp đã chép trên máy thật chưa thử |
 | 9 | Có thể trùng hồ sơ | NP-35 đến NP-40 | Đạt |
-| 10 | Thoát giữa chừng rồi mở lại | NP-22, NP-23, NP-33, NP-48 | Đạt (tải lại trang thay cho mở lại ứng dụng) |
+| 10 | Thoát giữa chừng rồi mở lại | NP-22, NP-23, NP-33, NP-33b, NP-33c, NP-48 | Đạt (tải lại trang thay cho mở lại ứng dụng) |
 
 ## 4. Hồi quy
 
@@ -51,7 +51,7 @@ Kết quả từng ca: `ket-qua/ket-qua-benh-nhan-moi-tu-anh.json`. Ảnh: `anh/
 | kiem-thu-9b | 18/0 | 18/0 |
 | kiem-thu-9c-bcd | 21/0 | 21/0 |
 | kiem-thu-dot-8, dot-10, dot-11, dot-12 | 33, 24, 34, 53 đạt | giống |
-| kiem-thu-dot-9 | 9 đạt, 4 lỗi | giống |
+| kiem-thu-dot-9 | 13/0 (bản dựng có tiêm AR) | 13/0 |
 | kiem-thu-giao-dien | 41/0 | 41/0 |
 | kiem-thu-n05 | 20/0 | 20/0 |
 | kiem-thu-p0 | 47/0 | 47/0 |
@@ -59,11 +59,13 @@ Kết quả từng ca: `ket-qua/ket-qua-benh-nhan-moi-tu-anh.json`. Ảnh: `anh/
 | kiem-thu-p2 | 238/0 | 238/0 |
 | kiem-thu-quan-ly-ho-so (tạo, sửa hồ sơ) | 55/0 | 55/0 |
 | kiem-thu-tb-2 đến tb-7 (tb-3 là B10) | 22, 20, 31, 14, 21, 30 đạt | giống |
-| kiem-thu-tb-8 | 34 đạt rồi dừng ở "Bắt đầu điều trị" | giống |
+| kiem-thu-tb-8 (kịch bản đã sửa) | 60/0 | 60/0 |
 
-Hai điểm có từ trước, không do PR này:
-- `kiem-thu-dot-9` (AR ở B10): 4 lỗi ở cả hai bản, kể cả khi dựng bản có tiêm dữ liệu AR (`scripts/tiem-ar-kiem-thu.cjs`). Ca D9-08, D9-10 cho thấy luồng lưu của B10 vẫn ghi đúng 1 ảnh, đúng số và phương pháp bác sĩ; các ca lỗi là phần hiển thị ước lượng AR. Cần xem riêng ở PR 64 hoặc sớm hơn.
-- `kiem-thu-tb-8`: dừng ở cùng bước ở cả hai bản (kịch bản phụ thuộc thiết bị giả lập).
+Hai điểm lần đầu báo là lỗi, sau khi điều tra không phải lỗi ứng dụng:
+- `kiem-thu-dot-9` (AR ở B10): 4 ca lỗi do môi trường kiểm thử. Bản dựng từ thư mục làm việc phụ không mang dữ liệu AR tiêm vào (`scripts/tiem-ar-kiem-thu.cjs`), nên các ca hiển thị ước lượng AR không có gì để kiểm. Dựng lại đúng cách (tiêm ở thư mục chính, xuất bản web, trả lại mã): 13/13 ở cả hai bản.
+- `kiem-thu-tb-8`: kịch bản cũ hơn Stage 9B. Stage 9B (S8-B07) cố ý ẩn nút "Bắt đầu điều trị" của máy giả lập khi chưa có liệu trình, và (S8-B10) đổi nhãn ô ở B11 thành "Diện tích bác sĩ đo (cm²)". Kịch bản đã sửa hai bước này (ca S8-T-01b kiểm nút bị ẩn; ô B11 tìm theo nhãn mới); mã ứng dụng không đổi. Kết quả 60/0 ở cả hai bản.
+
+Bản phương án 2 (mở thẳng B05, kiểm liên kết trước khi xóa ảnh chờ) chạy lại `npm test`, `kiem-thu-quan-ly-ho-so` 55/55, `kiem-thu-tb-3` 20/20, `kiem-thu-p0` 47/0, `kiem-thu-p1-05-06` 20/0, `kiem-thu-dot-12` 53/53, `kiem-thu-giao-dien` 41/41 (đều đạt).
 
 Hồi quy luồng tạo hồ sơ cũ (B03): `kiem-thu-quan-ly-ho-so` 55/55 và `kiem-thu-giao-dien` 41/41 không đổi. Hồi quy chụp cho hồ sơ có sẵn: `kiem-thu-tb-3`, `p0`, `p1-05-06`, `dot-12` không đổi. Giao diện bệnh nhân, quản trị: `tb-5`, `tb-6`, `n05`, `p2` không đổi.
 

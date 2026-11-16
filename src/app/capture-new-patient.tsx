@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { ActivationCode } from '@/components/ActivationCode';
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Choices, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, Segmented, TextLink } from '@/components/ui';
@@ -12,11 +11,10 @@ import { confirm } from '@/lib/dialog';
 import { fmtDate, fmtDateTime } from '@/lib/format';
 import { parseArea } from '@/lib/naming';
 import { duplicateView, EMPTY_PENDING_FORM, validateNewPatientForm, type NewPatientErrors, type PendingPatientForm } from '@/lib/pendingCapture';
-import { DuplicatePatientError, useLookups, useStore, type Activation } from '@/lib/store';
+import { DuplicatePatientError, useLookups, useStore } from '@/lib/store';
 import type { Patient, Wound, WoundImage } from '@/lib/types';
 import { C, T } from '@/theme';
 
-type Done = { patient: Patient; wound: Wound; image: WoundImage; activation?: Activation; existing: boolean; labelError?: string; areaText: string; method: string };
 
 /**
  * B09b – Tạo hồ sơ từ ảnh vừa chụp (chỉ bác sĩ). Mở từ B10 ở luồng "Chụp cho bệnh nhân mới", hoặc từ thẻ "Ảnh chờ tạo hồ sơ" ở B09.
@@ -31,7 +29,7 @@ export default function CaptureNewPatient() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
-  const [done, setDone] = useState<Done | null>(null);
+  const [done, setDone] = useState(false);
   const [dup, setDup] = useState<Patient | null>(null);
   const [dupWound, setDupWound] = useState('');
 
@@ -45,30 +43,6 @@ export default function CaptureNewPatient() {
   }, [form, heldId, done]);
 
   if (me?.role !== 'doctor') return <NoAccess />;
-
-  if (done) {
-    const goWound = () => router.replace({ pathname: '/wounds/[id]', params: { id: done.wound.id } });
-    return (
-      <Screen header={<Header back title={done.existing ? 'Đã gắn ảnh vào hồ sơ' : 'Đã tạo hồ sơ'} subtitle={`Mã hồ sơ ${done.patient.code}`} />}
-        footer={done.labelError
-          ? <Button label="Nhập lại số đo" icon="create-outline" onPress={() => router.replace({ pathname: '/images/[id]', params: { id: done.image.id, nhapLai: done.areaText, phuongPhap: done.method, loi: done.labelError } })} />
-          : <Button label={`Mở vết thương ${done.wound.code}`} icon="arrow-forward" onPress={goWound} />}>
-        <Card>
-          <InfoRow label="Bệnh nhân" value={`${done.patient.code} · ${done.patient.name}`} />
-          <InfoRow label="Vết thương" value={`${done.wound.code} · ${done.wound.location}`} />
-          <InfoRow label="Ảnh" value={done.image.id} />
-        </Card>
-        {done.labelError ? <Notice tone="amber">{`Hồ sơ, vết thương và ảnh đã lưu. Số đo chưa lưu: ${done.labelError} Bấm "Nhập lại số đo" để lưu lại.`}</Notice> : null}
-        {done.activation ? (
-          <Card>
-            <Text style={{ fontWeight: '700', color: C.text }}>Tài khoản cho bệnh nhân</Text>
-            <ActivationCode activation={done.activation} />
-          </Card>
-        ) : null}
-        {done.labelError ? <TextLink label={`Mở vết thương ${done.wound.code}`} onPress={goWound} /> : null}
-      </Screen>
-    );
-  }
 
   if (!held) {
     return (
@@ -94,6 +68,15 @@ export default function CaptureNewPatient() {
     catch (e) { return e instanceof Error ? e.message : String(e); }
   };
 
+  // Lưu xong (hồ sơ, vết, ảnh đã ghi và đã kiểm liên kết): mở thẳng B05 của vết thương (đặc tả bước 10, người dùng chọn 16/11/2026).
+  // Ghi số đo lỗi thì mở B11 của đúng ảnh, điền sẵn số đo để lưu lại (như B10). Mã kích hoạt không hiện ở luồng này;
+  // tài khoản bệnh nhân vẫn được tạo như B03, bác sĩ cấp mã ở hồ sơ (B04, "Cấp mã kích hoạt").
+  const finish = (r: { wound: Wound; image: WoundImage }, labelError?: string) => {
+    setDone(true);
+    if (labelError) router.replace({ pathname: '/images/[id]', params: { id: r.image.id, nhapLai: held.areaText, phuongPhap: held.method, loi: labelError } });
+    else router.replace({ pathname: '/wounds/[id]', params: { id: r.wound.id } });
+  };
+
   const create = async () => {
     if (lock.current || busy) return;
     const v = validateNewPatientForm(form);
@@ -103,7 +86,7 @@ export default function CaptureNewPatient() {
       await updatePendingForm(form).catch(() => {});
       const r = await commitPendingCapture({ kind: 'new', form });
       const labelError = r.reused ? undefined : await applyLabel(r.image);
-      setDone({ ...r, existing: !!r.reused, labelError, areaText: held.areaText, method: held.method });
+      finish(r, labelError);
     } catch (e) {
       if (e instanceof DuplicatePatientError) { setDup(e.duplicate); setDupWound(''); setErr(null); }
       else setErr(`${e instanceof Error ? e.message : String(e)} Ảnh và thông tin đã nhập vẫn giữ nguyên, có thể bấm lưu lại.`);
@@ -128,7 +111,7 @@ export default function CaptureNewPatient() {
         try {
           const r = await commitPendingCapture(dupWound === 'new' ? { kind: 'existing', patientId: dup.id, woundLocation: newLoc } : { kind: 'existing', patientId: dup.id, woundId: dupWound });
           const labelError = r.reused ? undefined : await applyLabel(r.image);
-          setDone({ ...r, existing: true, labelError, areaText: held.areaText, method: held.method });
+          finish(r, labelError);
         } catch (e) { setErr(`${e instanceof Error ? e.message : String(e)} Ảnh vẫn chờ, chưa gắn vào hồ sơ nào.`); }
         finally { lock.current = false; setBusy(false); }
       })();

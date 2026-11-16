@@ -6,15 +6,16 @@ Ngày: 16/11/2026. Nhánh `feat/benh-nhan-moi-tu-anh`, gốc là PR 64 (`ui/stag
 
 | Tệp | Loại | Nội dung |
 |---|---|---|
-| `src/lib/pendingCapture.ts` | mới | Kiểu `PendingCapture`, `PendingPatientForm`; `findPhoneDuplicate` (quy tắc trùng của `addPatient`); `duplicateView` (thông tin hiện theo quyền); `validateNewPatientForm`; `committedImageOf` (khóa `captureId`); `isPendingCapture`; `activeFilterCount`. Hàm thuần. |
+| `src/lib/pendingCapture.ts` | mới | Kiểu `PendingCapture`, `PendingPatientForm`; `findPhoneDuplicate` (quy tắc trùng của `addPatient`); `duplicateView` (thông tin hiện theo quyền); `validateNewPatientForm`; `committedImageOf` (khóa `captureId`); `verifyLinked` (ảnh có đúng `patientId`, `woundId`, vết thuộc đúng hồ sơ); `isPendingCapture`; `activeFilterCount`. Hàm thuần. |
 | `src/lib/pendingCapture.test.ts` | mới | Kiểm thử đơn vị các hàm trên; thêm vào `npm test`. |
 | `src/lib/persistence.ts` | sửa | `PENDING_CAPTURE_KEY`, `loadPending`, `savePending`, `clearPending` (cùng hàng ghi với dữ liệu chính). |
 | `src/lib/persistence.test.ts` | sửa | Ca 9: ảnh chờ ghi ở khóa riêng, lỗi ghi được báo, JSON hỏng trả null. |
 | `src/lib/store.tsx` | sửa | Trạng thái ảnh chờ theo bác sĩ (đọc lúc mở ứng dụng); `holdPendingCapture`, `updatePendingForm`, `discardPendingCapture`, `commitPendingCapture`; `DuplicatePatientError`; `removeImageFile`; `addPatient` dùng `findPhoneDuplicate` (cùng quy tắc, cùng câu báo); `resetDemo` bỏ cả ảnh chờ. |
 | `src/app/guided-capture.tsx` | sửa | Tham số `moi=1`: không cần `woundId`; thông báo "Chụp cho bệnh nhân mới" thay thanh bệnh nhân; bước 3 có "Tiếp: tạo hồ sơ bệnh nhân" (giữ ảnh chờ, mở B09b). Phần dựng siêu dữ liệu tách thành `metadataFor` dùng chung, nội dung không đổi. Ảnh đã chuyển sang chờ thì rời màn không hỏi; ảnh chờ được gắn hoặc bỏ thì màn về bước 1. |
-| `src/app/capture-new-patient.tsx` | mới | B09b: ảnh chờ, biểu mẫu (trường như B03, vị trí vết bắt buộc), thẻ trùng hồ sơ, Hủy, Để sau, màn kết quả (mã kích hoạt, mở vết thương, nhập lại số đo). Ghi biểu mẫu vào ảnh chờ sau 400 ms không gõ. |
+| `src/app/capture-new-patient.tsx` | mới | B09b: ảnh chờ, biểu mẫu (trường như B03, vị trí vết bắt buộc), thẻ trùng hồ sơ, Hủy, Để sau. Lưu xong mở thẳng B05 của vết; ghi số đo lỗi thì mở B11 của ảnh, điền sẵn số đo. Ghi biểu mẫu vào ảnh chờ sau 400 ms không gõ. |
 | `src/app/capture.tsx` | sửa | Thanh hai lối vào; thẻ ảnh chờ (Tiếp tục, Bỏ ảnh); lối mới khóa khi đang có ảnh chờ; bộ lọc thu gọn (mặc định mở). |
-| `scripts/kiem-thu-benh-nhan-moi-tu-anh.cjs` | mới | 65 ca Playwright trên bản web. |
+| `scripts/kiem-thu-benh-nhan-moi-tu-anh.cjs` | mới | 67 ca Playwright trên bản web. |
+| `scripts/kiem-thu-tb-8.cjs` | sửa | Hai bước cũ không còn đúng sau Stage 9B (mục 3 báo cáo kiểm thử); không đổi mã ứng dụng. |
 | `package.json` | sửa | Thêm `pendingCapture.test.ts` vào `npm test`. |
 
 Không đổi: `addImage`, `labelImage`, `addWound`, `updatePatient`, các màn bệnh nhân, quản trị, B02, B03 (giao diện), B05, B11, `src/lib/capture/*`, `src/lib/ai/*`, `src/lib/device/*`, `types.ts`, `integrity.ts`, `writePath.ts`.
@@ -37,7 +38,7 @@ Quyền tạo hồ sơ ở B03 (`addPatient`) giữ nguyên.
 
 - Lối "Chụp cho bệnh nhân mới" từ B09; chụp (chọn ảnh thư viện trên web), kiểm tra ảnh, nhập số đo trước khi có hồ sơ.
 - Ảnh chờ ngoài dữ liệu chính, qua được quay lại, rời màn, tải lại trang (mở lại ứng dụng).
-- Biểu mẫu có ảnh; tạo hồ sơ, tài khoản, vết, ảnh trong một lần ghi; mở vết thương.
+- Biểu mẫu có ảnh; tạo hồ sơ, tài khoản, vết, ảnh trong một lần ghi; kiểm lại liên kết `patientId`, `woundId` trên dữ liệu vừa ghi rồi mới xóa ảnh chờ; mở thẳng B05 (phương án 2, người dùng chọn 16/11/2026).
 - Quan hệ patient, wound, image đúng; siêu dữ liệu chụp giữ nguyên; số đo ghi sau bằng `labelImage`.
 - Chống bấm lặp (màn, store, `captureId`); lỗi ghi không để lại bản ghi; ghi số đo lỗi có cách nhập lại.
 - Trùng số điện thoại: xem hồ sơ trùng theo quyền, gắn vào hồ sơ có sẵn chỉ sau khi chọn vết và xác nhận.
@@ -51,9 +52,13 @@ Quyền tạo hồ sơ ở B03 (`addPatient`) giữ nguyên.
 - Cảnh báo "Ảnh chỉ giữ trong lần mở ứng dụng này" khi ghi ảnh chờ lỗi: có mã, chưa có ca tự động.
 - Trình đọc màn hình trên máy thật.
 
-### Cần duyệt API hoặc lược đồ
+### Đã duyệt (người dùng, 16/11/2026)
 
-- DI-1 khóa lưu ảnh chờ mới (ngoài `AppData`), DI-2 hàm store mới. Xem báo cáo toàn vẹn dữ liệu mục 5. Không đổi lược đồ `AppData`.
+- DI-1 khóa lưu ảnh chờ riêng (ngoài `AppData`), DI-2 hàm ghi mới ở store. Không đổi lược đồ `AppData`.
+- UX-1: phương án 2, mở thẳng B05. Mã kích hoạt không hiện ở luồng này; tài khoản bệnh nhân vẫn được tạo như B03, bác sĩ cấp mã ở B04 ("Cấp lại mã kích hoạt"). Luồng mã kích hoạt của B03, B04 không đổi.
+
+### Cần duyệt
+
 - Đề xuất endpoint và ràng buộc cho backend (báo cáo toàn vẹn dữ liệu mục 6): chưa đưa vào tài liệu đề xuất backend, chờ đồng ý.
 
 ### Bị chặn bởi kiến trúc hiện có
@@ -65,8 +70,7 @@ Quyền tạo hồ sơ ở B03 (`addPatient`) giữ nguyên.
 
 - Dọn tệp ảnh chờ mồ côi khi mở ứng dụng.
 - Ghi nhật ký ai tạo hồ sơ từ ảnh (chưa có nhật ký thao tác chung).
-- Mở thẳng B05 sau khi tạo (UX-1, chờ người dùng chọn chỗ hiện mã kích hoạt).
 
 ## 4. Kết luận
 
-Theo mục 12, tính năng đạt các tiêu chí nghiệm thu trên bản web (quan hệ dữ liệu và phục hồi lỗi được kiểm trên dữ liệu thật của store và bộ nhớ trình duyệt, không chỉ giao diện). Chưa ghi COMPLETE vì còn các mục "chưa kiểm đủ" trên máy thật và hai mục cần duyệt (DI-1, DI-2). Trạng thái: **IMPLEMENTED, VERIFIED ON WEB, PENDING DEVICE TEST AND APPROVAL**.
+Theo mục 12, tính năng đạt các tiêu chí nghiệm thu trên bản web (quan hệ dữ liệu và phục hồi lỗi được kiểm trên dữ liệu thật của store và bộ nhớ trình duyệt, không chỉ giao diện). DI-1, DI-2, UX-1 đã được duyệt. Chưa ghi COMPLETE vì còn các mục "chưa kiểm đủ" trên máy thật. Trạng thái: **IMPLEMENTED, VERIFIED ON WEB, PENDING DEVICE TEST**.

@@ -18,13 +18,13 @@ Ngày: 16/11/2026. Áp dụng cho dữ liệu cục bộ trên một máy (demo 
 `commitPendingCapture(target)` (`src/lib/store.tsx`):
 
 1. Kiểm vai trò bác sĩ (tài khoản không khóa) và có ảnh chờ của chính bác sĩ.
-2. Nếu dữ liệu đã có ảnh mang cùng `captureId` (lần trước ghi xong mà chưa kịp xóa ảnh chờ): không ghi gì, trả lại hồ sơ, vết, ảnh đã có, xóa ảnh chờ.
+2. Nếu dữ liệu đã có ảnh mang cùng `captureId` (lần trước ghi xong mà chưa kịp xóa ảnh chờ): không ghi gì. Kiểm liên kết bằng `verifyLinked` (vết tồn tại, vết cùng hồ sơ với ảnh, hồ sơ tồn tại). Đúng thì trả lại hồ sơ, vết, ảnh đã có rồi xóa ảnh chờ; sai thì báo lỗi, giữ ảnh chờ, không ghi thêm.
 3. Hồ sơ mới: kiểm biểu mẫu, so trùng số điện thoại (ném `DuplicatePatientError`), cấp mã hồ sơ, tài khoản và mã kích hoạt như `addPatient`, vết VT01 như `addPatient`. Hồ sơ có sẵn (sau xác nhận): `requireDoctor` (bác sĩ phụ trách, không lưu trữ), vết phải thuộc hồ sơ và chưa kết thúc theo dõi, hoặc vết mới theo vị trí bác sĩ nhập.
 4. Chép tệp ảnh chờ (và tệp chiều sâu) sang tên theo `image_id`, như `addImage`.
 5. **Một `commit`**: thêm hồ sơ, tài khoản, vết, ảnh và tăng bộ đếm trong cùng một bản `AppData`. Trong hàm commit kiểm lại trùng số điện thoại, quyền, vết còn hợp lệ, mã ảnh và mã hồ sơ chưa dùng, `captureId` chưa có. Đường ghi Stage 9C kiểm quan hệ (mồ côi, gắn chéo, trùng mã) rồi ghi bền, chỉ khi ghi xong mới đổi màn hình.
-6. Thành công: xóa ảnh chờ và tệp tạm. Lỗi ở bất kỳ bước nào: không có bản ghi nào được thêm; tệp vừa chép ở bước 4 bị xóa; ảnh chờ và thông tin biểu mẫu giữ nguyên.
+6. Sau commit: `verifyLinked` trên dữ liệu vừa ghi, so đúng `patientId`, `woundId` mong đợi. **Chỉ khi xác nhận được mới xóa ảnh chờ và tệp tạm** (yêu cầu người dùng 16/11/2026). Chưa xác nhận được: báo lỗi, giữ ảnh chờ; lần bấm lại đi theo bước 2, không tạo bản thứ hai. Sau đó màn mở thẳng B05. Lỗi ở bất kỳ bước nào: không có bản ghi nào được thêm; tệp vừa chép ở bước 4 bị xóa; ảnh chờ và thông tin biểu mẫu giữ nguyên.
 
-Số đo (diện tích, phương pháp) **không** nằm trong lần ghi trên: sau khi ảnh có `image_id`, màn gọi `labelImage` như B10. Đây là cách B10 vẫn làm (ảnh trước, số đo sau) và giữ nguyên hàm ghi số đo, lịch sử nhãn. Ghi số đo lỗi: hồ sơ, vết, ảnh đã đúng và đủ; ảnh chưa có số đo; màn kết quả nói rõ và mở B11 để nhập lại (không tạo ảnh thứ hai).
+Số đo (diện tích, phương pháp) **không** nằm trong lần ghi trên: sau khi ảnh có `image_id`, màn gọi `labelImage` như B10. Đây là cách B10 vẫn làm (ảnh trước, số đo sau) và giữ nguyên hàm ghi số đo, lịch sử nhãn. Ghi số đo lỗi: hồ sơ, vết, ảnh đã đúng và đủ; ảnh chưa có số đo; màn mở B11 của ảnh, nói rõ số đo chưa lưu, điền sẵn số đo để lưu lại (không tạo ảnh thứ hai).
 
 ## 3. Đối chiếu với mục 4 của yêu cầu
 
@@ -48,12 +48,15 @@ Số đo (diện tích, phương pháp) **không** nằm trong lần ghi trên: 
 | 7. Vết tạo xong nhưng gắn ảnh lỗi | Không xảy ra được: vết và ảnh ghi trong cùng một commit. Phần ghi tách riêng duy nhất là số đo | Ghi số đo lỗi: báo "Số đo chưa lưu", mở B11 nhập lại; không ảnh trùng | NP-31, NP-32 |
 | 8. Tải ảnh lên xong nhưng tạo hồ sơ lỗi | Tương ứng: tệp ảnh đã chép (ảnh chờ, và tệp theo `image_id` ở bước 4) rồi commit lỗi | Tệp theo `image_id` bị xóa; tệp ảnh chờ giữ để thử lại; không có bản ghi mồ côi | NP-28, NP-29 (web); máy thật chưa thử |
 | 10. Thoát giữa chừng rồi mở lại | Ảnh chờ và biểu mẫu được ghi bền | B09 hiện thẻ ảnh chờ có họ tên đã nhập; "Tiếp tục tạo hồ sơ" khôi phục biểu mẫu | NP-22, NP-23 |
-| Ghi xong nhưng ứng dụng tắt trước khi xóa ảnh chờ | Ảnh chờ còn sót | Nhận ra theo `captureId`, không tạo lần hai | NP-33 |
+| Ghi xong nhưng ứng dụng tắt trước khi xóa ảnh chờ | Ảnh chờ còn sót | Nhận ra theo `captureId`, kiểm liên kết, không tạo lần hai | NP-33 |
+| Ảnh đã có theo `captureId` nhưng liên kết sai (vết không tồn tại) | Dữ liệu bị sửa ngoài ứng dụng hoặc ghi dở | Báo lỗi, giữ ảnh chờ, không ghi thêm; sửa xong bấm lại thì nhận ảnh đã có và xóa ảnh chờ | NP-33b, NP-33c |
 | Ghi ảnh chờ vào bộ nhớ máy lỗi | Ảnh chờ chỉ ở bộ nhớ của phiên | Biểu mẫu hiện cảnh báo "Ảnh chỉ giữ trong lần mở ứng dụng này" | Chưa có ca tự động |
 
-## 5. Cần duyệt
+## 5. Đã duyệt (người dùng, 16/11/2026)
 
-- **DI-1. Khóa lưu mới `plasmapro.anh-cho-ho-so.v1`** (bảng ảnh chờ theo tài khoản bác sĩ). Ngoài `AppData`, không đổi cấu trúc dữ liệu chính, nhưng là một chỗ lưu mới trên máy. Yêu cầu nói "đề xuất trước khi đổi API hoặc lược đồ"; thay đổi này không chạm lược đồ `AppData` nên đã làm, và cần người dùng xác nhận.
+Người dùng đồng ý DI-1 và DI-2, kèm điều kiện chỉ xóa ảnh chờ sau khi xác nhận liên kết (đã làm, mục 2 bước 2 và 6).
+
+- **DI-1. Khóa lưu mới `plasmapro.anh-cho-ho-so.v1`** (bảng ảnh chờ theo tài khoản bác sĩ). Ngoài `AppData`, không đổi cấu trúc dữ liệu chính, nhưng là một chỗ lưu mới trên máy. Yêu cầu nói "đề xuất trước khi đổi API hoặc lược đồ"; thay đổi này không chạm lược đồ `AppData`.
 - **DI-2. Hàm store mới `commitPendingCapture`** (và ba hàm ảnh chờ). Thêm vào giao diện store, không đổi hàm cũ. `addPatient` đổi lớp lỗi trùng sang `DuplicatePatientError` (kế thừa `Error`, cùng câu báo), B03 hiển thị không đổi.
 
 ## 6. Đề xuất cho backend (chưa làm, phạm vi đề xuất)

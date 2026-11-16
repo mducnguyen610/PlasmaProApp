@@ -8,7 +8,8 @@ Ngày: 16/11/2026. Ảnh chụp màn (bản web, 390 × 844 trừ khi ghi khác)
 B09 ─ [Chọn bệnh nhân hiện có] ─ (luồng cũ, không đổi) ─ B10 ─ lưu ─ B11
   └─ [Chụp cho bệnh nhân mới] ─ B10 (moi=1): Chụp → Kiểm tra ảnh → Nhập số đo
         └─ "Tiếp: tạo hồ sơ bệnh nhân" → ảnh vào trạng thái chờ → B09b Tạo hồ sơ từ ảnh
-              ├─ "Tạo hồ sơ và gắn ảnh" → (một lần ghi) → "Đã tạo hồ sơ" (mã kích hoạt) → "Mở vết thương VT01" → B05
+              ├─ "Tạo hồ sơ và gắn ảnh" → (một lần ghi, kiểm liên kết, xóa ảnh chờ) → B05 của VT01
+              │     └─ ghi số đo lỗi → B11 của ảnh, số đo điền sẵn
               ├─ trùng số điện thoại → thẻ "Có thể trùng hồ sơ BNxxx" → xem / gắn vào hồ sơ đó (sau xác nhận) / sửa số
               ├─ Quay lại (tiêu đề) hoặc "Xem lại ảnh ở bước trước" → B10 bước 3, ảnh và số đo còn
               ├─ "Để sau, giữ ảnh chờ ở màn Chụp ảnh" → B09, thẻ ảnh chờ
@@ -26,13 +27,13 @@ B09 ─ [Chọn bệnh nhân hiện có] ─ (luồng cũ, không đổi) ─ B1
 | Quay lại vẫn giữ ảnh | B10 vẫn ở bước "Nhập số đo" với ảnh, số đo; chip đổi thành "Ảnh chờ tạo hồ sơ"; rời B10 không hỏi bỏ dữ liệu vì ảnh đã an toàn ở trạng thái chờ. | kịch bản NP-17 đến NP-19 |
 | Lỗi tạo hồ sơ vẫn giữ ảnh và thông tin | Câu lỗi ở chân màn kết thúc bằng "Ảnh và thông tin đã nhập vẫn giữ nguyên, có thể bấm lưu lại."; ô nhập không bị xóa. | `b09b-loi-ghi-390` |
 | Chống tạo trùng do bấm lặp | Nút có trạng thái đang lưu, khóa bằng ref ở màn và khóa ở store; 5 lần chạm liền chỉ tạo 1 hồ sơ. | NP-26, NP-27 |
-| Lỗi có ý nghĩa, có cách khắc phục | Lỗi từng ô (họ tên, năm sinh, vị trí); lỗi ghi; trùng hồ sơ có thẻ riêng với hành động; ghi số đo lỗi có nút "Nhập lại số đo". | `b09b-trung-ho-so-390`, `b09b-loi-so-do-390` |
-| Không báo thành công sớm | Màn "Đã tạo hồ sơ" chỉ hiện sau khi lần ghi hồ sơ, vết, ảnh trả về thành công; ghi số đo lỗi thì màn kết quả nói rõ "Số đo chưa lưu". | `b09b-da-tao-390` |
+| Lỗi có ý nghĩa, có cách khắc phục | Lỗi từng ô (họ tên, năm sinh, vị trí); lỗi ghi; trùng hồ sơ có thẻ riêng với hành động; ghi số đo lỗi mở B11 của ảnh với câu "đã lưu nhưng số đo chưa lưu" và số đo điền sẵn. | `b09b-trung-ho-so-390`, `b09b-loi-so-do-390` |
+| Không báo thành công sớm | Chỉ chuyển sang B05 sau khi lần ghi trả về thành công và liên kết ảnh đã được kiểm; ghi số đo lỗi thì B11 nói rõ số đo chưa lưu. | `b05-sau-tao-390` |
 | Hệ thống Clinical Precision, bố cục co giãn | Chỉ dùng thành phần có sẵn (Card, Field, Segmented, Chip, Notice, Button, TextLink, InfoRow); nút chính ở chân màn; không tràn ngang ở 320, 360, 390, 768. | `b09-*`, `b09b-*` theo bề rộng |
 
 ## 3. Quyết định trải nghiệm cần người dùng xem
 
-- **UX-1. Màn "Đã tạo hồ sơ" trước khi mở vết thương.** Yêu cầu bước 10 là mở thẳng B05. Luồng giữ một màn kết quả có mã kích hoạt rồi nút "Mở vết thương VT01", vì mã kích hoạt chỉ hiện một lần (như B03); mở thẳng B05 sẽ làm bác sĩ mất mã. Nếu muốn mở thẳng, cần chỗ khác hiện mã (ví dụ thông báo trên B05).
+- **UX-1. Đã chốt (16/11/2026): mở thẳng B05** theo đặc tả gốc (phương án 2). Màn "Đã tạo hồ sơ" đã bỏ. Mã kích hoạt không hiện ở luồng này; bác sĩ cấp mã khi cần ở B04 ("Cấp lại mã kích hoạt", mã cũ hết hiệu lực). Luồng mã kích hoạt của B03, B04 không đổi.
 - **UX-2. Vị trí vết thương bắt buộc ở B09b** (ở B03 không bắt buộc). Ảnh phải thuộc một vết, và ứng dụng không được tự đặt thông tin vết.
 - **UX-3. Số đo nhập ở B10 được lưu sau khi tạo hồ sơ** bằng đúng hàm ghi số đo của B10. Biểu mẫu ghi "(lưu sau khi tạo hồ sơ)" cạnh số đo để không hiểu nhầm là đã lưu.
 - **UX-4. Một ảnh chờ cho mỗi bác sĩ.** Khi đang có ảnh chờ, nút "Chụp cho bệnh nhân mới" khóa và nêu lý do; bác sĩ tiếp tục hoặc bỏ ảnh đó trước. Cách này tránh âm thầm thay ảnh chờ.

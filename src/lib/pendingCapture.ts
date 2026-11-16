@@ -88,6 +88,19 @@ export function committedImageOf(d: Pick<AppData, 'images'>, pending: Pick<Pendi
   return d.images.find((im) => im.capture?.captureId === pending.capture.captureId);
 }
 
+/**
+ * Ảnh của lần chụp này đã nằm trong dữ liệu và liên kết đúng chưa: ảnh có captureId này, vết của ảnh tồn tại và thuộc đúng hồ sơ của ảnh,
+ * hồ sơ tồn tại; nếu có `expect` thì patient_id, wound_id phải đúng như mong đợi. Chỉ khi hàm này trả ảnh thì mới được xóa ảnh chờ.
+ */
+export function verifyLinked(d: Pick<AppData, 'images' | 'wounds' | 'patients'>, captureId: string, expect?: { patientId: string; woundId: string }): WoundImage | null {
+  const im = d.images.find((x) => x.capture?.captureId === captureId);
+  if (!im) return null;
+  const w = d.wounds.find((x) => x.id === im.woundId);
+  if (!w || w.patientId !== im.patientId || !d.patients.some((x) => x.id === im.patientId)) return null;
+  if (expect && (im.patientId !== expect.patientId || im.woundId !== expect.woundId)) return null;
+  return im;
+}
+
 /** Bản chờ đọc từ bộ nhớ máy có đủ trường dùng được không (dữ liệu cũ hoặc hỏng thì bỏ qua, không làm hỏng màn). */
 export function isPendingCapture(x: unknown): x is PendingCapture {
   const p = x as PendingCapture | null;

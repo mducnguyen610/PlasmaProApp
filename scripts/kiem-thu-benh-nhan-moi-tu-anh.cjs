@@ -160,9 +160,9 @@ const rec = (id, name, pass, detail = '') => {
     const nw = np && d2.wounds.filter((w) => w.patientId === np.id);
     const ni = np && d2.images.filter((i) => i.patientId === np.id);
     const acc = np && d2.accounts.filter((a) => a.patientId === np.id);
-    rec('NP-08', 'Lưu thành công: đúng 1 hồ sơ, 1 tài khoản, 1 vết VT01, 1 ảnh mới; màn "Đã tạo hồ sơ" có mã kích hoạt',
+    rec('NP-08', 'Lưu thành công: đúng 1 hồ sơ, 1 tài khoản, 1 vết VT01, 1 ảnh mới; mở thẳng B05 (không còn màn trung gian)',
       !!np && same(counts(d2), { patients: c0.patients + 1, accounts: c0.accounts + 1, wounds: c0.wounds + 1, images: c0.images + 1 }) && nw.length === 1 && nw[0].code === 'VT01' && ni.length === 1 && acc.length === 1
-      && await has(p, 'Đã tạo hồ sơ') && await has(p, 'Mã kích hoạt'), np ? `${np.code} ${nw.map((w) => w.id)} ${ni.map((i) => i.id)}` : 'không thấy hồ sơ');
+      && /\/wounds\//.test(p.url()) && !(await has(p, 'Đã tạo hồ sơ')), np ? `${np.code} ${nw.map((w) => w.id)} ${ni.map((i) => i.id)}` : 'không thấy hồ sơ');
     if (np) {
       const im = ni[0];
       created = { pid: np.id, wid: nw[0].id, iid: im.id, code: np.code, captureId: mine && mine.capture.captureId };
@@ -177,9 +177,7 @@ const rec = (id, name, pass, detail = '') => {
         !d2.evaluations.some((e) => e.woundId === nw[0].id) && !d2.plans.some((x) => x.patientId === np.id) && !np.deviceId && im.capture.automaticMeasurement.areaCm2 === null);
       rec('NP-13', 'Ảnh chờ đã xóa (bộ nhớ máy và store); dữ liệu không có lỗi quan hệ', (await savedPending(p)) === null && L.pending === null && relIssues(d2).length === 0, relIssues(d2).join('; '));
     }
-    await shot(p, 'b09b-da-tao-390');
-    await click(p, 'Mở vết thương VT01', 2000);
-    rec('NP-14', 'Mở vết thương: B05 của VT01 thuộc hồ sơ mới, có ảnh vừa gắn', /\/wounds\//.test(p.url()) && await has(p, 'Lê Văn Thử', false) && (created ? p.url().includes(created.wid) : false), p.url());
+    rec('NP-14', 'Điều hướng thẳng: B05 của đúng VT01 thuộc hồ sơ mới, chỉ sau khi ảnh chờ đã xóa', /\/wounds\//.test(p.url()) && await has(p, 'Lê Văn Thử', false) && (created ? p.url().includes(created.wid) : false), p.url());
     await shot(p, 'b05-sau-tao-390');
     // Quay lại: B10 đã về bước 1, không còn ảnh cũ.
     await p.goBack(); await p.waitForTimeout(1200);
@@ -258,7 +256,7 @@ const rec = (id, name, pass, detail = '') => {
     await click(p, 'Tạo hồ sơ và gắn ảnh', 2000);
     const L2 = await live(p);
     rec('NP-28', 'Lỗi ghi bộ nhớ máy khi lưu: báo lỗi kèm "Ảnh và thông tin đã nhập vẫn giữ nguyên"; không có hồ sơ, vết, ảnh nào (cả trong store lẫn bộ nhớ máy); không báo thành công',
-      await has(p, 'Ảnh và thông tin đã nhập vẫn giữ nguyên', false) && !(await has(p, 'Đã tạo hồ sơ')) && same(counts(L2.data), c2) && same(counts(await saved(p)), c2) && !L2.data.patients.some((x) => x.name === 'Lỗi Bộ Nhớ'));
+      await has(p, 'Ảnh và thông tin đã nhập vẫn giữ nguyên', false) && p.url().includes('capture-new-patient') && same(counts(L2.data), c2) && same(counts(await saved(p)), c2) && !L2.data.patients.some((x) => x.name === 'Lỗi Bộ Nhớ'));
     rec('NP-29', 'Sau lỗi: ảnh chờ còn nguyên (cùng captureId), họ tên còn trong ô', !!L2.pending && L2.pending.capture.captureId === Object.values(pend2)[0].capture.captureId && (await input(p, 'Họ và tên').inputValue()) === 'Lỗi Bộ Nhớ');
     await shot(p, 'b09b-loi-ghi-390');
     await p.evaluate(() => { Storage.prototype.setItem = window.__oset; });
@@ -275,12 +273,11 @@ const rec = (id, name, pass, detail = '') => {
     const d4 = await saved(p);
     const p4 = d4.patients.find((x) => x.name === 'Lỗi Số Đo');
     const i4 = p4 && d4.images.find((i) => i.patientId === p4.id);
-    rec('NP-31', 'Ghi số đo lỗi sau khi đã tạo hồ sơ và ảnh: màn báo rõ "Số đo chưa lưu", có "Nhập lại số đo"; hồ sơ, vết, ảnh có đủ và đúng quan hệ, ảnh chưa có số đo',
-      await has(p, 'Số đo chưa lưu', false) && await btn(p, 'Nhập lại số đo').isVisible() && !!i4 && i4.areaCm2 === null && same(counts(d4), { patients: c4.patients + 1, accounts: c4.accounts + 1, wounds: c4.wounds + 1, images: c4.images + 1 }) && relIssues(d4).length === 0);
+    rec('NP-31', 'Ghi số đo lỗi sau khi đã tạo hồ sơ và ảnh: mở B11 của ảnh, báo rõ "số đo chưa lưu"; hồ sơ, vết, ảnh có đủ và đúng quan hệ, ảnh chưa có số đo',
+      await has(p, 'số đo chưa lưu', false) && !!i4 && i4.areaCm2 === null && same(counts(d4), { patients: c4.patients + 1, accounts: c4.accounts + 1, wounds: c4.wounds + 1, images: c4.images + 1 }) && relIssues(d4).length === 0);
     await shot(p, 'b09b-loi-so-do-390');
     await p.evaluate(() => { Storage.prototype.setItem = window.__oset; });
-    await click(p, 'Nhập lại số đo', 2000);
-    rec('NP-32', '"Nhập lại số đo" mở B11 của đúng ảnh vừa gắn, điền sẵn 7,5', !!i4 && p.url().includes(`/images/${i4.id}`) && (await p.locator('input:visible').evaluateAll((xs) => xs.map((x) => x.value))).includes('7,5'), p.url());
+    rec('NP-32', 'B11 là của đúng ảnh vừa gắn, số đo 7,5 điền sẵn để lưu lại', !!i4 && p.url().includes(`/images/${i4.id}`) && (await p.locator('input:visible').evaluateAll((xs) => xs.map((x) => x.value))).includes('7,5'), p.url());
 
     // Ghi lặp sau khi mở lại: dữ liệu đã có ảnh của lần chụp này nhưng ảnh chờ còn sót (ví dụ ứng dụng tắt trước khi xóa ảnh chờ).
     await toForm(p);
@@ -294,7 +291,31 @@ const rec = (id, name, pass, detail = '') => {
     await click(p, 'Tạo hồ sơ và gắn ảnh', 2500);
     const d5 = await saved(p);
     rec('NP-33', 'Ảnh chờ còn sót của lần đã ghi: bấm lưu không tạo hồ sơ thứ hai (nhận ra theo captureId), trả về hồ sơ đã có, xóa ảnh chờ',
-      same(counts(d5), c5) && d5.patients.filter((x) => x.name === 'Ảnh Chờ Sót').length === 1 && (await savedPending(p)) === null && await has(p, 'Đã gắn ảnh vào hồ sơ'));
+      same(counts(d5), c5) && d5.patients.filter((x) => x.name === 'Ảnh Chờ Sót').length === 1 && (await savedPending(p)) === null && /\/wounds\//.test(p.url()));
+
+    // Kiểm trước khi xóa ảnh chờ: dữ liệu có ảnh của lần chụp này nhưng liên kết sai (vết không tồn tại). Ảnh chờ phải giữ, không ghi thêm.
+    await toForm(p);
+    await fillForm(p, { name: 'Liên Kết Hỏng', year: '1961', loc: 'Gót chân' });
+    const stale6 = await savedPending(p);
+    await click(p, 'Tạo hồ sơ và gắn ảnh', 2500);
+    await p.evaluate(({ k, kp, v, cid }) => {
+      const d = JSON.parse(localStorage.getItem(k)); const im = d.images.find((i) => i.capture && i.capture.captureId === cid);
+      im.__w = im.woundId; im.woundId = 'w-khong-ton-tai'; localStorage.setItem(k, JSON.stringify(d)); localStorage.setItem(kp, JSON.stringify(v));
+    }, { k: DATA_KEY, kp: PENDING_KEY, v: stale6, cid: Object.values(stale6)[0].capture.captureId });
+    await p.reload(); await p.waitForTimeout(2500);
+    await go(p, '/capture-new-patient');
+    const c6 = counts(await saved(p));
+    await click(p, 'Tạo hồ sơ và gắn ảnh', 2500);
+    const d6 = await saved(p); const L6 = await live(p);
+    rec('NP-33b', 'Ảnh của lần chụp đã có nhưng liên kết sai: báo lỗi, giữ ảnh chờ (bộ nhớ máy và store), không ghi thêm bản nào, không rời biểu mẫu',
+      await has(p, 'liên kết hồ sơ, vết thương chưa đúng', false) && same(counts(d6), c6) && !!(await savedPending(p)) && !!L6.pending && p.url().includes('capture-new-patient'));
+    // Trả dữ liệu về đúng để các ca sau không bị ảnh hưởng.
+    await p.evaluate(({ k, cid }) => { const d = JSON.parse(localStorage.getItem(k)); const im = d.images.find((i) => i.capture && i.capture.captureId === cid); im.woundId = im.__w; delete im.__w; localStorage.setItem(k, JSON.stringify(d)); }, { k: DATA_KEY, cid: Object.values(stale6)[0].capture.captureId });
+    await p.reload(); await p.waitForTimeout(2500);
+    await go(p, '/capture-new-patient');
+    await click(p, 'Tạo hồ sơ và gắn ảnh', 2500);
+    rec('NP-33c', 'Sửa lại liên kết rồi bấm lưu: nhận ảnh đã có theo captureId, xóa ảnh chờ, mở B05; vẫn đúng 1 hồ sơ "Liên Kết Hỏng"',
+      (await savedPending(p)) === null && /\/wounds\//.test(p.url()) && (await saved(p)).patients.filter((x) => x.name === 'Liên Kết Hỏng').length === 1 && same(counts(await saved(p)), c6));
     rec('NP-34', 'Không có lỗi trang ở nhóm D', p.errors.length === 0, p.errors.join(' | '));
     await p.close();
   }
@@ -330,7 +351,7 @@ const rec = (id, name, pass, detail = '') => {
     const d = await saved(p);
     const im = d.images.find((i) => i.capture && i.capture.captureId === pend.capture.captureId);
     rec('NP-38', 'Xác nhận: ảnh gắn vào BN001 · VT01 (đúng vết đã chọn); không tạo hồ sơ, tài khoản hay vết mới; thông tin BN001 không đổi',
-      !!im && im.patientId === 'p-1' && im.woundId === w1.id && same(counts(d), { ...c0, images: c0.images + 1 }) && same(d.patients.find((x) => x.id === 'p-1'), (await saved(p)).patients.find((x) => x.id === 'p-1')) && await has(p, 'Đã gắn ảnh vào hồ sơ'));
+      !!im && im.patientId === 'p-1' && im.woundId === w1.id && same(counts(d), { ...c0, images: c0.images + 1 }) && same(d.patients.find((x) => x.id === 'p-1'), (await saved(p)).patients.find((x) => x.id === 'p-1')) && /\/wounds\//.test(p.url()) && p.url().includes(w1.id));
     // Trùng với hồ sơ của bác sĩ khác: chỉ hiện mã hồ sơ, không cho gắn.
     await toForm(p);
     await fillForm(p, { name: 'Người Khác', year: '1960', phone: '0933 444 555', loc: 'Lưng' });

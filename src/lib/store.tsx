@@ -15,7 +15,7 @@ import { CLOSURE_CONFIRM_DAYS, addDays, isScheduled, localDay } from './course';
 import { CARE_ITEMS, LIFECYCLE } from './maintenance';
 import { buildFilename } from './naming';
 import { archiveBlocker, isArchived, splitDoctorPatientPatch, validatePatientEdit, validateWoundLocation } from './patientRecord';
-import { committedImageOf, EMPTY_PENDING_FORM, findPhoneDuplicate, isPendingCapture, validateNewPatientForm, type PendingCapture, type PendingPatientForm } from './pendingCapture';
+import { committedImageOf, EMPTY_PENDING_FORM, verifyLinked, findPhoneDuplicate, isPendingCapture, validateNewPatientForm, type PendingCapture, type PendingPatientForm } from './pendingCapture';
 import { createSeed, DEMO_ASSETS } from './seed';
 import type {
   Account, AppData, Device, DeviceLifecycle, DeviceLinkLog, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
@@ -631,8 +631,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const held = mine(actor.id);
       if (!held) throw new Error('Không còn ảnh chờ gắn hồ sơ. Chụp lại từ màn Chụp ảnh.');
       // Ảnh này đã được ghi ở lần trước (ví dụ ghi xong nhưng chưa kịp xóa bản chờ): không tạo lần hai, trả lại bản đã có.
-      const already = committedImageOf(dataRef.current, held);
-      if (already) {
+      if (committedImageOf(dataRef.current, held)) {
+        // Chỉ xóa ảnh chờ khi ảnh đã có liên kết đúng (vết tồn tại, cùng hồ sơ); sai liên kết thì giữ ảnh chờ và báo, không ghi thêm.
+        const already = verifyLinked(dataRef.current, held.capture.captureId);
+        if (!already) throw new Error('Ảnh của lần chụp này đã có trong dữ liệu nhưng liên kết hồ sơ, vết thương chưa đúng. Ảnh chờ vẫn giữ; không ghi thêm bản nào.');
         const w = dataRef.current.wounds.find(x => x.id === already.woundId)!;
         const p = dataRef.current.patients.find(x => x.id === already.patientId)!;
         await clearPendingStorage(held);
@@ -719,6 +721,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         };
       });
       written.length = 0;
+      // Xác nhận lại trên dữ liệu vừa ghi: ảnh có đúng patient_id, wound_id, vết thuộc đúng hồ sơ. Chưa xác nhận được thì giữ ảnh chờ;
+      // lần bấm lại sẽ nhận ra ảnh theo captureId (không tạo bản ghi thứ hai).
+      if (!verifyLinked(dataRef.current, held.capture.captureId, { patientId: patient.id, woundId: wound.id })) {
+        throw new Error('Đã ghi nhưng chưa xác nhận được ảnh gắn đúng hồ sơ và vết thương. Ảnh chờ vẫn giữ; bấm lưu lại để kiểm tra, không tạo bản ghi trùng.');
+      }
       await clearPendingStorage(held);
       return { patient, wound, image, activation };
     } catch (e) {

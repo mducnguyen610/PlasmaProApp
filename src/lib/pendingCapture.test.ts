@@ -1,7 +1,7 @@
 // Chạy: node src/lib/pendingCapture.test.ts
 // Luồng "Chụp cho bệnh nhân mới": so trùng hồ sơ theo đúng quy tắc của addPatient, kiểm biểu mẫu, khóa chống ghi lặp, đếm bộ lọc B09.
 import assert from 'node:assert/strict';
-import { activeFilterCount, committedImageOf, duplicateView, EMPTY_PENDING_FORM, findPhoneDuplicate, isPendingCapture, validateNewPatientForm } from './pendingCapture.ts';
+import { activeFilterCount, committedImageOf, verifyLinked, duplicateView, EMPTY_PENDING_FORM, findPhoneDuplicate, isPendingCapture, validateNewPatientForm } from './pendingCapture.ts';
 
 const P = (x: object) => ({ id: 'p-1', code: 'BN001', name: 'Nguyễn Văn A', birthYear: 1958, sex: 'Nam', phone: '09xx xxx 001', doctorId: 'u-bs1', researchConsent: true, createdAt: '2026-10-01', ...x }) as never;
 const all = [P({}), P({ id: 'p-9', code: 'BN009', name: 'Người Khác', phone: '0933 444 555', doctorId: 'u-bs2' }), P({ id: 'p-8', code: 'BN008', phone: '', doctorId: 'u-bs1' })];
@@ -39,6 +39,17 @@ assert.ok(validateNewPatientForm(f({ name: 'A', birthYear: '1970', woundLocation
 const cap = { capture: { captureId: 'CAP-1' } } as never;
 assert.equal(committedImageOf({ images: [{ id: 'IMG1', capture: { captureId: 'CAP-1' } }] } as never, cap)?.id, 'IMG1');
 assert.equal(committedImageOf({ images: [{ id: 'IMG1', capture: { captureId: 'CAP-2' } }, { id: 'IMG0' }] } as never, cap), undefined);
+
+// Xác nhận liên kết trước khi xóa ảnh chờ: ảnh có captureId, vết tồn tại và cùng hồ sơ, đúng patient_id và wound_id mong đợi.
+const D = { patients: [{ id: 'p-1' }, { id: 'p-2' }], wounds: [{ id: 'w-1', patientId: 'p-1' }, { id: 'w-2', patientId: 'p-2' }], images: [{ id: 'IMG1', woundId: 'w-1', patientId: 'p-1', capture: { captureId: 'CAP-1' } }] } as never;
+assert.equal(verifyLinked(D, 'CAP-1')?.id, 'IMG1');
+assert.equal(verifyLinked(D, 'CAP-1', { patientId: 'p-1', woundId: 'w-1' })?.id, 'IMG1');
+assert.equal(verifyLinked(D, 'CAP-1', { patientId: 'p-2', woundId: 'w-1' }), null);
+assert.equal(verifyLinked(D, 'CAP-1', { patientId: 'p-1', woundId: 'w-2' }), null);
+assert.equal(verifyLinked(D, 'CAP-9'), null);
+assert.equal(verifyLinked({ ...(D as object), images: [{ id: 'IMG1', woundId: 'w-2', patientId: 'p-1', capture: { captureId: 'CAP-1' } }] } as never, 'CAP-1'), null, 'gắn chéo hồ sơ');
+assert.equal(verifyLinked({ ...(D as object), wounds: [] } as never, 'CAP-1'), null, 'vết không tồn tại');
+assert.equal(verifyLinked({ ...(D as object), patients: [] } as never, 'CAP-1'), null, 'hồ sơ không tồn tại');
 
 // Ảnh chờ đọc từ bộ nhớ máy: thiếu trường thì bỏ qua.
 const good = { id: 'CHO-1', doctorId: 'u-bs1', uri: 'data:x', captureDate: '2026-11-16', capture: { captureId: 'CAP-1' }, form: EMPTY_PENDING_FORM };

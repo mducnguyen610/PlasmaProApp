@@ -33,7 +33,7 @@
     "id": "NP-06",
     "name": "Ảnh ở trạng thái chờ: ghi ở khóa riêng, không có image_id, chưa có hồ sơ, vết hay ảnh mới trong dữ liệu chính",
     "result": "ĐẠT",
-    "detail": "captureId CAP-f11e2626-c79d-4a27-b630-d19120527066"
+    "detail": "captureId CAP-33f00604-4fa8-47c8-a1c7-14fbba70f3fd"
   },
   {
     "id": "NP-07",
@@ -43,9 +43,9 @@
   },
   {
     "id": "NP-08",
-    "name": "Lưu thành công: đúng 1 hồ sơ, 1 tài khoản, 1 vết VT01, 1 ảnh mới; màn \"Đã tạo hồ sơ\" có mã kích hoạt",
+    "name": "Lưu thành công: đúng 1 hồ sơ, 1 tài khoản, 1 vết VT01, 1 ảnh mới; mở thẳng B05 (không còn màn trung gian)",
     "result": "ĐẠT",
-    "detail": "BN004 w-1794807073390 IMG0007"
+    "detail": "BN004 w-1794812329466 IMG0007"
   },
   {
     "id": "NP-09",
@@ -79,9 +79,9 @@
   },
   {
     "id": "NP-14",
-    "name": "Mở vết thương: B05 của VT01 thuộc hồ sơ mới, có ảnh vừa gắn",
+    "name": "Điều hướng thẳng: B05 của đúng VT01 thuộc hồ sơ mới, chỉ sau khi ảnh chờ đã xóa",
     "result": "ĐẠT",
-    "detail": "http://localhost:8720/wounds/w-1794807073390"
+    "detail": "http://localhost:8722/wounds/w-1794812329466"
   },
   {
     "id": "NP-15",
@@ -181,19 +181,31 @@
   },
   {
     "id": "NP-31",
-    "name": "Ghi số đo lỗi sau khi đã tạo hồ sơ và ảnh: màn báo rõ \"Số đo chưa lưu\", có \"Nhập lại số đo\"; hồ sơ, vết, ảnh có đủ và đúng quan hệ, ảnh chưa có số đo",
+    "name": "Ghi số đo lỗi sau khi đã tạo hồ sơ và ảnh: mở B11 của ảnh, báo rõ \"số đo chưa lưu\"; hồ sơ, vết, ảnh có đủ và đúng quan hệ, ảnh chưa có số đo",
     "result": "ĐẠT",
     "detail": ""
   },
   {
     "id": "NP-32",
-    "name": "\"Nhập lại số đo\" mở B11 của đúng ảnh vừa gắn, điền sẵn 7,5",
+    "name": "B11 là của đúng ảnh vừa gắn, số đo 7,5 điền sẵn để lưu lại",
     "result": "ĐẠT",
-    "detail": "http://localhost:8720/images/IMG0010?nhapLai=7%2C5&phuongPhap=Th%C6%B0%E1%BB%9Bc+%C4%91o+tr%C3%AAn+v%E1%BA%BFt+th%C6%B0%C6%A1ng&loi=Kh%C3%B4ng+ghi+%C4%91%C6%B0%E1%BB%A3c+v%C3%A0o+b%E1%BB%99+nh%E1%BB%9B+m%C3%A1y+%28c%C3%B3+th%E1%BB%83+b%E1%BB%99+nh%E1%BB%9B+%C4%91%C3%A3+%C4%91%E1%BA%A7y%29.+D%E1%BB%AF+li%E1%BB%87u+n%C3%A0y+ch%C6%B0a+%C4%91%C6%B0%E1%BB%A3c+l%C6%B0u"
+    "detail": "http://localhost:8722/images/IMG0010?nhapLai=7%2C5&phuongPhap=Th%C6%B0%E1%BB%9Bc+%C4%91o+tr%C3%AAn+v%E1%BA%BFt+th%C6%B0%C6%A1ng&loi=Kh%C3%B4ng+ghi+%C4%91%C6%B0%E1%BB%A3c+v%C3%A0o+b%E1%BB%99+nh%E1%BB%9B+m%C3%A1y+%28c%C3%B3+th%E1%BB%83+b%E1%BB%99+nh%E1%BB%9B+%C4%91%C3%A3+%C4%91%E1%BA%A7y%29.+D%E1%BB%AF+li%E1%BB%87u+n%C3%A0y+ch%C6%B0a+%C4%91%C6%B0%E1%BB%A3c+l%C6%B0u"
   },
   {
     "id": "NP-33",
     "name": "Ảnh chờ còn sót của lần đã ghi: bấm lưu không tạo hồ sơ thứ hai (nhận ra theo captureId), trả về hồ sơ đã có, xóa ảnh chờ",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-33b",
+    "name": "Ảnh của lần chụp đã có nhưng liên kết sai: báo lỗi, giữ ảnh chờ (bộ nhớ máy và store), không ghi thêm bản nào, không rời biểu mẫu",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-33c",
+    "name": "Sửa lại liên kết rồi bấm lưu: nhận ảnh đã có theo captureId, xóa ảnh chờ, mở B05; vẫn đúng 1 hồ sơ \"Liên Kết Hỏng\"",
     "result": "ĐẠT",
     "detail": ""
   },
