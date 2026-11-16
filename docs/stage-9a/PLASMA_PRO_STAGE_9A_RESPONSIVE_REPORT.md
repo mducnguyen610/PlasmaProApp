@@ -1,5 +1,20 @@
 # Plasma Pro, Stage 9A: báo cáo responsive
 
+# Vòng 2: 30 màn còn lại
+
+- Công cụ `resp2.cjs` (bản mở rộng của `resp.cjs`): 46 mục (C01 đến C05 không đăng nhập; các màn bác sĩ, bệnh nhân, quản trị, gồm B04a, B05a, B08c, B08d, Q01b, Q04b và trang `/help` của bác sĩ, quản trị) × 6 bề rộng (320, 360, 390, 768, 1024, 1440) = 276 lần đo trên bản dựng của nhánh. N01 đo riêng bằng `chup30.cjs` ở 320 và 390 px (cần đăng nhập bệnh nhân mới).
+- Kết quả: tràn ngang trang 0/276; lỗi JS 0/276.
+- "Phần tử vượt mép phải": 3 lần, đều ở N05 (320, 360, 390), là dải ảnh cuộn ngang có chủ đích (đã ghi ở vòng 1), không làm trang tràn.
+- Chữ cắt bằng dấu ba chấm: Q02 ở 320 đến 768 px, là tên tệp nghiên cứu `ellipsizeMode="middle"`, vẫn chọn sao chép được (có chủ đích, như vòng 1).
+- Điều khiển dưới 44 px: B05 (chip cảnh báo 208 × 23, có hitSlop; màn COMPLETE, không đổi), N03 (ô lịch 39 × 52 ở 320 px; thành phần `AdherenceCalendar` không đổi, đã ghi ở vòng 1), N09 (một điều khiển 40 × 20 không nhãn; màn COMPLETE, không đổi). 30 màn của vòng này không thêm điều khiển nhỏ mới.
+- Chân màn cố định (nút chính luôn thấy) có ở: C02, C03, B04a, B05a, B06, B07, B08, B09, B10, B11, B13 (bác sĩ phụ trách), N08, Q04b (khi lỗi chưa xử lý), cùng B05, T01, T02 của vòng 1.
+- Ảnh màn đầu ở 320 và 1024 px: `/mnt/project-files/datn/stage-9a/bo-cuc-con-lai/responsive/`; số liệu `ket-qua.json` cùng thư mục.
+- Giới hạn: trình duyệt máy tính giả lập bề rộng; không đo cỡ chữ hệ thống lớn và bàn phím ảo trên máy thật (BLOCKED).
+
+---
+
+# Vòng 1 (PR 60, 13 màn và hệ thống chung)
+
 ## Cách đo
 
 - Bản dựng: `npx expo export -p web`, phục vụ tĩnh có SPA fallback. Trước: master `457ee0c`. Sau: nhánh `ui/stage-9a-thiet-ke-lai`.
