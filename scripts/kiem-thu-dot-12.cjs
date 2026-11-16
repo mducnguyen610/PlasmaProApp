@@ -112,11 +112,11 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const zoomed = await has(p, 'Chụm hai ngón để phóng to');
     await p.getByLabel('Đóng').last().click(); await p.waitForTimeout(300);
     rec('D12-01', 'Mở B11: thấy ảnh, chạm để phóng to và đóng lại', zoomed && !(await has(p, 'Chụm hai ngón để phóng to')));
-    const area1 = await p.getByText('Diện tích bác sĩ đã đo', { exact: true }).count();
+    const area1 = await p.getByText('Diện tích bác sĩ đo', { exact: true }).count();
     rec('D12-02', 'Ảnh đã đo: số bác sĩ đo hiện một lần kèm chip "Bác sĩ nhập" và phương pháp; không còn dòng trùng "Số đo tham chiếu bác sĩ"',
       area1 === 1 && await has(p, 'Bác sĩ nhập') && await has(p, 'Phương pháp đo') && !(await has(p, 'Số đo tham chiếu bác sĩ')) && !(await has(p, 'Nhập diện tích', true)), `số dòng diện tích ${area1}`);
     await go(p, '/images/IMG0098');
-    const field = p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true });
+    const field = p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ });
     const autoOpen = (await field.count()) === 1 && (await field.inputValue()) === '';
     const fb = await field.boundingBox(); const ai = await p.getByText('Diện tích ước lượng (tham khảo)').boundingBox(); const mb = await p.getByRole('textbox', { name: /^Phương pháp đo/ }).boundingBox();
     rec('D12-03', 'Ảnh chưa đo: biểu mẫu mở sẵn, ô diện tích trống (QĐ-1); gợi ý AI nằm ngay dưới ô nhập, trên ô phương pháp',
@@ -132,7 +132,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   {
     const p = await doctor();
     await go(p, '/images/IMG0098');
-    await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).fill('9,5');
+    await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).fill('9,5');
     // Không ghi phương pháp: bị chặn theo quy tắc cũ, dữ liệu đang nhập giữ nguyên.
     const methodBox = p.getByRole('textbox', { name: /^Phương pháp đo/ });
     const prefilled = await methodBox.inputValue();
@@ -140,7 +140,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     let nd = p.dialogs.length;
     await p.getByRole('button', { name: 'Lưu diện tích' }).click(); await p.waitForTimeout(400);
     const blocked = p.dialogs.slice(nd).join(' ').includes('Thiếu phương pháp đo');
-    rec('D12-06', 'Lưu thiếu phương pháp (ảnh có lần chụp): bị chặn như cũ, không ghi gì, số 9,5 vẫn trong ô', blocked && (await imgOf(p, 'IMG0098')).areaCm2 === null && (await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).inputValue()) === '9,5', `điền sẵn trước đó: "${prefilled}"`);
+    rec('D12-06', 'Lưu thiếu phương pháp (ảnh có lần chụp): bị chặn như cũ, không ghi gì, số 9,5 vẫn trong ô', blocked && (await imgOf(p, 'IMG0098')).areaCm2 === null && (await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).inputValue()) === '9,5', `điền sẵn trước đó: "${prefilled}"`);
     await methodBox.fill('Thước giấy kẻ ô');
     // Điều hướng giữa các phần khi đang đo. Giai đoạn 3 (chế độ đo B11): mục kỹ thuật và mục "Yêu cầu chụp lại, loại ảnh" ẩn khi đang đo,
     // nên kiểm giữ dữ liệu khi chuyển "Sửa tên đầy đủ" và "Quay về nhập diện tích" trong biểu mẫu đo; lý do chụp lại kiểm sau khi lưu (D12-07b).
@@ -149,7 +149,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const fullOpen = (await p.getByRole('textbox', { name: 'Tên tệp đầy đủ', exact: true }).count()) === 1;
     await p.getByRole('button', { name: 'Quay về nhập diện tích' }).click(); await p.waitForTimeout(200);
     rec('D12-07', 'Chế độ đo: mục phụ ẩn; chuyển "Sửa tên đầy đủ" rồi "Quay về nhập diện tích": số 9,5 và phương pháp đang gõ vẫn giữ',
-      secHidden && fullOpen && (await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).inputValue()) === '9,5' && (await p.getByRole('textbox', { name: /^Phương pháp đo/ }).inputValue()) === 'Thước giấy kẻ ô', `mục phụ ẩn ${secHidden}, tên đầy đủ ${fullOpen}`);
+      secHidden && fullOpen && (await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).inputValue()) === '9,5' && (await p.getByRole('textbox', { name: /^Phương pháp đo/ }).inputValue()) === 'Thước giấy kẻ ô', `mục phụ ẩn ${secHidden}, tên đầy đủ ${fullOpen}`);
     // Bấm Lưu liên tục 3 lần.
     nd = p.dialogs.length;
     const btn = p.getByRole('button', { name: 'Lưu diện tích' });
@@ -171,11 +171,11 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     rec('D12-07b', 'Sau khi lưu (ngoài chế độ đo): mở, đóng các mục thu gọn, lý do chụp lại đang gõ vẫn giữ', techOpen && (await p.getByRole('textbox', { name: 'Yêu cầu chụp lại', exact: true }).inputValue()) === 'Ảnh hơi mờ');
     // Sửa annotation: "Sửa số đo" điền đúng số đã lưu; "Sửa tên đầy đủ" ở mục kỹ thuật.
     await p.getByRole('button', { name: 'Sửa số đo' }).click(); await p.waitForTimeout(300);
-    const pre = await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).inputValue();
+    const pre = await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).inputValue();
     await p.getByRole('button', { name: 'Sửa tên đầy đủ' }).click(); await p.waitForTimeout(300);
     const full = await p.getByRole('textbox', { name: 'Tên tệp đầy đủ', exact: true }).inputValue();
     await p.getByRole('button', { name: 'Quay về nhập diện tích' }).click(); await p.waitForTimeout(200);
-    await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).fill('9');
+    await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).fill('9');
     // P0 SV-03: thay số đã có thì nút là "Lưu số mới".
     await p.getByRole('button', { name: 'Lưu số mới' }).click(); await p.waitForTimeout(500);
     const im2 = await imgOf(p, 'IMG0098');
@@ -194,11 +194,11 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
       askedEx.includes('Loại ảnh khỏi bộ dữ liệu') && askedEx.includes('IMG0098') && askedEx.includes('Ảnh chứa hai vết thương') && notEx && ex.status === 'excluded' && ex.excludeReason === 'Ảnh chứa hai vết thương', askedEx.slice(0, 120));
     // Rời màn khi đang sửa: không tự lưu.
     await go(p, '/images/IMG0004');
-    await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).fill('7,7');
+    await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).fill('7,7');
     await p.locator('[aria-label="Quay lại"]:visible').first().click(); await p.waitForTimeout(800);
     const im4 = await imgOf(p, 'IMG0004');
     await go(p, '/images/IMG0004');
-    const after = await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).inputValue();
+    const after = await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).inputValue();
     rec('D12-13', 'Rời màn khi đang gõ: không tự lưu (ảnh vẫn chưa đo); mở lại thì ô trống, không mang số cũ', im4.areaCm2 === null && im4.status === 'unlabeled' && after === '', `mở lại: "${after}"`);
     rec('D12-14', 'Không có lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
     await p.context().close();
@@ -214,13 +214,13 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const seen = [];
     for (let i = 0; i < 3; i++) {
       const id = (await p.url()).split('/images/')[1]?.split('?')[0];
-      const fieldVal = await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).inputValue();
+      const fieldVal = await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).inputValue();
       const methodVal = await p.getByRole('textbox', { name: /^Phương pháp đo/ }).inputValue();
       const hint = await p.getByText(/^Điền sẵn theo lần đo trước/).textContent().catch(() => '');
       const header = await p.getByText(/^BN\d{3} · VT\d{2}/).first().textContent();
       seen.push({ id, fieldVal, methodVal, hint, header });
       const v = `${5 + i},${i + 1}`; vals[id] = 5 + i + (i + 1) / 10;
-      await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).fill(v); steps++;
+      await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).fill(v); steps++;
       if (!methodVal) { await p.getByRole('textbox', { name: /^Phương pháp đo/ }).fill('Thước giấy kẻ ô'); steps++; }
       await p.getByRole('button', { name: 'Lưu diện tích' }).click(); steps++; await p.waitForTimeout(600);
       if (i < 2) { await p.getByRole('button', { name: /^Ảnh chưa đo tiếp theo/ }).click(); steps++; await p.waitForTimeout(1200); }
@@ -251,7 +251,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
         await go(p, '/doctor');
         await p.getByRole('button', { name: /Ảnh chưa đo/ }).first().click(); steps++; await p.waitForTimeout(1200);
         await p.getByRole('button', { name: 'Nhập diện tích bác sĩ đã đo' }).click(); steps++; await p.waitForTimeout(300);
-        await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).fill(`${5 + i},${i + 1}`); steps++;
+        await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).fill(`${5 + i},${i + 1}`); steps++;
         if (!(await p.getByRole('textbox', { name: /^Phương pháp đo/ }).inputValue())) { await p.getByRole('textbox', { name: /^Phương pháp đo/ }).fill('Thước giấy kẻ ô'); steps++; }
         await p.getByRole('button', { name: 'Lưu', exact: true }).click(); steps++; await p.waitForTimeout(600);
         if (i < 2) { await p.locator('[aria-label="Quay lại"]:visible').first().click(); steps++; await p.waitForTimeout(900); }

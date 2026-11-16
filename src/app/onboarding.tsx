@@ -5,6 +5,7 @@ import { Linking, Platform, View } from 'react-native';
 
 import { Text } from '@/components/Text';
 import { Button, Card, Header, HeaderButton, Muted, Screen } from '@/components/ui';
+import { notify } from '@/lib/dialog';
 import { phaseLabel, phasesOf } from '@/lib/course';
 import { useLookups, useStore } from '@/lib/store';
 import { C } from '@/theme';
@@ -82,8 +83,13 @@ export default function Onboarding() {
   ];
   const step = steps[i];
   const last = i === steps.length - 1;
-  const done = () => {
-    finishOnboarding();
+  const done = async () => {
+    try {
+      await finishOnboarding();
+    } catch (e) {
+      // Chỉ là cờ đã xem hướng dẫn: báo lỗi lưu nhưng vẫn cho vào ứng dụng.
+      notify('Chưa lưu được', e instanceof Error ? e.message : String(e));
+    }
     if (review && router.canGoBack()) router.back();
     else router.replace('/patient');
   };

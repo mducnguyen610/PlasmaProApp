@@ -11,10 +11,12 @@ import { Button, Card, Header, InfoRow, Muted, Notice, Screen, SectionTitle } fr
 import { fmtDuration } from '@/lib/course';
 import { modeLabel } from '@/lib/device/capabilities';
 import { fmtRemaining, SESSION_LABEL } from '@/lib/device/labels';
+import { stopRequestView } from '@/lib/device/stopRequest';
 import { useDeviceLink } from '@/lib/device/useDeviceLink';
 import { deviceStatusView } from '@/lib/deviceStatusView';
 import { fmtDateTime } from '@/lib/format';
 import { sessionDisplay } from '@/lib/sessionDisplay';
+import { simStartGate } from '@/lib/simStartGate';
 import { useLookups, useStore } from '@/lib/store';
 import { C, semantic, typeScale } from '@/theme';
 
@@ -105,10 +107,14 @@ export default function SessionMonitor() {
   // Liệu trình của đợt (bác sĩ đã xác nhận), chỉ để đọc; máy không gửi lại thông số nên không ghi là "máy đang chạy".
   const plan = w && w.patientId === p.id ? coursePlan(w.id, isPatient ? { patientView: true } : undefined) : undefined;
   const canStop = !!link.startSession && !!link.stopSession && link.state === 'connected' && st?.state === 'running';
-  const canStart = !!link.startSession && !!link.stopSession && link.state === 'connected' && st?.state !== 'running';
+  // Stage 9B (S8-B07): máy giả lập chưa có liệu trình (ví dụ sau khi tải lại trang) thì không hiện nút Bắt đầu, nói rõ lý do.
+  const startGate = simStartGate({ simControls: !!link.startSession && !!link.stopSession, connected: link.state === 'connected', running: st?.state === 'running', configLoaded: link.simConfigLoaded });
+  const canStart = startGate.show;
   // Xác nhận dừng: chỉ khi máy gửi bản tin kết thúc SAU lúc bấm (P0 DV-01: không báo đã dừng trước khi máy xác nhận).
-  const stopConfirmed = stopAt !== null && !!st && (st.state === 'stopped' || st.state === 'done' || st.state === 'error') && !!link.lastStatusAt && new Date(link.lastStatusAt).getTime() >= stopAt;
-  const stopWaitSec = stopAt !== null && !stopConfirmed ? Math.max(0, Math.floor((now - stopAt) / 1000)) : null;
+  // Stage 9C: quyết định "máy đã xác nhận dừng" ở lớp thiết bị (src/lib/device/stopRequest.ts), logic không đổi.
+  const stopView = stopRequestView({ stopAt, state: st?.state ?? null, statusAt: link.lastStatusAt, now });
+  const stopConfirmed = stopView.confirmed;
+  const stopWaitSec = stopView.waitSec;
   const requestStop = () => {
     setStopAt(Date.now());
     link.stopSession?.();
@@ -206,6 +212,7 @@ export default function SessionMonitor() {
         )}
         {!st && <Muted>Bắt đầu phiên trên máy; trạng thái hiện ở đây khi máy gửi về. Giữ màn này mở tới khi phiên xong để phiên được ghi vào nhật ký.</Muted>}
         {/* Chỉ thiết bị giả lập có nút bắt đầu trên ứng dụng. Nút này ở thân màn, không ở chỗ nút Dừng (chân màn). */}
+        {startGate.reason && <Notice tone={semantic.info.tone} icon="information-circle-outline">{startGate.reason}</Notice>}
         {canStart && (
           <View style={{ gap: 6 }}>
             <Button label="Bắt đầu điều trị" variant="secondary" icon="play-outline" onPress={requestStart} />

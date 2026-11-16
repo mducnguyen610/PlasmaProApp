@@ -61,7 +61,7 @@ const PHOTO = path.join(__dirname, '..', 'assets', 'demo', 'demo_1.png');
   const { newPage, login, go, has, store, mutate, shot, overflow, small } = helpers(b);
   const pickLibrary = async (p) => { const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.getByText('Chọn ảnh có sẵn', { exact: true }).click()]); await fc.setFiles(PHOTO); await p.waitForTimeout(3000); };
   const areaB10 = (p) => p.getByRole('textbox', { name: /^Diện tích bác sĩ đo/ });
-  const areaB11 = (p) => p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true });
+  const areaB11 = (p) => p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ });
   const methodB11 = (p) => p.getByRole('textbox', { name: /^Phương pháp đo/ });
 
   if (SHOTS) {

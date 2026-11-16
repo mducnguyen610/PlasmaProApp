@@ -12,7 +12,7 @@ import { createUsbAndroid } from './usb-android';
 
 export { PROTOCOL } from './protocol.config';
 
-export type AppTransport = TracedTransport & Partial<Pick<SimulatedTransport, 'startSession' | 'stopSession'>>;
+export type AppTransport = TracedTransport & Partial<Pick<SimulatedTransport, 'startSession' | 'stopSession' | 'lastConfig'>>;
 
 let shared: AppTransport | null = null;
 

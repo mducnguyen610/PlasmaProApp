@@ -77,7 +77,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
 
     // ID-01: B11 chuyển sang ảnh chưa đo của bệnh nhân khác.
     await go(p, '/images/IMG0004');
-    await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).fill('6,5');
+    await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).fill('6,5');
     await p.getByRole('textbox', { name: /^Phương pháp đo/ }).fill('Thước giấy kẻ ô');
     await p.getByRole('button', { name: 'Lưu diện tích' }).click(); await p.waitForTimeout(600);
     const nextBtn = p.getByRole('button', { name: /^Ảnh chưa đo tiếp theo/ });
@@ -85,7 +85,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     await nextBtn.first().click(); await p.waitForTimeout(1200);
     const t2 = await ctxText(p);
     const focused = await p.evaluate(() => document.activeElement?.tagName);
-    const box = await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).inputValue().catch(() => 'không có ô');
+    const box = await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).inputValue().catch(() => 'không có ô');
     rec('TP-ID-02', 'B11 ảnh kế tiếp thuộc bệnh nhân khác: nút nêu rõ; màn mới có "Đã chuyển sang bệnh nhân khác", ô trống, không tự lấy tiêu điểm',
       /bệnh nhân khác/.test(label) && t2.includes('Đã chuyển sang bệnh nhân khác') && t2.includes('BN002') && box === '' && focused !== 'INPUT', `nút "${label}", ô "${box}", tiêu điểm ${focused}`);
     await back(p);
@@ -152,7 +152,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     await go(p, '/images/IMG0003');
     rec('TP-DS-05c', 'B11 số đo có lịch sử: "Nhập bởi" lấy đúng người và giờ trong lịch sử', await has(p, /^BS\. Trần Minh An lúc \d{1,2}:\d{2} \d{2}\/\d{2}\/\d{4}$/, false), '');
     await p.getByRole('button', { name: 'Sửa số đo' }).click(); await p.waitForTimeout(300);
-    await p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).fill('7,9'); await p.waitForTimeout(200);
+    await p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ }).fill('7,9'); await p.waitForTimeout(200);
     const repl = await has(p, /^Số hiện tại 8,4 cm².* sẽ được thay bằng 7,9 cm²/, false);
     const btnNew = await p.getByRole('button', { name: 'Lưu số mới' }).count();
     rec('TP-SV-06a', 'B11 thay số đã có: hiện số cũ sẽ bị thay bằng số mới, nút "Lưu số mới"', repl && btnNew === 1, '');
@@ -249,7 +249,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     const p = await newPage(); await login(p);
     await go(p, '/images/IMG0004');
     await p.getByRole('button', { name: /Nhập diện tích|Sửa diện tích|Nhập số đo/ }).first().click().catch(() => {}); await p.waitForTimeout(300);
-    const box = p.getByRole('textbox', { name: /^Diện tích bác sĩ đã đo/ });
+    const box = p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm|mm)²\)$/ });
     await box.fill('7,5'); await p.waitForTimeout(200);
     const methodBox = p.getByRole('textbox', { name: /^Phương pháp đo/ });
     if (await methodBox.count()) { await methodBox.fill('Thước giấy kẻ ô'); await p.waitForTimeout(150); }
