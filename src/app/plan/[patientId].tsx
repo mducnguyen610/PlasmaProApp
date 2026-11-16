@@ -9,9 +9,9 @@ import { NoAccess, useCanView } from '@/components/Guard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { CheckRow } from '@/components/Consent';
 import { PLAN } from '@/theme.status';
-import { Button, Card, Chip, Choices, Disclosure, Field, Header, InfoRow, ListCard, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Divider, Field, Header, InfoRow, ListCard, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
 import { capabilitiesFor, modeLabel } from '@/lib/device/capabilities';
-import { DEFAULT_REVIEW_DAY, fmtDuration, phaseLabel, phasesOf, suggestDurationSec } from '@/lib/course';
+import { DEFAULT_REVIEW_DAY, fmtDuration, localDay, phaseLabel, phasesOf, suggestDurationSec } from '@/lib/course';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, maskDateInput, PLAN_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
@@ -56,14 +56,42 @@ function PlanDetails({ plan, editorName }: { plan: TreatmentPlan; editorName?: s
   );
 }
 
-function PlanCard({ plan, editorName }: { plan: TreatmentPlan; editorName?: string }) {
+/**
+ * Stage 9A (bố cục riêng N06): thứ tự theo điều bệnh nhân cần biết: liều máy đã khóa (kèm câu "không cần
+ * chỉnh gì trên thiết bị" ngay cạnh, trước đây ở cuối màn), lịch theo giai đoạn có đánh dấu giai đoạn hiện tại, các mốc xem lại,
+ * ghi chú của bác sĩ. Người sửa, lý do sửa (thông tin quản lý phiên bản) thu vào một mục. Cùng dữ liệu như thẻ cũ.
+ */
+function PatientPlanCard({ plan, editorName }: { plan: TreatmentPlan; editorName?: string }) {
+  const today = localDay();
+  const current = phasesOf(plan).findIndex((ph) => ph.from <= today && today <= ph.to);
   return (
-    <Card>
+    <Card hero style={{ gap: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Text style={{ fontWeight: '700', color: C.text, flex: 1 }}>Phiên bản {plan.version}</Text>
         <StatusChip status={PLAN[plan.status]} label={PLAN_STATUS[plan.status].label} />
       </View>
-      <PlanDetails plan={plan} editorName={editorName} />
+      <Text accessibilityRole="header" style={{ color: C.textSoft, fontSize: T.small, fontWeight: '700' }}>LIỀU TRÊN MÁY</Text>
+      <View><DoseRows plan={plan} />{plan.minIntervalMin != null && <InfoRow label="Giãn cách giữa hai lần" value={`${plan.minIntervalMin} phút`} />}</View>
+      <Notice tone="blue" icon="lock-closed-outline">Thiết bị đã được khóa theo mức năng lượng và thời gian bác sĩ đặt. Bạn không cần chỉnh gì trên thiết bị.</Notice>
+      <Divider />
+      <Text accessibilityRole="header" style={{ color: C.textSoft, fontSize: T.small, fontWeight: '700' }}>LỊCH THEO GIAI ĐOẠN</Text>
+      <PhaseList plan={plan} current={current >= 0 ? current : undefined} />
+      <Divider />
+      <Text accessibilityRole="header" style={{ color: C.textSoft, fontSize: T.small, fontWeight: '700' }}>MỐC XEM LẠI</Text>
+      <View>
+        <InfoRow label="Ngày dự kiến xem lại đợt" value={fmtDate(plan.endDate)} />
+        <InfoRow label="Mốc xem lại hiệu quả" value={`Ngày thứ ${plan.reviewAtDay ?? DEFAULT_REVIEW_DAY}`} />
+        {plan.endReason && <InfoRow label="Lý do kết thúc" value={END_REASON[plan.endReason]} />}
+        <InfoRow label="Lịch tái khám" value={plan.reviewSchedule || '—'} />
+      </View>
+      {plan.notes ? <View style={{ gap: 4 }}>
+        <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '700' }}>GHI CHÚ CỦA BÁC SĨ</Text>
+        <Text style={{ color: C.text }}>{plan.notes}</Text>
+      </View> : null}
+      <Disclosure title="Thông tin phiên bản" summary={plan.confirmed ? 'Bác sĩ đã xác nhận' : 'Chưa xác nhận'}>
+        <Muted>Sửa bởi {editorName ?? '—'} lúc {fmtDateTime(plan.editedAt)} · Lý do: {plan.reason || '—'}</Muted>
+        <View style={{ flexDirection: 'row' }}><Chip label={plan.confirmed ? 'Bác sĩ đã xác nhận' : 'Chưa xác nhận'} tone={plan.confirmed ? 'green' : 'gray'} /></View>
+      </Disclosure>
     </Card>
   );
 }
@@ -199,10 +227,9 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
         {shown.length === 0 ? <Card><Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted></Card> : shown.map(({ w, plan }) => (
           <View key={w.id} style={{ gap: 8 }}>
             {shown.length > 1 && <SectionTitle icon="bandage-outline">{`${w.code}: ${w.location}`}</SectionTitle>}
-            <PlanCard plan={plan} editorName={account(plan.editedBy)?.name} />
+            <PatientPlanCard plan={plan} editorName={account(plan.editedBy)?.name} />
           </View>
         ))}
-        <Muted>Thiết bị đã được khóa theo mức năng lượng và thời gian bác sĩ đặt. Bạn không cần chỉnh gì trên thiết bị.</Muted>
       </Screen>
     );
   }
@@ -311,11 +338,15 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
     <Screen
       header={<Header back title="Đợt điều trị" />}
       footer={
+        <View style={{ gap: 8 }}>
+        {/* Câu hậu quả của trạng thái nằm ngay trên nút Lưu (D10-06h). */}
+        {step === 2 && <Notice tone="blue" icon="information-circle-outline">{STATUS_EFFECT[status]}</Notice>}
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {step > 0 && <View style={{ flex: 1 }}><Button label="Quay lại" variant="ghost" onPress={() => setStep(step - 1)} /></View>}
           {step < 2
             ? <View style={{ flex: step > 0 ? 2 : 1 }}><Button label="Tiếp" icon="arrow-forward" onPress={() => setStep(step + 1)} /></View>
             : <View style={{ flex: 2 }}><Button label={`Lưu phiên bản ${nextVersion}${w ? ` cho ${w.code}` : ''}`} icon="save-outline" onPress={save} /></View>}
+        </View>
         </View>
       }>
       {/* P0 G1: bệnh nhân và vết thương của đợt đang lập. */}
@@ -452,7 +483,6 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
             {willEnd.length > 0 && (
               <Notice icon="git-branch-outline">{`${willEnd.map((x) => `Phiên bản ${x.version} (${PLAN_STATUS[x.status].label})`).join(', ')} sẽ chuyển sang Kết thúc khi lưu. Các phiên bản cũ vẫn giữ trong danh sách bên dưới.`}</Notice>
             )}
-            <Notice tone="blue" icon="information-circle-outline">{STATUS_EFFECT[status]}</Notice>
           </>
         )}
       </Card>

@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
-import { Button, Card, Field, Header, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
 import { confirm, notify } from '@/lib/dialog';
 import { validateWoundLocation } from '@/lib/patientRecord';
 import { useLookups, useStore } from '@/lib/store';
@@ -78,8 +78,8 @@ export default function WoundEdit() {
     confirm(`Lưu thay đổi cho ${w.code}?`, lines.join('\n'), () => { void doSave(patch); }, 'Lưu thay đổi');
   };
 
-  // Stage 9A (bố cục riêng): thanh ngữ cảnh đã ghi mã vết và vị trí đang lưu nên bỏ dòng phụ đề và dòng "Vị trí đang lưu" trùng;
-  // vị trí cũ chuyển thành gợi ý ngay dưới ô để so khi sửa. Lỗi lưu nằm ngay trên nút.
+  // Stage 9A (bố cục riêng): thanh ngữ cảnh đã ghi mã vết và vị trí đang lưu nên bỏ dòng phụ đề trùng;
+  // dòng "Vị trí đang lưu" giữ ngay trên ô để so khi sửa (yêu cầu WD-02). Lỗi lưu nằm ngay trên nút.
   return (
     <Screen
       header={<Header back title="Chỉnh sửa vị trí" />}
@@ -95,7 +95,8 @@ export default function WoundEdit() {
       <ClinicalContext patient={p} wound={w} />
       <SectionTitle>Vị trí và nhóm tổn thương</SectionTitle>
       <Card style={{ gap: 14 }}>
-        <Field label="Vị trí mới" value={location} onChangeText={(v) => { setLocation(v); setError(null); }} placeholder="Ví dụ: Gót chân phải" error={error} hint={`Đang lưu: ${w.location}`} />
+        <InfoRow label="Vị trí đang lưu" value={w.location} />
+        <Field label="Vị trí mới" value={location} onChangeText={(v) => { setLocation(v); setError(null); }} placeholder="Ví dụ: Gót chân phải" error={error} />
         <Field label="Nhóm tổn thương" optional value={group} onChangeText={setGroup} hint="Để trống nếu chưa ghi" />
       </Card>
       <Muted>{`Mã vết (${w.code}) và trạng thái không đổi ở màn này. Trạng thái đổi bằng các nút ở thẻ "Đợt điều trị".`}</Muted>

@@ -77,6 +77,14 @@ export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patie
             {sev ? <StatusChip status={SEVERITY_ROLE[sev]} label={`Mức độ ${SEVERITY[sev].label.toLowerCase()}`} /> : <Chip label="Chưa đánh giá mức độ" tone="gray" />}
           </View>
         </View>
+        {/* Stage 9A (bố cục riêng N05): đợt điều trị nằm ngay trong thẻ tóm tắt (trước đây là thẻ riêng ở dưới ảnh), để bệnh nhân thấy
+            vết thương nào, đang điều trị tới đâu trong cùng một chỗ. Nhận xét của bác sĩ (lời dặn) đưa lên trước Ảnh và lịch sử;
+            "Lần đo gần nhất" vẫn trong màn đầu như yêu cầu N05-12. */}
+        <View style={{ height: 1, backgroundColor: C.divider }} />
+        <LinkRow testID="dong-dot-dieu-tri" icon="flash-outline" tone="violet" title="Đợt điều trị"
+          sub={plan ? [pr && pr.phaseIndex >= 0 ? `Giai đoạn ${pr.phaseIndex + 1} trên ${pr.phaseCount}` : `${phasesOf(plan).length} giai đoạn`, pr ? `${pr.done}/${pr.total} buổi` : null, PLAN_STATUS[plan.status].label.toLowerCase()].filter(Boolean).join(' · ') : 'Chưa có đợt điều trị cho vết thương này'}
+          accessibilityLabel={`Đợt điều trị. ${plan ? `${pr ? `Đã xong ${pr.done} trên ${pr.total} buổi, ` : ''}${PLAN_STATUS[plan.status].label}` : 'Chưa có đợt'}. Mở chi tiết`}
+          onPress={() => router.push({ pathname: '/wound-history/[woundId]/dot-dieu-tri', params: { woundId: w.id } })} />
       </Card>
 
       {/* C. Tiến triển diện tích (tóm tắt). Biểu đồ đầy đủ ở màn Lịch sử đo. */}
@@ -110,6 +118,25 @@ export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patie
         )}
       </Card>
 
+      {/* F. Nhận xét của bác sĩ: nhận xét mới nhất đã công bố, xem trước 3 dòng. */}
+      <Card>
+        <SectionTitle right={evals.length > 0 ? <TextLink label={`Tất cả (${evals.length})`} accessibilityLabel={`Xem tất cả ${evals.length} nhận xét`} onPress={() => router.push({ pathname: '/wound-history/[woundId]', params: { woundId: w.id, tab: 'lich-su', loc: 'danh-gia' } })} /> : null}>Nhận xét của bác sĩ</SectionTitle>
+        {evals[0] ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={`Nhận xét ngày ${fmtDate(evals[0].date)} của ${account(evals[0].doctorId)?.name ?? 'bác sĩ'}. Chạm để đọc đầy đủ`}
+            onPress={() => router.push({ pathname: '/wound-history/[woundId]/ban-ghi/[recordId]', params: { woundId: w.id, recordId: evals[0].id, loai: 'danh-gia' } })}
+            style={({ pressed }) => ({ gap: 8, opacity: pressed ? 0.7 : 1 })}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <Text style={{ fontWeight: '700', color: C.text, flexShrink: 1 }}>{`${fmtDate(evals[0].date)} · ${account(evals[0].doctorId)?.name ?? 'Bác sĩ'}`}</Text>
+              <StatusChip status={TREND_ROLE[evals[0].trend]} label={TREND[evals[0].trend].label} />
+            </View>
+            {(evals[0].instructions || evals[0].characteristics) ? <Text numberOfLines={3} style={{ color: C.text, lineHeight: 24 }}>{evals[0].instructions || evals[0].characteristics}</Text> : null}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={{ color: C.primary, fontWeight: '700' }}>Xem đầy đủ</Text>
+              <Ionicons name="chevron-forward" size={16} color={C.primary} />
+            </View>
+          </Pressable>
+        ) : <Muted>Chưa có đánh giá.</Muted>}
+      </Card>
       {/* D + G. Ảnh và lịch sử vết thương: một mục, hai thẻ. Thẻ đang chọn nằm trong tham số "the" của đường dẫn (setParams),
           nên mở chi tiết rồi quay lại vẫn đúng thẻ. Mặc định thẻ Ảnh. */}
       <Card>
@@ -140,33 +167,6 @@ export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patie
         )}
       </Card>
 
-      {/* E. Đợt điều trị: dòng mở màn riêng. */}
-      <Card>
-        <LinkRow testID="dong-dot-dieu-tri" icon="flash-outline" tone="violet" title="Đợt điều trị"
-          sub={plan ? [pr && pr.phaseIndex >= 0 ? `Giai đoạn ${pr.phaseIndex + 1} trên ${pr.phaseCount}` : `${phasesOf(plan).length} giai đoạn`, pr ? `${pr.done}/${pr.total} buổi` : null, PLAN_STATUS[plan.status].label.toLowerCase()].filter(Boolean).join(' · ') : 'Chưa có đợt điều trị cho vết thương này'}
-          accessibilityLabel={`Đợt điều trị. ${plan ? `${pr ? `Đã xong ${pr.done} trên ${pr.total} buổi, ` : ''}${PLAN_STATUS[plan.status].label}` : 'Chưa có đợt'}. Mở chi tiết`}
-          onPress={() => router.push({ pathname: '/wound-history/[woundId]/dot-dieu-tri', params: { woundId: w.id } })} />
-      </Card>
-
-      {/* F. Nhận xét của bác sĩ: nhận xét mới nhất đã công bố, xem trước 3 dòng. */}
-      <Card>
-        <SectionTitle right={evals.length > 0 ? <TextLink label={`Tất cả (${evals.length})`} accessibilityLabel={`Xem tất cả ${evals.length} nhận xét`} onPress={() => router.push({ pathname: '/wound-history/[woundId]', params: { woundId: w.id, tab: 'lich-su', loc: 'danh-gia' } })} /> : null}>Nhận xét của bác sĩ</SectionTitle>
-        {evals[0] ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`Nhận xét ngày ${fmtDate(evals[0].date)} của ${account(evals[0].doctorId)?.name ?? 'bác sĩ'}. Chạm để đọc đầy đủ`}
-            onPress={() => router.push({ pathname: '/wound-history/[woundId]/ban-ghi/[recordId]', params: { woundId: w.id, recordId: evals[0].id, loai: 'danh-gia' } })}
-            style={({ pressed }) => ({ gap: 8, opacity: pressed ? 0.7 : 1 })}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <Text style={{ fontWeight: '700', color: C.text, flexShrink: 1 }}>{`${fmtDate(evals[0].date)} · ${account(evals[0].doctorId)?.name ?? 'Bác sĩ'}`}</Text>
-              <StatusChip status={TREND_ROLE[evals[0].trend]} label={TREND[evals[0].trend].label} />
-            </View>
-            {(evals[0].instructions || evals[0].characteristics) ? <Text numberOfLines={3} style={{ color: C.text, lineHeight: 24 }}>{evals[0].instructions || evals[0].characteristics}</Text> : null}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={{ color: C.primary, fontWeight: '700' }}>Xem đầy đủ</Text>
-              <Ionicons name="chevron-forward" size={16} color={C.primary} />
-            </View>
-          </Pressable>
-        ) : <Muted>Chưa có đánh giá.</Muted>}
-      </Card>
     </>
   );
 }
