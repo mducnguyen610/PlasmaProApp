@@ -1,7 +1,7 @@
 // Chạy: node src/lib/pendingCapture.test.ts
-// Luồng "Chụp cho bệnh nhân mới": so trùng hồ sơ theo đúng quy tắc của addPatient, kiểm biểu mẫu, khóa chống ghi lặp, đếm bộ lọc B09.
+// Luồng "Chụp cho bệnh nhân mới": so trùng hồ sơ theo đúng quy tắc của addPatient, kiểm biểu mẫu, khóa chống ghi lặp.
 import assert from 'node:assert/strict';
-import { activeFilterCount, committedImageOf, verifyLinked, duplicateView, EMPTY_PENDING_FORM, findPhoneDuplicate, isPendingCapture, validateNewPatientForm } from './pendingCapture.ts';
+import { committedImageOf, verifyLinked, duplicateView, EMPTY_PENDING_FORM, findPhoneDuplicate, isPendingCapture, validateNewPatientForm } from './pendingCapture.ts';
 
 const P = (x: object) => ({ id: 'p-1', code: 'BN001', name: 'Nguyễn Văn A', birthYear: 1958, sex: 'Nam', phone: '09xx xxx 001', doctorId: 'u-bs1', researchConsent: true, createdAt: '2026-10-01', ...x }) as never;
 const all = [P({}), P({ id: 'p-9', code: 'BN009', name: 'Người Khác', phone: '0933 444 555', doctorId: 'u-bs2' }), P({ id: 'p-8', code: 'BN008', phone: '', doctorId: 'u-bs1' })];
@@ -58,10 +58,5 @@ assert.equal(isPendingCapture(null), false);
 assert.equal(isPendingCapture({ ...good, uri: '' }), false);
 assert.equal(isPendingCapture({ ...good, capture: {} }), false);
 assert.equal(isPendingCapture({ ...good, form: undefined }), false);
-
-// Bộ lọc B09: chỉ có ô tìm kiếm.
-assert.equal(activeFilterCount({ q: '' }), 0);
-assert.equal(activeFilterCount({ q: '   ' }), 0);
-assert.equal(activeFilterCount({ q: 'pham' }), 1);
 
 console.log('pendingCapture.test: đạt');

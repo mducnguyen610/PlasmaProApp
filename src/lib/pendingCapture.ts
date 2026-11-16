@@ -107,8 +107,3 @@ export function isPendingCapture(x: unknown): x is PendingCapture {
   return !!p && typeof p.id === 'string' && typeof p.doctorId === 'string' && typeof p.uri === 'string' && !!p.uri
     && typeof p.captureDate === 'string' && !!p.capture && typeof p.capture.captureId === 'string' && !!p.form && typeof p.form.name === 'string';
 }
-
-/** Số bộ lọc đang áp dụng ở B09 (hiện chỉ có ô tìm kiếm). */
-export function activeFilterCount(f: { q: string }): number {
-  return f.q.trim() ? 1 : 0;
-}

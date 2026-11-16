@@ -1,4 +1,4 @@
-// Kiểm thử luồng "Chụp cho bệnh nhân mới" (B09, B10, B09b) và bộ lọc thu gọn ở B09.
+// Kiểm thử luồng "Chụp cho bệnh nhân mới" (B09, B10, B09b) và ô tìm bệnh nhân ở B09.
 // Bản web, dữ liệu mô phỏng, Playwright. Không thay cho thử trên máy thật (camera, tệp ảnh trong thư mục ứng dụng) hay thử với bác sĩ.
 // Chạy: node scripts/kiem-thu-benh-nhan-moi-tu-anh.cjs <baseURL> <thư mục kết quả>
 // Quan hệ dữ liệu được kiểm trên dữ liệu thật của store (đọc từ cây React) và trên bản đã ghi bền (localStorage), không chỉ trên giao diện.
@@ -87,8 +87,6 @@ const rec = (id, name, pass, detail = '') => {
   };
   const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   const shot = async (p, name) => { await p.screenshot({ path: path.join(OUT, `${name}.png`) }); };
-  const fbtn = (p, open) => p.getByRole('button', { name: open ? /^Đóng bộ lọc/ : /^Mở bộ lọc/ }).locator('visible=true').first();
-  const ftoggle = async (p, open) => { await fbtn(p, open).click(); await p.waitForTimeout(500); };
   const tab = (p, name) => p.getByRole('tab', { name, exact: true }).locator('visible=true').first();
 
   // Từ B09 tới B09b: chọn "Chụp cho bệnh nhân mới", chọn ảnh có sẵn, sang bước nhập số đo, (tùy chọn) nhập số đo, chuyển sang biểu mẫu.
@@ -394,7 +392,7 @@ const rec = (id, name, pass, detail = '') => {
     await p.close();
   }
 
-  // ===== G. Bộ lọc thu gọn ở B09 =====
+  // ===== G. Tìm bệnh nhân ở B09 (ô tìm luôn hiện) =====
   {
     const p = await newPage(); await login(p, 'bacsi');
     await go(p, '/capture');
@@ -403,37 +401,29 @@ const rec = (id, name, pass, detail = '') => {
     // react-native-web không xuất aria-checked; bệnh nhân đã chọn thì bước 2 hiện ô chọn vết thay cho câu "Chọn bệnh nhân trước."
     const picked = async () => !(await has(p, 'Chọn bệnh nhân trước.')) && (await p.getByRole('radio', { name: /^VT\d/ }).locator('visible=true').count()) > 0;
     const all = await radios();
-    rec('FL-01', 'Mặc định mở: nút "Đóng bộ lọc" và ô tìm kiếm hiện', await fbtn(p, true).isVisible() && await input(p, 'Tìm bệnh nhân').isVisible());
-    await ftoggle(p, true);
-    rec('FL-02', 'Bấm "Đóng bộ lọc": ô tìm kiếm ẩn, nút đổi thành "Mở bộ lọc", danh sách không đổi', await fbtn(p, false).isVisible() && (await p.locator('[aria-label="Tìm bệnh nhân"]:visible').count()) === 0 && same(await radios(), all));
-    await ftoggle(p, false);
+    // Người dùng chốt 16/11/2026: bỏ nút đóng, mở bộ lọc ở B09; ô tìm kiếm luôn hiện.
+    rec('FL-01', 'Ô tìm kiếm luôn hiện, không còn nút "Mở bộ lọc"/"Đóng bộ lọc"', await input(p, 'Tìm bệnh nhân').isVisible() && (await p.getByRole('button', { name: /bộ lọc/ }).locator('visible=true').count()) === 0);
     await input(p, 'Tìm bệnh nhân').fill('pham'); await p.waitForTimeout(400);
     const filtered = await radios();
+    rec('FL-02', 'Tìm "pham" (không dấu): còn 1 hồ sơ', filtered.length === 1, filtered.join(','));
     await p.getByRole('radio', { name: /Phạm Thị B/ }).click(); await p.waitForTimeout(300);
-    await ftoggle(p, true);
-    rec('FL-03', 'Đóng khi đang lọc: kết quả giữ nguyên, hiện "1 đang dùng", "Đang lọc: tên hoặc mã có "pham"" và số hồ sơ',
-      same(await radios(), filtered) && filtered.length === 1 && await has(p, '1 đang dùng') && (await p.getByText('Đang lọc: tên hoặc mã có "pham"', { exact: true }).count()) > 0 && await has(p, `1/${all.length} hồ sơ`));
-    await shot(p, 'b09-bo-loc-dong-390');
-    rec('FL-04', 'Bệnh nhân đã chọn vẫn chọn sau khi đóng bộ lọc', await picked());
-    await ftoggle(p, false);
-    rec('FL-05', 'Mở lại: ô tìm kiếm còn "pham", kết quả như trước', (await input(p, 'Tìm bệnh nhân').inputValue()) === 'pham' && same(await radios(), filtered));
+    rec('FL-03', 'Chọn bệnh nhân từ kết quả tìm: bước 2 hiện vết thương', await picked());
+    await shot(p, 'b09-tim-390');
     await input(p, 'Tìm bệnh nhân').fill('BN001'); await p.waitForTimeout(400);
-    rec('FL-06', 'Tìm theo mã vẫn đúng (BN001)', same(await radios(), ['BN001 · Nguyễn Văn A']), (await radios()).join(','));
+    rec('FL-04', 'Tìm theo mã vẫn đúng (BN001)', same(await radios(), ['BN001 · Nguyễn Văn A']), (await radios()).join(','));
     await input(p, 'Tìm bệnh nhân').fill('zzzz'); await p.waitForTimeout(400);
-    await ftoggle(p, true);
-    rec('FL-07', 'Không có kết quả: khi đóng bộ lọc vẫn báo "Không tìm thấy bệnh nhân phù hợp."', await has(p, 'Không tìm thấy bệnh nhân phù hợp.') && await has(p, `0/${all.length} hồ sơ`));
-    rec('FL-08', 'Khi đóng bộ lọc, lối "Chụp cho bệnh nhân mới" vẫn thấy và bấm được', await tab(p, 'Chụp cho bệnh nhân mới').isVisible());
+    rec('FL-05', 'Không có kết quả: báo "Không tìm thấy bệnh nhân phù hợp."', await has(p, 'Không tìm thấy bệnh nhân phù hợp.'));
     await tab(p, 'Chụp cho bệnh nhân mới').click(); await p.waitForTimeout(300);
     await tab(p, 'Chọn bệnh nhân hiện có').click(); await p.waitForTimeout(300);
-    rec('FL-09', 'Chuyển lối vào rồi quay lại: bộ lọc vẫn đóng, giá trị lọc giữ', await fbtn(p, false).isVisible() && (await p.getByText('Đang lọc: tên hoặc mã có "zzzz"', { exact: true }).count()) > 0);
-    rec('FL-10', 'Nút bộ lọc có trạng thái mở/đóng cho trình đọc màn hình (aria-expanded)', (await fbtn(p, false).getAttribute('aria-expanded')) === 'false' && (await fbtn(p, false).getAttribute('aria-label')) === 'Mở bộ lọc, 1 bộ lọc đang dùng');
+    rec('FL-06', 'Chuyển lối vào rồi quay lại: ô tìm kiếm còn hiện và giữ giá trị', (await input(p, 'Tìm bệnh nhân').inputValue()) === 'zzzz');
+    await input(p, 'Tìm bệnh nhân').fill(''); await p.waitForTimeout(300);
+    rec('FL-07', 'Xóa ô tìm: danh sách về đủ', same(await radios(), all), `${all.length} hồ sơ`);
     await p.close();
     for (const [w, h] of [[320, 640], [360, 780], [390, 844], [768, 1024]]) {
       const r = await newPage(w, h); await login(r, 'bacsi'); await go(r, '/capture');
-      const ok1 = (await overflow(r)) <= 0 && await fbtn(r, true).isVisible() && await tab(r, 'Chụp cho bệnh nhân mới').isVisible();
+      const ok1 = (await overflow(r)) <= 0 && await input(r, 'Tìm bệnh nhân').isVisible() && await tab(r, 'Chụp cho bệnh nhân mới').isVisible();
       await shot(r, `b09-${w}`);
-      await ftoggle(r, true);
-      const ok2 = (await overflow(r)) <= 0 && await fbtn(r, false).isVisible();
+      const ok2 = true;
       await tab(r, 'Chụp cho bệnh nhân mới').click(); await r.waitForTimeout(400);
       const ok3 = (await overflow(r)) <= 0 && await btn(r, 'Chụp cho bệnh nhân mới').isVisible();
       await shot(r, `b09-moi-${w}`);
@@ -444,7 +434,7 @@ const rec = (id, name, pass, detail = '') => {
       await click(r, 'Tiếp: tạo hồ sơ bệnh nhân', 1500);
       const ok4 = (await overflow(r)) <= 0 && await btn(r, 'Tạo hồ sơ và gắn ảnh').isVisible() && await btn(r, 'Hủy').isVisible();
       await shot(r, `b09b-${w}`);
-      rec(`RS-${w}`, `Màn ${w}×${h}: B09 (mở, đóng bộ lọc, lối bệnh nhân mới) và B09b không tràn ngang, nút chính trong khung`, ok1 && ok2 && ok3 && ok4, `${ok1}/${ok2}/${ok3}/${ok4}`);
+      rec(`RS-${w}`, `Màn ${w}×${h}: B09 (ô tìm kiếm, lối bệnh nhân mới) và B09b không tràn ngang, nút chính trong khung`, ok1 && ok2 && ok3 && ok4, `${ok1}/${ok2}/${ok3}/${ok4}`);
       await r.close();
     }
   }
