@@ -59,3 +59,27 @@ Không có xác minh backend, AI, firmware, phần cứng, lâm sàng hay môi t
 1. Review PR 58, 60, 61 trước, sau đó PR 9C.
 2. Quyết định có đưa `addImage` vào hàng đợi commit (D-R1) và đổi cách lưu ảnh trên web (D-R2).
 3. Quy tắc chọn đợt điều trị khi có nhiều đợt active (L-07).
+
+## 8. Hoàn tất gói B, C, D (16/11/2026)
+
+Nhánh `refactor/stage-9c-bcd` (xếp chồng trên PR 62). Chi tiết: `PLASMA_PRO_STAGE_9C_BCD_COMPLETION_REPORT.md`.
+
+| Gói | Trước (15/11) | Sau (16/11) |
+|---|---|---|
+| A | COMPLETE | COMPLETE |
+| B | PARTIALLY COMPLETE | COMPLETE |
+| C | PARTIALLY COMPLETE | COMPLETE (phần mềm), phần cứng PENDING |
+| D | PARTIALLY COMPLETE | COMPLETE |
+| E | COMPLETE (rà soát), sửa DEFERRED | Không đổi |
+| F | COMPLETE | COMPLETE (vẫn 1 lần ghi mỗi lần lưu) |
+| G | COMPLETE | COMPLETE (thêm 5 tệp kiểm thử đơn vị, 1 kịch bản tích hợp) |
+
+| Chỉ số | 15/11 | 16/11 |
+|---|---|---|
+| Tệp kiểm thử đơn vị trong `npm test` | 46 | 51 |
+| Hàm ghi có kiểu Store đi qua commit | 9/31 | 29/31 |
+| Nơi gọi AsyncStorage ngoài tầng hạ tầng | `store.tsx` 6 chỗ | 0 (chỉ `persistence.ts`) |
+| Vi phạm phụ thuộc theo kiểm tĩnh | Chưa kiểm | 0 trên 166 tệp |
+| Kịch bản tích hợp lỗi ghi, dữ liệu hỏng | Không có | 21/21 |
+
+Commit: b51122c, 3b41faf, 4ca3ebb, 5d20e88, 6de5c40, 85d9ded, cộng commit tài liệu. Trạng thái toàn Stage 9C vẫn **PARTIALLY COMPLETE** (gói E cần backend; phần cứng chưa xác minh).

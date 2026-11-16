@@ -44,3 +44,54 @@ Bộ kiểm **chưa gắn vào ứng dụng**: không chặn lưu, không sửa 
 ## 6. Hoàn tác
 
 `git revert f90ad18`. Mã mới không được ứng dụng gọi nên hoàn tác không ảnh hưởng hành vi.
+
+## 7. Hoàn tất gói D (16/11/2026, nhánh `refactor/stage-9c-bcd`)
+
+### 7.1 Đường ghi sau khi sửa
+
+```
+Màn hình ─await─► hàm store (kiểm quyền) ─► commit(fn)
+   commit: xếp hàng (commitQueue) ─► fn(bản mới nhất) ─► newIntegrityIssues(bản cũ, bản mới)
+           ─► persistence.saveData (hàng ghi tuần tự) ─► thành công: cập nhật màn hình
+           lỗi ở bất kỳ bước nào: màn hình và bộ nhớ máy giữ bản cũ, ném PersistError hoặc IntegrityError
+Ghi nền (chỉ resetDemo, mô phỏng IoMT bản phát triển, bộ đếm ảnh): lỗi ghi ─► PersistBanner + "Thử lưu lại"
+Mở ứng dụng: JSON hỏng ─► chép nguyên văn sang plasmapro.demo.v2.khong-doc-duoc.<thời điểm>, báo người dùng
+             kho không đọc được ─► không ghi gì (không đè dữ liệu thật), báo người dùng
+```
+
+### 7.2 Đối chiếu yêu cầu
+
+| Yêu cầu | Trạng thái | Căn cứ |
+|---|---|---|
+| Giữ quan hệ patient, wound, image, device, session | Đạt | Không đổi lược đồ; `newIntegrityIssues` chặn mồ côi và gắn chéo mới |
+| Chặn gắn chéo bệnh nhân | Đạt | Kiểm tại chỗ ở `addEvaluation` (ảnh thuộc đúng vết), `savePlan`, `recordDeviceSession` (vết thuộc đúng hồ sơ); kiểm chung trước mỗi commit; `writePath.test.cjs` mục 4 |
+| Chặn mồ côi ngoài ý muốn | Đạt | `writePath.test.cjs` mục 5 |
+| Ghi xung đột được tuần tự | Đạt | Hàng commit + hàng ghi; `writePath.test.cjs` mục 1, 2; `persistence.test.ts` mục 1 |
+| Giữ trường không liên quan | Đạt | `writePath.test.cjs` mục 7 |
+| Lỗi ghi được báo rõ | Đạt | 29/31 hàm ghi có kiểu Store đi qua commit (trước 9/31); 2 hàm còn lại là mô phỏng IoMT chỉ có trong bản phát triển (`setDevicePower`, `simulateSession`); chúng và `resetDemo` (quản trị khôi phục dữ liệu mẫu) ghi nền, lỗi hiện ở PersistBanner; 9C-D-01..10 |
+| Bộ nhớ và màn hình khớp | Đạt | Màn hình chỉ đổi sau khi ghi xong; `writePath.test.cjs` mục 1 đến 3 |
+| Chặn commit trùng | Một phần | Mã bản ghi trùng bị chặn; bấm nạp hai lần chỉ ghi một lần (9C-C-01); các nút lưu khác dựa vào khóa nút có từ trước |
+| Giữ bản nháp | Đạt ở luồng đã kiểm | B11 (9C-D-02), N08 (9C-D-06). Màn khác giữ trạng thái khi lỗi như trước, chưa kiểm riêng từng màn |
+| Không tự gán phiên vào vết khi không rõ | Đạt | `recordDeviceSession` chỉ nhận `woundId` do T02 truyền (S8-B04: chỉ khi đúng một vết có đợt) |
+| Kiểm ghi đồng thời và ghi lỗi | Đạt | `writePath.test.cjs`, `persistence.test.ts`, `commitQueue.test.ts`, `kiem-thu-9c-bcd.cjs` |
+
+Trước khi sửa (bản dựng 9C cũ, cùng kịch bản): bệnh nhân gửi báo cáo khi bộ nhớ ghi lỗi vẫn được báo "Đã ghi nhận" trong khi báo cáo không được lưu (9C-D-07 LỖI). Sau khi sửa: báo "Chưa gửi được", giữ nội dung, không rời màn.
+
+### 7.3 Chi phí kiểm quan hệ mỗi commit (Node, máy chạy kịch bản)
+
+| Quy mô | Kích thước | `newIntegrityIssues` |
+|---|---|---|
+| x1 | 14 KB | 0,08 ms |
+| x10 | 135 KB | 0,23 ms |
+| x100 | 1,35 MB | 1,55 ms |
+
+### 7.4 Giới hạn còn lại
+
+- Phiên điều trị (`DeviceSession`) không lưu `patientId`; quan hệ phiên với bệnh nhân suy ra qua thiết bị lúc ghi. Khi thiết bị đổi chủ, không kiểm lại được phiên cũ thuộc ai. Thêm trường cần duyệt đổi lược đồ.
+- D-R2 (ảnh web dạng data URL trong localStorage) chưa đổi.
+- D-R4 (không có phiên bản lược đồ, migration) chưa đổi.
+- Hàng ghi tuần tự kiểm trên web và Node; chưa chạy trên điện thoại thật.
+
+### 7.5 Hoàn tác
+
+`git revert 85d9ded 4ca3ebb 3b41faf b51122c` (theo thứ tự này). Không đổi dữ liệu nên không cần di chuyển dữ liệu; khóa sao lưu `plasmapro.demo.v2.khong-doc-duoc.*` (nếu có) có thể xóa tay.
