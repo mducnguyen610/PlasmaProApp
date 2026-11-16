@@ -66,3 +66,22 @@ Chạy lại trên bản dựng mới từ head PR 62 và trên bản dựng PR 
 
 - dot-9 (cần bản dựng tiêm dữ liệu AR riêng).
 - Kiểm trên điện thoại thật, máy Plasma Pro thật: không có. Kết quả giả lập không phải xác minh phần cứng.
+
+## 6. Hồi quy sau khi hoàn tất gói B, C, D (16/11/2026)
+
+Bản dựng web mới từ head nhánh `refactor/stage-9c-bcd` (85d9ded). Ngày chạy 16/11/2026 (thứ Hai, có lịch điều trị).
+
+| Kiểm | Kết quả |
+|---|---|
+| `npx tsc --noEmit -p .` | Đạt |
+| `npm run lint` | Đạt, 0 cảnh báo |
+| `npm test` | 51/51 tệp đạt |
+| `scripts/kiem-thu-giao-dien.cjs` | 41/41 |
+| Hồi quy Stage 8, 22 kịch bản | 782 đạt, 2 lỗi (tb-8 S8-W3-04, S8-B01, có sẵn, sửa ở PR 58) |
+| `scripts/kiem-thu-9b.cjs` | 18/18 |
+| `scripts/kiem-thu-9c-bcd.cjs` | 21/21 |
+| `scripts/do-hieu-nang-9c.cjs` | 1 lần ghi mỗi lần lưu, lưu đúng 5/5 |
+| Toàn vẹn dữ liệu trình duyệt | 0 lỗi |
+| Stage 9A gộp thử (PR 60 + nhánh này, không commit) | giao diện 41/41; 22 kịch bản 782 đạt, 2 lỗi (cùng S8-W3-04, S8-B01); 9B 18/18; 9C-BCD 21/21. Xung đột duy nhất: import `AccountScreen.tsx` |
+
+So với 9B: chỉ khác p2 (238 so với 237) vì kiểm P21-06 chỉ chạy vào ngày có lịch; giá trị đo P22-23 khác theo ngày. Không có kiểm nào chuyển từ đạt sang lỗi. Kịch bản cũ không bị sửa.
