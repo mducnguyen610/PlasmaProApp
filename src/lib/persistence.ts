@@ -9,6 +9,11 @@
 export const STORAGE_KEY = 'plasmapro.demo.v2';
 export const SESSION_KEY = 'plasmapro.session.v1';
 export const UNREADABLE_PREFIX = 'plasmapro.demo.v2.khong-doc-duoc.';
+/**
+ * Ảnh chờ gắn hồ sơ của luồng "Chụp cho bệnh nhân mới". Khóa riêng, ngoài dữ liệu chính (STORAGE_KEY): cấu trúc dữ liệu chính không đổi,
+ * và ảnh chờ không bao giờ xuất hiện như một bản ghi lâm sàng. Chỉ giữ một bản chờ.
+ */
+export const PENDING_CAPTURE_KEY = 'plasmapro.anh-cho-ho-so.v1';
 
 /** Phần nhỏ nhất của AsyncStorage mà ứng dụng dùng; kiểm thử thay bằng kho giả. */
 export interface KeyValueStore {
@@ -66,6 +71,23 @@ export function createPersistence<T>(kv: KeyValueStore, now: () => number = Date
     },
     clearSession(): Promise<void> {
       return enqueue(() => kv.removeItem(SESSION_KEY));
+    },
+    /** Đọc ảnh chờ (JSON thô; nơi gọi kiểm cấu trúc). Lỗi đọc hoặc JSON hỏng trả null, không chặn mở ứng dụng. */
+    async loadPending(): Promise<unknown> {
+      try {
+        const raw = await kv.getItem(PENDING_CAPTURE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    },
+    /** Ghi ảnh chờ; lỗi thì ném (nơi gọi báo "chỉ giữ trong phiên này"). */
+    savePending(value: unknown): Promise<void> {
+      const text = JSON.stringify(value);
+      return enqueue(() => kv.setItem(PENDING_CAPTURE_KEY, text));
+    },
+    clearPending(): Promise<void> {
+      return enqueue(() => kv.removeItem(PENDING_CAPTURE_KEY));
     },
   };
 }

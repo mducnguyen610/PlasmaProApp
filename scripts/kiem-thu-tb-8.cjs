@@ -231,9 +231,11 @@ const shiftDays = soNgayToiNgayCoLich();
     const barRe = await bar(p);
     rec('S8-T-01', 'Thiết bị', 'Kết nối lại sau khi tải trang: thanh trạng thái theo bản tin máy, không báo "Máy đang bận" khi máy (giả lập) đã rảnh', !barRe.includes('Máy đang bận') && barRe.includes('Đã kết nối'), barRe);
     // Giả lập mất liệu trình đã nạp khi trang tải lại (máy giả lập tạo mới), nên nạp lại qua T01 rồi mới bắt đầu.
-    await click(btn(p, 'Bắt đầu điều trị'), 2000);
+    // Stage 9B (S8-B07, simStartGate): máy giả lập chưa có liệu trình thì nút "Bắt đầu điều trị" ẩn và có câu giải thích,
+    // nên kịch bản không bấm nút này nữa mà kiểm nút đã ẩn và phiên không chạy.
+    const startHidden = (await btn(p, 'Bắt đầu điều trị').count()) === 0;
     const startNoCfg = await has(p, /Đang điều trị, còn lại/, false);
-    rec('S8-T-01b', 'Thiết bị', 'Sau tải lại, máy giả lập chưa có liệu trình: "Bắt đầu" không chạy phiên (giả lập không tự nạp lại)', !startNoCfg ? 'note' : 'note', startNoCfg ? 'Giả lập vẫn chạy' : 'Nút "Bắt đầu" (chỉ có ở giả lập) bấm không có phản hồi; ghi nhận P3 cho giả lập');
+    rec('S8-T-01b', 'Thiết bị', 'Sau tải lại, máy giả lập chưa có liệu trình: nút "Bắt đầu điều trị" ẩn, phiên không chạy (giả lập không tự nạp lại)', startHidden && !startNoCfg, startHidden ? 'nút ẩn (S8-B07)' : 'nút vẫn hiện');
     await go(p, '/connect-device'); await click(inFooter(p, 'Kết nối'), 1500); await click(inFooter(p, 'Nạp liệu trình vào máy'), 2500);
     await click(inFooter(p, 'Theo dõi phiên điều trị'), 1500);
     await click(btn(p, 'Bắt đầu điều trị'), 2200);
@@ -334,8 +336,8 @@ const shiftDays = soNgayToiNgayCoLich();
     await p.reload(); await p.waitForTimeout(2000);
     rec('S8-NV-04', 'Điều hướng, trạng thái', 'Tải lại trang lịch sử ở thẻ Ảnh: vẫn đăng nhập, vẫn đúng vết thương và thẻ (tham số trên URL)', p.url().includes('tab=anh') && await has(p, 'VT01', false), p.url().replace(BASE, ''));
     await go(p, '/images/IMG0004');
-    // B11 gọi ô là "Diện tích bác sĩ đã đo" (B10: "Diện tích bác sĩ đo (cm²)"), xem S8-B11.
-    const box = p.getByRole('textbox', { name: 'Diện tích bác sĩ đã đo', exact: true }).locator('visible=true').first();
+    // Stage 9B (S8-B10) đổi nhãn ô ở B11 thành "Diện tích bác sĩ đo (cm²)" hoặc "(mm²)", cùng nhãn với B10.
+    const box = p.getByRole('textbox', { name: /^Diện tích bác sĩ đo \((cm²|mm²)\)$/ }).locator('visible=true').first();
     if (await box.count()) {
       await box.fill('3,3');
       p.answer = false; const n = p.dialogs.length; await back(p);

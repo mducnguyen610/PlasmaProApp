@@ -11,7 +11,7 @@ import { CheckRow } from '@/components/Consent';
 import { CaptureQualityCard } from '@/components/CaptureQualityCard';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
-import { Button, Card, Chip, Choices, Disclosure, Field, Header, InfoRow, Muted, Screen, SectionTitle, StatusChip, StepRow } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StatusChip, StepRow } from '@/components/ui';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { WoundOutline, WoundOverlay } from '@/components/WoundOverlay';
 import { getRecognizer, type RecognitionResult } from '@/lib/ai';
@@ -70,10 +70,13 @@ function CheckList({ checks }: { checks: LiveCheck[] }) {
 }
 
 export default function GuidedCapture() {
-  const { woundId } = useLocalSearchParams<{ woundId: string }>();
-  const { me, addImage, labelImage } = useStore();
+  const { woundId, moi } = useLocalSearchParams<{ woundId?: string; moi?: string }>();
+  // Luồng "Chụp cho bệnh nhân mới" (mở từ B09): chưa có hồ sơ, vết thương. Ảnh không lưu ở đây mà vào trạng thái chờ,
+  // rồi sang biểu mẫu tạo hồ sơ (B09b). Chụp, kiểm tra ảnh, nhập số đo giữ nguyên như luồng chụp cho hồ sơ có sẵn.
+  const forNew = moi === '1' && !woundId;
+  const { me, addImage, labelImage, holdPendingCapture, discardPendingCapture } = useStore();
   const { wound, patient } = useLookups();
-  const w = wound(woundId), p = patient(w?.patientId);
+  const w = forNew ? undefined : wound(woundId), p = patient(w?.patientId);
   const canView = useCanView(p), focused = useIsFocused();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
@@ -98,6 +101,9 @@ export default function GuidedCapture() {
   const [stage, setStage] = useState<2 | 3>(2);
   // Chặn lưu trùng khi bấm nhiều lần trước khi màn kịp vẽ lại (busy là state, cập nhật sau một lượt vẽ).
   const saveLock = useRef(false);
+  // Luồng bệnh nhân mới: mã lần chụp cố định cho mỗi ảnh (khóa chống ghi lặp của ảnh chờ); ảnh nào đã chuyển sang biểu mẫu.
+  const captureIdRef = useRef('');
+  const [handedOff, setHandedOff] = useState<string | null>(null);
   const [areaText, setAreaText] = useState('');
   const [method, setMethod] = useState('');
   const [error, setError] = useState('');
@@ -181,15 +187,28 @@ export default function GuidedCapture() {
   const selectPhoto = (value: Photo) => {
     generation.current++; setAnalyzing(true); setPhoto(value); setLive(false); setReady(false); setQuality(unknownQuality());
     setPhotoWound(null); setReviewed(false); setAreaText(''); setMethod(''); setError(''); setStage(2);
+    captureIdRef.current = 'CAP-' + Crypto.randomUUID();
   };
   // P0 bổ sung PX-02: ảnh đã chụp nhưng chưa lưu (kèm số đo đang nhập) thì hỏi trước khi rời màn. Không tự lưu.
-  const allowLeave = useDiscardGuard(photo !== null);
+  // Luồng bệnh nhân mới: ảnh đã chuyển sang trạng thái chờ thì rời màn không mất ảnh (ảnh chờ hiện ở B09), nên không hỏi.
+  const allowLeave = useDiscardGuard(photo !== null && !(forNew && handedOff === photo.uri));
+  // Ảnh chờ đã được gắn vào hồ sơ hoặc đã bị bỏ ở biểu mẫu: màn này về bước 1, không giữ ảnh cũ.
+  const { pendingCapture } = useStore();
+  // Điều chỉnh ngay khi vẽ (cùng cách B02 lọc theo tham số), không qua hiệu ứng.
+  if (forNew && handedOff && !pendingCapture) { setHandedOff(null); setPhoto(null); setQuality(unknownQuality()); setPhotoWound(null); setAreaText(''); setMethod(''); setStage(2); }
   const retake = () => {
-    const reset = () => { generation.current++; setPhoto(null); setQuality(unknownQuality()); setPhotoWound(null); setError(''); };
-    confirm('Bỏ ảnh vừa chụp?', `Ảnh này${areaText.trim() ? ' và số đo đang nhập' : ''} chưa được lưu và sẽ bị bỏ khi chụp hoặc chọn lại.`, reset, 'Bỏ và chụp lại', 'Ở lại');
+    const held = forNew && photo && handedOff === photo.uri;
+    const reset = () => {
+      generation.current++; setPhoto(null); setQuality(unknownQuality()); setPhotoWound(null); setError('');
+      if (held) { setHandedOff(null); void discardPendingCapture().catch(() => {}); }
+    };
+    confirm('Bỏ ảnh vừa chụp?', held
+      ? 'Ảnh này đang chờ tạo hồ sơ và sẽ bị bỏ khi chụp hoặc chọn lại.'
+      : `Ảnh này${areaText.trim() ? ' và số đo đang nhập' : ''} chưa được lưu và sẽ bị bỏ khi chụp hoặc chọn lại.`, reset, 'Bỏ và chụp lại', 'Ở lại');
   };
-  if (!p || !w) return <NoAccess notFound />;
-  if (!canView || me?.role !== 'doctor') return <NoAccess />;
+  if (!forNew && (!p || !w)) return <NoAccess notFound />;
+  // Quyền: chỉ bác sĩ (luồng bệnh nhân mới chưa có hồ sơ để xét phân công); store cũng từ chối vai trò khác.
+  if (me?.role !== 'doctor' || (!forNew && !canView)) return <NoAccess />;
 
   const start = async () => {
     setError('');
@@ -231,18 +250,11 @@ export default function GuidedCapture() {
     catch { setError('Không đọc được ảnh đã chọn.'); }
     finally { setBusy(false); }
   };
-  const save = async () => {
-    if (!photo || busy || !capabilities || saveLock.current) return;
-    const area = areaText.trim() ? parseArea(areaText) : null;
-    if (area && !area.ok) { setError(area.error); return; }
-    if (area?.ok && area.value === 0) { setError('Diện tích phải lớn hơn 0. Để trống nếu chưa đo.'); return; }
-    if (area?.ok && !method) { setError('Chọn phương pháp bác sĩ đã dùng để đo trước khi lưu số đo.'); return; }
-    saveLock.current = true;
-    setBusy(true); setError('');
-    try {
+  // Siêu dữ liệu chụp; dùng chung cho lưu ảnh (hồ sơ có sẵn) và chuyển ảnh sang trạng thái chờ (bệnh nhân mới). Nội dung không đổi.
+  const metadataFor = (photo: Photo, captureId: string, capabilities: DeviceCapabilities): CaptureMetadata => {
       const roi = roiFrom(photoWound);
-      const metadata: CaptureMetadata = {
-        schemaVersion: photo.ar ? '1.1' : '1.0', captureId: 'CAP-' + Crypto.randomUUID(), sessionId: session.current, selectedFrameId: 'PHOTO-' + Crypto.randomUUID(),
+      return {
+        schemaVersion: photo.ar ? '1.1' : '1.0', captureId, sessionId: session.current, selectedFrameId: 'PHOTO-' + Crypto.randomUUID(),
         shutter: { trigger: photo.imageSource === 'gallery' ? 'gallery' : 'manual', stabilitySource: null, holdMs: null, sceneConfirmed: !photo.manualOverride && photo.imageSource !== 'gallery' },
         imageSource: photo.imageSource, mode: photo.ar ? 'ar_photo' : 'guided_photo', width: photo.width, height: photo.height,
         capturedAt: photo.takenAt, recordedAt: new Date().toISOString(), sourceDateKnown: photo.sourceDateKnown, roi, roiCoordinates: 'saved_image_normalized', previewGuideMapped: false,
@@ -258,6 +270,42 @@ export default function GuidedCapture() {
           : {}),
         ...(photo.ar ? { ar: photo.ar } : {}),
       };
+  };
+  /** Kiểm ô số đo như khi lưu; trả thông báo lỗi hoặc null. */
+  const areaProblem = () => {
+    const area = areaText.trim() ? parseArea(areaText) : null;
+    if (area && !area.ok) return area.error;
+    if (area?.ok && area.value === 0) return 'Diện tích phải lớn hơn 0. Để trống nếu chưa đo.';
+    if (area?.ok && !method) return 'Chọn phương pháp bác sĩ đã dùng để đo trước khi lưu số đo.';
+    return null;
+  };
+  // Luồng bệnh nhân mới: đưa ảnh (kèm số đo đang nhập, chưa ghi) vào trạng thái chờ rồi mở biểu mẫu tạo hồ sơ.
+  const handoff = async () => {
+    if (!photo || busy || !capabilities || saveLock.current) return;
+    const problem = areaProblem();
+    if (problem) { setError(problem); return; }
+    saveLock.current = true;
+    setBusy(true); setError('');
+    try {
+      await holdPendingCapture({
+        uri: photo.uri, ext: photo.ext, width: photo.width, height: photo.height, captureDate: photo.captureDate, sourceDateKnown: photo.sourceDateKnown,
+        capture: metadataFor(photo, captureIdRef.current, capabilities), areaText: areaText.trim(), method,
+      });
+      setHandedOff(photo.uri);
+      router.push('/capture-new-patient');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Chưa giữ được ảnh. Ảnh vẫn ở đây để thử lại.'); }
+    finally { saveLock.current = false; setBusy(false); }
+  };
+  const save = async () => {
+    if (!photo || busy || !capabilities || saveLock.current || !w) return;
+    const area = areaText.trim() ? parseArea(areaText) : null;
+    if (area && !area.ok) { setError(area.error); return; }
+    if (area?.ok && area.value === 0) { setError('Diện tích phải lớn hơn 0. Để trống nếu chưa đo.'); return; }
+    if (area?.ok && !method) { setError('Chọn phương pháp bác sĩ đã dùng để đo trước khi lưu số đo.'); return; }
+    saveLock.current = true;
+    setBusy(true); setError('');
+    try {
+      const metadata = metadataFor(photo, 'CAP-' + Crypto.randomUUID(), capabilities);
       const image = await addImage({ woundId: w.id, ...photo, source: 'doctor', capture: metadata });
       // P0 SV-02: ảnh đã lưu. Nếu bước ghi số đo lỗi, không báo "chưa lưu ảnh" (bấm lại sẽ tạo ảnh trùng):
       // mở chi tiết ảnh vừa lưu, điền lại số và phương pháp đang nhập để bác sĩ lưu lại.
@@ -293,19 +341,23 @@ export default function GuidedCapture() {
       </View>
       : <View style={{ flexDirection: 'row', gap: 10 }}>
         <Button label="Bước trước" icon="chevron-back" variant="secondary" disabled={busy} onPress={() => { setError(''); setStage(2); }} style={{ flexShrink: 0 }} />
-        <Button label={saveLabel} icon="save-outline" loading={busy} disabled={analyzing || !capabilities} onPress={save} style={{ flex: 1 }} />
+        {forNew
+          ? <Button label="Tiếp: tạo hồ sơ bệnh nhân" icon="person-add-outline" loading={busy} disabled={analyzing || !capabilities} onPress={handoff} style={{ flex: 1 }} />
+          : <Button label={saveLabel} icon="save-outline" loading={busy} disabled={analyzing || !capabilities} onPress={save} style={{ flex: 1 }} />}
       </View>;
   const footerWithError = <View style={{ gap: 8 }}>{error ? <Text accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{error}</Text> : null}{footer}</View>;
   return <Screen footer={footerWithError} header={<Header back title={!photo ? 'Chụp vết thương' : stage === 2 ? 'Kiểm tra ảnh' : 'Nhập số đo'} />}>
     {/* P0 G1: ảnh và số đo sẽ lưu vào bệnh nhân và vết thương này. */}
-    <ClinicalContext patient={p} wound={w} />
+    {forNew || !p
+      ? <Notice tone="blue" icon="person-add-outline">Chụp cho bệnh nhân mới. Ảnh chưa thuộc hồ sơ nào; sau bước nhập số đo, bác sĩ tạo hồ sơ và ảnh mới được gắn vào hồ sơ đó.</Notice>
+      : <ClinicalContext patient={p} wound={w} />}
     {/* Stage 9A (bố cục riêng B10): thanh bước đặt ngay dưới ngữ cảnh; chế độ chụp (AR hay không, ảnh thư viện) cùng câu giải thích
         gom thành một mục thu gọn, thay cho hai chip ở đầu và đoạn chữ ở cuối màn. Chip "Ảnh chưa lưu" vẫn luôn hiện vì là trạng thái
         cần biết trước khi rời màn. Lỗi hiện ngay trên các nút ở chân màn. */}
     <StepRow steps={['Chụp', 'Kiểm tra ảnh', 'Nhập số đo']} step={!photo ? 1 : stage} />
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       {/* Giai đoạn 3: trạng thái ảnh rõ ràng. Ảnh chỉ thành bản ghi khi bấm lưu ở bước 3. */}
-      {photo ? <Chip label="Ảnh chưa lưu" tone="amber" icon="alert-circle-outline" /> : null}
+      {photo ? <Chip label={forNew && handedOff === photo.uri ? 'Ảnh chờ tạo hồ sơ' : 'Ảnh chưa lưu'} tone="amber" icon="alert-circle-outline" /> : null}
       <View style={{ flex: 1, minWidth: 200 }}>
         <Disclosure
           title={`Chế độ: ${useAr ? (capabilities?.arFramework === 'arcore' ? 'ARCore' : 'ARKit') : 'Không có AR'}`}

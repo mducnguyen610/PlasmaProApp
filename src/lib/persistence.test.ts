@@ -1,7 +1,7 @@
 // Chạy: node src/lib/persistence.test.ts
 // Stage 9C (gói D): ghi tuần tự đúng thứ tự gọi, lỗi ghi được báo, dữ liệu hỏng được giữ bản sao, đọc lỗi được báo.
 import assert from 'node:assert/strict';
-import { createPersistence, SESSION_KEY, STORAGE_KEY, UNREADABLE_PREFIX, type KeyValueStore } from './persistence.ts';
+import { createPersistence, PENDING_CAPTURE_KEY, SESSION_KEY, STORAGE_KEY, UNREADABLE_PREFIX, type KeyValueStore } from './persistence.ts';
 
 type Op = { key: string; value: string };
 function fakeKv(opts: { delays?: number[]; failWrites?: Set<number>; failRead?: boolean } = {}) {
@@ -86,5 +86,23 @@ function fakeKv(opts: { delays?: number[]; failWrites?: Set<number>; failRead?: 
   assert.equal(mem.get(SESSION_KEY), 'u-2');
   await p.clearSession();
   assert.equal(mem.get(SESSION_KEY), undefined);
+}
+// 9. Ảnh chờ tạo hồ sơ: khóa riêng, không chạm dữ liệu chính; lỗi ghi được báo; JSON hỏng hoặc đọc lỗi trả null (không chặn mở ứng dụng).
+{
+  const { kv, mem } = fakeKv({ failWrites: new Set([1]) });
+  const p = createPersistence<{ v: number }>(kv);
+  await p.saveData({ v: 1 });
+  await assert.rejects(p.savePending({ 'u-bs1': { id: 'CHO-1' } }));
+  await p.savePending({ 'u-bs1': { id: 'CHO-2' } });
+  assert.deepEqual(await p.loadPending(), { 'u-bs1': { id: 'CHO-2' } });
+  assert.equal(JSON.parse(mem.get(STORAGE_KEY)!).v, 1, 'dữ liệu chính không đổi');
+  await p.clearPending();
+  assert.equal(mem.get(PENDING_CAPTURE_KEY), undefined);
+  assert.equal(await p.loadPending(), null);
+  mem.set(PENDING_CAPTURE_KEY, '{hỏng');
+  assert.equal(await p.loadPending(), null);
+  assert.notEqual(PENDING_CAPTURE_KEY, STORAGE_KEY);
+  const bad = fakeKv({ failRead: true });
+  assert.equal(await createPersistence(bad.kv).loadPending(), null);
 }
 console.log('persistence.test: đạt');
