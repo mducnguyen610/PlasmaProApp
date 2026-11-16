@@ -1,20 +1,21 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Consent, TermsLink } from '@/components/Consent';
 import { Text } from '@/components/Text';
 import { Button, Card, Field, Muted, Choices } from '@/components/ui';
 import { DEMO_PASSWORD, isSampleAccount } from '@/lib/auth';
 import { TermsRequiredError, useStore } from '@/lib/store';
-import { C, cardShape, G, T } from '@/theme';
+import { C, T } from '@/theme';
 
 const HOME = { doctor: '/doctor', patient: '/patient', admin: '/admin' } as const;
 export default function Login() {
   const { me, data, authenticate } = useStore();
   const insets = useSafeAreaInsets();
+  const wide = useWindowDimensions().width >= 900;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
@@ -32,17 +33,28 @@ export default function Login() {
     }
     finally { setBusy(false); }
   };
-  return <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 24, paddingTop: insets.top + 24, paddingBottom: 48, gap: 20, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
-    {/* Đầu trang gọn (rà soát 11/11/2026): bỏ vòng trang trí và ba nhãn vai trò trông như nút, để ô đăng nhập lên cao hơn. */}
-    <LinearGradient colors={G.night} style={[cardShape(), { padding: 20, gap: 6, flexDirection: 'row', alignItems: 'center' }]}>
-      <Ionicons name="pulse" size={36} color={C.onPrimary} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ color: C.onPrimary, fontSize: 26, fontWeight: '700' }}>Plasma Pro</Text>
-        <Text style={{ color: C.onPrimarySoft, fontSize: T.label, lineHeight: 22 }}>Kết nối chăm sóc. Theo dõi mỗi ngày.</Text>
+  // Stage 9A: điện thoại có dải nhận diện navy ở trên, khung đăng nhập nổi lên một phần; màn rộng chia hai cột (thương hiệu trái, biểu mẫu phải).
+  const brand = (
+    <View style={{ gap: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: C.brandMint, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="pulse" size={22} color={C.navy} />
+        </View>
+        <Text style={{ color: C.onPrimary, fontSize: 22, fontWeight: '700' }}>Plasma Pro</Text>
       </View>
-    </LinearGradient>
-    <View style={{ gap: 5 }}><Text style={{ fontSize: 25, fontWeight: '700' }}>Chào mừng trở lại</Text><Muted>Đăng nhập để tiếp tục theo dõi và chăm sóc.</Muted></View>
-    <Card style={{ gap: 16 }}>
+      <Text style={{ color: C.onPrimary, fontSize: wide ? 30 : 24, lineHeight: wide ? 38 : 31, fontWeight: '700' }}>Kết nối chăm sóc.{'\n'}Theo dõi mỗi ngày.</Text>
+      <Text style={{ color: C.onPrimarySoft, fontSize: T.small, lineHeight: 21, maxWidth: 380 }}>Quản lý quá trình điều trị vết thương bằng thiết bị Plasma Pro cho bác sĩ và bệnh nhân.</Text>
+    </View>
+  );
+  return <View style={{ flex: 1, backgroundColor: C.bg, flexDirection: wide ? 'row' : 'column' }}>
+    <StatusBar style="light" />
+    {wide ? <View style={{ width: '42%', maxWidth: 520, backgroundColor: C.navy, padding: 48, paddingTop: insets.top + 64, justifyContent: 'space-between' }}>{brand}<Text style={{ color: C.onPrimarySoft, fontSize: T.caption }}>Bản demo, dữ liệu mô phỏng. Không dùng cho chẩn đoán.</Text></View> : null}
+  <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 48 }}>
+    {!wide ? <View style={{ backgroundColor: C.navy, paddingHorizontal: 20, paddingTop: insets.top + 28, paddingBottom: 64 }}>{brand}</View> : null}
+    <View style={{ paddingHorizontal: 16, marginTop: wide ? insets.top + 64 : -40, gap: 20, width: '100%', maxWidth: 480, alignSelf: 'center' }}>
+    {/* Đầu trang gọn (rà soát 11/11/2026): bỏ vòng trang trí và ba nhãn vai trò trông như nút, để ô đăng nhập lên cao hơn. */}
+    <Card hero style={{ gap: 16, padding: 20 }}>
+      <View style={{ gap: 4 }}><Text accessibilityRole="header" style={{ fontSize: 22, fontWeight: '700', color: C.text }}>Chào mừng trở lại</Text><Muted>Đăng nhập để tiếp tục theo dõi và chăm sóc.</Muted></View>
       <Field label="Tên đăng nhập" accessibilityLabel="Tên đăng nhập" value={username} onChangeText={(v) => { setUsername(v); setTermsNotice(''); setAgreed(false); }} autoCapitalize="none" autoCorrect={false} placeholder="Nhập tên đăng nhập" />
       {/* Lỗi đăng nhập hiện ngay dưới ô mật khẩu, viền ô đổi màu lỗi (A14). */}
       <Field label="Mật khẩu" accessibilityLabel="Mật khẩu" value={password} onChangeText={(v) => { setPassword(v); setError(''); }} secureTextEntry placeholder="Nhập mật khẩu" error={error || null} />
@@ -59,12 +71,14 @@ export default function Login() {
       <Button label="Có mã kích hoạt từ bác sĩ? Kích hoạt tài khoản" variant="ghost" onPress={() => router.push('/activate')} />
       <Button label="Chưa có tài khoản? Đăng ký" variant="ghost" onPress={() => router.push('/register')} />
     </Card>
-    <Card>
-      <Text style={{ fontWeight: '700' }}>Trải nghiệm bản demo</Text>
+    <Card style={{ backgroundColor: C.surfaceMuted }}>
+      <Text style={{ fontWeight: '700', color: C.text }}>Trải nghiệm bản demo</Text>
       <Muted>Chọn tài khoản để điền nhanh. Mật khẩu thử nghiệm: {DEMO_PASSWORD}</Muted>
       <Choices value={username} onChange={value => { setUsername(value); setPassword(DEMO_PASSWORD); setError(''); setTermsNotice(''); setAgreed(false); }} options={data.accounts.filter(a => isSampleAccount(a) && !a.locked).map(a => ({ value: a.username, label: a.name }))} />
       <Muted>Đăng nhập cục bộ trên máy này; chưa xác thực qua máy chủ.</Muted>
     </Card>
-  </ScrollView>;
+    </View>
+  </ScrollView>
+  </View>;
 }
 

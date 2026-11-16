@@ -5,12 +5,12 @@ import { Text } from '@/components/Text';
 
 import { patientSeverity, SEVERITY } from '@/lib/access';
 import { latestAreaIncrease } from '@/lib/areaChange';
-import { Chip, IconBadge, StatusChip, WoundPhoto, type IconName } from '@/components/ui';
+import { Chip, IconBadge, PatientAvatar, StatusChip, WoundPhoto, type IconName } from '@/components/ui';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, WoundImage } from '@/lib/types';
-import { bar, C, radius, T, space } from '@/theme';
+import { bar, C, numeric, radius, T, space } from '@/theme';
 import { SEVERITY_ROLE, SOURCE } from '@/theme.status';
 import { TODAY_LABEL, type Attention, type TodayState } from '@/lib/attention';
 
@@ -20,9 +20,9 @@ export function DateTile({ date, today }: { date: string; today: string }) {
   const isToday = date === today;
   const [, m, d] = date.split('-');
   return (
-    <View accessible accessibilityLabel={isToday ? 'Hôm nay' : `Ngày ${Number(d)} tháng ${Number(m)}`} style={{ width: 60, paddingVertical: 6, borderRadius: radius.m, alignItems: 'center', backgroundColor: isToday ? C.redSoft : C.primarySoft }}>
-      <Text style={{ fontSize: T.stat, lineHeight: 28, fontWeight: '700', color: isToday ? C.red : C.primary }}>{Number(d)}</Text>
-      <Text style={{ fontSize: T.caption, fontWeight: '600', color: isToday ? C.red : C.primary }}>{isToday ? 'Hôm nay' : `Th${Number(m)}`}</Text>
+    <View accessible accessibilityLabel={isToday ? 'Hôm nay' : `Ngày ${Number(d)} tháng ${Number(m)}`} style={{ width: 56, paddingVertical: 6, borderRadius: radius.m, alignItems: 'center', backgroundColor: isToday ? C.redSoft : C.card, borderWidth: 1, borderColor: isToday ? C.redBorder : C.border }}>
+      <Text style={[{ fontSize: 22, lineHeight: 26, fontWeight: '700', color: isToday ? C.red : C.text }, numeric]}>{Number(d)}</Text>
+      <Text style={{ fontSize: T.caption, fontWeight: '600', color: isToday ? C.red : C.textSoft }}>{isToday ? 'Hôm nay' : `Th${Number(m)}`}</Text>
     </View>
   );
 }
@@ -72,10 +72,10 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
   return (
     <Pressable onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityRole="button" style={({ pressed }) => ({ paddingVertical: 12, gap: space.s, opacity: pressed ? 0.7 : 1 })} accessibilityLabel={`${patient.name}, ${idLine}${severity ? `, mức độ ${SEVERITY[severity].label}` : ''}${attention ? `, hôm nay ${TODAY_LABEL[attention.state]}` : ''}${reasons.length ? `, ${reasons.join(', ')}` : ''}${unlabeled ? `, ${unlabeled} ảnh chưa đo` : ''}${incText.length ? `, ${incText.join('; ')}` : ''}${lastEval ? `, đánh giá lần cuối ${fmtDate(lastEval)}${lastEvalWound ? ` (${lastEvalWound})` : ''}` : ''}`}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
-        <IconBadge icon="person-outline" />
+        <PatientAvatar name={patient.name} muted={!!patient.archivedAt} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: T.body, fontWeight: '700', color: C.text }}>{patient.name}</Text>
-          <Text style={{ color: C.textSoft, fontSize: T.caption }}>{idLine}</Text>
+          <Text style={[{ color: C.textSoft, fontSize: T.caption }, numeric]}>{idLine}</Text>
         </View>
         {severity ? <StatusChip status={SEVERITY_ROLE[severity]} label={SEVERITY[severity].label} /> : null}
         <Ionicons name="chevron-forward" size={18} color={C.textFaint} />

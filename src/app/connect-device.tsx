@@ -5,8 +5,8 @@ import { View } from 'react-native';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { ClinicalContext } from '@/components/ClinicalContext';
-import { DeviceOverviewRows, DeviceStatusBar } from '@/components/DeviceStatus';
-import { Button, Card, Choices, Disclosure, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, type IconName } from '@/components/ui';
+import { DeviceOverviewRows, DeviceStatusBar, LinkDiagram } from '@/components/DeviceStatus';
+import { Button, Card, Choices, Disclosure, Divider, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, type IconName } from '@/components/ui';
 import { fmtDuration } from '@/lib/course';
 import { modeLabel } from '@/lib/device/capabilities';
 import { planToConfig, PROTOCOL } from '@/lib/device';
@@ -211,6 +211,13 @@ export default function ConnectDevice() {
       {/* Tổng quan thiết bị. Bước 1 (kết nối) là tác vụ riêng: chỉ hiện máy, cáp và hướng dẫn kết nối; liệu trình hiện từ bước 2. */}
       <Card>
         <SectionTitle icon="hardware-chip-outline">{step === 1 ? 'Kết nối máy' : 'Thiết bị'}</SectionTitle>
+        {/* Stage 9A: sơ đồ nối máy chỉ ở bước 1 (tác vụ kết nối); từ bước 2 bỏ để "Bước tiếp theo" vẫn nằm trên chân màn ở 320 px (D8-03b). */}
+        {step === 1 && (
+          <>
+            <LinkDiagram linkState={link.state} deviceCode={deviceCode} />
+            <Divider />
+          </>
+        )}
         <DeviceOverviewRows deviceCode={deviceCode} linkState={link.state} readyText={readyText} sessionText={sessionText} errorText={errorText} updatedAt={updatedAt} />
         {link.detail ? <Muted>{link.detail}</Muted> : null}
         {link.state === 'connected' && !isPatient && (

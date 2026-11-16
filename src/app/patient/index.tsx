@@ -105,7 +105,7 @@ export default function PatientHome() {
               <Ring size={120} value={pr.done} max={pr.total} label={`${pr.done}/${pr.total}`} sub="buổi đã xong" color={statusColor === C.textSoft ? C.primary : statusColor} />
               <View style={{ flex: 1, gap: 6 }}>
                 <Ionicons name={status.kind === 'done' ? 'checkmark-circle' : status.kind === 'over' ? 'alert-circle' : status.kind === 'rest' ? 'moon' : 'flash'} size={28} color={statusColor} />
-                <Text style={{ fontSize: narrow ? typeScale.sectionTitle.size : T.screenTitle, lineHeight: narrow ? typeScale.sectionTitle.line : 28, fontWeight: '700', color: statusColor }}>{status.title}</Text>
+                <Text style={{ fontSize: narrow ? typeScale.sectionTitle.size : T.screenTitle, lineHeight: narrow ? typeScale.sectionTitle.line : 28, fontWeight: '700', color: C.text }}>{status.title}</Text>
                 <Text style={{ color: C.textSoft }}>{status.detail}</Text>
               </View>
             </View>
@@ -166,12 +166,13 @@ export default function PatientHome() {
           <Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted>
         )}
         {status?.kind !== 'treat' && stepsBlock}
-        {/* Lịch hẹn gần nhất gộp vào thẻ Hôm nay thay cho một thẻ riêng; danh sách đầy đủ ở Lịch trình. */}
-        <Divider />
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ flex: 1, color: C.textSoft, fontSize: T.small, fontWeight: '600' }}>Lịch hẹn gần nhất</Text>
-          {upcoming.length > 1 && <TextLink label={`Tất cả (${upcoming.length})`} accessibilityLabel={`Xem tất cả ${upcoming.length} lịch hẹn`} onPress={() => router.push('/schedule')} />}
-        </View>
+      </Card>
+      {/* Stage 9A: lịch hẹn gần nhất tách khỏi khối "Hôm nay" thành nhóm riêng, để khối chính chỉ còn một việc. Nội dung và nút giữ nguyên. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+        <Text accessibilityRole="header" style={{ flex: 1, color: C.text, fontSize: T.titleM, fontWeight: '700' }}>Lịch hẹn gần nhất</Text>
+        {upcoming.length > 1 && <TextLink label={`Tất cả (${upcoming.length})`} accessibilityLabel={`Xem tất cả ${upcoming.length} lịch hẹn`} onPress={() => router.push('/schedule')} />}
+      </View>
+      <Card>
         {next ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <DateTile date={next.date} today={today} />

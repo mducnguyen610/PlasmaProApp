@@ -5,7 +5,7 @@ import { Pressable, View } from 'react-native';
 import { ActivationCode } from '@/components/ActivationCode';
 import { Text } from '@/components/Text';
 
-import { Button, Card, Field, Header, Muted, Screen, Segmented } from '@/components/ui';
+import { Button, Card, Field, Header, Muted, Screen, Segmented, SectionTitle } from '@/components/ui';
 import { useStore, type Activation } from '@/lib/store';
 import { C, T } from '@/theme';
 import { localDay } from '@/lib/course';
@@ -57,16 +57,22 @@ export default function NewPatient() {
 
   return (
     <Screen header={<Header back title="Thêm bệnh nhân" subtitle="Mã hồ sơ được cấp tự động" />}>
-      <Card>
+      {/* Stage 9A: năm sinh và giới một hàng; một tiêu đề nhóm để nút Lưu vẫn nằm trong màn 390 × 844 (kịch bản S8-W1-01). Trường và thứ tự lưu giữ nguyên. */}
+      <SectionTitle>Thông tin bệnh nhân</SectionTitle>
+      <Card style={{ gap: 14 }}>
         <Field label="Họ và tên" value={name} onChangeText={setName} />
-        <Field label="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" />
-        <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Giới tính</Text>
-        <Segmented value={sex} onChange={setSex} options={[{ value: 'Nam', label: 'Nam' }, { value: 'Nữ', label: 'Nữ' }]} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+          <View style={{ flexGrow: 1, flexBasis: 120 }}><Field label="Năm sinh" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" /></View>
+          <View style={{ flexGrow: 1, flexBasis: 160, gap: 6 }}>
+            <Text style={{ color: C.textBody, fontSize: T.small, fontWeight: '600' }}>Giới tính</Text>
+            <Segmented value={sex} onChange={setSex} options={[{ value: 'Nam', label: 'Nam' }, { value: 'Nữ', label: 'Nữ' }]} />
+          </View>
+        </View>
         <Field label="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <Field label="Vị trí vết thương đầu tiên" optional value={wound} onChangeText={setWound} placeholder="Ví dụ: Cẳng chân trái" hint="Tạo sẵn vết thương VT01" />
       </Card>
       <Card>
-        <Pressable onPress={() => setConsent((v) => !v)} style={{ flexDirection: 'row', gap: 10 }}>
+        <Pressable onPress={() => setConsent((v) => !v)} accessibilityRole="checkbox" accessibilityState={{ checked: consent }} style={{ flexDirection: 'row', gap: 10, minHeight: 44 }}>
           <Ionicons name={consent ? 'checkbox' : 'square-outline'} size={22} color={consent ? C.primary : C.textFaint} />
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={{ fontWeight: '600', color: C.text }}>Bệnh nhân đồng ý dùng ảnh cho nghiên cứu</Text>

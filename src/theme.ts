@@ -1,68 +1,93 @@
-// Ngôn ngữ thiết kế lấy theo Best Flutter UI Templates / Fitness App (fitness_app_theme.dart):
-// nền xám nhạt, thẻ trắng bo 8/8/8/68, xanh "nearlyDarkBlue", thẻ gradient, font Google Sans Flex từ gói do người dùng cung cấp.
+// Stage 9A, hướng thị giác "Clinical Precision" (PLASMA_PRO_STAGE_9A_VISUAL_DIRECTION.md):
+// navy và xanh y tế là bản sắc chính, mòng két chỉ dùng có chọn lọc cho chỉ báo lâm sàng phụ.
+// Mọi màu chữ đã kiểm theo WCAG 2.2 SC 1.4.3 (src/theme.contrast.test.ts). Giá trị gợi ý trong đặc tả Stage 9A
+// được làm tối thêm khi chưa đạt 4,5:1 trên nền nhạt tương ứng (ghi ở mục 2 DESIGN_SYSTEM Stage 9A).
 export const C = {
-  primary: '#0B6B6F', // xanh mòng két (bảng màu thử nghiệm demo/bang-mau-teal)
-  primaryDark: '#06454A',
-  primarySoft: '#DFF1EF',
-  accent: '#14A3A0',
-  periwinkle: '#7CC3BD',
-  bg: '#F3F5F4', // nền xám ấm, bớt ánh tím
+  /** Xanh y tế dùng cho hành động và trạng thái chọn (đặc tả #2878B8, làm tối để chữ trắng và nền nhạt đạt 5,3:1 trở lên). */
+  primary: '#1F67A3',
+  /** Navy sâu: thanh nhận diện, tiêu đề, nút giữa thanh tab. */
+  primaryDark: '#17324D',
+  navy: '#17324D',
+  primarySoft: '#EAF3FA',
+  /** Mòng két y tế: chỉ báo lâm sàng phụ (nguồn số đo, tiến độ đợt), không làm màu chủ đạo. */
+  accent: '#087F7B',
+  accentSoft: '#E3F3F2',
+  /** Điểm nhấn thương hiệu trên nền navy (dấu Plasma Pro, vạch mục đang chọn ở thanh bên): 7,7:1 trên navy. */
+  brandMint: '#8FD3CF',
+  /** Nền nút primary khi đang nhấn trên nền navy. */
+  primaryPressed: '#2E6DA6',
+  /** Viền nút "danger" nền nhạt. */
+  redBorder: '#F0C4C9',
+  /** Nền mục đang chọn và nút trên nền navy (trắng 12%). */
+  onNavyTint: 'rgba(255,255,255,0.12)',
+  /** Cảnh báo và lỗi đặt trên nền navy (bảng điều khiển T02): 8,4:1 và 6,5:1 trên navy. */
+  onNavyWarn: '#F5C77E',
+  onNavyDanger: '#FF9AA5',
+  /** Viền và trạng thái nhấn rất nhẹ trên nền navy. */
+  onNavyHairline: 'rgba(255,255,255,0.07)',
+  periwinkle: '#2878B8',
+  bg: '#F5F8FB',
   card: '#FFFFFF',
-  text: '#15232A', // darkerText
-  textBody: '#253840', // darkText
-  textSoft: '#3F5764', // tối hơn #4A6572 (lightText) để đạt tối thiểu 6,4:1 trên mọi nền sáng của ứng dụng, kể cả primarySoft
-  textFaint: '#52626E', // tối hơn #5F707D: bản cũ chỉ đạt 4,32:1 trên primarySoft; nay tối thiểu 5,3:1 trên mọi nền sáng
-  grey: '#3A5157',
-  border: '#E1E7E6',
-  cardBorder: '#BFCAC8', // viền thẻ phụ (thẻ không bóng): 1,53:1 trên nền bg, 1,68:1 trên trắng; border cũ chỉ 1,14:1 nên thẻ hòa vào nền
-  green: '#2E7031', // xanh lá ngả vàng để khác hẳn màu chính,
-  greenSoft: '#E8F4E5',
-  amber: '#A5590F',
-  amberSoft: '#FDEFE0',
-  red: '#CD203A',
-  redSoft: '#FDE7EB',
+  text: '#17324D',
+  textBody: '#243447',
+  textSoft: '#526173',
+  textFaint: '#5B6B7E',
+  grey: '#3B4A5C',
+  border: '#E2E8F0',
+  /** Viền khung nội dung và ô nhập (3:1 không bắt buộc cho viền trang trí; ô nhập dùng inputBorder). */
+  cardBorder: '#D6DEE8',
+  green: '#1F7A50',
+  greenSoft: '#E6F4EC',
+  amber: '#9A5A12',
+  amberSoft: '#FBF0E2',
+  red: '#B8323F',
+  redSoft: '#FBE9EB',
   violet: '#5A4FC4',
-  violetSoft: '#ECECFC',
-  teal: '#1E5FA8', // vai trò 'thông tin' chuyển sang xanh dương vì màu chính đã là mòng két,
-  tealSoft: '#E4EEF9',
-  /** Chữ và biểu tượng đặt trên nền màu đậm (primary, gradient, red). */
+  violetSoft: '#EFEEFC',
+  /** Vai trò "thông tin" (đặc tả Information #2878B8, làm tối để đạt 4,6:1 trên tealSoft). */
+  teal: '#2470AD',
+  tealSoft: '#E8F1F9',
+  /** Chữ và biểu tượng đặt trên nền màu đậm (primary, navy, red). */
   onPrimary: '#FFFFFF',
-  /** Chữ phụ trên nền primary hoặc gradient đậm. */
-  onPrimarySoft: '#DDF3F1',
+  /** Chữ phụ trên nền navy hoặc primary. */
+  onPrimarySoft: '#C9D8E8',
   /** Chữ phụ trên nền tối (khung camera). */
   onDarkSoft: '#D9E5EC',
-  /** Nền nhạt cho ô nhập, khối mã, thanh tiến độ (gộp #F6F8FC, #F8F9FC, #EEF2F9, #F1F4FA). */
-  surfaceMuted: '#F5F8F7',
-  /** Nền của Chip tông xám. */
-  neutralSoft: '#ECEFEE',
+  /** Nền nhạt cho ô số liệu, khối mã, thanh tiến độ. */
+  surfaceMuted: '#F1F5F9',
+  /** Nền của Chip tông xám và rãnh thanh chọn. */
+  neutralSoft: '#EDF1F5',
+  /** Đường kẻ trong nhóm dòng. */
+  divider: '#E8EDF3',
   /** Lớp phủ tối trên ảnh và camera. */
   scrim: 'rgba(0,0,0,0.7)',
+  /** Lớp phủ sau bảng trượt và hộp thoại (navy 45%). */
+  scrimSheet: 'rgba(23, 50, 77, 0.45)',
   /** Nền tạm khi ảnh vết thương chưa tải xong. */
   photoPlaceholder: '#E9DCD3',
 } as const;
 
 /** Màu vạch, thanh biểu đồ, viền đồ họa (không dùng cho chữ; WCAG SC 1.4.11 yêu cầu 3:1 cho thành phần đồ họa). */
 export const bar = {
-  blue: '#5FB3AD',
-  green: '#7DBE6E',
-  amber: '#F1B440',
-  red: '#F56E98',
-  violet: '#8A98E8',
-  teal: '#6FA3DB',
-  gray: '#B8C2CC',
+  blue: '#2878B8',
+  green: '#25845A',
+  amber: '#C77B27',
+  red: '#C83D4D',
+  violet: '#8A80E0',
+  teal: '#087F7B',
+  gray: '#A9B6C5',
 } as const;
 
 /**
- * Bộ gradient của thẻ "Meals today" và nút giữa thanh tab.
- * Mọi điểm dừng đều đạt tối thiểu 4,5:1 với chữ trắng (WCAG 2.2 SC 1.4.3),
- * vì thẻ có chữ cỡ 11 đến 16, chưa đủ điều kiện "chữ lớn".
+ * Stage 9A bỏ gradient trang trí (đặc tả 2.4). Giữ khóa G để mã cũ biên dịch được; mỗi cặp là hai điểm dừng cùng màu,
+ * nên LinearGradient còn lại vẽ thành nền đặc. Chữ trắng đạt tối thiểu 4,5:1 trên mọi điểm dừng.
  */
 export const G = {
-  coral: ['#C8443F', '#C94A2C'],
-  indigo: ['#1E5FA8', '#2B5DB0'],
-  pink: ['#D6336C', '#C2185B'],
-  night: ['#127C7E', '#06454A'],
-  fab: ['#0B6B6F', '#137A75'],
+  coral: ['#B8323F', '#B8323F'],
+  indigo: ['#1F67A3', '#1F67A3'],
+  pink: ['#B8323F', '#B8323F'],
+  night: ['#17324D', '#17324D'],
+  fab: ['#17324D', '#17324D'],
 } as const;
 export type GradientName = keyof typeof G;
 
@@ -73,17 +98,18 @@ export const gradient = G.fab;
  * nhìn trên iPhone thành các thẻ cạnh nhau không đều).
  * s: chip nhỏ, ô tích; m: khối trong thẻ, ô nhập, ảnh; card: mọi thẻ; sheet: thanh tiêu đề và thanh tab.
  */
-export const radius = { s: 8, m: 12, card: 16, sheet: 24 } as const;
+export const radius = { s: 6, m: 10, card: 12, sheet: 16 } as const;
 
 /** Hình dạng thẻ: bo đều bốn góc theo radius.card. */
 export const cardShape = () => ({ borderRadius: radius.card });
 
+/** Bóng rất nhẹ, chỉ cho khối chính của màn (Card hero). Stage 9A: viền mảnh là cách tách lớp chính, bóng là ngoại lệ. */
 export const shadow = {
-  shadowColor: '#3A5160',
-  shadowOpacity: 0.2,
-  shadowRadius: 10,
-  shadowOffset: { width: 1.1, height: 1.1 },
-  elevation: 3,
+  shadowColor: '#17324D',
+  shadowOpacity: 0.07,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 2,
 } as const;
 
 export const F = {
@@ -103,10 +129,16 @@ export const T = {
   small: 14,
   label: 15,
   body: 16,
-  cardTitle: 18,
-  screenTitle: 22,
+  cardTitle: 16,
+  screenTitle: 24,
   stat: 24,
-  display: 32,
+  display: 30,
+  /** Stage 9A: tiêu đề khối định danh, tiêu đề màn chi tiết (20) và tiêu đề nhóm (18). */
+  titleL: 20,
+  titleM: 18,
+  /** Stage 9A: số đo lâm sàng chính (diện tích gần nhất) và đồng hồ phiên ở bảng điều khiển T02. */
+  clinical: 34,
+  timerLarge: 56,
 } as const;
 
 /** Hệ số cỡ chữ theo vai trò: bệnh nhân thân bài 17 (đề xuất 2). Bác sĩ và kỹ thuật giữ 16. */
@@ -143,7 +175,7 @@ export const semantic: Record<Semantic, { fg: string; bg: string; solid: string 
 export const space = { xxs: 2, xs: 4, s: 8, m: 12, l: 16, xl: 24, xxl: 32 } as const;
 
 /** Bán kính bổ sung cho radius ở trên: pill cho chip và nút. */
-export const radiusExtra = { pill: 999, button: 24, input: radius.m } as const;
+export const radiusExtra = { pill: 999, button: 10, input: radius.m } as const;
 
 /**
  * Bậc chữ đích (pt trước hệ số ROLE_SCALE). size/line/weight. Các bậc trùng T giữ nguyên giá trị T;
@@ -154,10 +186,14 @@ export const typeScale = {
   // PP-17: đồng hồ đếm ngược T02 giữ cỡ 44 đang hiển thị (display 40 sẽ làm nhỏ đồng hồ). Không khai báo line:
   // đồng hồ chưa đặt lineHeight, thêm vào sẽ đổi chiều cao khối.
   timer: { size: 44, weight: '700' },
-  screenTitle: { size: T.screenTitle, line: 28, weight: '700' },
-  sectionTitle: { size: 20, line: 26, weight: '700' },
+  screenTitle: { size: T.screenTitle, line: 30, weight: '700' },
+  sectionTitle: { size: 18, line: 24, weight: '700' },
+  /** Nhãn nhóm nhỏ phía trên khối (eyebrow), chữ thường để giữ dấu tiếng Việt dễ đọc. */
+  eyebrow: { size: T.caption, line: 18, weight: '600' },
+  /** Giá trị lâm sàng chính (diện tích, buổi đã xong): đậm hơn nhãn rõ rệt. */
+  clinical: { size: 30, line: 36, weight: '700' },
   // cardTitle theo T.cardTitle (18) đang dùng ở mọi thẻ; statCompact cho số trong vòng tiến độ và StatGrid (A11, audit lần 2).
-  cardTitle: { size: T.cardTitle, line: 24, weight: '700' },
+  cardTitle: { size: T.cardTitle, line: 22, weight: '700' },
   stat: { size: 28, line: 34, weight: '700' },
   statCompact: { size: T.stat, line: 30, weight: '700' },
   body: { size: T.body, line: 24, weight: '400' },
@@ -172,20 +208,22 @@ export type TypeStep = keyof typeof typeScale;
 export const size = {
   touch: 44,
   input: 48,
-  button: 52,
+  button: 48,
   buttonDanger: 56,
   icon: { s: 16, m: 20, l: 24 },
   avatar: 40,
   tabBar: 62,
-  maxContent: 560,
+  maxContent: 600,
+  /** Thanh điều hướng bên trái ở màn rộng (từ 1024 px). */
+  sidebar: 232,
 } as const;
 
-/** Bậc nổi. 0: thẻ phẳng (viền cardBorder); 1: thẻ hero; 2: nút chính; 3: thanh tiêu đề, thanh tab. */
+/** Bậc nổi (Stage 9A). 0: khối phẳng (viền); 1: khối chính của màn; 2: menu, nút nổi; 3: hộp thoại, bảng trượt. */
 export const elevation = {
   0: { shadowOpacity: 0, elevation: 0 },
   1: shadow,
-  2: { shadowColor: C.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 4, height: 8 }, elevation: 5 },
-  3: { shadowColor: C.grey, shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 1.1, height: 1.1 }, elevation: 4 },
+  2: { shadowColor: C.navy, shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  3: { shadowColor: C.navy, shadowOpacity: 0.16, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
 } as const;
 
 /** Trạng thái tương tác dùng chung. disabled không dùng opacity: nền neutral + chữ textSoft (6,58:1) và luôn kèm lý do. */
@@ -194,5 +232,20 @@ export const interaction = {
   focusRing: { color: C.primary, width: 2, offset: 2 },
   disabled: { bg: C.neutralSoft, fg: C.textSoft, border: C.border },
   selected: { bg: C.primary, fg: C.onPrimary },
-  inputBorder: { rest: C.cardBorder, focus: C.primary, error: C.red },
+  inputBorder: { rest: '#B4C1D0', focus: C.primary, error: C.red },
 } as const;
+
+/** Bố cục (Stage 9A). Lề ngang theo bề rộng: điện thoại 16, máy tính bảng 24, máy tính 32. */
+export const layout = {
+  gutter: { phone: 16, tablet: 24, desktop: 32 },
+  /** Khoảng giữa các nhóm nội dung lớn trong một màn. */
+  section: 24,
+  /** Khoảng giữa các khối trong một nhóm. */
+  block: 12,
+  breakpoint: { tablet: 768, desktop: 1024 },
+  /** Bề rộng nội dung tối đa ở màn rộng có thanh bên. */
+  maxContentWide: 760,
+} as const;
+
+/** Chữ số đều bề rộng cho số liệu lâm sàng, giờ, mã (cột số thẳng hàng). */
+export const numeric = { fontVariant: ['tabular-nums'] as ('tabular-nums')[] };

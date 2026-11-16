@@ -41,6 +41,17 @@ const pairs: [string, string, string][] = [
   ['red/card', C.red, C.card],
   ['onPrimary/red', C.onPrimary, C.red],
   ['onPrimary/primary', C.onPrimary, C.primary],
+  // Stage 9A: thanh nhận diện, thanh bên, bảng điều khiển T02 (nền navy) và mòng két chọn lọc.
+  ['onPrimary/navy', C.onPrimary, C.navy],
+  ['onPrimarySoft/navy', C.onPrimarySoft, C.navy],
+  ['brandMint/navy', C.brandMint, C.navy],
+  ['onNavyWarn/navy', C.onNavyWarn, C.navy],
+  ['onNavyDanger/navy', C.onNavyDanger, C.navy],
+  ['accent/card', C.accent, C.card],
+  ['text/surfaceMuted', C.text, C.surfaceMuted],
+  ['textBody/surfaceMuted', C.textBody, C.surfaceMuted],
+  ['primary/bg', C.primary, C.bg],
+  ['primary/card', C.primary, C.card],
 ];
 for (const [name, fg, bg] of pairs) {
   const r = contrast(fg, bg);

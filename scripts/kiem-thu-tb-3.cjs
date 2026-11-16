@@ -49,7 +49,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
   // Bấm 3 lần liền vào cùng toạ độ nút (nút đổi sang trạng thái đang lưu sau lần đầu nên không chờ nút ổn định).
   const tripleTap = async (loc) => { const r = await loc.boundingBox(); const x = r.x + r.width / 2, y = r.y + r.height / 2; const pg = loc.page(); await pg.mouse.click(x, y); await pg.mouse.click(x, y); await pg.mouse.click(x, y); };
   const radio = (p, name) => p.getByRole('radio', { name, exact: true }).first();
-  const checked = async (p, name) => (await radio(p, name).evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(11, 107, 111)';
+  const checked = async (p, name) => (await radio(p, name).evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(31, 103, 163)';
   const areaBox = (p) => p.getByLabel('Diện tích bác sĩ đo (cm²)').first();
 
   // Ảnh tối để kiểm báo chất lượng (tạo tại chỗ, không thêm tệp vào kho).

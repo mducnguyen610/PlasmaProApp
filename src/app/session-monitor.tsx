@@ -18,7 +18,7 @@ import { fmtDateTime } from '@/lib/format';
 import { sessionDisplay } from '@/lib/sessionDisplay';
 import { simStartGate } from '@/lib/simStartGate';
 import { useLookups, useStore } from '@/lib/store';
-import { C, semantic, typeScale } from '@/theme';
+import { C, semantic, T, typeScale } from '@/theme';
 
 /**
  * Theo dõi phiên điều trị qua bản tin trạng thái máy phát mỗi giây.
@@ -182,26 +182,35 @@ export default function SessionMonitor() {
       <ClinicalContext patient={p} wound={w && w.patientId === p.id ? w : null} />
       {lost && shown.view === 'lost' && <Notice tone="red">{st?.state === 'running' ? 'Mất kết nối với máy trong lúc phiên đang chạy. Hãy cắm lại cáp.' : 'Mất kết nối với máy. Hãy cắm lại cáp.'}</Notice>}
       {stale && <Notice>{`Chưa nhận trạng thái từ máy ${staleSec} giây. Kiểm tra cáp còn cắm chặt.`}</Notice>}
-      <Card hero>
+      {/* Stage 9A: bảng điều khiển phiên riêng cho thao tác thiết bị (không phải thẻ số liệu chung): phần trên nền navy hiện
+          trạng thái máy và đồng hồ đếm ngược theo bản tin máy gửi, phần dưới nền trắng là dữ liệu đối chiếu. Logic hiển thị giữ nguyên. */}
+      <Card hero style={{ padding: 0, gap: 0, overflow: 'hidden' }} testID="bang-dieu-khien-phien">
+        <View style={{ backgroundColor: C.navy, paddingHorizontal: 16, paddingVertical: 20, gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: st?.state === 'running' && !unknownNow ? C.brandMint : st?.state === 'error' ? C.onNavyDanger : unknownNow ? C.onNavyWarn : C.onPrimarySoft }} />
+            <Text style={{ color: C.onPrimarySoft, fontSize: T.caption, fontWeight: '600' }}>{`Phiên trên máy${deviceCode ? ` · ${deviceCode}` : ''}`}</Text>
+          </View>
         {st && unknownNow ? (
           // P0 DV-01: không đếm ngược theo bản tin cũ, không giả định máy đã dừng hay vẫn chạy.
           <View testID="session-unknown" accessible accessibilityLabel={`Không rõ trạng thái hiện tại của máy. Trạng thái cuối nhận được: ${SESSION_LABEL[st.state]}${st.remainingSec != null ? `, còn ${fmtRemaining(st.remainingSec)}` : ''}`} style={{ alignItems: 'center', gap: 6, paddingVertical: 12 }}>
-            <Ionicons name="help-circle-outline" size={36} color={C.amber} />
-            <Text style={{ fontSize: typeScale.sectionTitle.size, fontWeight: '700', color: C.text, textAlign: 'center' }}>Không rõ trạng thái hiện tại của máy</Text>
-            <Text style={{ color: C.textSoft, textAlign: 'center' }}>{`Trạng thái cuối nhận được: ${SESSION_LABEL[st.state]}${st.remainingSec != null ? `, còn ${fmtRemaining(st.remainingSec)}` : ''}${link.lastStatusAt ? ` lúc ${new Date(link.lastStatusAt).toLocaleTimeString('vi-VN')}` : ''}. Số này không còn cập nhật.`}</Text>
+            <Ionicons name="help-circle-outline" size={36} color={C.onNavyWarn} />
+            <Text style={{ fontSize: typeScale.sectionTitle.size, fontWeight: '700', color: C.onPrimary, textAlign: 'center' }}>Không rõ trạng thái hiện tại của máy</Text>
+            <Text style={{ color: C.onPrimarySoft, textAlign: 'center' }}>{`Trạng thái cuối nhận được: ${SESSION_LABEL[st.state]}${st.remainingSec != null ? `, còn ${fmtRemaining(st.remainingSec)}` : ''}${link.lastStatusAt ? ` lúc ${new Date(link.lastStatusAt).toLocaleTimeString('vi-VN')}` : ''}. Số này không còn cập nhật.`}</Text>
           </View>
         ) : st && st.state !== 'stopped' && st.state !== 'error' && st.remainingSec != null ? (
           <View accessible accessibilityLabel={`${SESSION_LABEL[st.state]}, còn ${fmtRemaining(st.remainingSec)}`} style={{ alignItems: 'center', gap: 2, paddingVertical: 8 }}>
-            <Text style={{ fontSize: typeScale.timer.size, fontWeight: typeScale.timer.weight, color: st.state === 'running' ? C.primary : C.text, fontVariant: ['tabular-nums'] }}>{fmtRemaining(st.remainingSec)}</Text>
-            <Text style={{ color: C.textSoft }}>{`${SESSION_LABEL[st.state]}, còn lại`}</Text>
+            <Text style={{ fontSize: T.timerLarge, lineHeight: 64, fontWeight: typeScale.timer.weight, color: C.onPrimary, fontVariant: ['tabular-nums'] }}>{fmtRemaining(st.remainingSec)}</Text>
+            <Text style={{ color: C.onPrimarySoft }}>{`${SESSION_LABEL[st.state]}, còn lại`}</Text>
           </View>
         ) : (
           // Chưa nhận STA, hoặc phiên đã dừng, lỗi: không hiện số giây cũ dễ gây hiểu nhầm.
           <View accessible accessibilityLabel={st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'} style={{ alignItems: 'center', gap: 6, paddingVertical: 12 }}>
-            <Ionicons name={!st ? 'radio-outline' : st.state === 'error' ? 'warning-outline' : 'stop-circle-outline'} size={36} color={st?.state === 'error' ? C.red : C.textSoft} />
-            <Text style={{ fontSize: typeScale.sectionTitle.size, fontWeight: '700', color: C.text }}>{st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'}</Text>
+            <Ionicons name={!st ? 'radio-outline' : st.state === 'error' ? 'warning-outline' : 'stop-circle-outline'} size={36} color={st?.state === 'error' ? C.onNavyDanger : C.onPrimarySoft} />
+            <Text style={{ fontSize: typeScale.sectionTitle.size, fontWeight: '700', color: C.onPrimary }}>{st ? SESSION_LABEL[st.state] : 'Chưa nhận trạng thái'}</Text>
           </View>
         )}
+        </View>
+        <View style={{ padding: 16, gap: 10 }}>
         <InfoRow label="Nhận lần cuối" value={link.lastStatusAt ? fmtDateTime(link.lastStatusAt) : '–'} />
         {/* P0 DV-06: tách điều máy báo với việc ứng dụng đã ghi phiên hay chưa; máy xong không có nghĩa là đã ghi. */}
         {st && (st.state === 'done' || st.state === 'stopped' || st.state === 'error') && (
@@ -219,6 +228,7 @@ export default function SessionMonitor() {
             <Muted>Nút này thay cho thao tác trên máy, chỉ có với thiết bị giả lập.</Muted>
           </View>
         )}
+        </View>
       </Card>
       {/* Buổi đủ thời gian: một thông báo success. Buổi gián đoạn: gộp vào thông báo warning của trạng thái bên dưới. */}
       {saved?.kind === 'fail' && <Notice tone={semantic.danger.tone} icon="alert-circle-outline">{saved.text}</Notice>}

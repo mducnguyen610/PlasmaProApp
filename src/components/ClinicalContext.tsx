@@ -3,7 +3,8 @@ import { View } from 'react-native';
 
 import { Text } from '@/components/Text';
 import type { Patient, Wound } from '@/lib/types';
-import { C, radius, semantic, space, T } from '@/theme';
+import { PatientAvatar } from '@/components/ui';
+import { C, numeric, radius, semantic, space, T } from '@/theme';
 
 /**
  * P0 G1 (ID-04, ID-07): thanh ngữ cảnh lâm sàng đặt đầu nội dung các màn thao tác lâm sàng.
@@ -24,28 +25,27 @@ export function ClinicalContext({ patient, wound, patientChanged }: { patient: P
       accessibilityRole="summary"
       accessibilityLabel={`${patientChanged ? 'Đã chuyển sang bệnh nhân khác. ' : ''}Bệnh nhân ${patient.name}, ${idLine}${wound !== undefined ? `. Vết thương ${woundLine}` : ''}`}
       testID="clinical-context"
-      style={{ borderWidth: 1, borderColor: patientChanged ? warn.fg : C.cardBorder, borderRadius: radius.m, backgroundColor: C.card, overflow: 'hidden' }}>
+      style={{ borderWidth: 1, borderColor: patientChanged ? warn.fg : C.border, borderRadius: radius.m, backgroundColor: C.card, overflow: 'hidden' }}>
       {patientChanged && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, paddingHorizontal: space.m, paddingVertical: space.s, backgroundColor: warn.bg }}>
           <Ionicons name="swap-horizontal" size={18} color={warn.fg} />
           <Text style={{ flex: 1, color: C.text, fontWeight: '700', fontSize: T.small }}>Đã chuyển sang bệnh nhân khác</Text>
         </View>
       )}
-      <View style={{ paddingHorizontal: space.m, paddingVertical: space.s, gap: space.xs }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.s }}>
-          <Ionicons name="person-outline" size={18} color={C.textSoft} style={{ marginTop: 2 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontWeight: '700' }}>{patient.name}</Text>
-            <Text style={{ color: C.textSoft, fontSize: T.small }}>{idLine}</Text>
-          </View>
+      {/* Stage 9A: hàng định danh có ký hiệu chữ cái đầu, họ tên đậm, dòng mã; vết thương là dải riêng phía dưới (nền nhạt). */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, paddingHorizontal: space.m, paddingVertical: 10 }}>
+        <PatientAvatar name={patient.name} size={36} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: C.text, fontWeight: '700' }}>{patient.name}</Text>
+          <Text style={[{ color: C.textSoft, fontSize: T.small }, numeric]}>{idLine}</Text>
         </View>
-        {wound !== undefined && (
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.s }}>
-            <Ionicons name="bandage-outline" size={18} color={wound ? C.textSoft : warn.fg} style={{ marginTop: 2 }} />
-            <Text style={{ flex: 1, color: wound ? C.text : warn.fg, fontWeight: '600' }}>{woundLine}</Text>
-          </View>
-        )}
       </View>
+      {wound !== undefined && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.s, paddingHorizontal: space.m, paddingVertical: 8, backgroundColor: wound ? C.surfaceMuted : warn.bg, borderTopWidth: 1, borderTopColor: C.divider }}>
+          <Ionicons name="bandage-outline" size={16} color={wound ? C.textSoft : warn.fg} />
+          <Text style={{ flex: 1, color: wound ? C.text : warn.fg, fontWeight: '600', fontSize: T.small }}>{woundLine}</Text>
+        </View>
+      )}
     </View>
   );
 }
