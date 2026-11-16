@@ -45,6 +45,8 @@ export default function Schedule() {
     ...myWounds.filter((w) => w.followUpFrom).flatMap((w) => followUpDates(w.followUpFrom!).filter((x) => x.date < today)
       .map((x) => ({ id: `fu-${w.id}-${x.days}`, date: x.date, title: `Kiểm tra sau điều trị ${w.code} (${x.days} ngày sau khi liền)` }))),
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
+  const upcoming = reminders.filter((r) => r.date >= today).slice(0, 5);
+  const nextR = upcoming[0];
   return <Screen header={<Header back title="Lịch trình của tôi" />}>
     {noteSession && (
       <Card>
@@ -68,6 +70,17 @@ export default function Schedule() {
             </> : <Muted>Lịch dưới đây để xem lại.</Muted>}
           </View>
         </View>
+        {/* Stage 9A (bố cục riêng N03): mốc dự kiến gần nhất hiện ngay trong thẻ đầu, không phải cuộn qua lịch tháng mới thấy.
+            Danh sách đầy đủ và câu nhắc xác nhận với bác sĩ vẫn ở mục "Mốc dự kiến" bên dưới. */}
+        {nextR ? (
+          <View testID="n03-moc-tiep-theo" accessible accessibilityLabel={`Mốc tiếp theo ${fmtDate(nextR.date)}: ${nextR.title}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, borderTopColor: C.border, paddingTop: 12 }}>
+            <DateTile date={nextR.date} today={today} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '600' }}>Mốc tiếp theo (dự kiến)</Text>
+              <Text style={{ color: C.text, fontWeight: '700' }}>{nextR.title}</Text>
+            </View>
+          </View>
+        ) : null}
         {/* P2-04 (R2-04): ghi chú của bác sĩ về đợt luôn hiện ngay, nguyên văn, không sửa. */}
         {plan.notes ? <View style={{ gap: 4 }}>
           <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '600' }}>Ghi chú của bác sĩ về đợt</Text>
@@ -86,10 +99,10 @@ export default function Schedule() {
       ? <AdherenceCalendar sessions={sessionsOf(dev.id)} plan={plan} lastSyncDay={(dev.lastSync ? localDay(dev.lastSync) : null)} reminders={reminders} canEdit />
       : <Empty icon="hardware-chip-outline" text="Chưa được gán thiết bị." />}
     {/* P2-04 (R2-04): ngày ở đây do ứng dụng tính từ lịch bác sĩ đặt (computeReminders), không phải lịch hẹn đã đặt chỗ. */}
-    <SectionTitle>Mốc dự kiến</SectionTitle>
-    <Muted>Ngày do ứng dụng tính từ lịch bác sĩ đặt. Hãy xác nhận với bác sĩ.</Muted>
-    {reminders.some(r => r.date >= today) ? <Card>
-      {reminders.filter(r => r.date >= today).slice(0, 5).map((r, i) => (
+    <SectionTitle right={upcoming.length ? <Text style={{ color: C.textSoft, fontSize: T.small }}>{`${upcoming.length} mốc`}</Text> : undefined}
+      caption="Ngày do ứng dụng tính từ lịch bác sĩ đặt. Hãy xác nhận với bác sĩ.">Mốc dự kiến</SectionTitle>
+    {upcoming.length ? <Card>
+      {upcoming.map((r, i) => (
         <View key={r.id} accessible accessibilityLabel={`${fmtDate(r.date)}: ${r.title}. ${r.body}`} style={[{ flexDirection: 'row', alignItems: 'center', gap: 14 }, i > 0 && { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 12 }]}>
           <DateTile date={r.date} today={today} />
           <View style={{ flex: 1, gap: 2 }}>

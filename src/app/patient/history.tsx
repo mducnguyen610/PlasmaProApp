@@ -21,10 +21,13 @@ export default function PatientHistory() {
   // A26: nhiều vết thì ghi buổi gắn vết nào; buổi không có woundId ghi "Chưa gắn vết thương".
   const woundTag = (wid?: string) => (wid ? myWounds.find((x) => x.id === wid)?.code ?? 'Vết không còn trong danh sách' : myWounds.length > 1 ? 'Chưa gắn vết thương' : '');
   const recent = p.deviceId ? [...sessionsOf(p.deviceId)].sort((a, b) => b.start.localeCompare(a.start)).slice(0, 5) : [];
+  const unnoted = recent.filter((s) => !data.sessionNotes.some((x) => x.sessionId === s.sessionId)).length;
   return (
     <Screen header={<Header title="Lịch sử và hồ sơ" subtitle={`${p.name} · ${p.code}`} />}>
       {/* P2-07a (R2-07): vết thương lên đầu (việc hay làm hơn), rồi buổi điều trị, thông tin cá nhân cuối. */}
-      <SectionTitle icon="bandage-outline">Vết thương đang theo dõi</SectionTitle>
+      {/* Stage 9A (bố cục riêng N04): số vết và số buổi chưa ghi cảm giác ở cuối dòng tiêu đề mục; buổi chưa ghi chỉ hiện một nút
+          "Ghi cảm giác" ở cuối dòng thay cho câu lặp lại ở mỗi dòng. Nhãn đọc màn hình, thứ tự mục và điều hướng giữ nguyên. */}
+      <SectionTitle icon="bandage-outline" right={<Text style={{ color: C.textSoft, fontSize: T.small }}>{`${myWounds.length} vết`}</Text>}>Vết thương đang theo dõi</SectionTitle>
       <ListCard>
       {myWounds.map((w) => {
         const imgs = imagesOf(w.id);
@@ -44,7 +47,8 @@ export default function PatientHistory() {
         );
       })}
       </ListCard>
-      <SectionTitle icon="flash-outline" action="Lịch trình" onAction={() => router.push('/schedule')}>Các buổi điều trị gần đây</SectionTitle>
+      <SectionTitle icon="flash-outline" action="Lịch trình" onAction={() => router.push('/schedule')}
+        caption={unnoted > 0 ? `${unnoted} trên ${recent.length} buổi chưa ghi cảm giác` : undefined}>Các buổi điều trị gần đây</SectionTitle>
       {recent.length === 0 ? (
         <Card><Muted>{p.deviceId ? 'Chưa có buổi điều trị nào được ghi.' : 'Chưa được giao máy điều trị nên chưa có buổi nào.'}</Muted></Card>
       ) : (
@@ -60,7 +64,12 @@ export default function PatientHistory() {
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={{ fontWeight: '700', color: C.text }}>{fmtDateTime(s.start)}</Text>
                     <Text style={{ color: C.textSoft, fontSize: T.small }}>{[done ? 'Đủ thời gian' : 'Bị ngắt giữa chừng', `${s.durationMin} phút`, woundTag(s.woundId)].filter(Boolean).join(' · ')}</Text>
-                    <Text style={{ color: n ? C.text : C.primary, fontSize: T.small }}>{n ? noteText(n) : 'Chưa ghi cảm giác, chạm để ghi'}</Text>
+                    {n ? <Text style={{ color: C.text, fontSize: T.small }}>{noteText(n)}</Text> : (
+                      <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: C.primarySoft }}>
+                        <Ionicons name="create-outline" size={16} color={C.primary} />
+                        <Text style={{ color: C.primary, fontSize: T.small, fontWeight: '700' }}>Ghi cảm giác</Text>
+                      </View>
+                    )}
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
                 </View>
