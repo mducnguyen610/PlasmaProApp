@@ -1,0 +1,392 @@
+[
+  {
+    "id": "NP-01",
+    "name": "B09 có hai lựa chọn \"Chọn bệnh nhân hiện có\" (mặc định) và \"Chụp cho bệnh nhân mới\"",
+    "result": "ĐẠT",
+    "detail": "400|GoogleSansFlex-Bold/400|GoogleSansFlex-Medium"
+  },
+  {
+    "id": "NP-02",
+    "name": "Lối \"Chọn bệnh nhân hiện có\": vẫn có bước 1 Bệnh nhân, 2 Vết thương và nút \"Chụp có hướng dẫn\" khóa khi chưa chọn",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-03",
+    "name": "Lối \"Chụp cho bệnh nhân mới\": có các bước và nút \"Chụp cho bệnh nhân mới\" ở chân màn",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-04",
+    "name": "B10 ở luồng mới: thông báo \"Chụp cho bệnh nhân mới\", không có thanh bệnh nhân (chưa có hồ sơ)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-05",
+    "name": "Chuyển sang B09b \"Tạo hồ sơ từ ảnh\": ảnh chờ hiện ở đầu biểu mẫu (chip \"Ảnh chờ tạo hồ sơ\"), số đo đang chờ",
+    "result": "ĐẠT",
+    "detail": "tiêu đề \"Tạo hồ sơ từ ảnh\", chip true, ảnh 1, số đo true"
+  },
+  {
+    "id": "NP-06",
+    "name": "Ảnh ở trạng thái chờ: ghi ở khóa riêng, không có image_id, chưa có hồ sơ, vết hay ảnh mới trong dữ liệu chính",
+    "result": "ĐẠT",
+    "detail": "captureId CAP-f11e2626-c79d-4a27-b630-d19120527066"
+  },
+  {
+    "id": "NP-07",
+    "name": "Thiếu họ tên, năm sinh, vị trí: báo lỗi từng ô, không tạo gì, ảnh vẫn chờ",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-08",
+    "name": "Lưu thành công: đúng 1 hồ sơ, 1 tài khoản, 1 vết VT01, 1 ảnh mới; màn \"Đã tạo hồ sơ\" có mã kích hoạt",
+    "result": "ĐẠT",
+    "detail": "BN004 w-1794807073390 IMG0007"
+  },
+  {
+    "id": "NP-09",
+    "name": "Quan hệ: wound.patientId = hồ sơ mới; image.woundId = vết mới, image.patientId = hồ sơ mới; tên tệp theo mã hồ sơ, vết",
+    "result": "ĐẠT",
+    "detail": "BN004_VT01_IMG0007_area_12.5_cm2.png"
+  },
+  {
+    "id": "NP-10",
+    "name": "Siêu dữ liệu chụp giữ nguyên: captureId, ngày chụp, nguồn ảnh, khoanh vùng; bác sĩ tải lên là bác sĩ đang đăng nhập",
+    "result": "ĐẠT",
+    "detail": "ngày chụp 2026-11-16, nguồn gallery"
+  },
+  {
+    "id": "NP-11",
+    "name": "Số đo bác sĩ nhập ở B10 được ghi sau khi có ảnh (labelImage): 12,5 cm², phương pháp đã chọn; không có số đo nào khác được tạo",
+    "result": "ĐẠT",
+    "detail": "12.5 Thước đo trên vết thương"
+  },
+  {
+    "id": "NP-12",
+    "name": "Không bịa thông tin: đánh giá, đợt điều trị, thiết bị không được tạo cho hồ sơ mới; ô AR tự động giữ nguyên trạng thái đã có",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-13",
+    "name": "Ảnh chờ đã xóa (bộ nhớ máy và store); dữ liệu không có lỗi quan hệ",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-14",
+    "name": "Mở vết thương: B05 của VT01 thuộc hồ sơ mới, có ảnh vừa gắn",
+    "result": "ĐẠT",
+    "detail": "http://localhost:8720/wounds/w-1794807073390"
+  },
+  {
+    "id": "NP-15",
+    "name": "Quay lại từ B05: B10 về bước 1, không giữ ảnh đã gắn (không lưu lặp được)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-16",
+    "name": "Không có lỗi trang",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-17",
+    "name": "Quay lại B10 từ biểu mẫu: vẫn ở bước \"Nhập số đo\", ảnh và số đo giữ nguyên, chip \"Ảnh chờ tạo hồ sơ\"",
+    "result": "ĐẠT",
+    "detail": "tiêu đề \"Nhập số đo\""
+  },
+  {
+    "id": "NP-18",
+    "name": "Sang lại biểu mẫu: họ tên, năm sinh đã nhập còn nguyên; vẫn đúng một ảnh chờ",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-19",
+    "name": "\"Để sau\": về B09, thẻ \"Ảnh chờ tạo hồ sơ\" có họ tên đang nhập, nút \"Tiếp tục tạo hồ sơ\" và \"Bỏ ảnh\"; không hộp thoại bỏ dữ liệu",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-20",
+    "name": "Đang có ảnh chờ: nút \"Chụp cho bệnh nhân mới\" khóa, nêu lý do (không âm thầm thay ảnh chờ)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-21",
+    "name": "Tầng store: giữ ảnh chờ thứ hai khi đã có một ảnh chờ bị từ chối, ảnh chờ cũ không đổi",
+    "result": "ĐẠT",
+    "detail": "Đang có một ảnh khác chờ tạo hồ sơ. Ở màn Chụp ảnh, tiếp tục tạo hồ sơ cho ảnh đó hoặc bỏ ảnh đó trước."
+  },
+  {
+    "id": "NP-22",
+    "name": "Thoát rồi mở lại ứng dụng: B09 vẫn có ảnh chờ cùng họ tên đã nhập",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-23",
+    "name": "Tiếp tục: biểu mẫu khôi phục họ tên, năm sinh; ảnh chờ hiện ở đầu",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-24",
+    "name": "Hủy, chọn \"Ở lại\": ảnh chờ còn, vẫn ở biểu mẫu",
+    "result": "ĐẠT",
+    "detail": "confirm: Hủy và bỏ ảnh? | Ảnh vừa chụp chưa thuộc hồ sơ nào và sẽ bị xóa, thông tin đã nhập cũng bỏ. Chưa có hồ sơ nào được tạo."
+  },
+  {
+    "id": "NP-25",
+    "name": "Hủy, xác nhận: ảnh chờ bị bỏ (store, bộ nhớ máy), về B09, không tạo hồ sơ, vết hay ảnh nào",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-26",
+    "name": "Chạm 5 lần liền vào \"Tạo hồ sơ và gắn ảnh\": chỉ 1 hồ sơ, 1 vết, 1 ảnh",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-27",
+    "name": "Tầng store: hai lời gọi commitPendingCapture cùng lúc, một thành công, một bị từ chối; chỉ 1 hồ sơ",
+    "result": "ĐẠT",
+    "detail": "ok / Đang lưu hồ sơ, chờ một chút."
+  },
+  {
+    "id": "NP-28",
+    "name": "Lỗi ghi bộ nhớ máy khi lưu: báo lỗi kèm \"Ảnh và thông tin đã nhập vẫn giữ nguyên\"; không có hồ sơ, vết, ảnh nào (cả trong store lẫn bộ nhớ máy); không báo thành công",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-29",
+    "name": "Sau lỗi: ảnh chờ còn nguyên (cùng captureId), họ tên còn trong ô",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-30",
+    "name": "Hết lỗi, bấm lưu lại: đúng 1 hồ sơ \"Lỗi Bộ Nhớ\", không trùng, không mồ côi",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-31",
+    "name": "Ghi số đo lỗi sau khi đã tạo hồ sơ và ảnh: màn báo rõ \"Số đo chưa lưu\", có \"Nhập lại số đo\"; hồ sơ, vết, ảnh có đủ và đúng quan hệ, ảnh chưa có số đo",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-32",
+    "name": "\"Nhập lại số đo\" mở B11 của đúng ảnh vừa gắn, điền sẵn 7,5",
+    "result": "ĐẠT",
+    "detail": "http://localhost:8720/images/IMG0010?nhapLai=7%2C5&phuongPhap=Th%C6%B0%E1%BB%9Bc+%C4%91o+tr%C3%AAn+v%E1%BA%BFt+th%C6%B0%C6%A1ng&loi=Kh%C3%B4ng+ghi+%C4%91%C6%B0%E1%BB%A3c+v%C3%A0o+b%E1%BB%99+nh%E1%BB%9B+m%C3%A1y+%28c%C3%B3+th%E1%BB%83+b%E1%BB%99+nh%E1%BB%9B+%C4%91%C3%A3+%C4%91%E1%BA%A7y%29.+D%E1%BB%AF+li%E1%BB%87u+n%C3%A0y+ch%C6%B0a+%C4%91%C6%B0%E1%BB%A3c+l%C6%B0u"
+  },
+  {
+    "id": "NP-33",
+    "name": "Ảnh chờ còn sót của lần đã ghi: bấm lưu không tạo hồ sơ thứ hai (nhận ra theo captureId), trả về hồ sơ đã có, xóa ảnh chờ",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-34",
+    "name": "Không có lỗi trang ở nhóm D",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-35",
+    "name": "Trùng số điện thoại với hồ sơ của bác sĩ: hiện \"Có thể trùng hồ sơ BN001\" kèm họ tên, năm sinh; không tạo hồ sơ; nút tạo khóa",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-36",
+    "name": "Không tự gắn: nút \"Gắn ảnh vào hồ sơ BN001\" khóa tới khi chọn vết thương",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-37",
+    "name": "Chọn vết rồi bấm gắn: hỏi xác nhận; chọn \"Xem lại\" thì không ghi gì",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-38",
+    "name": "Xác nhận: ảnh gắn vào BN001 · VT01 (đúng vết đã chọn); không tạo hồ sơ, tài khoản hay vết mới; thông tin BN001 không đổi",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-39",
+    "name": "Trùng hồ sơ của bác sĩ khác: chỉ hiện mã hồ sơ, không hiện họ tên, không có nút gắn ảnh; ảnh vẫn chờ",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-40",
+    "name": "Sửa số điện thoại: cảnh báo trùng biến mất, nút tạo mở lại",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-41",
+    "name": "Bác sĩ khác đăng nhập cùng máy: B09 không thấy ảnh chờ của bác sĩ trước",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-42",
+    "name": "Bác sĩ khác gọi commitPendingCapture: bị từ chối (không có ảnh chờ của mình), ảnh chờ của bác sĩ một còn nguyên",
+    "result": "ĐẠT",
+    "detail": "Không còn ảnh chờ gắn hồ sơ. Chụp lại từ màn Chụp ảnh."
+  },
+  {
+    "id": "NP-43",
+    "name": "Bác sĩ khác không gắn được vào hồ sơ không phụ trách",
+    "result": "ĐẠT",
+    "detail": "Không còn ảnh chờ gắn hồ sơ. Chụp lại từ màn Chụp ảnh."
+  },
+  {
+    "id": "NP-44/capture",
+    "name": "Bệnh nhân mở /capture: màn \"Không có quyền\"",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-44/capture-new-patient",
+    "name": "Bệnh nhân mở /capture-new-patient: màn \"Không có quyền\"",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-44/guided-capture?moi=1",
+    "name": "Bệnh nhân mở /guided-capture?moi=1: màn \"Không có quyền\"",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-45",
+    "name": "Bệnh nhân gọi commitPendingCapture, discardPendingCapture: bị từ chối; ảnh chờ của bác sĩ không đổi",
+    "result": "ĐẠT",
+    "detail": "Chỉ bác sĩ được chụp ảnh cho bệnh nhân mới. / Chỉ bác sĩ được chụp ảnh cho bệnh nhân mới."
+  },
+  {
+    "id": "NP-46/capture",
+    "name": "Quản trị mở /capture: màn \"Không có quyền\"",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-46/capture-new-patient",
+    "name": "Quản trị mở /capture-new-patient: màn \"Không có quyền\"",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "NP-47",
+    "name": "Quản trị gọi holdPendingCapture: bị từ chối",
+    "result": "ĐẠT",
+    "detail": "Chỉ bác sĩ được chụp ảnh cho bệnh nhân mới."
+  },
+  {
+    "id": "NP-48",
+    "name": "Bác sĩ một đăng nhập lại: ảnh chờ và họ tên vẫn còn",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "FL-01",
+    "name": "Mặc định mở: nút \"Đóng bộ lọc\" và ô tìm kiếm hiện",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "FL-02",
+    "name": "Bấm \"Đóng bộ lọc\": ô tìm kiếm ẩn, nút đổi thành \"Mở bộ lọc\", danh sách không đổi",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "FL-03",
+    "name": "Đóng khi đang lọc: kết quả giữ nguyên, hiện \"1 đang dùng\", \"Đang lọc: tên hoặc mã có \"pham\"\" và số hồ sơ",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "FL-04",
+    "name": "Bệnh nhân đã chọn vẫn chọn sau khi đóng bộ lọc",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "FL-05",
+    "name": "Mở lại: ô tìm kiếm còn \"pham\", kết quả như trước",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "FL-06",
+    "name": "Tìm theo mã vẫn đúng (BN001)",
+    "result": "ĐẠT",
+    "detail": "BN001 · Nguyễn Văn A"
+  },
+  {
+    "id": "FL-07",
+    "name": "Không có kết quả: khi đóng bộ lọc vẫn báo \"Không tìm thấy bệnh nhân phù hợp.\"",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "FL-08",
+    "name": "Khi đóng bộ lọc, lối \"Chụp cho bệnh nhân mới\" vẫn thấy và bấm được",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "FL-09",
+    "name": "Chuyển lối vào rồi quay lại: bộ lọc vẫn đóng, giá trị lọc giữ",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "FL-10",
+    "name": "Nút bộ lọc có trạng thái mở/đóng cho trình đọc màn hình (aria-expanded)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "RS-320",
+    "name": "Màn 320×640: B09 (mở, đóng bộ lọc, lối bệnh nhân mới) và B09b không tràn ngang, nút chính trong khung",
+    "result": "ĐẠT",
+    "detail": "true/true/true/true"
+  },
+  {
+    "id": "RS-360",
+    "name": "Màn 360×780: B09 (mở, đóng bộ lọc, lối bệnh nhân mới) và B09b không tràn ngang, nút chính trong khung",
+    "result": "ĐẠT",
+    "detail": "true/true/true/true"
+  },
+  {
+    "id": "RS-390",
+    "name": "Màn 390×844: B09 (mở, đóng bộ lọc, lối bệnh nhân mới) và B09b không tràn ngang, nút chính trong khung",
+    "result": "ĐẠT",
+    "detail": "true/true/true/true"
+  },
+  {
+    "id": "RS-768",
+    "name": "Màn 768×1024: B09 (mở, đóng bộ lọc, lối bệnh nhân mới) và B09b không tràn ngang, nút chính trong khung",
+    "result": "ĐẠT",
+    "detail": "true/true/true/true"
+  }
+]
