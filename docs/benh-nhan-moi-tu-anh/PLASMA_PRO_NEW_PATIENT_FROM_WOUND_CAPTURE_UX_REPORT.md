@@ -41,6 +41,8 @@ B09 ─ [Chọn bệnh nhân hiện có] ─ (luồng cũ, không đổi) ─ B1
 
 ## 4. Bộ lọc thu gọn ở B09 (mục 13)
 
+> Cập nhật 16/11/2026: người dùng chốt bỏ nút đóng, mở bộ lọc ở B09; ô tìm bệnh nhân luôn hiện. Bộ lọc thu gọn chuyển sang B02 (tab Bệnh nhân) theo kiểu mục "Bộ lọc" của tab Ảnh (B12). Phần dưới chỉ còn giá trị lịch sử.
+
 - Nút chữ có biểu tượng: "Đóng bộ lọc" (mũi tên lên) khi mở, "Mở bộ lọc" (biểu tượng bộ lọc) khi đóng; cao 44; `aria-expanded` và nhãn đọc màn hình có số bộ lọc đang dùng.
 - Khi đóng mà đang lọc: chip "1 đang dùng", dòng "Đang lọc: tên hoặc mã có "…"" và số hồ sơ khớp trên tổng (ví dụ 1/3).
 - Mặc định mở: ô tìm kiếm là cách chọn chính khi có nhiều hồ sơ và chỉ chiếm một dòng, nên mặc định đóng sẽ thêm một chạm cho thao tác thường gặp. Trạng thái giữ trong phiên màn, không ghi bộ nhớ máy (không có kho tùy chọn giao diện để dùng lại).

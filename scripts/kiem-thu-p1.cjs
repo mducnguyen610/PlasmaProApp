@@ -89,6 +89,8 @@ const SETUP = `
     await p.getByPlaceholder('Tìm theo tên hoặc mã bệnh nhân…').fill(''); await p.waitForTimeout(400);
     const all = await cards(p);
     const allCodes = all.map(codeOf);
+    // Bộ lọc B02 gom vào mục "Bộ lọc" thu gọn (mặc định đóng như tab Ảnh): mở trước khi chọn.
+    await p.getByRole('button', { name: /^Bộ lọc, / }).first().click(); await p.waitForTimeout(400);
     const details = [];
     let ok = true;
     for (const [label, state] of [['Bỏ lỡ', 'Bỏ lỡ'], ['Chưa có dữ liệu', 'Chưa có dữ liệu'], ['Cần điều trị', 'Cần điều trị']]) {
@@ -140,6 +142,7 @@ const SETUP = `
     rec('TP1-09', 'B01 ô "Thiết bị chưa đồng bộ" (2 máy) mở B02 lọc "Máy chưa đồng bộ" đúng 2 bệnh nhân giữ máy', p.url().includes('/doctor/patients') && off.join() === 'BN001,BN002' && await p.getByRole('radio', { name: /^Máy chưa đồng bộ, 2/ }).count() > 0, `${p.url().replace(BASE, '')} · ${off.join(',')}`);
     // Bệnh nhân cần xem: tập score > 0, thứ tự như B02 Tất cả.
     await go(p, '/doctor/patients');
+    await p.getByRole('button', { name: /^Bộ lọc, / }).first().click(); await p.waitForTimeout(400);
     await p.getByRole('radio', { name: 'Hôm nay: mọi trạng thái' }).click(); await p.waitForTimeout(300);
     const allCodes = (await cards(p)).map(codeOf);
     await go(p, '/doctor');

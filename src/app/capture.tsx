@@ -5,13 +5,11 @@ import { Pressable, View } from 'react-native';
 
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 
 import { Button, Card, Chip, Choices, Header, ListCard, Muted, PatientAvatar, Screen, SearchField, SectionTitle, Segmented, WoundPhoto } from '@/components/ui';
 import { confirm } from '@/lib/dialog';
 import { fmtDate, fmtDateTime } from '@/lib/format';
-import { activeFilterCount } from '@/lib/pendingCapture';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
 
@@ -20,9 +18,6 @@ export default function Capture() {
   const { data, me, pendingCapture: held, discardPendingCapture } = useStore();
   // Hai lối vào tách bạch: chụp cho hồ sơ có sẵn (luồng cũ, mặc định, giữ nguyên) và chụp cho bệnh nhân mới (tạo hồ sơ sau khi chụp).
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
-  // Bộ lọc thu gọn được: chỉ ẩn hoặc hiện ô lọc, không đổi giá trị lọc hay kết quả. Mặc định mở (ô tìm kiếm là cách chọn chính
-  // khi có nhiều hồ sơ); trạng thái giữ trong phiên màn này, không ghi bộ nhớ máy.
-  const [filterOpen, setFilterOpen] = useState(true);
   const { woundsOf, imagesOf } = useLookups();
   const patients = data.patients.filter((p) => p.doctorId === me?.id && !p.archivedAt);
   // Không chọn sẵn bệnh nhân khi có từ 2 hồ sơ trở lên, để tránh chụp nhầm vào hồ sơ đứng đầu danh sách.
@@ -41,7 +36,6 @@ export default function Capture() {
 
   const go = () => router.push({ pathname: '/guided-capture', params: { woundId } });
   const goNew = () => router.push({ pathname: '/guided-capture', params: { moi: '1' } });
-  const nFilters = activeFilterCount({ q });
   const dropHeld = () => confirm('Bỏ ảnh chờ tạo hồ sơ?', 'Ảnh này chưa thuộc hồ sơ nào và sẽ bị xóa. Chưa có hồ sơ nào được tạo.', () => { void discardPendingCapture().catch(() => {}); }, 'Bỏ ảnh', 'Ở lại');
   // Ảnh chờ (nếu có): luôn hiện ở đầu màn, ở cả hai lối vào, để không bị quên hay bị bỏ mà không biết.
   const heldCard = held ? (
@@ -95,20 +89,8 @@ export default function Capture() {
       {heldCard}
       <SectionTitle right={picked(chosen?.code)}>1. Bệnh nhân</SectionTitle>
       {patients.length > 1 && (
-        <Animated.View layout={LinearTransition.duration(180)} style={{ gap: 8 }}>
-          <Pressable onPress={() => setFilterOpen((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: filterOpen }} aria-expanded={filterOpen}
-            accessibilityLabel={`${filterOpen ? 'Đóng bộ lọc' : 'Mở bộ lọc'}${nFilters ? `, ${nFilters} bộ lọc đang dùng` : ''}`}
-            style={({ pressed }) => ({ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, opacity: pressed ? 0.7 : 1 })}>
-            <Ionicons name={filterOpen ? 'chevron-up' : 'options-outline'} size={20} color={C.primary} />
-            <Text style={{ color: C.primary, fontWeight: '600' }}>{filterOpen ? 'Đóng bộ lọc' : 'Mở bộ lọc'}</Text>
-            {nFilters ? <Chip label={`${nFilters} đang dùng`} tone="blue" /> : null}
-            <View style={{ flex: 1 }} />
-            {!filterOpen && nFilters ? <Text style={{ color: C.textSoft, fontSize: T.small }} numberOfLines={1}>{`${found.length}/${patients.length} hồ sơ`}</Text> : null}
-          </Pressable>
-          {filterOpen
-            ? <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(120)}><SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã bệnh nhân…" /></Animated.View>
-            : nFilters ? <Text style={{ color: C.textSoft, fontSize: T.small }} numberOfLines={2}>{`Đang lọc: tên hoặc mã có "${q.trim()}"`}</Text> : null}
-        </Animated.View>
+        // Ô tìm kiếm luôn hiện (người dùng chốt 16/11/2026, bỏ nút đóng, mở bộ lọc): đây là cách chọn bệnh nhân chính khi có nhiều hồ sơ.
+        <SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã bệnh nhân…" />
       )}
       {patients.length > 0 && found.length === 0 && <Muted>Không tìm thấy bệnh nhân phù hợp.</Muted>}
       <View accessibilityRole="radiogroup">

@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { View } from 'react-native';
 
 import { PatientCard } from '@/components/items';
 import { Text } from '@/components/Text';
@@ -7,7 +8,7 @@ import { useRankedPatients } from '@/components/useRankedPatients';
 import { patientSeverity, SEVERITY } from '@/lib/access';
 import { TODAY_LABEL, type TodayState } from '@/lib/attention';
 import type { Severity } from '@/lib/types';
-import { Button, Card, Choices, Empty, Header, HeaderButton, LinkRow, ListCard, Muted, Screen, SearchField, SectionTitle } from '@/components/ui';
+import { Button, Card, Choices, Disclosure, Empty, Header, HeaderButton, LinkRow, ListCard, Muted, Screen, SearchField, SectionTitle } from '@/components/ui';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
 
@@ -23,6 +24,8 @@ export default function PatientList() {
   const [today, setToday] = useState<TodayFilter>('all');
   const [q, setQ] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  // Mục "Bộ lọc" mặc định đóng như tab Ảnh (B12); mở sẵn khi đến từ ô ở B01 có lọc sẵn, để thấy ngay bộ lọc đang chọn.
+  const [filterOpen, setFilterOpen] = useState(false);
   // UX-17: mở từ ô "Báo cáo mới" ở B01 thì lọc sẵn bệnh nhân có báo cáo chưa xử lý.
   // P1-01a: mở từ ô "Thiết bị chưa đồng bộ" (từ 2 máy) thì lọc sẵn bệnh nhân giữ máy chưa đồng bộ.
   // Mỗi lần chạm ô có mốc t riêng, nên chạm lại vẫn lọc lại dù tab đã mở từ trước.
@@ -35,6 +38,7 @@ export default function PatientList() {
     setToday(loc === 'chua-dong-bo' ? 'offline' : 'all');
     setQ('');
     setShowArchived(false);
+    setFilterOpen(true);
   }
   // Danh sách mặc định chỉ gồm hồ sơ đang theo dõi; hồ sơ đã lưu trữ xem ở chế độ riêng (nút cuối danh sách).
   const all = data.patients.filter((p) => p.doctorId === me?.id);
@@ -58,6 +62,11 @@ export default function PatientList() {
     .filter((p) => matchesToday(p.id, today))
     .filter((p) => !q || norm(`${p.name} ${p.code}`).includes(norm(q)))
     .sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9));
+  // Bộ lọc thu gọn như tab Ảnh (B12): một mục "Bộ lọc" đóng, mở được, dòng tóm tắt nêu lựa chọn đang áp dụng.
+  // Chỉ ẩn, hiện hai hàng lọc; giá trị lọc, kết quả và logic lọc không đổi. Ô tìm kiếm ở thanh đầu màn luôn hiện.
+  const levelLabel = level === 'all' ? 'Tất cả hồ sơ' : level === 'reports' ? 'Có báo cáo' : level === 'drafts' ? 'Có đợt nháp' : SEVERITY[level].label;
+  const todayLabel = today === 'all' ? 'Mọi trạng thái' : today === 'offline' ? 'Máy chưa đồng bộ' : TODAY_LABEL[today];
+  const filterSummary = `${levelLabel} · Hôm nay: ${todayLabel}`;
 
   if (showArchived) {
     const found = archivedList.filter((p) => !q || norm(`${p.name} ${p.code}`).includes(norm(q)));
@@ -79,7 +88,9 @@ export default function PatientList() {
     <Screen header={<Header title="Bệnh nhân" subtitle={`${mine.length} hồ sơ đang theo dõi`} right={<HeaderButton icon="add" label="Thêm mới" onPress={() => router.push('/patients/new')} />}>
       <SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã bệnh nhân…" />
     </Header>}>
-      <Card style={{ gap: 10 }}>
+      <Card style={{ paddingVertical: 4 }}>
+      <Disclosure title="Bộ lọc" icon="funnel-outline" summary={filterSummary} open={filterOpen} onToggle={setFilterOpen}>
+      <View style={{ gap: 10, paddingBottom: 10 }}>
       <Text style={{ color: C.textSoft, fontSize: T.caption, fontWeight: '600' }}>Lọc theo hồ sơ</Text>
       <Choices<Severity | 'all' | 'reports' | 'drafts'> value={level} onChange={setLevel} options={[{ value: 'all', label: 'Tất cả' }, { value: 'reports', label: `Có báo cáo (${reportCount})` }, ...(draftCount > 0 || level === 'drafts' ? [{ value: 'drafts' as const, label: `Có đợt nháp (${draftCount})` }] : []), ...(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))]} />
       {/* P1-01b: hàng lọc thứ hai theo việc hôm nay. Kết hợp với hàng trên (cả hai cùng đúng). Thứ tự trong kết quả vẫn theo rankPatients. */}
@@ -94,6 +105,8 @@ export default function PatientList() {
           ...(offline.size > 0 || today === 'offline' ? [{ value: 'offline' as const, label: `Máy chưa đồng bộ (${offline.size})`, a11y: `Máy chưa đồng bộ, ${offline.size} bệnh nhân` }] : []),
         ]}
       />
+      </View>
+      </Disclosure>
       </Card>
       {list.length === 0 && <Empty icon="search" text="Không tìm thấy bệnh nhân phù hợp." />}
       {/* PP-10: cùng tiêu chí xếp với trang chủ (src/lib/attention.ts). */}
