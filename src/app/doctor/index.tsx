@@ -82,9 +82,9 @@ export default function DoctorHome() {
         </View>
       )}
 
-      {/* PP-10: nêu tiêu chí xếp, theo đúng thứ tự trọng số trong src/lib/attention.ts (không đổi cách xếp). Stage 9A: thành dòng chú thích dưới tiêu đề. */}
-      <SectionTitle action="Danh sách" onAction={() => router.navigate('/doctor/patients')} caption="Xếp theo mức cần xử lý: báo cáo chưa xử lý, mức độ bác sĩ đánh giá, buổi bỏ lỡ trong 7 ngày, chưa có dữ liệu hôm nay.">{`Bệnh nhân cần xem (${waiting.length})`}</SectionTitle>
-      {waiting.length === 0 ? <Card><Muted>Không có bệnh nhân nào có việc chờ theo các tiêu chí trên.</Muted></Card> : (
+      {/* PP-10: nêu tiêu chí xếp, theo đúng thứ tự trọng số trong src/lib/attention.ts (không đổi cách xếp). Stage 9A: thành dòng chú thích dưới tiêu đề. Dòng chú thích đã bỏ theo yêu cầu người dùng (21/11/2026). */}
+      <SectionTitle action="Danh sách" onAction={() => router.navigate('/doctor/patients')}>{`Bệnh nhân cần xem (${waiting.length})`}</SectionTitle>
+      {waiting.length === 0 ? <Card><Muted>Không có bệnh nhân nào cần xem lúc này.</Muted></Card> : (
         <ListCard>
           {waiting.map((a) => {
             const p = mine.find((x) => x.id === a.patientId);
