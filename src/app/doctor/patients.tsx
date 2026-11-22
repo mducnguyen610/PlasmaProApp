@@ -109,8 +109,8 @@ export default function PatientList() {
       </Disclosure>
       </Card>
       {list.length === 0 && <Empty icon="search" text="Không tìm thấy bệnh nhân phù hợp." />}
-      {/* PP-10: cùng tiêu chí xếp với trang chủ (src/lib/attention.ts). */}
-      {list.length > 0 && <SectionTitle caption="Xếp theo mức cần xử lý: báo cáo chưa xử lý, mức độ bác sĩ đánh giá, buổi bỏ lỡ trong 7 ngày, chưa có dữ liệu hôm nay.">{`Kết quả (${list.length})`}</SectionTitle>}
+      {/* PP-10: cùng tiêu chí xếp với trang chủ (src/lib/attention.ts). Câu giải thích cách xếp dưới tiêu đề đã bỏ theo yêu cầu người dùng (21/11/2026). */}
+      {list.length > 0 && <SectionTitle>{`Kết quả (${list.length})`}</SectionTitle>}
       <ListCard>
         {list.map((p) => <PatientCard key={p.id} patient={p} attention={attentionOf.get(p.id)} />)}
       </ListCard>
