@@ -75,7 +75,7 @@ const finish = (tag) => {
       await go(p, '/plan/p-1?woundId=w-1');
       await p.getByRole('textbox', { name: 'Từ ngày' }).first().fill('');
       for (let i = 0; i < 2; i++) { await p.getByText('Tiếp', { exact: true }).click(); await p.waitForTimeout(300); }
-      const sv = p.getByRole('button', { name: /^Lưu phiên bản/ }); if (await sv.count()) { await sv.click(); await p.waitForTimeout(500); }
+      const sv = p.getByRole('button', { name: /^Lưu đợt điều trị mới/ }); if (await sv.count()) { await sv.click(); await p.waitForTimeout(500); }
       await shot(p, `b06-loi-${SHOTS}-${w}.png`);
       await p.context().close();
     }
@@ -164,7 +164,7 @@ const finish = (tag) => {
     const n0 = ((await store(p)).plans || []).length;
     await p.getByRole('textbox', { name: 'Từ ngày' }).first().fill('');
     for (let i = 0; i < 2; i++) { await p.getByText('Tiếp', { exact: true }).click(); await p.waitForTimeout(300); }
-    await p.getByRole('button', { name: /^Lưu phiên bản/ }).click(); await p.waitForTimeout(600);
+    await p.getByRole('button', { name: /^Lưu đợt điều trị mới/ }).click(); await p.waitForTimeout(600);
     const alert = (await p.getByRole('alert').allInnerTexts()).join(' | ');
     const backToStep0 = (await p.getByRole('textbox', { name: 'Từ ngày' }).count()) > 0;
     const ok = /Giai đoạn 1: ngày theo dạng dd\/mm\/yyyy\./.test(alert) && /Bước Xác nhận còn \d lỗi\./.test(alert) && backToStep0 && ((await store(p)).plans || []).length === n0;

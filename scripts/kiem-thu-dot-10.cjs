@@ -48,12 +48,12 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     for (const name of ['Loét do bệnh tĩnh mạch', 'Không', 'Không có dấu hiệu']) { await p.getByRole('radio', { name, exact: true }).first().click(); await p.waitForTimeout(150); }
   };
   const plansW1 = async (p) => ((await store(p)).plans || []).filter((x) => x.patientId === 'p-1');
-  const SAVE06 = /^Lưu phiên bản \d+( cho VT\d+)?$/;
+  const SAVE06 = /^Lưu đợt điều trị mới( cho VT\d+)?$/;
 
   // Ảnh trước/sau ở 4 khổ: B06 bước 3 sau khi đổi mức 4 → 5, B06 bước 2, B07 đầu và cuối màn.
   for (const w of [320, 360, 390, 768]) {
     const p = await newPage(w); await login(p);
-    await go(p, '/plan/p-1'); await tab(p, '2. Liều');
+    await go(p, '/plan/p-1'); await tab(p, '2. Đợt điều trị');
     await shot(p, `b06b-${TAG}-${w}.png`);
     await p.getByRole('radio', { name: '5', exact: true }).first().click(); await p.waitForTimeout(200);
     await tab(p, '3. Xác nhận'); await shot(p, `b06c-${TAG}-${w}.png`);
@@ -68,9 +68,9 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const v0 = (await plansW1(p)).length;
     await tab(p, '3. Xác nhận');
     rec('D10-06a', 'Bước 3 có bảng "Đang áp dụng (v2) | Phiên bản mới", nút "Lưu phiên bản 3", báo không có thay đổi',
-      await has(p, 'Đang áp dụng (v2)') && await has(p, 'Phiên bản mới') && await has(p, /^Lưu phiên bản 3( cho VT\d+)?$/) && await has(p, 'Không có thay đổi lịch hoặc liều so với phiên bản đang so sánh.'));
-    await p.getByText('Sửa liều', { exact: true }).click(); await p.waitForTimeout(300);
-    const atDose = await vis(p, 'Liều khóa trên máy');
+      await has(p, 'Đang áp dụng (v2)') && await has(p, 'Phiên bản mới') && await has(p, /^Lưu đợt điều trị mới( cho VT\d+)?$/) && await has(p, 'Lập phiên bản 3') && await has(p, 'Không có thay đổi lịch hoặc đợt điều trị so với phiên bản đang so sánh.'));
+    await p.getByText('Sửa đợt điều trị', { exact: true }).click(); await p.waitForTimeout(300);
+    const atDose = await vis(p, 'Đợt điều trị khóa trên máy');
     await p.getByRole('radio', { name: '5', exact: true }).first().click(); await p.waitForTimeout(200);
     await tab(p, '3. Xác nhận');
     rec('D10-06b', '"Sửa liều" về đúng bước Liều; đổi mức 4 → 5 thì dòng Mức được tô và đếm 1 thay đổi',
@@ -83,19 +83,19 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const nb = await p.getByText(/^Đang áp dụng: cần mức năng lượng/).boundingBox(); const bb = await p.getByText(SAVE06).boundingBox();
     rec('D10-06h', 'Câu hậu quả của trạng thái nằm ngay trên nút Lưu', !!nb && !!bb && bb.y > nb.y && bb.y - (nb.y + nb.height) < 60, `khoảng ${bb && nb ? Math.round(bb.y - nb.y - nb.height) : '?'} px`);
     // Thiếu dữ liệu: xóa thời gian, lưu trạng thái Đang áp dụng.
-    await tab(p, '2. Liều'); await p.getByLabel('Thời gian mỗi lần điều trị (giây)').fill(''); await tab(p, '3. Xác nhận');
+    await tab(p, '2. Đợt điều trị'); await p.getByLabel('Thời gian mỗi lần điều trị (giây)').fill(''); await tab(p, '3. Xác nhận');
     rec('D10-06j', 'Bảng hiện "—" cho thời gian bị xóa, không tự điền', (await p.getByLabel(/^Thời gian mỗi lần: hiện tại 3 phút, mới —/).count()) > 0);
     await p.getByLabel('Lý do thay đổi').fill('Kiểm thử Đợt 10');
-    await p.getByRole('checkbox', { name: /Tôi xác nhận liều và lịch này/ }).click();
+    await p.getByRole('checkbox', { name: /Tôi xác nhận lịch và đợt điều trị này/ }).click();
     await p.getByText(SAVE06).click(); await p.waitForTimeout(400);
     rec('D10-06d', 'Thiếu thời gian: lưu bị chặn theo quy tắc cũ, về bước Liều, không tạo phiên bản',
-      await has(p, 'Đợt "Đang áp dụng" cần mức năng lượng và thời gian điều trị để khóa trên thiết bị.') && await vis(p, 'Liều khóa trên máy') && (await plansW1(p)).length === v0);
+      await has(p, 'Đợt "Đang áp dụng" cần mức năng lượng và thời gian điều trị để khóa trên thiết bị.') && await vis(p, 'Đợt điều trị khóa trên máy') && (await plansW1(p)).length === v0);
     await p.getByLabel('Thời gian mỗi lần điều trị (giây)').fill('200');
     rec('D10-06i', 'Công cụ gợi ý thời gian thu gọn mặc định, mở được', !(await vis(p, 'Hệ số (giây cho mỗi cm²)')) && await (async () => { await p.getByText('Công cụ gợi ý thời gian', { exact: true }).click(); await p.waitForTimeout(200); return vis(p, 'Hệ số (giây cho mỗi cm²)'); })());
     await tab(p, '3. Xác nhận');
     const keptReason = (await p.getByLabel('Lý do thay đổi').inputValue()) === 'Kiểm thử Đợt 10';
-    rec('D10-06k', 'Quay lại sửa: lý do đã nhập còn nguyên; dấu xác nhận bị bỏ vì liều đổi (Đợt 8)', keptReason && (await p.getByRole('checkbox', { name: /Tôi xác nhận liều/ }).getAttribute('aria-checked')) === 'false');
-    await p.getByRole('checkbox', { name: /Tôi xác nhận liều và lịch này/ }).click();
+    rec('D10-06k', 'Quay lại sửa: lý do đã nhập còn nguyên; dấu xác nhận bị bỏ vì liều đổi (Đợt 8)', keptReason && (await p.getByRole('checkbox', { name: /Tôi xác nhận lịch và đợt điều trị/ }).getAttribute('aria-checked')) === 'false');
+    await p.getByRole('checkbox', { name: /Tôi xác nhận lịch và đợt điều trị này/ }).click();
     const nd = p.dialogs.length;
     await p.getByText(SAVE06).click(); await p.waitForTimeout(600);
     const after = await plansW1(p); const top = after.sort((a, b) => b.version - a.version)[0];
@@ -104,9 +104,9 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
       `phiên bản ${v0}→${after.length}, v${top.version}, mức ${top.doseLevel}`);
     for (let i = 0; i < 3; i++) await p.getByText(SAVE06).click();
     await p.waitForTimeout(400);
-    rec('D10-06f', 'Nhấn Lưu 3 lần ngay sau đó: không tạo phiên bản trùng; nút thành "Lưu phiên bản 4"', (await plansW1(p)).length === v0 + 1 && await has(p, /^Lưu phiên bản 4( cho VT\d+)?$/));
+    rec('D10-06f', 'Nhấn Lưu 3 lần ngay sau đó: không tạo phiên bản trùng; nút thành "Lưu phiên bản 4"', (await plansW1(p)).length === v0 + 1 && await has(p, 'Lập phiên bản 4'));
     // Rời màn giữa chừng.
-    await tab(p, '2. Liều'); await p.getByRole('radio', { name: '3', exact: true }).first().click(); await tab(p, '3. Xác nhận');
+    await tab(p, '2. Đợt điều trị'); await p.getByRole('radio', { name: '3', exact: true }).first().click(); await tab(p, '3. Xác nhận');
     await p.getByLabel('Lý do thay đổi').fill('Rời giữa chừng');
     await go(p, '/patients/p-1'); await go(p, '/plan/p-1');
     rec('D10-06g', 'Rời màn khi đang kiểm tra: không lưu gì; mở lại thấy theo phiên bản đã lưu', (await plansW1(p)).length === v0 + 1);

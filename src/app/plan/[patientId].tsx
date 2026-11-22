@@ -275,7 +275,7 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
   const setPhase = (i: number, patch: Partial<PhaseDraft>) => editPhases(phases.map((x, k) => (k === i ? { ...x, ...patch } : x)));
 
   const fail = (st: number, msg: string) => { setStep(st); setErr(msg); };
-  const STEP_NAME = ['Lịch', 'Liều', 'Xác nhận'];
+  const STEP_NAME = ['Lịch', 'Đợt điều trị', 'Xác nhận'];
   const save = async () => {
     if (saving.current) return;
     // P1-03d: cùng các câu kiểm tra như trước, nhưng gom hết lỗi; đưa về bước có lỗi đầu tiên và nêu mọi lỗi của bước đó,
@@ -345,7 +345,7 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
           {step > 0 && <View style={{ flex: 1 }}><Button label="Quay lại" variant="ghost" onPress={() => setStep(step - 1)} /></View>}
           {step < 2
             ? <View style={{ flex: step > 0 ? 2 : 1 }}><Button label="Tiếp" icon="arrow-forward" onPress={() => setStep(step + 1)} /></View>
-            : <View style={{ flex: 2 }}><Button label={`Lưu phiên bản ${nextVersion}${w ? ` cho ${w.code}` : ''}`} icon="save-outline" onPress={save} /></View>}
+            : <View style={{ flex: 2 }}><Button label={`Lưu đợt điều trị mới${w ? ` cho ${w.code}` : ''}`} icon="save-outline" onPress={save} /></View>}
         </View>
         </View>
       }>
@@ -366,11 +366,11 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
           </Disclosure>
         </View>
       )}
-      <SectionTitle caption="Mỗi vết thương một đợt. Giá trị điều trị cụ thể do nhóm chuyên môn đặt; ứng dụng không đặt sẵn lịch hay liều.">{`Lập phiên bản ${nextVersion}`}</SectionTitle>
+      <SectionTitle caption="Mỗi vết thương một đợt. Giá trị điều trị cụ thể do nhóm chuyên môn đặt; ứng dụng không đặt sẵn lịch hay thông số điều trị.">{`Lập phiên bản ${nextVersion}`}</SectionTitle>
       <Card>
         {/* Biểu mẫu chia 3 bước (đề xuất 8): Lịch, Liều, Xác nhận. Lỗi đưa người dùng về đúng bước. */}
         {/* Cùng kiểu thanh bước với T01 (V10); vẫn chạm được để chuyển bước như trước. */}
-        <StepRow steps={['Lịch', 'Liều', 'Xác nhận']} step={step + 1} onStep={(n) => setStep(n - 1)} />
+        <StepRow steps={['Lịch', 'Đợt điều trị', 'Xác nhận']} step={step + 1} onStep={(n) => setStep(n - 1)} />
         {/* P1-03d: mỗi lỗi một dòng riêng. */}
         {err ? err.split('\n').map((line) => <Text key={line} accessibilityRole="alert" style={{ color: C.red, fontWeight: '600' }}>{line}</Text>) : null}
         {step === 0 && (
@@ -413,7 +413,7 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
         {step === 1 && (
           <>
         {/* R-02, UX-14 (Đợt 10): nhóm liều khóa trên máy lên đầu; công cụ gợi ý thời gian vào mục thu gọn. Trường và quy tắc giữ nguyên. */}
-        <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Liều khóa trên máy</Text>
+        <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Đợt điều trị khóa trên máy</Text>
         <Muted>Thiết bị tại nhà bị khóa ở mức và thời gian này; bệnh nhân không đổi được.</Muted>
         {caps ? (
           <>
@@ -459,14 +459,14 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
         {step === 2 && (
           <>
             {/* R-02, UX-10 (Đợt 10): màn kiểm tra trước khi lưu. Bảng so với phiên bản đang áp dụng, trường đổi tô vàng; sửa thì quay về đúng bước. */}
-            <Text style={{ fontWeight: '700', color: C.text, fontSize: T.cardTitle }}>Kiểm tra lịch và liều trước khi lưu</Text>
+            <Text style={{ fontWeight: '700', color: C.text, fontSize: T.cardTitle }}>Kiểm tra đợt điều trị trước khi lưu</Text>
             {/* P0 ID-05: nêu vết thương của phiên bản sắp lưu ngay đầu bảng kiểm tra. */}
             <InfoRow label="Vết thương" value={w ? `${w.code} · ${w.location}` : 'Chưa chọn'} />
             <ReviewTable rows={reviewRows} baseTitle={baseTitle} />
-            <Muted>{!base ? 'Lần lập đầu cho vết thương này.' : changedCount ? `${changedCount} thay đổi được tô vàng.` : 'Không có thay đổi lịch hoặc liều so với phiên bản đang so sánh.'}</Muted>
+            <Muted>{!base ? 'Lần lập đầu cho vết thương này.' : changedCount ? `${changedCount} thay đổi được tô vàng.` : 'Không có thay đổi lịch hoặc đợt điều trị so với phiên bản đang so sánh.'}</Muted>
             <View style={{ flexDirection: 'row', gap: 16, flexWrap: 'wrap' }}>
               <TextLink label="Sửa lịch" accessibilityLabel="Sửa lịch, quay về bước Lịch" onPress={() => setStep(0)} />
-              <TextLink label="Sửa liều" accessibilityLabel="Sửa liều, quay về bước Liều" onPress={() => setStep(1)} />
+              <TextLink label="Sửa đợt điều trị" accessibilityLabel="Sửa đợt điều trị, quay về bước Đợt điều trị" onPress={() => setStep(1)} />
             </View>
             <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Trạng thái sau khi lưu</Text>
             <Choices<PlanStatus> value={status} onChange={setStatus} options={(['draft', 'active', 'paused', 'ended'] as const).map((v) => ({ value: v, label: PLAN_STATUS[v].label }))} />
@@ -476,9 +476,9 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
         </Disclosure>
         <Field label="Lý do thay đổi" value={reason} onChangeText={setReason} placeholder="Ví dụ: vết thương cải thiện, giảm còn 3 buổi mỗi tuần" />
         {clearedByEdit && !confirmed && (
-          <Notice icon="alert-circle-outline">Dấu xác nhận đã được bỏ vì lịch hoặc liều vừa thay đổi. Kiểm tra lại tóm tắt ở trên rồi tích lại.</Notice>
+          <Notice icon="alert-circle-outline">Dấu xác nhận đã được bỏ vì lịch hoặc đợt điều trị vừa thay đổi. Kiểm tra lại tóm tắt ở trên rồi tích lại.</Notice>
         )}
-        <CheckRow checked={confirmed} onChange={(v) => { setConfirmed(v); if (v) setClearedByEdit(false); }} label="Tôi xác nhận liều và lịch này. Bệnh nhân sẽ xem được đợt và nạp liệu trình xuống máy." />
+        <CheckRow checked={confirmed} onChange={(v) => { setConfirmed(v); if (v) setClearedByEdit(false); }} label="Tôi xác nhận lịch và đợt điều trị này. Bệnh nhân sẽ xem được đợt và nạp liệu trình xuống máy." />
             {/* Hậu quả của trạng thái đang chọn (V12), đặt sát nút Lưu. */}
             {willEnd.length > 0 && (
               <Notice icon="git-branch-outline">{`${willEnd.map((x) => `Phiên bản ${x.version} (${PLAN_STATUS[x.status].label})`).join(', ')} sẽ chuyển sang Kết thúc khi lưu. Các phiên bản cũ vẫn giữ trong danh sách bên dưới.`}</Notice>

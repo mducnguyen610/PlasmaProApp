@@ -36,8 +36,8 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   const has = async (p, text, exact = true) => (await p.getByText(text, { exact }).count()) > 0;
   const store = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2') || '{}'));
   const checked = (p, name) => p.getByRole('checkbox', { name }).first().getAttribute('aria-checked');
-  const CONFIRM = /Tôi xác nhận liều và lịch này/;
-  const CLEARED = 'Dấu xác nhận đã được bỏ vì lịch hoặc liều vừa thay đổi. Kiểm tra lại tóm tắt ở trên rồi tích lại.';
+  const CONFIRM = /Tôi xác nhận lịch và đợt điều trị này/;
+  const CLEARED = 'Dấu xác nhận đã được bỏ vì lịch hoặc đợt điều trị vừa thay đổi. Kiểm tra lại tóm tắt ở trên rồi tích lại.';
   // Ảnh cả trang: nới chiều cao khung nhìn bằng chiều cao vùng cuộn dài nhất (cùng cách với chup-typo.cjs của Đợt 6).
   const shot = async (p, path) => {
     const w = p.viewportSize().width;
@@ -56,7 +56,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(200);
     const on1 = await checked(p, CONFIRM);
     // Nhấn nhầm: quay lại bước Liều, đổi mức năng lượng, rồi về bước Xác nhận.
-    await tab(p, '2. Liều');
+    await tab(p, '2. Đợt điều trị');
     await p.getByRole('radio', { name: '5', exact: true }).first().click(); await p.waitForTimeout(200);
     await tab(p, '3. Xác nhận');
     const off1 = await checked(p, CONFIRM);
@@ -64,13 +64,13 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     rec('D8-02a', 'Đổi mức năng lượng sau khi tích: dấu xác nhận về trống và có câu giải thích', on1 === 'true' && off1 === 'false' && note1, `trước ${on1}, sau ${off1}, câu ${note1}`);
     // Dữ liệu không đầy đủ: đợt "Đang áp dụng" chưa tích thì không lưu.
     await p.getByLabel('Lý do thay đổi').fill('Kiểm thử Đợt 8');
-    await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click(); await p.waitForTimeout(400);
+    await p.getByText(/^Lưu đợt điều trị mới( cho VT\d+)?$/).click(); await p.waitForTimeout(400);
     const blocked = await has(p, 'Đợt "Đang áp dụng" cần bác sĩ xác nhận.');
     const v1 = (await store(p)).plans.filter((x) => x.patientId === 'p-1').length;
     rec('D8-02b', 'Chưa tích lại: lưu bị chặn bởi quy tắc cũ, không tạo phiên bản', blocked && v1 === v0, `lỗi ${blocked}, phiên bản ${v0}→${v1}`);
     // Đổi thời gian ở ô nhập cũng bỏ dấu xác nhận.
     await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(150);
-    await tab(p, '2. Liều');
+    await tab(p, '2. Đợt điều trị');
     await p.getByLabel('Thời gian mỗi lần điều trị (giây)').fill('200'); await p.waitForTimeout(150);
     await tab(p, '3. Xác nhận');
     rec('D8-02c', 'Sửa ô thời gian: dấu xác nhận về trống', (await checked(p, CONFIRM)) === 'false');
@@ -83,23 +83,23 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     rec('D8-02d', 'Sửa ngày ở bước Lịch: dấu xác nhận về trống', (await checked(p, CONFIRM)) === 'false');
     // Quay lại bước trước mà không đổi gì: dấu xác nhận giữ nguyên (không bắt tích lại vô ích).
     await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(150);
-    await tab(p, '2. Liều'); await tab(p, '3. Xác nhận');
+    await tab(p, '2. Đợt điều trị'); await tab(p, '3. Xác nhận');
     rec('D8-02e', 'Chỉ chuyển bước, không đổi giá trị: dấu xác nhận giữ nguyên', (await checked(p, CONFIRM)) === 'true');
     // Thao tác đúng: lưu được, rồi dấu xác nhận về trống.
-    await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click(); await p.waitForTimeout(600);
+    await p.getByText(/^Lưu đợt điều trị mới( cho VT\d+)?$/).click(); await p.waitForTimeout(600);
     const s2 = await store(p); const v2 = s2.plans.filter((x) => x.patientId === 'p-1').length;
     const top = s2.plans.filter((x) => x.patientId === 'p-1').sort((a, c) => c.version - a.version)[0];
     const off2 = await checked(p, CONFIRM);
     rec('D8-02f', 'Lưu đúng: tạo đúng 1 phiên bản mới (mức 5, 200 giây, đã xác nhận), sau đó dấu xác nhận về trống', v2 === v0 + 1 && top.doseLevel === 5 && top.durationSec === 200 && top.confirmed === true && off2 === 'false', `phiên bản ${v0}→${v2}, mức ${top.doseLevel}, ${top.durationSec}s, dấu ${off2}`);
     // Nhấn Lưu liên tục: không tạo thêm phiên bản (lý do đã xóa, dấu xác nhận đã bỏ).
-    for (let i = 0; i < 3; i++) await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click();
+    for (let i = 0; i < 3; i++) await p.getByText(/^Lưu đợt điều trị mới( cho VT\d+)?$/).click();
     await p.waitForTimeout(500);
     const v3 = (await store(p)).plans.filter((x) => x.patientId === 'p-1').length;
     rec('D8-02g', 'Nhấn Lưu 3 lần ngay sau khi lưu: không tạo phiên bản trùng', v3 === v2, `phiên bản ${v2}→${v3}`);
     for (const w of [320, 360, 390, 768]) {
       await p.setViewportSize({ width: w, height: 844 });
       await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(100);
-      await tab(p, '2. Liều'); await p.getByRole('radio', { name: '4', exact: true }).first().click(); await tab(p, '3. Xác nhận');
+      await tab(p, '2. Đợt điều trị'); await p.getByRole('radio', { name: '4', exact: true }).first().click(); await tab(p, '3. Xác nhận');
       await shot(p, `${OUT}/b06c-bo-xac-nhan-${w}.png`);
     }
     rec('D8-02z', 'Không có lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 120));

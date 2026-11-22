@@ -306,7 +306,7 @@ const shiftDays = soNgayToiNgayCoLich();
   {
     const p = await newPage(); await login(p, 'benhnhan');
     const res = [];
-    for (const [u, secret] of [['/patients/p-2', 'Phạm Thị B'], ['/wounds/w-2', 'Gót chân phải'], ['/images/IMG0005', 'IMG0005'], ['/wound-history/w-2', 'Gót chân phải'], ['/evaluate/w-1', 'Tiếp: Mức độ'], ['/guided-capture?woundId=w-1', 'Chọn ảnh có sẵn'], ['/plan/p-1', 'Lưu phiên bản'], ['/doctor', 'Bệnh nhân cần xử lý'], ['/admin', 'Phân công']]) {
+    for (const [u, secret] of [['/patients/p-2', 'Phạm Thị B'], ['/wounds/w-2', 'Gót chân phải'], ['/images/IMG0005', 'IMG0005'], ['/wound-history/w-2', 'Gót chân phải'], ['/evaluate/w-1', 'Tiếp: Mức độ'], ['/guided-capture?woundId=w-1', 'Chọn ảnh có sẵn'], ['/plan/p-1', 'Lưu đợt điều trị mới'], ['/doctor', 'Bệnh nhân cần xử lý'], ['/admin', 'Phân công']]) {
       await go(p, u); const bt = await bodyText(p);
       res.push(`${u}:${bt.includes(secret) ? 'LỘ' : 'chặn'}`);
     }
@@ -314,7 +314,7 @@ const shiftDays = soNgayToiNgayCoLich();
     await p.context().close();
     const q = await newPage(); await login(q, 'bacsi2');
     const res2 = [];
-    for (const [u, secret] of [['/patients/p-1', 'Thêm vết thương'], ['/evaluate/w-1', 'Tiếp: Mức độ'], ['/guided-capture?woundId=w-1', 'Chọn ảnh có sẵn'], ['/plan/p-1', 'Lưu phiên bản'], ['/images/IMG0004', 'Lưu số đo']]) {
+    for (const [u, secret] of [['/patients/p-1', 'Thêm vết thương'], ['/evaluate/w-1', 'Tiếp: Mức độ'], ['/guided-capture?woundId=w-1', 'Chọn ảnh có sẵn'], ['/plan/p-1', 'Lưu đợt điều trị mới'], ['/images/IMG0004', 'Lưu số đo']]) {
       await go(q, u); const bt = await bodyText(q);
       res2.push(`${u}:${bt.includes(secret) ? 'LỘ' : 'chặn'}`);
     }

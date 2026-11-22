@@ -124,7 +124,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     rec('TP-ID-05a', 'B06 đang nhập rồi chạm VT02: hỏi trước; chọn ở lại giữ dữ liệu; đồng ý thì sang VT02', askedSwitch && stayed && switched, `hỏi ${askedSwitch}, giữ ${stayed}, đổi ${switched}`);
     // Tới bước Xác nhận: có dòng vết thương và nhãn nút kèm mã vết.
     for (let i = 0; i < 2; i++) { await p.getByText('Tiếp', { exact: true }).click(); await p.waitForTimeout(250); }
-    rec('TP-ID-05b', 'B06 bước Xác nhận nêu vết thương; nút "Lưu phiên bản n cho VT02"', await has(p, 'VT02 · Gót chân phải (P0)') && await has(p, /^Lưu phiên bản \d+ cho VT02$/), '');
+    rec('TP-ID-05b', 'B06 bước Xác nhận nêu vết thương; nút "Lưu phiên bản n cho VT02"', await has(p, 'VT02 · Gót chân phải (P0)') && await has(p, /^Lưu đợt điều trị mới cho VT02$/), '');
 
     // SV-05, ID-05: B07 chọn mức độ rồi quay lại.
     await go(p, '/wounds/w-1'); await p.getByRole('button', { name: 'Ghi đánh giá', exact: true }).click(); await p.waitForTimeout(1200);
@@ -278,7 +278,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     const before = await p.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2')).plans.length);
     await p.evaluate(() => { const orig = localStorage.setItem.bind(localStorage); localStorage.setItem = (k, v) => { if (k === 'plasmapro.demo.v2') throw new Error('QuotaExceededError (giả lập)'); return orig(k, v); }; });
     const nd = p.dialogs.length;
-    for (let i = 0; i < 3; i++) await p.getByRole('button', { name: /^Lưu phiên bản \d+/ }).click().catch(() => {});
+    for (let i = 0; i < 3; i++) await p.getByRole('button', { name: /^Lưu đợt điều trị mới/ }).click().catch(() => {});
     await p.waitForTimeout(1000);
     const after = await p.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2')).plans.length);
     const okDialog = p.dialogs.slice(nd).some((d) => d.includes('Đã lưu phiên bản mới'));
@@ -298,9 +298,9 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     await p.getByRole('textbox', { name: 'Lý do thay đổi', exact: true }).fill('Kiểm thử P0');
     await p.getByRole('checkbox').first().click();
     const v0 = (await store(p)).plans.length;
-    await p.getByText(/^Lưu phiên bản \d+ cho VT01$/).click(); await p.waitForTimeout(700);
+    await p.getByText(/^Lưu đợt điều trị mới cho VT01$/).click(); await p.waitForTimeout(700);
     const v1 = (await store(p)).plans.length;
-    for (let i = 0; i < 3; i++) await p.getByText(/^Lưu phiên bản \d+ cho VT01$/).click();
+    for (let i = 0; i < 3; i++) await p.getByText(/^Lưu đợt điều trị mới cho VT01$/).click();
     await p.waitForTimeout(500);
     const v2 = (await store(p)).plans.length;
     const n = p.dialogs.length; await back(p);
