@@ -1002,7 +1002,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!dev.fault) throw new Error('Máy không có lỗi đang mở.');
     if (!note.trim()) throw new Error('Nhập ghi chú xử lý lỗi.');
     requireDeviceDoctor(dev);
-    const e = deviceEvent(deviceId, 'fault_clear', { patientId: dev.patientId, detail: `${dev.fault.code}: ${note.trim()}` });
+    const e = deviceEvent(deviceId, 'fault_clear', { patientId: dev.patientId, detail: note.trim() });
     await commit((d) => ({ ...d, devices: d.devices.map((x) => (x.id === deviceId ? { ...x, fault: undefined } : x)), deviceEvents: withEvent(d, e) }));
   };
 
@@ -1150,7 +1150,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const isError = entry.outcome === 'error';
     const at = nowIso();
     const fault = isError ? { ...STA_ERROR_FAULT, at, patientId: entry.patientId, sessionId: session.sessionId } : undefined;
-    const e = isError ? deviceEvent(dev.id, 'error', { patientId: entry.patientId, detail: `${STA_ERROR_FAULT.code}: ${STA_ERROR_FAULT.message}` }) : null;
+    const e = isError ? deviceEvent(dev.id, 'error', { patientId: entry.patientId, detail: STA_ERROR_FAULT.message }) : null;
     await commit((d) => {
       // Bản ghi gửi lại cùng mã phiên: không ghi phiên, lỗi hay nhật ký lần hai.
       const dup = d.sessions.some((x) => x.sessionId === session.sessionId);

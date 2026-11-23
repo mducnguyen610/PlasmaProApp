@@ -42,7 +42,7 @@ export function DeviceManageCard({ device }: { device: Device }) {
       {owner && device.assignedAt && <InfoRow label="Giao lúc" value={`${fmtDateTime(device.assignedAt)} · ${account(device.assignedBy)?.name ?? '—'}`} />}
       {device.fault && (
         <View style={{ gap: 8 }}>
-          <Notice tone="red" icon="warning-outline">{`Máy báo lỗi. Mã ${device.fault.code}: ${device.fault.message}`}</Notice>
+          <Notice tone="red" icon="warning-outline">{`Máy báo lỗi lúc ${fmtDateTime(device.fault.at)}. ${device.fault.message}`}</Notice>
           <InfoRow label="Thời điểm" value={fmtDateTime(device.fault.at)} />
           <InfoRow label="Bệnh nhân đang giữ khi lỗi" value={faultOwner?.code ?? '—'} />
           <Muted>Ứng dụng không gửi lệnh khắc phục xuống máy. Kiểm tra máy theo hướng dẫn nhà sản xuất, rồi ghi lại đã xử lý.</Muted>

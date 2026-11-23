@@ -273,7 +273,7 @@ export interface Device {
   fault?: DeviceFault;
 }
 
-export interface DeviceFault { code: string; message: string; at: string; patientId?: string; sessionId?: string }
+export interface DeviceFault { message: string; at: string; patientId?: string; sessionId?: string }
 
 /** Giai đoạn B (CN4 D4, AU-27): nhật ký máy, chỉ thêm. Phiên điều trị và lần nạp liệu trình lấy từ sessions, deviceLinks, không ghi lặp ở đây. */
 export type DeviceEventKind = 'register' | 'edit' | 'assign' | 'return' | 'disinfect' | 'care' | 'connect' | 'disconnect' | 'error' | 'fault_clear';

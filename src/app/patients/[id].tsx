@@ -152,7 +152,7 @@ export default function PatientDetail() {
             : <Chip label="Đang theo dõi" tone="blue" icon="pulse-outline" />)}
           {dev && cloud ? <StatusChip status={cloud} label={`${dev.code} · ${cloud.label}`} /> : <Chip label="Chưa gán thiết bị" tone="gray" icon="hardware-chip-outline" />}
           {/* Giai đoạn B (CN4 D9): máy đang giữ báo lỗi thì có cảnh báo ngay ở thẻ định danh. */}
-          {dev?.fault && <Chip label={`${dev.code} báo lỗi ${dev.fault.code}`} tone="red" icon="warning-outline" />}
+          {dev?.fault && <Chip label={`${dev.code} báo lỗi`} tone="red" icon="warning-outline" />}
           {/* Tài khoản chỉ hiện khi còn việc (chưa kích hoạt); trạng thái đầy đủ ở mục "Thiết bị và tài khoản". */}
           {isOwner && pending && <StatusChip status={{ role: 'warning', icon: 'time-outline' }} label={codeLive ? 'Chờ kích hoạt' : 'Chưa kích hoạt'} />}
           {/* Một chip đếm việc chờ; nội dung ở mục "Triệu chứng và sự cố" bên dưới. */}

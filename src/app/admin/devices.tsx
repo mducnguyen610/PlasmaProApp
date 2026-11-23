@@ -89,7 +89,7 @@ export default function AdminDevices() {
           <Disclosure icon={d.fault ? 'warning-outline' : 'hardware-chip-outline'} title={d.fault ? `${d.code} · Lỗi` : d.code} summary={`${data.patients.find((p) => p.id === d.patientId)?.code ?? 'Chưa gán'} · đồng bộ ${d.lastSync ? fmtDateTime(d.lastSync) : 'chưa từng'}`}
             below={<StatusChip status={CLOUD_LINK[cloudState(d.online, d.lastSync, now)]} label={CLOUD_LINK[cloudState(d.online, d.lastSync, now)].label} />}>
           <InfoRow label="Trạng thái" value={DEVICE_STATUS[deviceStatus(d)].label} />
-          {d.fault && <Notice tone="red" icon="warning-outline">{`Lỗi ${d.fault.code} lúc ${fmtDateTime(d.fault.at)}: ${d.fault.message}`}</Notice>}
+          {d.fault && <Notice tone="red" icon="warning-outline">{`Lỗi lúc ${fmtDateTime(d.fault.at)}. ${d.fault.message}`}</Notice>}
           <InfoRow label="Số sê-ri" value={d.serial || '—'} />
           <InfoRow label="Dòng máy" value={d.model} />
           <InfoRow label="Đang giao cho" value={data.patients.find((p) => p.id === d.patientId)?.code ?? 'chưa giao'} />

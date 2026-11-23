@@ -30,7 +30,7 @@ const devs = [
   { id: 'd1', code: 'TB-001', lifecycle: 'ready' },
   { id: 'd2', code: 'TB-002', lifecycle: 'in_use', patientId: 'p9' },
   { id: 'd3', code: 'TB-003', lifecycle: 'returned' },
-  { id: 'd4', code: 'TB-004', lifecycle: 'ready', fault: { code: 'STA-4', message: 'm', at: 't' } },
+  { id: 'd4', code: 'TB-004', lifecycle: 'ready', fault: { message: 'm', at: 't' } },
   { id: 'd5', code: 'TB-005', lifecycle: 'in_use', patientId: 'p4' },
 ] as never[];
 const pt = (id: string, x: object = {}) => ({ id, ...x }) as never;

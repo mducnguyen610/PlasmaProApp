@@ -43,7 +43,7 @@ export default function DoctorDevices() {
             return (
               <LinkRow key={d.id} testID={`may-${d.code}`} icon={st === 'fault' ? 'warning-outline' : 'hardware-chip-outline'} tone={DEVICE_STATUS[st].tone}
                 title={d.code} accessibilityLabel={`${d.code}, ${DEVICE_STATUS[st].label}${owner ? `, ${owner.code}` : ''}`}
-                sub={[d.serial ? `Sê-ri ${d.serial}` : '', owner ? `Đang giữ: ${owner.code}` : '', d.fault ? `Lỗi ${d.fault.code} lúc ${fmtDateTime(d.fault.at)}` : ''].filter(Boolean).join(' · ') || d.model}
+                sub={[d.serial ? `Sê-ri ${d.serial}` : '', owner ? `Đang giữ: ${owner.code}` : '', d.fault ? `Lỗi lúc ${fmtDateTime(d.fault.at)}` : ''].filter(Boolean).join(' · ') || d.model}
                 right={<Chip label={DEVICE_STATUS[st].label} tone={DEVICE_STATUS[st].tone} />}
                 onPress={() => router.push({ pathname: '/devices/[id]', params: { id: d.id } })} />
             );

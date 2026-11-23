@@ -108,4 +108,5 @@ export function deviceHistory(
 }
 
 /** D5: lỗi máy báo trong phiên. ICD hiện chỉ có trạng thái STA "error" (mã 4), chưa có mã lỗi riêng của firmware. */
-export const STA_ERROR_FAULT = { code: 'STA-4', message: 'Máy báo trạng thái lỗi trong phiên điều trị. Giao thức chưa có mã lỗi chi tiết.' } as const;
+/** Giao thức USB/UART chưa có mã lỗi chi tiết nên chỉ ghi trạng thái Lỗi và mô tả, không tự đặt mã (người dùng chốt 24/11/2026). */
+export const STA_ERROR_FAULT = { message: 'Máy báo trạng thái lỗi trong phiên điều trị.' } as const;

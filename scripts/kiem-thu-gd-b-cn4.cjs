@@ -143,7 +143,7 @@ const rec = (id, name, pass, detail = '') => {
   const r8b = await callStore(p, 'recordDeviceSession', { patientId: 'p-1', woundId: 'w-1', startedAt, durationSec: 30, outcome: 'error' });
   d = await store(p);
   const f = dev(d, 'd-1').fault;
-  rec('CN4-14', 'Máy báo lỗi trong phiên: tự chuyển Lỗi, lưu mã, mô tả, thời điểm, bệnh nhân; bản gửi lại không ghi lần hai (D5, D9)', r8.ok && r8b.ok && !!f && f.code === 'STA-4' && f.patientId === 'p-1' && !!f.at && ev(d, 'd-1', 'error').length === 1);
+  rec('CN4-14', 'Máy báo lỗi trong phiên: tự chuyển Lỗi, lưu mô tả, thời điểm, bệnh nhân, không tự đặt mã lỗi; bản gửi lại không ghi lần hai (D5, D9)', r8.ok && r8b.ok && !!f && f.code === undefined && /trạng thái lỗi/.test(f.message) && f.patientId === 'p-1' && !!f.at && ev(d, 'd-1', 'error').length === 1);
   await go(p, '/devices/d-1');
   rec('CN4-15', 'Màn máy của bệnh nhân không có thẻ quản lý máy của bác sĩ', await p.getByTestId('quan-ly-may').count() === 0 && await p.getByTestId('lich-su-may').count() === 0);
 
@@ -152,12 +152,12 @@ const rec = (id, name, pass, detail = '') => {
   await go(p, '/doctor');
   const tile = await has(p, 'Thiết bị báo lỗi');
   await go(p, '/patients/p-1');
-  const chip = await has(p, 'TB-001 báo lỗi STA-4');
+  const chip = await has(p, 'TB-001 báo lỗi');
   await go(p, '/devices');
   const first = await p.locator('[data-testid^="may-"]').first().getAttribute('data-testid').catch(() => '');
   rec('CN4-16', 'Cảnh báo lỗi: ô việc ở trang chủ, chip ở hồ sơ, máy lỗi đứng đầu danh sách (D9)', tile && chip && /TB-001/.test(first ?? ''), `tile ${tile} chip ${chip} first ${first}`);
   await go(p, '/devices/d-1');
-  const faultShown = await has(p, 'Máy báo lỗi. Mã STA-4', false) && await has(p, 'Ứng dụng không gửi lệnh khắc phục xuống máy.', false);
+  const faultShown = await has(p, 'Máy báo lỗi lúc', false) && !(await has(p, 'STA-4', false)) && await has(p, 'Ứng dụng không gửi lệnh khắc phục xuống máy.', false);
   const noControl = !(await has(p, 'Kết nối')) && !(await has(p, 'Nạp liệu trình vào máy')) && !(await has(p, 'Bật nguồn')) && !(await has(p, 'Tắt nguồn'));
   const r9 = await callStore(p, 'clearDeviceFault', 'd-1', '  ');
   await p.getByLabel('Ghi chú xử lý lỗi').locator('visible=true').fill('Đã kiểm tra cáp, máy chạy lại');
