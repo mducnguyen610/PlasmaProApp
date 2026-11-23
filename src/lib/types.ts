@@ -1,7 +1,20 @@
 import type { CaptureMetadata } from './capture/types';
 import type { SendResult } from './device/sender';
 import type { TransportKind } from './device/transport';
+import type { PatientEditEntry } from './patientIdentity';
+export type { PatientEditEntry };
 export type Role = 'doctor' | 'patient' | 'admin';
+
+/** Giai đoạn B: một dòng nhật ký thao tác. action là mã ngắn (ví dụ wound_delete); detail là câu đọc được. */
+export interface AuditEntry {
+  id: string;
+  at: string;
+  by: string;
+  action: string;
+  patientId?: string;
+  targetId?: string;
+  detail: string;
+}
 
 export interface Account {
   id: string;
@@ -40,7 +53,10 @@ export interface Patient {
   code: string;
   researchCode?: string;
   name: string;
+  /** Năm sinh. Giữ cho dữ liệu cũ và các màn đang dùng; hồ sơ mới suy từ birthDate. */
   birthYear: number;
+  /** Giai đoạn B (CN1 H1): ngày sinh đầy đủ yyyy-mm-dd. Hồ sơ cũ chỉ có năm thì trống (hiện "Chưa đủ ngày sinh"). */
+  birthDate?: string;
   sex: 'Nam' | 'Nữ';
   phone: string;
   doctorId: string;
@@ -71,6 +87,10 @@ export interface Wound {
   closureCheck1?: string;
   /** Ngày xác nhận liền lần 2, bắt đầu theo dõi sau điều trị. */
   followUpFrom?: string;
+  /** Giai đoạn B (CN1 H7): thời điểm bác sĩ đặt "Cần tái khám" thủ công; trống là không đặt. */
+  revisitAt?: string;
+  /** Lần sửa vị trí, nhóm hoặc trạng thái tái khám gần nhất (để xếp vết mới cập nhật trước). */
+  updatedAt?: string;
 }
 
 export type LabelStatus = 'unlabeled' | 'labeled' | 'excluded';
@@ -203,6 +223,13 @@ export interface TreatmentPlan {
   editedAt: string;
   reason: string;
   confirmed: boolean;
+  /**
+   * Giai đoạn B (AU-05): mã phác đồ. Các phiên bản sửa của cùng phác đồ chung mã này; phác đồ mới cho vết thương có mã mới.
+   * Mã phiên bản là id. Dữ liệu cũ được gán khi đọc (planVersion.ts, migratePlans).
+   */
+  protocolId?: string;
+  /** Giai đoạn B (AU-04): thời điểm bệnh nhân xác nhận đã đọc phiên bản này. Chưa có thì không nạp liệu trình, không ghi phiên. */
+  patientAckAt?: string;
 }
 
 export type DeviceLifecycle = 'in_use' | 'returned' | 'disinfected' | 'ready';
@@ -236,6 +263,10 @@ export interface DeviceSession {
   source: 'device' | 'manual' | 'simulated';
   /** Vết thương được chiếu trong phiên (bệnh nhân chọn trên thiết bị hoặc ứng dụng khi có nhiều vết). */
   woundId?: string;
+  /** Giai đoạn B (AU-05): phiên bản phác đồ (TreatmentPlan.id), số phiên bản và mã phác đồ áp dụng khi ghi phiên. Phiên cũ để trống. */
+  planId?: string;
+  planVersion?: number;
+  protocolId?: string;
 }
 
 export interface SymptomReport {
@@ -287,5 +318,9 @@ export interface AppData {
   syncErrors: SyncError[];
   /** Nhật ký gửi cấu hình xuống máy. Tùy chọn để dữ liệu cũ đọc được. */
   deviceLinks?: DeviceLinkLog[];
+  /** Giai đoạn B (CN1 H8): nhật ký sửa hồ sơ (cũ, mới, người sửa, thời điểm). */
+  patientEdits?: PatientEditEntry[];
+  /** Giai đoạn B: nhật ký thao tác quản lý (xóa vết, xóa phác đồ, tạm dừng, giao, thu hồi, khử khuẩn máy...). Chỉ thêm, không sửa. */
+  auditLog?: AuditEntry[];
   counters: { image: number; patient: number };
 }

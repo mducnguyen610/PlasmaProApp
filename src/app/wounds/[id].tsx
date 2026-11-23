@@ -6,7 +6,8 @@ import { Text } from '@/components/Text';
 import { SEVERITY } from '@/lib/access';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Button, Card, Chip, Disclosure, Divider, Header, IconBadge, InfoRow, LinkRow, Muted, Notice, Screen, SectionTitle, TextLink, StatusChip } from '@/components/ui';
-import { notify } from '@/lib/dialog';
+import { confirm, notify } from '@/lib/dialog';
+import { CARE_STATUS, woundCareStatus, woundDeleteBlocker } from '@/lib/woundStatus';
 import { ClosureActions } from '@/components/ClosureActions';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { PatientWoundDashboard } from '@/components/PatientWoundDashboard';
@@ -24,7 +25,7 @@ import { C, numeric, radius, T } from '@/theme';
 // BS04 – Chi tiết vết thương: vị trí, ngày bắt đầu, album ảnh theo ngày, diện tích đã nhập, lịch sử đánh giá.
 export default function WoundDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, me } = useStore();
+  const { data, me, setWoundRevisit, deleteWound } = useStore();
   const { wound, patient, imagesOf, account, coursePlan, sessionsOf } = useLookups();
   const w = wound(id);
   const p = patient(w?.patientId);
@@ -45,6 +46,10 @@ export default function WoundDetail() {
   }
   // Hồ sơ đã lưu trữ: B05 chỉ xem (không chụp, đánh giá, đổi trạng thái hay sửa vị trí); store cũng từ chối.
   const archived = !!p.archivedAt;
+  // Giai đoạn B (CN1 H9): bác sĩ khác chỉ xem. Mọi nút sửa cần bác sĩ phụ trách và hồ sơ chưa lưu trữ.
+  const canEdit = p.doctorId === me?.id && !archived;
+  const care = CARE_STATUS[woundCareStatus(w, data.plans)];
+  const deleteWhy = woundDeleteBlocker(w.id, data);
   const images = imagesOf(w.id);
   const today = localDay();
   const plan = coursePlan(w.id, { patientView: !isDoctor });
@@ -97,9 +102,8 @@ export default function WoundDetail() {
   );
   // PP-08: mỗi ngày bắt đầu khác nhau của các đợt (không tính bản nháp) là một mốc "Đợt n". Cùng cách lọc với coursePlan trong store;
   // các phiên bản sửa giữ nguyên ngày bắt đầu thì gộp làm một.
-  const firstWound = data.wounds.find((x) => x.patientId === w.patientId)?.id;
   const courseMarkers = [...new Set(data.plans
-    .filter((pl) => pl.patientId === w.patientId && (pl.woundId ?? firstWound) === w.id && pl.status !== 'draft')
+    .filter((pl) => pl.patientId === w.patientId && pl.woundId === w.id && pl.status !== 'draft')
     .map((pl) => pl.startDate))]
     .sort()
     .map((date, i) => ({ date, label: `Đợt ${i + 1}` }));
@@ -107,12 +111,10 @@ export default function WoundDetail() {
 
   // Ba thẻ: tổng quan (vị trí, trạng thái, mức độ, diện tích), đợt điều trị, đánh giá. Album không đóng khung.
   return (
-    <Screen header={<Header back title={`Vết thương ${w.code}`} />} footer={isDoctor && !archived ? (
-      // Vùng nút cố định: hai việc chính của bác sĩ luôn thấy, không phải cuộn (giai đoạn 1 giao diện theo tác vụ).
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <Button style={{ flex: 1 }} label="Ghi đánh giá" variant="secondary" onPress={() => router.push({ pathname: '/evaluate/[woundId]', params: { woundId: w.id } })} />
-        <Button style={{ flex: 1 }} label="Chụp ảnh" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />
-      </View>
+    <Screen header={<Header back title={`Vết thương ${w.code}`} />} footer={canEdit ? (
+      // Vùng nút cố định: việc chính của bác sĩ luôn thấy, không phải cuộn (giai đoạn 1 giao diện theo tác vụ).
+      // Giai đoạn B (XN-07): bỏ "Ghi đánh giá" (B07) khỏi luồng bác sĩ; tính chất vết thương gán theo từng ảnh. Đánh giá cũ vẫn xem được.
+      <Button label="Chụp ảnh" icon="camera-outline" onPress={() => router.push({ pathname: '/guided-capture', params: { woundId: w.id } })} />
     ) : undefined}>
       {/* P0 G1: bệnh nhân và vết thương đang thao tác. */}
       <ClinicalContext patient={p} wound={w} />
@@ -128,6 +130,7 @@ export default function WoundDetail() {
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Chip label={care.label} tone={care.tone} icon="medkit-outline" />
           <StatusChip status={WOUND[w.status]} label={WOUND_STATUS[w.status].label} />
           {/* PP-07: chip mức độ và xu hướng do bác sĩ đánh giá lấy biểu tượng từ SEVERITY_ROLE, TREND_ROLE; tông giữ nguyên. */}
           {sev ? <StatusChip status={SEVERITY_ROLE[sev]} label={`Mức độ ${SEVERITY[sev].label.toLowerCase()}`} /> : <Chip label="Chưa đánh giá mức độ" tone="gray" />}
@@ -138,9 +141,20 @@ export default function WoundDetail() {
           )}
         </View>
         <Text style={{ color: C.textSoft }}>Theo dõi từ {fmtDate(w.startDate)}, {images.length} ảnh</Text>
-        {isDoctor && !archived && (
-          <TextLink label="Chỉnh sửa vị trí" accessibilityLabel={`Chỉnh sửa vị trí ${w.code}`} onPress={() => router.push({ pathname: '/wound-edit/[id]', params: { id: w.id } })} />
+        {canEdit && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+            <TextLink label="Chỉnh sửa vị trí" accessibilityLabel={`Chỉnh sửa vị trí ${w.code}`} onPress={() => router.push({ pathname: '/wound-edit/[id]', params: { id: w.id } })} />
+            {/* CN1 H7: "Cần tái khám" do bác sĩ đặt thủ công. */}
+            <TextLink label={w.revisitAt ? 'Bỏ "Cần tái khám"' : 'Đặt "Cần tái khám"'} onPress={() => {
+              setWoundRevisit(w.id, !w.revisitAt).catch((e) => notify('Chưa lưu được', e instanceof Error ? e.message : String(e)));
+            }} />
+            {/* CN1 H11: chỉ xóa được vết nhập sai chưa có ảnh, phác đồ, phiên, đánh giá. */}
+            {!deleteWhy && <TextLink label="Xóa vết nhập sai" onPress={() => confirm(`Xóa ${w.code}?`, `Vết ${w.code} (${w.location}) chưa có ảnh, phác đồ hay phiên điều trị. Thao tác được ghi nhật ký và không hoàn tác.`, async () => {
+              try { await deleteWound(w.id); router.back(); } catch (e) { notify('Chưa xóa được', e instanceof Error ? e.message : String(e)); }
+            }, 'Xóa vết')} />}
+          </View>
         )}
+        {w.revisitAt && <Muted>{`Bác sĩ đặt "Cần tái khám" lúc ${fmtDateTime(w.revisitAt)}.`}</Muted>}
       </Card>
         {isDoctor ? (
           <>
@@ -230,7 +244,7 @@ export default function WoundDetail() {
             {pr && isDoctor && <ProgressRows pr={pr} />}
           </Disclosure>
         ) : <Muted>Chưa có đợt điều trị cho vết thương này.</Muted>}
-        {isDoctor && !archived && <ClosureActions woundId={w.id} status={w.status} check1={w.closureCheck1} followUpFrom={w.followUpFrom} today={today} hasPlan={!!plan} onNewCourse={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />}
+        {canEdit && <ClosureActions woundId={w.id} status={w.status} check1={w.closureCheck1} followUpFrom={w.followUpFrom} today={today} hasPlan={!!plan} onNewCourse={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />}
       </Card>
 
       {/* Thẻ 3: đánh giá gần nhất và các đánh giá cũ trong cùng một thẻ, tách bằng đường kẻ. */}

@@ -5,6 +5,8 @@ import { View } from 'react-native';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { ClinicalContext } from '@/components/ClinicalContext';
+import { PlanAckCard } from '@/components/PlanAckCard';
+import { needsPatientAck } from '@/lib/planVersion';
 import { DeviceOverviewRows, DeviceStatusBar, LinkDiagram } from '@/components/DeviceStatus';
 import { Button, Card, Choices, Disclosure, Divider, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, type IconName } from '@/components/ui';
 import { fmtDuration } from '@/lib/course';
@@ -53,10 +55,13 @@ export default function ConnectDevice() {
   );
   const selected = courses.length === 1 ? courses[0] : courses.find((c) => c.wound.id === chosen);
 
-  if (!p || !canView) return <NoAccess />;
+  // Giai đoạn B (AU-03): chỉ bệnh nhân kết nối máy, nạp liệu trình và theo dõi phiên. Bác sĩ xem lịch sử phiên ở hồ sơ và thiết bị.
+  if (!p || !canView || me?.role !== 'patient') return <NoAccess />;
 
   const plan = selected?.plan;
-  const prepared = plan ? planToConfig(plan, p, new Date()) : null;
+  // Giai đoạn B (AU-04): phiên bản bệnh nhân chưa xác nhận đọc thì không dựng cấu hình, nút nạp bị khóa.
+  const ackMissing = needsPatientAck(plan);
+  const prepared = plan && !ackMissing ? planToConfig(plan, p, new Date()) : null;
   // Stage 9C: kiểm cấu hình và giá trị trên dây qua dịch vụ thiết bị, màn không gọi trực tiếp lớp giao thức.
   const { cfg, errors, wire } = checkTreatmentConfig(prepared, link.caps, PROTOCOL);
   const idInfo = link.identity?.kind === 'known' ? link.identity.info : null;
@@ -111,7 +116,7 @@ export default function ConnectDevice() {
   const updatedAt = [link.lastStatusAt, resultAt].filter((x): x is string => !!x).sort().pop() ?? null;
   const readyText = link.state !== 'connected' ? 'Chưa, máy chưa kết nối' : readyToSend ? 'Có' : noDevice ? 'Chưa, hồ sơ chưa giao máy' : unidentified ? 'Chưa, máy chưa trả lời lệnh hỏi thông tin' : versionMismatch ? 'Chưa, khác phiên bản giao thức' : 'Chưa, đợt điều trị chưa sẵn sàng';
   const errorText = link.state === 'error' ? link.detail ?? 'Lỗi kết nối' : st?.state === 'error' && shown.view === 'live' ? 'Máy báo lỗi' : result && result.kind !== 'acked' && result.kind !== 'disconnected' ? (isPatient ? patientSendResultLabel(result) : sendResultLabel(result)) : null;
-  const reasonText = link.state !== 'connected' ? 'Kết nối máy bằng cáp USB trước.' : !cfg || errors.length > 0 ? (isPatient ? 'Đợt điều trị chưa sẵn sàng. Xem thông báo ở trên.' : 'Đợt điều trị chưa sẵn sàng, xem thông báo ở trên.') : isPatient ? 'Máy chưa sẵn sàng nhận liệu trình. Xem thông báo ở trên.' : 'Máy chưa sẵn sàng nhận liệu trình, xem thông báo ở trên.';
+  const reasonText = ackMissing ? 'Hãy đọc và xác nhận phiên bản đợt điều trị trước khi nạp.' : link.state !== 'connected' ? 'Kết nối máy bằng cáp USB trước.' : !cfg || errors.length > 0 ? (isPatient ? 'Đợt điều trị chưa sẵn sàng. Xem thông báo ở trên.' : 'Đợt điều trị chưa sẵn sàng, xem thông báo ở trên.') : isPatient ? 'Máy chưa sẵn sàng nhận liệu trình. Xem thông báo ở trên.' : 'Máy chưa sẵn sàng nhận liệu trình, xem thông báo ở trên.';
   const openMonitor = () => router.push({ pathname: '/session-monitor', params: { patientId: p.id, woundId: selected?.wound.id } });
 
   // Thông báo trạng thái gửi đi cùng nút trong chân màn (GĐ-9): bấm nạp là thấy phản hồi ngay, không phải cuộn.
@@ -165,6 +170,8 @@ export default function ConnectDevice() {
       )}
       {!selected ? (
         <Muted>{isPatient ? 'Chọn vết thương để xem liệu trình sẽ nạp.' : 'Chọn vết thương để xem cấu hình sẽ gửi.'}</Muted>
+      ) : ackMissing && plan ? (
+        <Card><PlanAckCard plan={plan} wound={selected.wound} /></Card>
       ) : prepared && 'missing' in prepared ? (
         <Notice tone="red">{isPatient
           ? `Đợt điều trị còn thiếu ${prepared.missing.map((m) => PATIENT_MISSING_LABEL[m]).join(', ')}. Bác sĩ cần cập nhật đợt điều trị. Hãy báo bác sĩ.`

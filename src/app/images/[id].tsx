@@ -85,6 +85,8 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
   if (!im || !p || !w) return <NoAccess notFound />;
   if (!canView) return <NoAccess />;
   const isDoctor = me?.role === 'doctor';
+  // Giai đoạn B (CN1 H9): bác sĩ khác xem ảnh và nhãn, không sửa. Sửa cần bác sĩ phụ trách và hồ sơ chưa lưu trữ.
+  const canEditImg = isDoctor && p.doctorId === me?.id && !p.archivedAt;
   const expected = { patientCode: p.code, woundCode: w.code, imageId: im.id, ext: im.ext };
 
   // Kết quả kiểm tra đầu vào → tên xem trước
@@ -252,7 +254,7 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
         <Notice tone="green" icon="checkmark-circle-outline">{replacedFrom !== null ? `Đã thay ${formatAreaDisplay(replacedFrom)} bằng ${formatAreaDisplay(im.areaCm2)} cho ảnh ${im.id}.` : `Đã lưu diện tích ${formatAreaDisplay(im.areaCm2)} cho ảnh ${im.id}.`}</Notice>
       )}
       {/* UX-17: vừa lưu số thì mở thẳng ảnh chưa đo kế tiếp, không phải về Trang chủ. Ảnh kế tiếp có biểu mẫu trống riêng. */}
-      {isDoctor && justSaved && (next && nextP && nextW ? (
+      {canEditImg && justSaved && (next && nextP && nextW ? (
         <View style={{ gap: 4 }}>
           <Button label={next.patientId !== im.patientId ? `Ảnh chưa đo tiếp theo, bệnh nhân khác (${queue.length})` : `Ảnh chưa đo tiếp theo (${queue.length})`} icon="arrow-forward" variant="secondary"
             onPress={() => router.replace({ pathname: '/images/[id]', params: { id: next.id, tuBenhNhan: im.patientId } })} />
@@ -288,11 +290,12 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
         {isDoctor && !editing && (
           <>
             {aiBlock}
-            <Button label={im.areaCm2 === null ? 'Nhập diện tích bác sĩ đã đo' : 'Sửa số đo'} icon="create-outline" onPress={() => startEdit('area')} />
+            {canEditImg && 
+            <Button label={im.areaCm2 === null ? 'Nhập diện tích bác sĩ đã đo' : 'Sửa số đo'} icon="create-outline" onPress={() => startEdit('area')} />}
           </>
         )}
 
-        {isDoctor && editing && (
+        {canEditImg && editing && (
           <>
             <Divider />
             <Text accessibilityRole="header" style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>
@@ -372,16 +375,9 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
       {/* Thao tác ít dùng và thông tin kỹ thuật thu gọn (R-06). Nội dung đang gõ trong các mục này giữ nguyên khi đóng mở.
           Giai đoạn 3: ẩn khi đang đo; ô chữ trong các mục là state của màn nên không mất. */}
       {!measuring && <Card style={{ gap: 6 }}>
-        {isDoctor && (
+        {/* Giai đoạn B (XN-07): bỏ lối vào "Ghi đánh giá với ảnh này" (B07); tính chất gán theo ảnh. */}
+        {canEditImg && (
           <>
-            <Pressable accessibilityRole="button" accessibilityLabel="Ghi đánh giá với ảnh này"
-              onPress={() => router.push({ pathname: '/evaluate/[woundId]', params: { woundId: w.id, imageId: im.id } })}
-              style={({ pressed }) => ({ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, opacity: pressed ? 0.7 : 1 })}>
-              <Ionicons name="clipboard-outline" size={22} color={C.primary} />
-              <Text style={{ flex: 1, color: C.text, fontWeight: '700' }}>Ghi đánh giá với ảnh này</Text>
-              <Ionicons name="chevron-forward" size={22} color={C.textSoft} />
-            </Pressable>
-            <Divider />
             <Disclosure icon="share-outline" title="Chia sẻ cho bên kỹ thuật" summary={im.researchReady ? 'Đã kiểm tra và chia sẻ' : 'Chưa đưa vào kho dữ liệu'}>
               <Muted>Chỉ xác nhận khi ảnh không có mặt, tên, giấy tờ hay thông tin nhận dạng. Ứng dụng tạo bản sao PNG bỏ siêu dữ liệu; giữ nguyên ảnh gốc trong hồ sơ.</Muted>
               <Button label={im.researchReady ? 'Ngừng chia sẻ ảnh' : 'Xác nhận ảnh và chia sẻ'} variant="secondary" loading={sharingBusy}
@@ -453,7 +449,7 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
           <InfoRow label="Mã bệnh nhân" value={p.code} />
           <InfoRow label="Mã vết thương" value={w.code} />
           <InfoRow label="Mã ảnh (cố định)" value={im.id} />
-          {isDoctor && !(editing && mode === 'full') && (
+          {canEditImg && !(editing && mode === 'full') && (
             <Button label="Sửa tên đầy đủ" variant="ghost" icon="text-outline" onPress={() => (editing ? setMode('full') : startEdit('full'))} />
           )}
         </Disclosure>

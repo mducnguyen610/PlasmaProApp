@@ -40,8 +40,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
   const tech = level === 'tech';
   const patientView = level === 'patient';
   // Bật tắt nguồn từ xa trái phương án S1 (nạp qua USB tại nhà); chỉ giữ trong bản phát triển để minh họa.
-  const canControl = level === 'doctor' && __DEV__;
-  const { data, setDevicePower, simulateSession, markCareDone, setLifecycle } = useStore();
+  // Giai đoạn B (AU-03): bác sĩ không điều khiển thiết bị, nút bật tắt nguồn của bác sĩ đã bỏ.
+  const { data, simulateSession, markCareDone, setLifecycle } = useStore();
   const { sessionsOf, patient, woundsOf, coursePlan } = useLookups();
   const sessions = sessionsOf(device.id);
   const rawCount = data.sessions.filter((s) => s.deviceId === device.id).length;
@@ -141,22 +141,6 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         {!patientView && <InfoRow label="Trạng thái nguồn" value={powerLabel} />}
         </>}
         {patientView && !device.online && <Muted>Số liệu cập nhật khi thiết bị trực tuyến trở lại.</Muted>}
-        {canControl && (
-          <Button
-            label={device.power === 'on' ? 'Ngắt nguồn thiết bị' : 'Bật nguồn thiết bị'}
-            icon="power"
-            variant={device.power === 'on' ? 'danger' : 'primary'}
-            loading={device.power === 'pending'}
-            onPress={() =>
-              confirm(
-                device.power === 'on' ? 'Ngắt nguồn' : 'Bật nguồn',
-                'Lệnh được gửi tới thiết bị; trạng thái chỉ đổi khi thiết bị xác nhận. Thiết bị offline sẽ không nhận lệnh.',
-                () => setDevicePower(device.id, device.power !== 'on'),
-                'Gửi lệnh',
-              )
-            }
-          />
-        )}
       </Card>
   ) : null;
 

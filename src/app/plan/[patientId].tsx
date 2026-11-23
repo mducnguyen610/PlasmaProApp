@@ -6,11 +6,13 @@ import { Text } from '@/components/Text';
 import { DoseRows, PhaseList } from '@/components/CourseCard';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
+import { PlanAckCard } from '@/components/PlanAckCard';
+import { needsPatientAck } from '@/lib/planVersion';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { CheckRow } from '@/components/Consent';
 import { PLAN } from '@/theme.status';
 import { Button, Card, Chip, Choices, Disclosure, Divider, Field, Header, InfoRow, ListCard, Muted, Notice, Screen, SectionTitle, StepRow, TextLink, StatusChip } from '@/components/ui';
-import { capabilitiesFor, modeLabel } from '@/lib/device/capabilities';
+import { CAPABILITIES, SIM_MODEL, capabilitiesFor, modeLabel } from '@/lib/device/capabilities';
 import { DEFAULT_REVIEW_DAY, fmtDuration, localDay, phaseLabel, phasesOf, suggestDurationSec } from '@/lib/course';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, maskDateInput, PLAN_STATUS } from '@/lib/format';
@@ -170,11 +172,13 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
   const { patient, account, woundsOf, imagesOf, device } = useLookups();
   const p = patient(patientId);
   // Mức và chế độ chọn trong năng lực của mẫu thiết bị gán cho người bệnh; ứng dụng không tự đặt giá trị.
-  const caps = capabilitiesFor(device(p?.deviceId)?.model);
+  // Giai đoạn B (AU-01, XN G-b): luôn khóa mức năng lượng theo bảng mức 1..5 của dòng máy, kể cả khi hồ sơ chưa được giao máy
+  // hoặc mẫu máy không có trong bảng; không còn ô nhập tự do.
+  const caps = capabilitiesFor(device(p?.deviceId)?.model) ?? CAPABILITIES[SIM_MODEL];
   const canView = useCanView(p);
   const wounds = p ? woundsOf(p.id) : [];
-  const first = wounds[0]?.id;
-  const plans = data.plans.filter((x) => x.patientId === patientId && (x.woundId ?? first) === woundId).sort((a, b) => b.version - a.version);
+  // Giai đoạn B (AU-05): phiên bản cũ đã được gán vết thương khi đọc dữ liệu (migratePlans), không còn suy theo vị trí trong mảng.
+  const plans = data.plans.filter((x) => x.patientId === patientId && x.woundId === woundId).sort((a, b) => b.version - a.version);
   const latest = plans[0];
   const lastArea = woundId ? [...imagesOf(woundId)].reverse().find((i) => i.areaCm2 !== null && i.status === 'labeled') : undefined;
 
@@ -185,9 +189,9 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
   const [perVisit, setPerVisit] = useState(latest?.sessionsPerDay?.toString() ?? '1');
   const [gap, setGap] = useState(latest?.minIntervalMin?.toString() ?? '');
   const [level, setLevel] = useState(
-    latest?.doseLevel != null && (!caps || caps.energyLevels.includes(latest.doseLevel)) ? latest.doseLevel.toString() : '',
+    latest?.doseLevel != null && caps.energyLevels.includes(latest.doseLevel) ? latest.doseLevel.toString() : '',
   );
-  const [mode, setMode] = useState(latest?.treatmentMode && caps?.treatmentModes.some((m) => m.value === latest.treatmentMode) ? latest.treatmentMode : '');
+  const [mode, setMode] = useState(latest?.treatmentMode && caps.treatmentModes.some((m) => m.value === latest.treatmentMode) ? latest.treatmentMode : '');
   const [duration, setDuration] = useState(latest?.durationSec?.toString() ?? '');
   const [spc, setSpc] = useState(latest?.secondsPerCm2?.toString() ?? '');
   const [reviewDay, setReviewDay] = useState(String(latest?.reviewAtDay ?? DEFAULT_REVIEW_DAY));
@@ -216,7 +220,7 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
     const visible = data.plans.filter((x) => x.patientId === p.id && x.confirmed && x.status !== 'draft').sort((a, b) => b.version - a.version);
     // UX-20 (Đợt 11): mỗi vết thương một thẻ, mỗi thẻ là phiên bản mới nhất bệnh nhân được xem của vết đó (trước đây chỉ một thẻ cho mọi vết).
     const perWound = wounds
-      .map((w) => ({ w, plan: visible.find((x) => (x.woundId ?? first) === w.id) }))
+      .map((w) => ({ w, plan: visible.find((x) => x.woundId === w.id) }))
       .filter((x): x is { w: (typeof wounds)[number]; plan: TreatmentPlan } => !!x.plan);
     // Giai đoạn 5 giao diện theo tác vụ: mở từ N03 hoặc N05 kèm woundId thì chỉ hiện đợt của vết đó (vết phải thuộc chính bệnh nhân).
     // Mở không kèm woundId (lối vào cũ) vẫn hiện mọi vết như trước.
@@ -228,7 +232,30 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
           <View key={w.id} style={{ gap: 8 }}>
             {shown.length > 1 && <SectionTitle icon="bandage-outline">{`${w.code}: ${w.location}`}</SectionTitle>}
             <PatientPlanCard plan={plan} editorName={account(plan.editedBy)?.name} />
+            {needsPatientAck(plan) && <Card><PlanAckCard plan={plan} wound={w} showDetailLink={false} /></Card>}
           </View>
+        ))}
+      </Screen>
+    );
+  }
+
+  // Giai đoạn B (CN1 H9): bác sĩ khác xem các phiên bản (không gồm nháp), không sửa.
+  if (me?.role === 'doctor' && p.doctorId !== me.id) {
+    const shown = plans.filter((x) => x.status !== 'draft');
+    const w0 = wounds.find((x) => x.id === woundId);
+    return (
+      <Screen header={<Header back title="Đợt điều trị" subtitle={w0 ? `${w0.code}: ${w0.location}` : undefined} />}>
+        <ClinicalContext patient={p} wound={w0 ?? null} />
+        <Notice icon="eye-outline" tone="gray">Hồ sơ do bác sĩ khác phụ trách. Chỉ xem các phiên bản đã lưu.</Notice>
+        {wounds.length > 1 && <Choices<string> value={woundId} onChange={setWoundId} options={wounds.map((x) => ({ value: x.id, label: x.code }))} />}
+        {shown.length === 0 ? <Card><Muted>Chưa có phiên bản nào.</Muted></Card> : shown.map((x) => (
+          <Card key={x.id} style={{ gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ flex: 1, fontWeight: '700', color: C.text }}>Phiên bản {x.version}</Text>
+              <StatusChip status={PLAN[x.status]} label={PLAN_STATUS[x.status].label} />
+            </View>
+            <PlanDetails plan={x} editorName={account(x.editedBy)?.name} />
+          </Card>
         ))}
       </Screen>
     );
@@ -243,7 +270,7 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
   const dash = (v: string | null | undefined) => (v == null || v === '' ? '—' : v);
   const durText = (v: number | null | undefined) => (v == null ? '—' : fmtDuration(v));
   const draftPhase = (ph: PhaseDraft) => `${phaseLabel({ from: '', to: '', pattern: ph.pattern, n: Number(ph.n) || 1 })}, ${range(ph.from, ph.to)}`;
-  const showMode = (caps?.treatmentModes.length ?? 0) > 0 || !!mode || !!base?.treatmentMode;
+  const showMode = caps.treatmentModes.length > 0 || !!mode || !!base?.treatmentMode;
   const showGap = gap.trim() !== '' || base?.minIntervalMin != null;
   const reviewRows: ReviewRow[] = [
     { label: 'Lịch', before: base ? phasesOf(base).map(phaseText).join('\n') : undefined, after: phases.map(draftPhase).join('\n'), step: 0 },
@@ -300,8 +327,8 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
     const nums = [perVisit, gap, level, duration, spc, reviewDay].map(numOrNull);
     if (nums.some((n) => n !== null && (!Number.isFinite(n) || n < 0))) errs.push({ st: 1, msg: 'Thông số phải là số không âm.' });
     if (status === 'active' && (nums[2] === null || nums[3] === null)) errs.push({ st: 1, msg: 'Đợt "Đang áp dụng" cần mức năng lượng và thời gian điều trị để khóa trên thiết bị.' });
-    if (caps && nums[2] !== null && !caps.energyLevels.includes(nums[2])) errs.push({ st: 1, msg: 'Mức năng lượng phải thuộc danh sách của mẫu thiết bị.' });
-    if (caps && status === 'active' && caps.treatmentModes.length > 0 && !mode) errs.push({ st: 1, msg: 'Đợt "Đang áp dụng" cần chọn chế độ điều trị.' });
+    if (nums[2] !== null && !caps.energyLevels.includes(nums[2])) errs.push({ st: 1, msg: 'Mức năng lượng phải thuộc danh sách của mẫu thiết bị.' });
+    if (status === 'active' && caps.treatmentModes.length > 0 && !mode) errs.push({ st: 1, msg: 'Đợt "Đang áp dụng" cần chọn chế độ điều trị.' });
     if (!reason.trim()) errs.push({ st: 2, msg: 'Nhập lý do thay đổi để lưu vết phiên bản.' });
     if (status === 'active' && !confirmed) errs.push({ st: 2, msg: 'Đợt "Đang áp dụng" cần bác sĩ xác nhận.' });
     if (errs.length) {
@@ -315,7 +342,7 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
     try {
     await savePlan({
       patientId: p.id, woundId, status, phases: parsed, sessionsPerDay: nums[0] ?? 1, minIntervalMin: nums[1], targetEnergyWh: null,
-      doseLevel: nums[2], treatmentMode: caps && mode ? mode : null, durationSec: nums[3], secondsPerCm2: nums[4], areaAtStart: lastArea?.areaCm2 ?? null, reviewAtDay: nums[5] ?? DEFAULT_REVIEW_DAY,
+      doseLevel: nums[2], treatmentMode: mode ? mode : null, durationSec: nums[3], secondsPerCm2: nums[4], areaAtStart: lastArea?.areaCm2 ?? null, reviewAtDay: nums[5] ?? DEFAULT_REVIEW_DAY,
       startDate: parsed[0].from, endDate: parsed[parsed.length - 1].to, reviewSchedule: review.trim(), notes: notes.trim(), reason: reason.trim(), confirmed,
     });
     } catch (e) {
@@ -415,24 +442,15 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
         {/* R-02, UX-14 (Đợt 10): nhóm liều khóa trên máy lên đầu; công cụ gợi ý thời gian vào mục thu gọn. Trường và quy tắc giữ nguyên. */}
         <Text style={{ fontWeight: '700', color: C.text, marginTop: 4 }}>Liều khóa trên máy</Text>
         <Muted>Thiết bị tại nhà bị khóa ở mức và thời gian này; bệnh nhân không đổi được.</Muted>
-        {caps ? (
+        <Text style={{ fontWeight: '700', color: C.text }}>Mức năng lượng</Text>
+        <Choices<string> value={level} onChange={edit(setLevel)} options={caps.energyLevels.map((e) => ({ value: String(e), label: String(e) }))} />
+        {caps.treatmentModes.length > 0 && (
           <>
-            <Text style={{ fontWeight: '700', color: C.text }}>Mức năng lượng</Text>
-            <Choices<string> value={level} onChange={edit(setLevel)} options={caps.energyLevels.map((e) => ({ value: String(e), label: String(e) }))} />
-            {caps.treatmentModes.length > 0 && (
-              <>
-                <Text style={{ fontWeight: '700', color: C.text }}>Chế độ điều trị</Text>
-                <Choices<string> value={mode} onChange={edit(setMode)} options={caps.treatmentModes} />
-              </>
-            )}
-            {!caps.confirmed && <Muted>Danh sách mức và chế độ chưa được firmware xác nhận.</Muted>}
-          </>
-        ) : (
-          <>
-            <Field label="Mức năng lượng" value={level} onChangeText={edit(setLevel)} keyboardType="number-pad" hint="Ví dụ: 8" />
-            <Muted>Chưa có danh sách mức và chế độ cho mẫu thiết bị này.</Muted>
+            <Text style={{ fontWeight: '700', color: C.text }}>Chế độ điều trị</Text>
+            <Choices<string> value={mode} onChange={edit(setMode)} options={caps.treatmentModes} />
           </>
         )}
+        {!caps.confirmed && <Muted>Danh sách mức và chế độ chưa được firmware xác nhận.</Muted>}
         <Field label="Thời gian mỗi lần điều trị (giây)" value={duration} onChangeText={edit(setDuration)} keyboardType="number-pad" hint={numOrNull(duration) != null ? fmtDuration(numOrNull(duration)) : undefined} />
         <Disclosure title="Công cụ gợi ý thời gian" summary="Theo diện tích đo gần nhất · không bắt buộc">
         <View style={{ gap: 8, padding: 10, borderRadius: 10, backgroundColor: C.primarySoft }}>

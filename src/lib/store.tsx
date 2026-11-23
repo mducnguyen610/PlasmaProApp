@@ -14,11 +14,15 @@ import { reassignDevice } from './devices';
 import { CLOSURE_CONFIRM_DAYS, addDays, isScheduled, localDay } from './course';
 import { CARE_ITEMS, LIFECYCLE } from './maintenance';
 import { buildFilename } from './naming';
-import { archiveBlocker, isArchived, splitDoctorPatientPatch, validatePatientEdit, validateWoundLocation } from './patientRecord';
+import { archiveBlocker, isArchived, splitDoctorPatientPatch, validateWoundLocation } from './patientRecord';
+import { isoToVn, patientEditEntries, validateNewPatient, validatePatientEdit } from './patientIdentity';
+import { woundDeleteBlocker } from './woundStatus';
 import { committedImageOf, EMPTY_PENDING_FORM, verifyLinked, findPhoneDuplicate, isPendingCapture, validateNewPatientForm, type PendingCapture, type PendingPatientForm } from './pendingCapture';
 import { createSeed, DEMO_ASSETS } from './seed';
+import { canLoadPlan, loadedPlanLink, migratePlans, protocolIdFor } from './planVersion';
+import { CAPABILITIES, SIM_MODEL, capabilitiesFor } from './device/capabilities';
 import type {
-  Account, AppData, Device, DeviceLifecycle, DeviceLinkLog, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
+  Account, AppData, AuditEntry, Device, DeviceLifecycle, DeviceLinkLog, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
 } from './types';
 
 // v2: dữ liệu demo theo đợt điều trị (ngày tính từ hôm nay); bản v1 cũ không được đọc lại.
@@ -66,9 +70,17 @@ async function removeImageFile(uri: string | undefined): Promise<void> {
 
 /** Hồ sơ có cùng số điện thoại (quy tắc trùng của addPatient). Màn hình bắt lỗi này để cho bác sĩ xem hồ sơ trùng. */
 export class DuplicatePatientError extends Error {
-  constructor(public duplicate: Patient) {
-    super(`Số điện thoại đã có hồ sơ ${duplicate.code}. Nếu bệnh nhân đã tự đăng ký, nhờ quản trị phân công hồ sơ đó cho bạn thay vì tạo hồ sơ mới.`);
+  constructor(public duplicate: Patient, message?: string) {
+    super(message ?? `Số điện thoại đã có hồ sơ ${duplicate.code}. Nếu bệnh nhân đã tự đăng ký, nhờ quản trị phân công hồ sơ đó cho bạn thay vì tạo hồ sơ mới.`);
     this.name = 'DuplicatePatientError';
+  }
+}
+
+/** Giai đoạn B (CN1 H3): chỉ trùng số điện thoại. Không chặn; nơi gọi hỏi bác sĩ rồi gọi lại với allowPhoneDuplicate. */
+export class PhoneDuplicateWarning extends Error {
+  constructor(public duplicates: Patient[]) {
+    super(`Số điện thoại đã có ở hồ sơ ${duplicates.map((p) => p.code).join(', ')}.`);
+    this.name = 'PhoneDuplicateWarning';
   }
 }
 
@@ -88,7 +100,11 @@ interface Store {
   logout: () => void;
   finishOnboarding: () => Promise<void>;
   resetDemo: () => void;
-  addPatient: (p: Omit<Patient, 'id' | 'code' | 'createdAt' | 'researchCode'>, woundLocation?: string) => Promise<{ patient: Patient; activation: Activation }>;
+  /**
+   * Giai đoạn B (CN1 H1, H3): cần họ tên, ngày sinh, giới tính, số điện thoại. Trùng cả ba trường thì ném DuplicatePatientError;
+   * chỉ trùng số thì ném PhoneDuplicateWarning trừ khi allowPhoneDuplicate.
+   */
+  addPatient: (p: Omit<Patient, 'id' | 'code' | 'createdAt' | 'researchCode' | 'birthYear'> & { birthDate: string }, woundLocation?: string, opts?: { allowPhoneDuplicate?: boolean }) => Promise<{ patient: Patient; activation: Activation }>;
   issueActivation: (patientId: string) => Promise<Activation>;
   activateAccount: (input: { username: string; code: string; password: string; agreed: boolean }) => Promise<void>;
   /**
@@ -101,6 +117,8 @@ interface Store {
   addWound: (patientId: string, location: string, group?: string) => Promise<Wound>;
   /** Sửa vị trí (và nhóm tổn thương) của vết thương; giữ woundId, patientId, mã vết. Trạng thái chỉ đổi qua recordClosure. */
   updateWound: (id: string, patch: Partial<Wound>) => Promise<void>;
+  deleteWound: (woundId: string) => Promise<void>;
+  setWoundRevisit: (woundId: string, on: boolean) => Promise<void>;
   addImage: (args: { woundId: string; uri: string; ext: WoundImage['ext']; captureDate: string; source: 'doctor' | 'patient'; capture?: WoundImage['capture'] }) => Promise<WoundImage>;
   /** Ảnh chờ gắn hồ sơ của bác sĩ đang đăng nhập (luồng "Chụp cho bệnh nhân mới"); null với vai trò khác hoặc khi không có. */
   pendingCapture: PendingCapture | null;
@@ -123,7 +141,10 @@ interface Store {
   setExcluded: (imageId: string, reason: string | null) => Promise<void>;
   requestRetake: (imageId: string, note: string | null) => Promise<void>;
   addEvaluation: (e: Omit<Evaluation, 'id' | 'doctorId'>) => Promise<void>;
-  savePlan: (p: Omit<TreatmentPlan, 'id' | 'version' | 'editedBy' | 'editedAt'> & { id?: string }) => Promise<void>;
+  /** newProtocol: tạo phác đồ mới cho vết thương (mã phác đồ mới) thay vì phiên bản mới của phác đồ đang có. */
+  savePlan: (p: Omit<TreatmentPlan, 'id' | 'version' | 'editedBy' | 'editedAt' | 'protocolId' | 'patientAckAt'> & { id?: string; newProtocol?: boolean }) => Promise<void>;
+  /** Giai đoạn B (AU-04): bệnh nhân xác nhận đã đọc phiên bản đang áp dụng; chỉ sau đó mới nạp liệu trình được. */
+  acknowledgePlan: (planId: string) => Promise<void>;
   setDevicePower: (deviceId: string, on: boolean) => void;
   simulateSession: (deviceId: string) => { ok: boolean; message: string };
   registerDevice: (code: string) => Promise<void>;
@@ -218,13 +239,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       try {
         const sess = loaded.kind === 'failed' ? null : loaded.session;
         if (loaded.kind === 'loaded') {
-          const saved: AppData = loaded.data;
+          const original: AppData = loaded.data;
+          const saved: AppData = { ...original };
           saved.sessionNotes ??= [];
           saved.deviceLinks ??= [];
           saved.patients = saved.patients.map(p => ({ ...p, researchCode: p.researchCode ?? 'RS-' + Crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase() }));
+          // Giai đoạn B (AU-05): gán vết thương và mã phác đồ cho phiên bản cũ (xác định, không xóa bản ghi).
+          const plans = migratePlans(saved.plans, saved.wounds);
+          const migrated = plans.some((x, i) => x !== saved.plans[i]);
+          saved.plans = plans;
+          let backedUp = !migrated;
+          if (migrated) {
+            // Sao lưu bản cũ trước khi ghi bản đã chuyển đổi; sao lưu lỗi thì chỉ dùng bản chuyển đổi trong phiên, không ghi đè.
+            try { await persistence.backupBeforeMigration(original); backedUp = true; } catch { readFailedRef.current = true; setPersistIssue({ kind: 'read_failed' }); }
+          }
           setData(saved);
           dataRef.current = saved;
-          persistedRef.current = saved; // vừa đọc từ bộ nhớ máy: không cần ghi lại
+          // Vừa đọc từ bộ nhớ máy: không cần ghi lại, trừ khi vừa chuyển đổi (đã sao lưu) thì để hiệu ứng ghi nền ghi bản mới.
+          persistedRef.current = migrated && backedUp ? null : saved;
         }
         if (sess) setMeId(sess);
         const held = await persistence.loadPending();
@@ -401,15 +433,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return { account, activation: { username, code, expiresAt } };
   };
 
-  const addPatient: Store['addPatient'] = async (p, woundLocation) => {
+  const addPatient: Store['addPatient'] = async (p, woundLocation, opts) => {
     if (meRef.current?.role !== 'doctor' || p.doctorId !== meRef.current.id) throw new Error('Cần quyền bác sĩ phụ trách.');
-    // Cùng quy tắc và câu báo như trước; luồng tạo hồ sơ từ ảnh dùng chung hàm so trùng này.
-    const dup = findPhoneDuplicate(dataRef.current.patients, p.phone);
-    if (dup) throw new DuplicatePatientError(dup);
+    // Giai đoạn B (CN1 H1, H3): kiểm lại ở kho, không chỉ ở màn. Ngày sinh nhận dạng yyyy-mm-dd.
+    const check = validateNewPatient({ name: p.name, birthDate: isoToVn(p.birthDate), phone: p.phone }, dataRef.current.patients, todayIso());
+    if (check.exact) throw new DuplicatePatientError(check.exact, `Đã có hồ sơ ${check.exact.code} trùng họ tên, ngày sinh và số điện thoại. Mở hồ sơ có sẵn thay vì tạo mới.`);
+    if (!check.value) throw new Error(Object.values(check.errors).join(' '));
+    if (check.phoneOnly.length && !opts?.allowPhoneDuplicate) throw new PhoneDuplicateWarning(check.phoneOnly);
     const n = dataRef.current.counters.patient + 1;
-    const patient: Patient = { ...p, researchCode: 'RS-' + Crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase(), id: `p-${Date.now()}`, code: `BN${String(n).padStart(3, '0')}`, createdAt: todayIso() };
+    const patient: Patient = {
+      ...p, ...check.value,
+      researchCode: 'RS-' + Crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase(),
+      // Giai đoạn B (CN1): mã nội bộ ổn định, không dựa vào giờ máy.
+      id: 'p-' + Crypto.randomUUID(), code: `BN${String(n).padStart(3, '0')}`, createdAt: todayIso(),
+    };
     const wound: Wound | null = woundLocation
-      ? { id: `w-${Date.now()}`, patientId: patient.id, code: 'VT01', location: woundLocation, startDate: todayIso(), status: 'active' }
+      ? { id: 'w-' + Crypto.randomUUID(), patientId: patient.id, code: 'VT01', location: woundLocation, startDate: todayIso(), status: 'active' }
       : null;
     const { account, activation } = await newActivation(patient, undefined, dataRef.current.accounts);
     await commit((d) => ({
@@ -466,22 +505,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Không dựa vào việc ẩn nút: bác sĩ không đổi được phân công, mã hồ sơ hay trạng thái lưu trữ qua hàm này.
       if (forbidden.length) throw new Error(`Bác sĩ không được sửa: ${forbidden.join(', ')}. Phân công bác sĩ do quản trị thực hiện ở Q01.`);
       const current = dataRef.current.patients.find(p => p.id === id)!;
-      const demographic = 'name' in allowed || 'birthYear' in allowed || 'phone' in allowed;
-      let profile: { name: string; birthYear: number; phone: string } | undefined;
+      const demographic = 'name' in allowed || 'birthYear' in allowed || 'birthDate' in allowed || 'phone' in allowed;
+      let profile: { name: string; birthDate: string; birthYear: number; phone: string } | undefined;
       if (demographic) {
+        // Giai đoạn B (CN1 H8, XN-11): sửa thông tin hành chính phải có ngày sinh đầy đủ; hồ sơ cũ chỉ có năm phải bổ sung.
         const { errors, value } = validatePatientEdit({
-          name: allowed.name ?? current.name, birthYear: String(allowed.birthYear ?? current.birthYear), phone: allowed.phone ?? current.phone,
-        }, current, dataRef.current.patients);
+          name: allowed.name ?? current.name, birthDate: isoToVn(allowed.birthDate ?? current.birthDate), phone: allowed.phone ?? current.phone,
+        }, current, dataRef.current.patients, todayIso());
         if (!value) throw new Error(Object.values(errors).join(' '));
         profile = value;
       }
       const consent = 'researchConsent' in allowed;
-      await commit(d => ({ ...d, patients: d.patients.map(p => p.id !== id ? p : {
-        ...p,
-        ...(profile ?? {}),
-        // Đồng ý nghiên cứu: giữ đúng cách cũ (ghi kèm consentDate, rút lại thì bỏ ngày) và chỉ khi lời gọi có trường này.
-        ...(consent ? { researchConsent: allowed.researchConsent ?? p.researchConsent, consentDate: allowed.consentDate } : {}),
-      }) }));
+      const actorId = meRef.current!.id;
+      const at = nowIso();
+      const ids = Array.from({ length: 6 }, () => 'pe-' + Crypto.randomUUID());
+      await commit(d => {
+        const before = d.patients.find(p => p.id === id)!;
+        const after: Patient = {
+          ...before,
+          ...(profile ?? {}),
+          // Đồng ý nghiên cứu: giữ đúng cách cũ (ghi kèm consentDate, rút lại thì bỏ ngày) và chỉ khi lời gọi có trường này.
+          ...(consent ? { researchConsent: allowed.researchConsent ?? before.researchConsent, consentDate: allowed.consentDate } : {}),
+        };
+        // Nhật ký sửa hồ sơ: giá trị cũ, mới, người sửa, thời điểm (chỉ trường thực sự đổi).
+        const entries = patientEditEntries(before, after, actorId, at, (i) => ids[i]);
+        return { ...d, patients: d.patients.map(p => p.id === id ? after : p), patientEdits: [...(d.patientEdits ?? []), ...entries] };
+      });
     })();
   };
 
@@ -500,13 +549,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const addWound: Store['addWound'] = async (patientId, location, group) => {
     requireDoctor(patientId);
-    const existing = dataRef.current.wounds.filter((w) => w.patientId === patientId).length;
+    // Giai đoạn B (CN1): mã nội bộ ổn định (UUID); mã VT lấy số lớn nhất đã dùng + 1 để vết đã xóa không làm trùng mã.
+    const used = dataRef.current.wounds.filter((w) => w.patientId === patientId).map((w) => Number(w.code.replace(/\D/g, '')) || 0);
     const wound: Wound = {
-      id: `w-${Date.now()}`, patientId, code: `VT${String(existing + 1).padStart(2, '0')}`,
+      id: 'w-' + Crypto.randomUUID(), patientId, code: `VT${String(Math.max(0, ...used) + 1).padStart(2, '0')}`,
       location, group, startDate: todayIso(), status: 'active',
     };
     await commit((d) => ({ ...d, wounds: [...d.wounds, wound] }));
     return wound;
+  };
+
+  /** Giai đoạn B (CN1 H11): xóa vết nhập sai, chỉ khi chưa có ảnh, phác đồ, phiên, đánh giá. Ghi nhật ký. */
+  const deleteWound: Store['deleteWound'] = async (woundId) => {
+    const w = dataRef.current.wounds.find((x) => x.id === woundId);
+    if (!w) throw new Error('Không tìm thấy vết thương.');
+    const actor = requireDoctor(w.patientId);
+    const entry: AuditEntry = { id: 'au-' + Crypto.randomUUID(), at: nowIso(), by: actor.id, action: 'wound_delete', patientId: w.patientId, targetId: w.id, detail: `Xóa vết ${w.code} (${w.location}) nhập sai, chưa có dữ liệu.` };
+    await commit((d) => {
+      const why = woundDeleteBlocker(woundId, d);
+      if (why) throw new Error(why);
+      return { ...d, wounds: d.wounds.filter((x) => x.id !== woundId), auditLog: [...(d.auditLog ?? []), entry] };
+    });
+  };
+
+  /** Giai đoạn B (CN1 H7): bác sĩ đặt hoặc bỏ "Cần tái khám" thủ công. */
+  const setWoundRevisit: Store['setWoundRevisit'] = async (woundId, on) => {
+    const w = dataRef.current.wounds.find((x) => x.id === woundId);
+    if (!w) throw new Error('Không tìm thấy vết thương.');
+    requireDoctor(w.patientId);
+    const at = nowIso();
+    await commit((d) => ({ ...d, wounds: d.wounds.map((x) => (x.id === woundId ? { ...x, revisitAt: on ? at : undefined, updatedAt: at } : x)) }));
   };
 
   const updateWound: Store['updateWound'] = async (id, patch) => {
@@ -522,7 +594,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!r.value) throw new Error(r.error);
       location = r.value;
     }
-    await commit(d => ({ ...d, wounds: d.wounds.map(w => w.id === id ? { ...w, location, group: patch.group !== undefined ? (patch.group.trim() || undefined) : w.group } : w) }));
+    const at = nowIso();
+    await commit(d => ({ ...d, wounds: d.wounds.map(w => w.id === id ? { ...w, location, group: patch.group !== undefined ? (patch.group.trim() || undefined) : w.group, updatedAt: at } : w) }));
   };
 
   const addImage: Store['addImage'] = async ({ woundId, uri, ext, captureDate, source, capture }) => {
@@ -791,28 +864,50 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await commit(d => ({ ...d, evaluations: [...d.evaluations, { ...e, id: 'e-' + Crypto.randomUUID(), doctorId: actor.id }] }));
   };
 
-  const savePlan: Store['savePlan'] = (p) =>
-    commit((d) => {
+  const savePlan: Store['savePlan'] = ({ newProtocol, ...p }) => {
+    // Mã phiên bản và mã phác đồ mới sinh ngoài hàm commit để commit chạy lại cho cùng kết quả.
+    const planId = 'pl-' + Crypto.randomUUID();
+    const freshProtocol = 'pr-' + Crypto.randomUUID();
+    return commit((d) => {
       requireDoctor(p.patientId);
       // Gói D: đợt điều trị chỉ gắn với vết thương của chính bệnh nhân này.
-      if (p.woundId && d.wounds.find((w) => w.id === p.woundId)?.patientId !== p.patientId) throw new Error('Vết thương không thuộc hồ sơ này.');
+      if (!p.woundId || d.wounds.find((w) => w.id === p.woundId)?.patientId !== p.patientId) throw new Error('Vết thương không thuộc hồ sơ này.');
+      // Giai đoạn B (AU-01): mức năng lượng phải thuộc bảng mức của dòng máy, kể cả khi chưa giao máy. Kiểm cả ở kho, không chỉ ở màn.
+      const model = d.devices.find((x) => x.id === d.patients.find((q) => q.id === p.patientId)?.deviceId)?.model;
+      const caps = capabilitiesFor(model) ?? CAPABILITIES[SIM_MODEL];
+      if (p.doseLevel != null && !caps.energyLevels.includes(p.doseLevel)) throw new Error(`Mức năng lượng phải là một trong ${caps.energyLevels.join(', ')}.`);
+      if (p.treatmentMode && !caps.treatmentModes.some((m) => m.value === p.treatmentMode)) throw new Error('Chế độ điều trị không thuộc danh sách của dòng máy.');
       // Đợt điều trị gắn với vết thương: phiên bản đánh số riêng cho từng vết.
       const sameWound = (x: TreatmentPlan) => x.patientId === p.patientId && (x.woundId ?? null) === (p.woundId ?? null);
       const prev = d.plans.filter(sameWound);
       const version = prev.reduce((m, x) => Math.max(m, x.version), 0) + 1;
-      const plan: TreatmentPlan = { ...p, id: `pl-${Date.now()}`, version, editedBy: meRef.current?.id ?? 'unknown', editedAt: nowIso() };
+      const protocolId = protocolIdFor(d.plans, p.patientId, p.woundId, !!newProtocol, () => freshProtocol);
+      // Phiên bản mới luôn chờ bệnh nhân xác nhận đọc lại (AU-04).
+      const plan: TreatmentPlan = { ...p, id: planId, version, protocolId, patientAckAt: undefined, editedBy: meRef.current?.id ?? 'unknown', editedAt: nowIso() };
       // Lưu phiên bản mới, giữ các phiên bản cũ để truy vết (đặc tả 7.1).
       const plans = d.plans.map((x) =>
         sameWound(x) && (x.status === 'active' || x.status === 'paused') && plan.status === 'active' ? { ...x, status: 'ended' as const } : x,
       );
       return { ...d, plans: [...plans, plan] };
     });
+  };
+
+  const acknowledgePlan: Store['acknowledgePlan'] = async (planId) => {
+    const actor = meRef.current;
+    const plan = dataRef.current.plans.find((x) => x.id === planId);
+    if (!actor || actor.locked || actor.role !== 'patient' || !plan || plan.patientId !== actor.patientId) throw new Error('Chỉ bệnh nhân của hồ sơ xác nhận được phiên bản này.');
+    if (plan.status !== 'active' || !plan.confirmed) throw new Error('Phiên bản này không còn áp dụng.');
+    if (plan.patientAckAt) return;
+    const at = nowIso();
+    await commit((d) => ({ ...d, plans: d.plans.map((x) => (x.id === planId && !x.patientAckAt ? { ...x, patientAckAt: at } : x)) }));
+  };
 
   const setDevicePower: Store['setDevicePower'] = (deviceId, on) => {
     const dev = dataRef.current.devices.find((x) => x.id === deviceId);
     if (!dev) return;
-    // Chỉ bác sĩ phụ trách bệnh nhân đang dùng thiết bị được gửi lệnh nguồn.
-    requireDoctor(dev.patientId ?? '');
+    // Giai đoạn B (AU-03): bác sĩ không điều khiển thiết bị. Chỉ bệnh nhân đang giữ máy được gửi lệnh nguồn (mô phỏng).
+    const actor = meRef.current;
+    if (!actor || actor.locked || actor.role !== 'patient' || actor.patientId !== dev.patientId) throw new Error('Chỉ bệnh nhân đang giữ máy được điều khiển thiết bị.');
     update((d) => ({ ...d, devices: d.devices.map((x) => (x.id === deviceId ? { ...x, power: 'pending' } : x)) }));
     // Mô phỏng: chỉ cập nhật trạng thái khi "thiết bị" xác nhận; thiết bị offline thì không xác nhận.
     setTimeout(() => {
@@ -844,8 +939,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }));
       return { ok: false, message: `${dev.code} đang offline: phiên sẽ được gửi khi thiết bị kết nối lại.` };
     }
+    // Giai đoạn B (AU-04): máy chỉ chạy phiên bản bệnh nhân đã xác nhận đọc.
     const plan = d0.plans
-      .filter((p) => p.patientId === dev.patientId && p.status === 'active' && p.confirmed)
+      .filter((p) => p.patientId === dev.patientId && canLoadPlan(p))
       .sort((a, b) => b.version - a.version)[0];
     const perVisit = plan?.sessionsPerDay ?? 1;
     const now = new Date();
@@ -864,7 +960,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let message = `Thiết bị đã điều trị ở mức ${plan?.doseLevel ?? '—'} trong ${plan?.durationSec != null ? Math.round(plan.durationSec / 6) / 10 : '—'} phút và gửi phiên hoàn tất.`;
     if (!plan) {
       status = 'over_limit';
-      message = 'Chưa có đợt điều trị đang áp dụng: thiết bị không phát.';
+      message = 'Chưa có đợt điều trị đang áp dụng mà bệnh nhân đã xác nhận đọc: thiết bị không phát.';
     } else if (!isScheduled(plan, today)) {
       status = 'over_limit';
       message = 'Hôm nay là ngày nghỉ theo lịch của đợt: thiết bị không phát.';
@@ -884,6 +980,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       status,
       source: 'simulated',
       woundId: plan?.woundId,
+      ...(plan ? { planId: plan.id, planVersion: plan.version, protocolId: plan.protocolId } : {}),
     };
     const resend = Math.random() < 0.3;
     update((d) => ({
@@ -1038,8 +1135,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!actor || actor.locked) throw new Error('Chưa đăng nhập.');
     if (actor.role === 'patient') {
       if (actor.patientId !== entry.patientId) throw new Error('Chỉ ghi được nhật ký cho hồ sơ của mình.');
-    } else if (actor.role === 'doctor') requireDoctor(entry.patientId);
-    else throw new Error('Chỉ người bệnh hoặc bác sĩ phụ trách được nạp liệu trình xuống máy.');
+    } else throw new Error('Chỉ bệnh nhân nạp liệu trình xuống máy của mình. Bác sĩ không điều khiển thiết bị.');
+    // Giai đoạn B (AU-04): chỉ ghi lần nạp của phiên bản bệnh nhân đã xác nhận đọc.
+    const loadedPlan = dataRef.current.plans.find((x) => x.id === entry.planId);
+    if (!loadedPlan || loadedPlan.patientId !== entry.patientId || loadedPlan.version !== entry.planVersion) throw new Error('Phiên bản đợt điều trị không khớp hồ sơ.');
+    if (!canLoadPlan(loadedPlan)) throw new Error('Phiên bản này chưa được bệnh nhân xác nhận đọc hoặc không còn áp dụng.');
     const log: DeviceLinkLog = { ...entry, id: 'dl-' + Crypto.randomUUID(), at: nowIso(), by: actor.id };
     await commit((d) => ({ ...d, deviceLinks: [...(d.deviceLinks ?? []), log] }));
   };
@@ -1049,8 +1149,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!actor || actor.locked) throw new Error('Chưa đăng nhập.');
     if (actor.role === 'patient') {
       if (actor.patientId !== entry.patientId) throw new Error('Chỉ ghi được phiên cho hồ sơ của mình.');
-    } else if (actor.role === 'doctor') requireDoctor(entry.patientId);
-    else throw new Error('Chỉ người bệnh hoặc bác sĩ phụ trách được ghi phiên điều trị.');
+    } else throw new Error('Chỉ bệnh nhân ghi phiên điều trị từ máy của mình. Bác sĩ chỉ xem lịch sử phiên.');
     const d0 = dataRef.current;
     const dev = d0.devices.find((x) => x.id === d0.patients.find((p) => p.id === entry.patientId)?.deviceId);
     if (!dev) return false;
@@ -1066,6 +1165,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       status: entry.outcome === 'done' ? 'completed' : 'interrupted',
       source: 'device',
       woundId: entry.woundId,
+      // Giai đoạn B (AU-05): gắn phiên bản máy đang giữ (lần nạp gần nhất máy đã nhận). Không có thì để trống, phiên vẫn được ghi.
+      ...(loadedPlanLink(d0.deviceLinks ?? [], d0.plans, entry.patientId, entry.woundId) ?? {}),
     };
     await commit((d) => ({
       ...d,
@@ -1084,7 +1185,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Store = {
     ready, data, me, authenticate, register, setResearchReady, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, setPatientArchived, addWound, updateWound, addImage, labelImage,
-    setExcluded, requestRetake, addEvaluation, savePlan, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
+    setExcluded, requestRetake, addEvaluation, savePlan, acknowledgePlan, deleteWound, setWoundRevisit, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
     setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle, recordDeviceLink, recordDeviceSession,
     persistIssue, retryPersist, dismissPersistIssue,
     pendingCapture: me?.role === 'doctor' ? pending[me.id] ?? null : null,
@@ -1124,13 +1225,13 @@ export function useLookups() {
         .filter((s) => (seen.has(s.sessionId) ? false : (seen.add(s.sessionId), true)))
         .sort((a, b) => b.start.localeCompare(a.start));
     };
-    /** Đợt điều trị mới nhất (không tính nháp) của một vết thương. Bản cũ không có woundId thì gán cho vết đầu tiên. */
+    /** Đợt điều trị mới nhất (không tính nháp) của một vết thương. */
     const coursePlan = (woundId: string, opts?: { patientView?: boolean }) => {
       const w = data.wounds.find((x) => x.id === woundId);
       if (!w) return undefined;
-      const first = data.wounds.find((x) => x.patientId === w.patientId)?.id;
+      // Giai đoạn B (AU-05): phiên bản cũ không có woundId đã được gán khi đọc dữ liệu (migratePlans); không suy theo vị trí trong mảng.
       return data.plans
-        .filter((p) => p.patientId === w.patientId && (p.woundId ?? first) === woundId && p.status !== 'draft' && (!opts?.patientView || p.confirmed))
+        .filter((p) => p.patientId === w.patientId && p.woundId === woundId && p.status !== 'draft' && (!opts?.patientView || p.confirmed))
         .sort((a, b) => b.version - a.version)[0];
     };
     return { patient, wound, account, device, woundsOf, imagesOf, activePlan, sessionsOf, coursePlan };

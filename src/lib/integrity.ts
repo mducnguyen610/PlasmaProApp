@@ -68,6 +68,8 @@ export function checkIntegrity(d: AppData): IntegrityIssue[] {
   for (const s of d.sessions) {
     if (!devices.has(s.deviceId)) add('orphan', 'session', s.sessionId, `Thiết bị không có: ${s.deviceId}`);
     if (s.woundId && !wounds.has(s.woundId)) add('orphan', 'session', s.sessionId, `Vết thương không có: ${s.woundId}`);
+    // Giai đoạn B (AU-05): phiên gắn phiên bản phác đồ phải trỏ tới phiên bản có thật, cùng hồ sơ với thiết bị lúc ghi không kiểm (máy có thể đã thu hồi).
+    if (s.planId && !plans.has(s.planId)) add('orphan', 'session', s.sessionId, `Phiên bản phác đồ không có: ${s.planId}`);
   }
   const sessionIds = new Set(d.sessions.map((s) => s.sessionId));
   for (const n of d.sessionNotes) {

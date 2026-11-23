@@ -90,6 +90,11 @@ export function createSeed(): AppData {
   // Một bản ghi bị thiết bị gửi lại (cùng sessionId) để minh họa chống đếm trùng (đặc tả 7.2).
   sesP1.push({ ...sesP1[sesP1.length - 1] });
   const sesP2 = courseSessions('d-2', 'w-2', plan2, D(-15));
+  // Giai đoạn B (AU-05): phiên từ ngày phiên bản có hiệu lực gắn với phiên bản đó; phiên trước đó (phiên bản 1 không có trong mẫu) để trống.
+  const linkFrom = (list: DeviceSession[], planId: string, version: number, protocolId: string, from: string) =>
+    list.forEach((x) => { if (x.start >= from) Object.assign(x, { planId, planVersion: version, protocolId }); });
+  linkFrom(sesP1, 'pl-1', 2, 'pr-demo-1', at(D(-16), '00:00'));
+  linkFrom(sesP2, 'pl-2', 1, 'pr-demo-2', at(D(-36), '00:00'));
   const lastP1 = sesP1[sesP1.length - 1].start;
 
   return {
@@ -128,12 +133,15 @@ export function createSeed(): AppData {
         reviewSchedule: 'Tái đánh giá mỗi 7 ngày',
         notes: 'Mức năng lượng, thời gian và lịch là giá trị mô phỏng theo dạng liệu trình trên slide 34 và 39, không phải chỉ định điều trị.',
         editedBy: DOCTOR, editedAt: at(D(-16), '09:00'), reason: 'Vết thương cải thiện: chuyển sang 3 buổi mỗi tuần', confirmed: true,
+        // Giai đoạn B: dữ liệu mẫu coi như bệnh nhân đã đọc phiên bản này ngay sau khi bác sĩ áp dụng.
+        protocolId: 'pr-demo-1', patientAckAt: at(D(-16), '19:00'),
       },
       {
         id: 'pl-2', patientId: 'p-2', woundId: 'w-2', version: 1, status: 'paused', sessionsPerDay: 1, minIntervalMin: null, targetEnergyWh: null,
         ...plan2, doseLevel: 3, treatmentMode: 'cold', durationSec: 120, secondsPerCm2: 15, areaAtStart: 8, reviewAtDay: 28,
         reviewSchedule: 'Tái đánh giá mỗi 7 ngày', notes: 'Giá trị mô phỏng.',
         editedBy: DOCTOR, editedAt: at(D(-15), '09:00'), reason: 'Biểu mô đã khép lần 1, dừng điều trị chờ xác nhận', confirmed: true,
+        protocolId: 'pr-demo-2', patientAckAt: at(D(-36), '19:00'),
       },
     ],
     devices: [

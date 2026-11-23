@@ -5,7 +5,7 @@ import { Pressable, useWindowDimensions, View, type HostInstance, type ScrollVie
 import { Text } from '@/components/Text';
 
 import { ClinicalContext } from '@/components/ClinicalContext';
-import { NoAccess, useCanView } from '@/components/Guard';
+import { NoAccess, useCanManage } from '@/components/Guard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { Button, Card, Choices, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, StepRow, SwitchRow, TextLink, WoundPhoto } from '@/components/ui';
 import { SEVERITY } from '@/lib/access';
@@ -25,7 +25,8 @@ export default function Evaluate() {
   const { wound, patient, imagesOf, account } = useLookups();
   const w = wound(woundId);
   const p = patient(w?.patientId);
-  const canView = useCanView(p);
+  // Giai đoạn B: chỉ bác sĩ phụ trách (màn B07 đã bỏ lối vào theo XN-07; dữ liệu đánh giá cũ vẫn xem ở lịch sử).
+  const canView = useCanManage(p);
   const latestLabeled = w ? [...imagesOf(w.id)].reverse().find((i) => i.areaCm2 !== null) : undefined;
   const img = imageId ? data.images.find((i) => i.id === imageId && i.woundId === w?.id) : latestLabeled;
   const openReports = data.reports.filter((r) => r.patientId === p?.id && r.kind === 'symptom' && !r.handled);

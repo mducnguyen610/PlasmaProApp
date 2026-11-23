@@ -13,6 +13,7 @@ import type { Patient, WoundImage } from '@/lib/types';
 import { bar, C, numeric, radius, T, space } from '@/theme';
 import { SEVERITY_ROLE, SOURCE } from '@/theme.status';
 import { TODAY_LABEL, type Attention, type TodayState } from '@/lib/attention';
+import { birthShort } from '@/lib/patientIdentity';
 
 /** Một lịch hẹn: vạch màu, ngày (đỏ nếu hôm nay), tiêu đề đậm, mô tả. Dùng chung cho Trang chủ và Lịch trình. */
 /** Ô ngày làm điểm neo: số ngày lớn, tháng nhỏ; nền đỏ nhạt nếu là hôm nay. */
@@ -44,7 +45,7 @@ export function AppointmentRow({ date, title, body, today }: { date: string; tit
 // Theo DESIGN_SYSTEM.md mục 6.2: đã chiếu success, bỏ lỡ warning, đến hạn hôm nay info, còn lại neutral.
 const TODAY_TONE: Record<TodayState, 'green' | 'amber' | 'gray' | 'teal'> = { treated: 'green', missed: 'amber', due: 'teal', no_data: 'gray', rest: 'gray', no_plan: 'gray' };
 
-export function PatientCard({ patient, attention }: { patient: Patient; attention?: Attention }) {
+export function PatientCard({ patient, attention, readOnly }: { patient: Patient; attention?: Attention; readOnly?: boolean }) {
   const { device, woundsOf } = useLookups();
   const { data } = useStore();
   const dev = device(patient.deviceId);
@@ -64,7 +65,7 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
   // P1-07 (IA 2.2): bệnh nhân có từ 2 vết thì ngày đánh giá kèm mã vết.
   const lastEvalWound = lastEvalRec && wounds.length > 1 ? wounds.find((w) => w.id === lastEvalRec.woundId)?.code : undefined;
   // P1-07a (IA 2.1): dòng định danh cùng định dạng với thanh ngữ cảnh lâm sàng; mã thiết bị không nằm trong dòng định danh.
-  const idLine = `${patient.code} · sinh ${patient.birthYear} · ${patient.sex}`;
+  const idLine = `${patient.code} · sinh ${birthShort(patient)} · ${patient.sex}`;
   // P1-01b: không có vết đang điều trị thì chip "Chưa có đợt" chỉ lặp ý của dòng "không có vết thương đang điều trị"; bỏ chip, giữ dòng chữ.
   const showToday = !!attention && !(attention.state === 'no_plan' && !active);
   const reasons = attention?.reasons ?? [];
@@ -76,6 +77,8 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: T.body, fontWeight: '700', color: C.text }}>{patient.name}</Text>
           <Text style={[{ color: C.textSoft, fontSize: T.caption }, numeric]}>{idLine}</Text>
+          {/* Giai đoạn B (CN1 H9): hồ sơ của bác sĩ khác chỉ xem. */}
+          {readOnly ? <Text style={{ color: C.textSoft, fontSize: T.caption, fontWeight: '600' }}>Bác sĩ khác phụ trách · chỉ xem</Text> : null}
         </View>
         {severity ? <StatusChip status={SEVERITY_ROLE[severity]} label={SEVERITY[severity].label} /> : null}
         <Ionicons name="chevron-forward" size={18} color={C.textFaint} />

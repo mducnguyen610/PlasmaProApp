@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppState, View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
+import { needsPatientAck } from '@/lib/planVersion';
 import { Text } from '@/components/Text';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { DeviceStatusBar } from '@/components/DeviceStatus';
@@ -87,7 +88,8 @@ export default function SessionMonitor() {
   // Yêu cầu dừng: ghi thời điểm bấm để phân biệt "đã gửi yêu cầu" với "máy đã xác nhận dừng". Không đổi cách dừng.
   const [stopAt, setStopAt] = useState<number | null>(null);
 
-  if (!p || !canView) return <NoAccess />;
+  // Giai đoạn B (AU-03): chỉ bệnh nhân kết nối máy, nạp liệu trình và theo dõi phiên. Bác sĩ xem lịch sử phiên ở hồ sơ và thiết bị.
+  if (!p || !canView || me?.role !== 'patient') return <NoAccess />;
 
   const isPatient = me?.role === 'patient';
   const justRecorded = saved?.startedAt ? data.sessions.find((s) => s.start === saved.startedAt && s.deviceId === p.deviceId) : undefined;
@@ -109,7 +111,9 @@ export default function SessionMonitor() {
   const canStop = !!link.startSession && !!link.stopSession && link.state === 'connected' && st?.state === 'running';
   // Stage 9B (S8-B07): máy giả lập chưa có liệu trình (ví dụ sau khi tải lại trang) thì không hiện nút Bắt đầu, nói rõ lý do.
   const startGate = simStartGate({ simControls: !!link.startSession && !!link.stopSession, connected: link.state === 'connected', running: st?.state === 'running', configLoaded: link.simConfigLoaded });
-  const canStart = startGate.show;
+  // Giai đoạn B (AU-04): phiên bản mới chưa được xác nhận đọc thì không bắt đầu phiên trên máy giả lập.
+  const ackMissing = needsPatientAck(plan);
+  const canStart = startGate.show && !ackMissing;
   // Xác nhận dừng: chỉ khi máy gửi bản tin kết thúc SAU lúc bấm (P0 DV-01: không báo đã dừng trước khi máy xác nhận).
   // Stage 9C: quyết định "máy đã xác nhận dừng" ở lớp thiết bị (src/lib/device/stopRequest.ts), logic không đổi.
   const stopView = stopRequestView({ stopAt, state: st?.state ?? null, statusAt: link.lastStatusAt, now });
@@ -221,6 +225,7 @@ export default function SessionMonitor() {
         )}
         {!st && <Muted>Bắt đầu phiên trên máy; trạng thái hiện ở đây khi máy gửi về. Giữ màn này mở tới khi phiên xong để phiên được ghi vào nhật ký.</Muted>}
         {/* Chỉ thiết bị giả lập có nút bắt đầu trên ứng dụng. Nút này ở thân màn, không ở chỗ nút Dừng (chân màn). */}
+        {ackMissing && <Notice tone={semantic.warning.tone} icon="document-text-outline">Bác sĩ đã áp dụng phiên bản mới của đợt điều trị. Hãy đọc, xác nhận và nạp lại liệu trình trước khi điều trị.</Notice>}
         {startGate.reason && <Notice tone={semantic.info.tone} icon="information-circle-outline">{startGate.reason}</Notice>}
         {canStart && (
           <View style={{ gap: 6 }}>

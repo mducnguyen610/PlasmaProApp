@@ -10,19 +10,21 @@ import { TODAY_LABEL, type TodayState } from '@/lib/attention';
 import type { Severity } from '@/lib/types';
 import { Button, Card, Choices, Disclosure, Empty, Header, HeaderButton, LinkRow, ListCard, Muted, Screen, SearchField, SectionTitle } from '@/components/ui';
 import { useLookups, useStore } from '@/lib/store';
+import { matchesCode, paginate } from '@/lib/patientIdentity';
 import { C, T } from '@/theme';
 
 /** P1-01b: lọc theo trạng thái hôm nay đã tính sẵn trong attention.ts (không tính lại), và máy chưa đồng bộ (cùng điều kiện với ô ở B01). */
 type TodayFilter = 'all' | Extract<TodayState, 'missed' | 'no_data' | 'due'> | 'offline';
 const TODAY_FILTERS = ['missed', 'no_data', 'due'] as const;
 
-// BS02 – Danh sách bệnh nhân: tìm theo tên/mã, thêm mới, mở hồ sơ.
+// BS02 – Danh sách bệnh nhân: tìm theo mã (Giai đoạn B, CN1 H5: chỉ theo mã, một phần mã, 20 hồ sơ mỗi trang), thêm mới, mở hồ sơ.
 export default function PatientList() {
   const { data, me } = useStore();
   const { device } = useLookups();
   const [level, setLevel] = useState<Severity | 'all' | 'reports' | 'drafts'>('all');
   const [today, setToday] = useState<TodayFilter>('all');
   const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
   const [showArchived, setShowArchived] = useState(false);
   // Mục "Bộ lọc" mặc định đóng như tab Ảnh (B12); mở sẵn khi đến từ ô ở B01 có lọc sẵn, để thấy ngay bộ lọc đang chọn.
   const [filterOpen, setFilterOpen] = useState(false);
@@ -37,6 +39,7 @@ export default function PatientList() {
     setLevel(loc === 'bao-cao' ? 'reports' : loc === 'dot-nhap' ? 'drafts' : 'all');
     setToday(loc === 'chua-dong-bo' ? 'offline' : 'all');
     setQ('');
+    setPage(1);
     setShowArchived(false);
     setFilterOpen(true);
   }
@@ -56,12 +59,17 @@ export default function PatientList() {
   const offline = new Set(mine.filter((p) => { const d = device(p.deviceId); return !!d && !d.online; }).map((p) => p.id));
   const matchesToday = (id: string, f: TodayFilter) => f === 'all' || (f === 'offline' ? offline.has(id) : attentionOf.get(id)?.state === f);
   const todayCount = (f: TodayFilter) => mine.filter((p) => matchesToday(p.id, f)).length;
-  const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase();
-  const list = mine
+  // CN1 H5, H9: ô tìm trống thì danh sách là hồ sơ mình phụ trách; có mã thì tìm trong mọi hồ sơ đang theo dõi
+  // (hồ sơ của bác sĩ khác mở ở chế độ chỉ xem), hồ sơ của mình xếp trước.
+  const searching = q.trim() !== '';
+  const pool = searching ? data.patients.filter((p) => !p.archivedAt && !!p.doctorId) : mine;
+  const filtered = pool
     .filter(p => level === 'all' || (level === 'reports' ? withReports.has(p.id) : level === 'drafts' ? withDrafts.has(p.id) : patientSeverity(data, p.id) === level))
     .filter((p) => matchesToday(p.id, today))
-    .filter((p) => !q || norm(`${p.name} ${p.code}`).includes(norm(q)))
-    .sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9));
+    .filter((p) => matchesCode(p, q))
+    .sort((a, b) => Number(b.doctorId === me?.id) - Number(a.doctorId === me?.id) || (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9) || a.code.localeCompare(b.code));
+  const paged = paginate(filtered, page);
+  const list = paged.items;
   // Bộ lọc thu gọn như tab Ảnh (B12): một mục "Bộ lọc" đóng, mở được, dòng tóm tắt nêu lựa chọn đang áp dụng.
   // Chỉ ẩn, hiện hai hàng lọc; giá trị lọc, kết quả và logic lọc không đổi. Ô tìm kiếm ở thanh đầu màn luôn hiện.
   const levelLabel = level === 'all' ? 'Tất cả hồ sơ' : level === 'reports' ? 'Có báo cáo' : level === 'drafts' ? 'Có đợt nháp' : SEVERITY[level].label;
@@ -69,11 +77,11 @@ export default function PatientList() {
   const filterSummary = `${levelLabel} · Hôm nay: ${todayLabel}`;
 
   if (showArchived) {
-    const found = archivedList.filter((p) => !q || norm(`${p.name} ${p.code}`).includes(norm(q)));
+    const found = archivedList.filter((p) => matchesCode(p, q));
     return (
       <Screen header={<Header title="Hồ sơ đã lưu trữ" subtitle={`${archivedList.length} hồ sơ`} />}>
         <Button label="Về danh sách đang theo dõi" icon="arrow-back" variant="secondary" onPress={() => setShowArchived(false)} />
-        <SearchField label="Tìm hồ sơ đã lưu trữ" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã bệnh nhân…" />
+        <SearchField label="Tìm hồ sơ đã lưu trữ theo mã" value={q} onChangeText={setQ} placeholder="Tìm theo mã bệnh nhân, ví dụ BN001…" />
         <Muted>Hồ sơ đã lưu trữ chỉ xem được, lịch sử lâm sàng giữ nguyên. Mở hồ sơ để khôi phục.</Muted>
         {found.length === 0 && <Empty icon="archive-outline" text={archivedList.length ? 'Không tìm thấy hồ sơ phù hợp.' : 'Chưa có hồ sơ nào được lưu trữ.'} />}
         <ListCard>
@@ -86,18 +94,18 @@ export default function PatientList() {
   return (
     // Stage 9A: ô tìm kiếm nằm trong thanh nhận diện (luôn ở đầu màn), bộ lọc gom thành một khối có nhãn nhóm.
     <Screen header={<Header title="Bệnh nhân" subtitle={`${mine.length} hồ sơ đang theo dõi`} right={<HeaderButton icon="add" label="Thêm mới" onPress={() => router.push('/patients/new')} />}>
-      <SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã bệnh nhân…" />
+      <SearchField label="Tìm bệnh nhân theo mã" value={q} onChangeText={(v) => { setQ(v); setPage(1); }} placeholder="Tìm theo mã bệnh nhân, ví dụ BN001…" />
     </Header>}>
       <Card style={{ paddingVertical: 4 }}>
       <Disclosure title="Bộ lọc" icon="funnel-outline" summary={filterSummary} open={filterOpen} onToggle={setFilterOpen}>
       <View style={{ gap: 10, paddingBottom: 10 }}>
       <Text style={{ color: C.textSoft, fontSize: T.caption, fontWeight: '600' }}>Lọc theo hồ sơ</Text>
-      <Choices<Severity | 'all' | 'reports' | 'drafts'> value={level} onChange={setLevel} options={[{ value: 'all', label: 'Tất cả' }, { value: 'reports', label: `Có báo cáo (${reportCount})` }, ...(draftCount > 0 || level === 'drafts' ? [{ value: 'drafts' as const, label: `Có đợt nháp (${draftCount})` }] : []), ...(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))]} />
+      <Choices<Severity | 'all' | 'reports' | 'drafts'> value={level} onChange={(v) => { setLevel(v); setPage(1); }} options={[{ value: 'all', label: 'Tất cả' }, { value: 'reports', label: `Có báo cáo (${reportCount})` }, ...(draftCount > 0 || level === 'drafts' ? [{ value: 'drafts' as const, label: `Có đợt nháp (${draftCount})` }] : []), ...(['mild', 'moderate', 'severe'] as const).map(value => ({ value, label: SEVERITY[value].label }))]} />
       {/* P1-01b: hàng lọc thứ hai theo việc hôm nay. Kết hợp với hàng trên (cả hai cùng đúng). Thứ tự trong kết quả vẫn theo rankPatients. */}
       <Text style={{ color: C.textSoft, fontSize: T.caption, fontWeight: '600', marginTop: 4 }}>Hôm nay</Text>
       <Choices<TodayFilter>
         value={today}
-        onChange={setToday}
+        onChange={(v) => { setToday(v); setPage(1); }}
         options={[
           { value: 'all', label: 'Mọi trạng thái', a11y: 'Hôm nay: mọi trạng thái' },
           ...TODAY_FILTERS.map((f) => ({ value: f, label: `${TODAY_LABEL[f]} (${todayCount(f)})`, a11y: `Hôm nay: ${TODAY_LABEL[f]}, ${todayCount(f)} bệnh nhân` })),
@@ -110,10 +118,17 @@ export default function PatientList() {
       </Card>
       {list.length === 0 && <Empty icon="search" text="Không tìm thấy bệnh nhân phù hợp." />}
       {/* PP-10: cùng tiêu chí xếp với trang chủ (src/lib/attention.ts). Câu giải thích cách xếp dưới tiêu đề đã bỏ theo yêu cầu người dùng (21/11/2026). */}
-      {list.length > 0 && <SectionTitle>{`Kết quả (${list.length})`}</SectionTitle>}
+      {list.length > 0 && <SectionTitle>{`Kết quả (${paged.total})`}</SectionTitle>}
       <ListCard>
-        {list.map((p) => <PatientCard key={p.id} patient={p} attention={attentionOf.get(p.id)} />)}
+        {list.map((p) => <PatientCard key={p.id} patient={p} attention={attentionOf.get(p.id)} readOnly={p.doctorId !== me?.id} />)}
       </ListCard>
+      {paged.pages > 1 && (
+        <View testID="phan-trang" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flex: 1 }}><Button label="Trang trước" variant="secondary" icon="chevron-back" disabled={paged.page <= 1} onPress={() => setPage(paged.page - 1)} /></View>
+          <Text style={{ color: C.textSoft }}>{`Trang ${paged.page}/${paged.pages}`}</Text>
+          <View style={{ flex: 1 }}><Button label="Trang sau" variant="secondary" icon="chevron-forward" disabled={paged.page >= paged.pages} onPress={() => setPage(paged.page + 1)} /></View>
+        </View>
+      )}
       {/* Lối vào hồ sơ đã lưu trữ: chỉ hiện khi có, để màn mặc định không đổi với bác sĩ chưa lưu trữ hồ sơ nào. */}
       {archivedList.length > 0 && (
         <ListCard>

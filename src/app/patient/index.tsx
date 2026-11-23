@@ -6,6 +6,8 @@ import { Pressable, useWindowDimensions, View } from 'react-native';
 import { latestEvaluation } from '@/lib/access';
 import { courseProgress, courseStatus, followUpDates, localDay } from '@/lib/course';
 import { DateBadge } from '@/components/DateBadge';
+import { PlanAckCard } from '@/components/PlanAckCard';
+import { needsPatientAck } from '@/lib/planVersion';
 import { DateTile, TaskRow } from '@/components/items';
 import { Text } from '@/components/Text';
 import { Button, Card, Divider, Header, Muted, Ring, Screen, SectionTitle, SimBadge, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
@@ -123,7 +125,8 @@ export default function PatientHome() {
             )}
             {/* Lối tắt vào luồng chính tại nhà: N02 sang T01, không phải vòng qua tab Thiết bị. */}
             {status.kind === 'treat' && stepsBlock}
-            {status.kind === 'treat' && p.deviceId && (
+            {/* Giai đoạn B (AU-04): phiên bản chưa được bệnh nhân xác nhận đọc thì hiện thẻ xác nhận thay cho nút nạp. */}
+            {needsPatientAck(plan) ? <PlanAckCard plan={plan} wound={treating!.w} /> : status.kind === 'treat' && p.deviceId && (
               <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={() => router.push('/connect-device')} />
             )}
           </>

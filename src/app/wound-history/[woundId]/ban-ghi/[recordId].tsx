@@ -34,8 +34,8 @@ export default function HistoryRecord() {
   const images = imagesOf(w.id);
   const dev = data.devices.find((x) => x.id === p.deviceId);
   const sessions = isDoctor && dev ? sessionsForWound(sessionsOf(dev.id), w.id) : [];
-  const firstWound = data.wounds.find((x) => x.patientId === w.patientId)?.id;
-  const timeline = buildTimeline({ wound: w, firstWoundId: firstWound, images, evaluations: data.evaluations, plans: data.plans, sessions, isDoctor });
+  // Giai đoạn B (AU-05): phiên bản cũ đã được gán vết thương khi đọc dữ liệu, không suy theo vết đầu tiên trong mảng.
+  const timeline = buildTimeline({ wound: w, firstWoundId: undefined, images, evaluations: data.evaluations, plans: data.plans, sessions, isDoctor });
   const entry = findRecord(timeline, loai, recordId);
   if (!entry) return <NoAccess notFound />;
 

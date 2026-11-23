@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { ClinicalContext } from '@/components/ClinicalContext';
-import { NoAccess, useCanView } from '@/components/Guard';
+import { NoAccess, useCanManage } from '@/components/Guard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { Button, Card, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
 import { confirm, notify } from '@/lib/dialog';
@@ -18,7 +18,8 @@ export default function WoundEdit() {
   const { wound, patient } = useLookups();
   const w = wound(id);
   const p = patient(w?.patientId);
-  const canView = useCanView(p);
+  // Giai đoạn B (CN1 H9): chỉ bác sĩ phụ trách sửa vị trí vết.
+  const canView = useCanManage(p);
   const [location, setLocation] = useState(w?.location ?? '');
   const [group, setGroup] = useState(w?.group ?? '');
   const [error, setError] = useState<string | null>(null);

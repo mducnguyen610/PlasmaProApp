@@ -9,7 +9,7 @@ import { ARCameraView, arViewInBuild, type ARCameraHandle } from '@/components/A
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { CheckRow } from '@/components/Consent';
 import { CaptureQualityCard } from '@/components/CaptureQualityCard';
-import { NoAccess, useCanView } from '@/components/Guard';
+import { NoAccess, useCanManage } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Choices, Disclosure, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, StatusChip, StepRow } from '@/components/ui';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
@@ -77,7 +77,8 @@ export default function GuidedCapture() {
   const { me, addImage, labelImage, holdPendingCapture, discardPendingCapture } = useStore();
   const { wound, patient } = useLookups();
   const w = forNew ? undefined : wound(woundId), p = patient(w?.patientId);
-  const canView = useCanView(p), focused = useIsFocused();
+  // Giai đoạn B (CN1 H9): bác sĩ khác xem được hồ sơ nhưng không chụp ảnh cho hồ sơ không phụ trách.
+  const canView = useCanManage(p), focused = useIsFocused();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const arCamera = useRef<ARCameraHandle>(null);

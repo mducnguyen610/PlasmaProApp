@@ -9,6 +9,8 @@
 export const STORAGE_KEY = 'plasmapro.demo.v2';
 export const SESSION_KEY = 'plasmapro.session.v1';
 export const UNREADABLE_PREFIX = 'plasmapro.demo.v2.khong-doc-duoc.';
+/** Giai đoạn B: bản sao dữ liệu đã lưu ngay trước lần chuyển đổi cấu trúc đầu tiên (giữ nguyên, không tự xóa). */
+export const MIGRATION_BACKUP_PREFIX = 'plasmapro.demo.v2.truoc-chuyen-doi.';
 /**
  * Ảnh chờ gắn hồ sơ của luồng "Chụp cho bệnh nhân mới". Khóa riêng, ngoài dữ liệu chính (STORAGE_KEY): cấu trúc dữ liệu chính không đổi,
  * và ảnh chờ không bao giờ xuất hiện như một bản ghi lâm sàng. Chỉ giữ một bản chờ.
@@ -60,6 +62,13 @@ export function createPersistence<T>(kv: KeyValueStore, now: () => number = Date
           return { kind: 'unreadable', backupKey: null, session };
         }
       }
+    },
+    /** Giai đoạn B: chép bản dữ liệu cũ sang khóa sao lưu trước khi ghi bản đã chuyển đổi. Trả khóa đã ghi; lỗi thì ném. */
+    async backupBeforeMigration(data: T): Promise<string> {
+      const key = MIGRATION_BACKUP_PREFIX + now();
+      const text = JSON.stringify(data);
+      await enqueue(() => kv.setItem(key, text));
+      return key;
     },
     /** Ghi bền toàn bộ dữ liệu; lỗi thì ném (nơi gọi quyết định báo lỗi). */
     saveData(data: T): Promise<void> {

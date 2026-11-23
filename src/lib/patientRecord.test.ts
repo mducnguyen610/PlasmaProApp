@@ -1,38 +1,12 @@
 // Chạy: node src/lib/patientRecord.test.ts
 import assert from 'node:assert/strict';
 import { canManagePatient } from './access.ts';
-import { archiveBlocker, isArchived, patientEditDirty, splitDoctorPatientPatch, validatePatientEdit, validateWoundLocation } from './patientRecord.ts';
+import { archiveBlocker, isArchived, splitDoctorPatientPatch, validateWoundLocation } from './patientRecord.ts';
 
 const P = (x: object) => ({ id: 'p-1', code: 'BN001', name: 'Nguyễn Văn A', birthYear: 1958, sex: 'Nam', phone: '09xx xxx 001', doctorId: 'u-bs1', researchConsent: true, createdAt: '2026-10-01', ...x }) as never;
 const p1 = P({});
 const p2 = P({ id: 'p-2', code: 'BN002', phone: '0912345678' });
-const all = [p1, p2];
-const ok = (name: string, birthYear: string, phone: string) => validatePatientEdit({ name, birthYear, phone }, p1, all, 2026);
-
-// Họ tên bắt buộc, gộp khoảng trắng; năm sinh 4 chữ số trong 1900..năm hiện tại.
-assert.deepEqual(ok('  Nguyễn   Văn B ', '1960', '09xx xxx 001').value, { name: 'Nguyễn Văn B', birthYear: 1960, phone: '09xx xxx 001' });
-assert.ok(ok('', '1960', '').errors.name);
-assert.ok(ok('A', '', '').errors.birthYear);
-assert.ok(ok('A', '1899', '').errors.birthYear);
-assert.ok(ok('A', '2027', '').errors.birthYear);
-assert.ok(ok('A', '19a0', '').errors.birthYear);
-assert.ok(ok('A', '196', '').errors.birthYear);
-assert.ok(ok('A', '1960.5', '').errors.birthYear);
-assert.equal(ok('A', '2026', '').errors.birthYear, undefined);
-// Số điện thoại: để trống được (như B03); đổi thì đúng định dạng màn đăng ký và không trùng hồ sơ khác.
-assert.equal(ok('A', '1960', '').errors.phone, undefined);
-assert.equal(ok('A', '1960', '09xx xxx 001').errors.phone, undefined, 'số cũ đã che không bị kiểm lại khi không đổi');
-assert.ok(ok('A', '1960', '12345').errors.phone);
-assert.ok(ok('A', '1960', '0912 345 678').errors.phone?.includes('BN002'), 'trùng số của BN002');
-assert.equal(ok('A', '1960', '+84912345679').errors.phone, undefined);
-assert.equal(ok('A', '1960', '0987 654 321').value?.phone, '0987 654 321');
-// Nhiều lỗi cùng lúc thì báo theo từng ô.
-assert.deepEqual(Object.keys(ok('', 'x', '1').errors).sort(), ['birthYear', 'name', 'phone']);
-
-// Thay đổi so với bản đang lưu.
-assert.equal(patientEditDirty({ name: 'Nguyễn Văn A', birthYear: '1958', phone: '09xx xxx 001' }, p1), false);
-assert.equal(patientEditDirty({ name: 'Nguyễn Văn A ', birthYear: '1958', phone: '09xxxxx001' }, p1), false);
-assert.equal(patientEditDirty({ name: 'Nguyễn Văn B', birthYear: '1958', phone: '09xx xxx 001' }, p1), true);
+// Giai đoạn B (CN1): kiểm biểu mẫu sửa hồ sơ chuyển sang patientIdentity.ts (ngày sinh đầy đủ, trùng 3 trường); kiểm thử ở patientIdentity.test.ts.
 
 // Bác sĩ chỉ được sửa họ tên, năm sinh, số điện thoại, đồng ý nghiên cứu; doctorId và các trường định danh bị từ chối.
 assert.deepEqual(splitDoctorPatientPatch({ name: 'X', researchConsent: false, consentDate: undefined }).forbidden, []);
