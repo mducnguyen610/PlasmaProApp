@@ -7,7 +7,7 @@ import { Text } from '@/components/Text';
 import { ActivationCode } from '@/components/ActivationCode';
 import { noteNeedsAttention, noteText } from '@/components/AdherenceCalendar';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, LinkRow, ListCard, Muted, Notice, PatientAvatar, Screen, SectionTitle, WoundPhoto, SwitchRow, StatusChip, Empty, TextLink } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, LinkRow, ListCard, Muted, Notice, PatientAvatar, Screen, SectionTitle, WoundPhoto, StatusChip, Empty, TextLink } from '@/components/ui';
 import { isPendingActivation } from '@/lib/auth';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
@@ -25,7 +25,7 @@ import { CARE_STATUS, patientCareStatus, woundCareStatus, woundUpdatedAt } from 
 // BS03 – Hồ sơ bệnh nhân: thông tin, bác sĩ phụ trách, thiết bị, liệu trình, vết thương.
 export default function PatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, me, updatePatient, setPatientArchived, addWound, setReportHandled, issueActivation, assignDevice, setLifecycle } = useStore();
+  const { data, me, setPatientArchived, addWound, setReportHandled, issueActivation, assignDevice, setLifecycle } = useStore();
   const { patient, account, device, woundsOf, imagesOf, sessionsOf, coursePlan } = useLookups();
   const p = patient(id);
   const canView = useCanView(p);
@@ -319,23 +319,8 @@ export default function PatientDetail() {
               </Disclosure>
             );
           })()}
-          <SwitchRow
-            muted
-            label="Đồng ý dùng ảnh cho nghiên cứu"
-            detail={p.researchConsent ? `Ghi nhận ngày ${fmtDate(p.consentDate)}` : 'Chưa đồng ý: ảnh không được đưa vào bộ dữ liệu xuất'}
-            disabled={!canEdit}
-            value={p.researchConsent}
-            onChange={(v) =>
-              confirm(
-                v ? 'Ghi nhận đồng ý' : 'Rút lại đồng ý',
-                v ? 'Xác nhận bệnh nhân đã đồng ý bằng văn bản cho việc dùng ảnh (đã mã hóa) để nghiên cứu.' : 'Ảnh của bệnh nhân sẽ không còn được xuất vào bộ dữ liệu.',
-                () => {
-                  updatePatient(p.id, { researchConsent: v, consentDate: v ? localDay() : undefined })
-                    .catch((e) => notify('Chưa lưu được', e instanceof Error ? e.message : String(e)));
-                },
-              )
-            }
-          />
+          {/* Giai đoạn B (CN2 N10, C1): đồng ý dùng dữ liệu do bệnh nhân tự chọn (khi kích hoạt hoặc ở trang của bệnh nhân); bác sĩ chỉ xem. */}
+          <InfoRow label="Đồng ý dùng dữ liệu" value={p.researchConsent ? `Đã đồng ý${p.consentDate ? ` ngày ${fmtDate(p.consentDate)}` : ''}` : 'Chưa đồng ý: ảnh vẫn lưu, gán nhãn được, không vào tập huấn luyện'} />
         </Disclosure>
       </Card>
 

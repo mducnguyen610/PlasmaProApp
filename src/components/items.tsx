@@ -8,6 +8,7 @@ import { latestAreaIncrease } from '@/lib/areaChange';
 import { Chip, IconBadge, PatientAvatar, StatusChip, WoundPhoto, type IconName } from '@/components/ui';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
+import { IMAGE_TYPE_LABEL, LABEL_STATE, labelState } from '@/lib/imageLabel';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, WoundImage } from '@/lib/types';
 import { bar, C, numeric, radius, T, space } from '@/theme';
@@ -131,6 +132,8 @@ export function ImageTile({ image, width = 150, showOwner }: { image: WoundImage
       )}
       <Text style={{ fontSize: T.caption, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>
       {showOwner ? <Text style={{ fontSize: T.caption, color: C.textSoft }} numberOfLines={1}>{patient(image.patientId)?.code ?? '—'} · {wound(image.woundId)?.code ?? '—'}</Text> : null}
+      {/* Giai đoạn B (CN2 S1, A9): trạng thái nhãn và loại ảnh (ví dụ "Ảnh sau điều trị" bệnh nhân gửi). */}
+      <Text style={{ fontSize: T.caption, color: C.textSoft }} numberOfLines={1}>{[LABEL_STATE[labelState(image)].label, image.label?.imageType ? IMAGE_TYPE_LABEL[image.label.imageType] : null].filter(Boolean).join(' · ')}</Text>
       {/* PP-01: ảnh có diện tích thì ghi nguồn số đo ngay dưới ảnh. */}
       {image.areaCm2 !== null ? <View style={{ flexDirection: 'row', marginTop: 4 }}><StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} /></View> : null}
     </Pressable>

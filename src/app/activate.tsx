@@ -1,10 +1,11 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Consent } from '@/components/Consent';
 import { Text } from '@/components/Text';
-import { Button, Card, Field, Header, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Field, Header, Muted, Screen, SectionTitle } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import { C } from '@/theme';
 
@@ -20,6 +21,7 @@ export default function Activate() {
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
   const [agreed, setAgreed] = useState(false);
+  const [dataConsent, setDataConsent] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   if (me) return <Redirect href="/" />;
@@ -28,7 +30,7 @@ export default function Activate() {
     if (password !== repeat) return setError('Mật khẩu nhập lại chưa khớp.');
     setError(''); setBusy(true);
     try {
-      await activateAccount({ username, code, password, agreed });
+      await activateAccount({ username, code, password, agreed, researchConsent: dataConsent });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Chưa kích hoạt được tài khoản.');
     } finally {
@@ -55,6 +57,16 @@ export default function Activate() {
       </Card>
       <Card style={{ gap: 4 }}>
         <Consent agreed={agreed} onChange={setAgreed} />
+      </Card>
+      {/* Giai đoạn B (CN2 N10, C1): đồng ý dùng dữ liệu là lựa chọn riêng, không bắt buộc để kích hoạt. */}
+      <Card style={{ gap: 4 }}>
+        <Pressable testID="dong-y-du-lieu" onPress={() => setDataConsent((v) => !v)} accessibilityRole="checkbox" accessibilityState={{ checked: dataConsent }} style={{ flexDirection: 'row', gap: 10, minHeight: 44 }}>
+          <Ionicons name={dataConsent ? 'checkbox' : 'square-outline'} size={22} color={dataConsent ? C.primary : C.textFaint} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={{ fontWeight: '600', color: C.text }}>Tôi đồng ý cho dùng ảnh và nhãn vết thương để cải thiện mô-đun nhận diện (không bắt buộc)</Text>
+            <Muted>Dữ liệu chỉ mang mã nghiên cứu, không kèm họ tên, số điện thoại. Không đồng ý vẫn dùng ứng dụng bình thường; ảnh khi đó không vào tập huấn luyện.</Muted>
+          </View>
+        </Pressable>
       </Card>
     </Screen>
   );

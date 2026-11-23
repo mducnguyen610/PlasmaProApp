@@ -1,4 +1,5 @@
 // Dữ liệu MÔ PHỎNG cho bản demo. Không phải dữ liệu bệnh nhân thật (đặc tả mục 4.1, 7.2).
+import { defaultOutline } from './imageLabel';
 import { buildFilename } from './naming';
 import { addDays, localDay, scheduledDays } from './course';
 import type { AppData, DeviceSession, TreatmentPlan, WoundImage } from './types';
@@ -34,6 +35,20 @@ function img(
     researchReady: area !== null,
     researchUri: area !== null ? 'demo' : undefined,
     researchReviewedBy: DOCTOR,
+    // Giai đoạn B (CN2): ảnh mô phỏng đã đo có nhãn mô phỏng đã xác nhận (thay cho cờ chia sẻ cũ), để kho dữ liệu của quản trị có ví dụ.
+    ...(area !== null ? {
+      label: {
+        imageType: n === 1 || n === 5 ? 'baseline' as const : 'follow_up' as const,
+        outline: defaultOutline(8, 0.5, 0.5, 0.18), outlineSource: 'manual' as const,
+        traits: { granulation: { level: 'medium' as const }, necrosis: { level: 'none' as const }, exudate: { level: 'low' as const }, periwound: { level: 'none' as const }, infection: { level: 'none' as const } },
+        note: 'Nhãn mô phỏng', confidence: 'certain' as const, quality: 'pass' as const,
+        updatedAt: at(date, '10:05'), updatedBy: DOCTOR, confirmedAt: at(date, '10:06'), confirmedBy: DOCTOR,
+      },
+      labelHistory: [
+        { at: at(date, '10:05'), by: DOCTOR, action: 'save' as const, detail: 'Nhãn mô phỏng' },
+        { at: at(date, '10:06'), by: DOCTOR, action: 'confirm' as const, detail: 'Bác sĩ xác nhận nhãn.' },
+      ],
+    } : {}),
     history:
       area !== null
         ? [{ at: at(date, '10:00'), by: DOCTOR, fromName: buildFilename(pCode, wCode, id, null, 'png'), toName: buildFilename(pCode, wCode, id, area, 'png'), fromArea: null, toArea: area }]

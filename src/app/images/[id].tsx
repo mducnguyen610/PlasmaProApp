@@ -2,13 +2,14 @@ import { CaptureQualityCard } from '@/components/CaptureQualityCard';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { MONO, Text } from '@/components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
+import { ImageLabelCard } from '@/components/ImageLabelCard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { Button, Card, Chip, Choices, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, Segmented, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
 import { confirm, notify } from '@/lib/dialog';
@@ -48,7 +49,7 @@ export default function ImageDetail() {
 }
 
 function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?: string; retry?: { areaText: string; method: string; error: string } }) {
-  const { data, me, labelImage, setExcluded, requestRetake, setResearchReady } = useStore();
+  const { data, me, labelImage, setExcluded, requestRetake } = useStore();
   const { patient, wound, account } = useLookups();
   const insets = useSafeAreaInsets();
   const im = data.images.find((x) => x.id === id);
@@ -58,7 +59,9 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
 
   // UX-11: ảnh chưa có số đo thì biểu mẫu đo mở sẵn cho bác sĩ (ảnh đã loại thì không). Chỉ mở, không lưu gì.
   const [auto] = useState(() => (im && p && w && me?.role === 'doctor' && im.areaCm2 === null && im.status !== 'excluded') ? editDefaults(data.images, im, p.code, w.code) : null);
-  const [sharingBusy, setSharingBusy] = useState(false);
+  // Giai đoạn B (CN2): thẻ gán nhãn báo có thay đổi chưa lưu để chặn rời màn.
+  const [labelDirty, setLabelDirty] = useState(false);
+  const onLabelDirty = useCallback((v: boolean) => setLabelDirty(v), []);
   const [zoom, setZoom] = useState(false);
   const [editing, setEditing] = useState(!!auto || !!retry);
   const [focusField, setFocusField] = useState(false);
@@ -79,7 +82,7 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
   const [excludeReason, setExcludeReason] = useState('');
   // P0 SV-05: giá trị lúc mở biểu mẫu đo; khác thì rời màn phải hỏi. Không tự lưu.
   const [editStart, setEditStart] = useState(() => JSON.stringify({ areaText: auto?.areaText ?? '', method: auto?.method ?? '', fullName: auto?.fullName ?? '' }));
-  const dirty = (editing && JSON.stringify({ areaText, method, fullName }) !== editStart) || !!retakeNote.trim() || !!excludeReason.trim();
+  const dirty = (editing && JSON.stringify({ areaText, method, fullName }) !== editStart) || !!retakeNote.trim() || !!excludeReason.trim() || labelDirty;
   useDiscardGuard(dirty);
 
   if (!im || !p || !w) return <NoAccess notFound />;
@@ -184,9 +187,10 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
     const reason = excludeReason.trim();
     if (!reason) return;
     // R-06: "Loại" có hộp xác nhận; ô lý do vẫn bắt buộc như trước.
-    confirm('Loại ảnh khỏi bộ dữ liệu', `Ảnh ${im.id} sẽ không dùng cho huấn luyện. Lý do: ${reason}. Có thể đưa lại sau.`, () => {
+    // Giai đoạn B (CN2 A5): "Không sử dụng" giữ ảnh, không tính cho phác đồ, biểu đồ và tập huấn luyện. Có thể dùng lại sau.
+    confirm('Đánh dấu Không sử dụng', `Ảnh ${im.id} được giữ lại nhưng không tính cho phác đồ, biểu đồ và tập huấn luyện. Lý do: ${reason}. Có thể dùng lại sau.`, () => {
       persist(() => setExcluded(im.id, reason), () => setExcludeReason(''));
-    }, 'Loại ảnh');
+    }, 'Không sử dụng');
   };
 
   const aiBlock = isDoctor ? <AiBlock wound={im.capture?.wound} arArea={arArea} /> : null;
@@ -285,7 +289,7 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
         {im.areaCm2 !== null && <InfoRow label="Nhập bởi" value={enteredText} />}
         {im.measureMethod ? <InfoRow label="Phương pháp đo" value={im.measureMethod} /> : null}
         <InfoRow label="Ngày chụp" value={im.capture?.sourceDateKnown === false ? 'Chưa xác định (ảnh thư viện)' : fmtDate(im.captureDate)} />
-        {im.excludeReason ? <InfoRow label="Lý do loại" value={im.excludeReason} /> : null}
+        {im.excludeReason ? <InfoRow label="Lý do không sử dụng" value={im.excludeReason} /> : null}
 
         {isDoctor && !editing && (
           <>
@@ -372,28 +376,20 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
         )}
       </Card>
 
+      {/* Giai đoạn B (CN2): gán nhãn theo ảnh. Ẩn khi đang đo diện tích; bác sĩ khác xem, không sửa. */}
+      {isDoctor && !measuring && <Card>
+        <ImageLabelCard im={im} patient={p} canEdit={canEditImg} onDirty={onLabelDirty}
+          onRetake={(reason) => confirm('Yêu cầu chụp lại', `Bệnh nhân sẽ thấy yêu cầu chụp lại ảnh ${im.id}${reason ? ` (${reason})` : ''}.`, () => persist(() => requestRetake(im.id, `Ảnh không đạt${reason ? `: ${reason}` : ''}`)), 'Gửi yêu cầu')} />
+      </Card>}
+
       {/* Thao tác ít dùng và thông tin kỹ thuật thu gọn (R-06). Nội dung đang gõ trong các mục này giữ nguyên khi đóng mở.
           Giai đoạn 3: ẩn khi đang đo; ô chữ trong các mục là state của màn nên không mất. */}
       {!measuring && <Card style={{ gap: 6 }}>
         {/* Giai đoạn B (XN-07): bỏ lối vào "Ghi đánh giá với ảnh này" (B07); tính chất gán theo ảnh. */}
         {canEditImg && (
           <>
-            <Disclosure icon="share-outline" title="Chia sẻ cho bên kỹ thuật" summary={im.researchReady ? 'Đã kiểm tra và chia sẻ' : 'Chưa đưa vào kho dữ liệu'}>
-              <Muted>Chỉ xác nhận khi ảnh không có mặt, tên, giấy tờ hay thông tin nhận dạng. Ứng dụng tạo bản sao PNG bỏ siêu dữ liệu; giữ nguyên ảnh gốc trong hồ sơ.</Muted>
-              <Button label={im.researchReady ? 'Ngừng chia sẻ ảnh' : 'Xác nhận ảnh và chia sẻ'} variant="secondary" loading={sharingBusy}
-                disabled={!im.researchReady && (im.areaCm2 === null || im.status !== 'labeled' || !p.researchConsent || im.source === 'patient')}
-                reason={im.source === 'patient' ? 'Ảnh bệnh nhân tự chụp không đưa vào kho dữ liệu.' : !p.researchConsent ? 'Bệnh nhân chưa đồng ý dùng ảnh cho nghiên cứu.' : 'Nhập diện tích bác sĩ đã đo trước khi chia sẻ.'}
-                onPress={() => confirm(im.researchReady ? 'Ngừng chia sẻ' : 'Kiểm tra nội dung ảnh', im.researchReady ? 'Ảnh sẽ không còn trong kho kỹ thuật. Tệp đã tải trước đó không tự thu hồi.' : 'Tôi đã kiểm tra ảnh không chứa khuôn mặt, tên, giấy tờ hoặc thông tin nhận dạng cá nhân.', async () => {
-                  setSharingBusy(true);
-                  try { await setResearchReady(im.id, !im.researchReady); }
-                  catch(e) { notify('Chưa cập nhật được ảnh', String(e)); }
-                  finally { setSharingBusy(false); }
-                })} />
-              {!p.researchConsent && im.researchReady && <Muted>Bệnh nhân chưa đồng ý sử dụng ảnh cho nghiên cứu.</Muted>}
-            </Disclosure>
-            <Divider />
-            <Disclosure icon="refresh-outline" title="Yêu cầu chụp lại, loại ảnh"
-              summary={[im.retakeRequested ? 'Đã yêu cầu chụp lại' : null, im.status === 'excluded' ? 'Đã loại khỏi bộ dữ liệu' : null].filter(Boolean).join(' · ') || 'Chưa có yêu cầu'}>
+            <Disclosure icon="refresh-outline" title="Yêu cầu chụp lại, không sử dụng ảnh"
+              summary={[im.retakeRequested ? 'Đã yêu cầu chụp lại' : null, im.status === 'excluded' ? 'Không sử dụng' : null].filter(Boolean).join(' · ') || 'Chưa có yêu cầu'}>
               {im.retakeRequested ? (
                 <Button label="Hủy yêu cầu chụp lại" variant="ghost" onPress={() => persist(() => requestRetake(im.id, null))} />
               ) : (
@@ -414,11 +410,11 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
                 </>
               )}
               {im.status === 'excluded' ? (
-                <Button label="Đưa lại vào bộ dữ liệu" variant="secondary" icon="return-up-back" onPress={() => persist(() => setExcluded(im.id, null))} />
+                <Button label="Dùng lại ảnh này" variant="secondary" icon="return-up-back" onPress={() => persist(() => setExcluded(im.id, null))} />
               ) : (
                 <>
-                  <Field label="Loại khỏi bộ dữ liệu huấn luyện" value={excludeReason} onChangeText={setExcludeReason} placeholder="Lý do, ví dụ: ảnh chứa nhiều vết thương" />
-                  <Button label="Loại khỏi bộ dữ liệu" variant="danger" icon="remove-circle-outline" disabled={!excludeReason.trim()} onPress={exclude} />
+                  <Field label="Lý do không sử dụng" value={excludeReason} onChangeText={setExcludeReason} placeholder="Ví dụ: chụp nhầm vết, ảnh chứa nhiều vết thương" />
+                  <Button label="Không sử dụng ảnh này" variant="danger" icon="remove-circle-outline" disabled={!excludeReason.trim()} onPress={exclude} />
                 </>
               )}
             </Disclosure>

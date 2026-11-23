@@ -23,7 +23,7 @@ export const KIND_META: Record<RecordKind, { label: string; icon: IconName; tone
 /** Nhãn trạng thái lưu theo loại bản ghi. Chỉ đặt tên cho trạng thái có sẵn trong dữ liệu, không thêm trạng thái mới. */
 export function saveStateLabel(kind: RecordKind, state: SaveState): { label: string; tone: Tone; icon: IconName } {
   if (state === 'nhap') return { label: 'Nháp, chưa áp dụng', tone: 'gray', icon: 'create-outline' };
-  if (state === 'da-loai') return { label: 'Đã loại khỏi bộ dữ liệu', tone: 'gray', icon: 'remove-circle-outline' };
+  if (state === 'da-loai') return { label: 'Không sử dụng', tone: 'gray', icon: 'remove-circle-outline' };
   if (kind === 'anh') return state === 'xac-nhan' ? { label: 'Đã lưu, có số đo bác sĩ', tone: 'green', icon: 'checkmark-circle-outline' } : { label: 'Đã lưu, chưa đo', tone: 'amber', icon: 'ellipse-outline' };
   if (kind === 'dot') return state === 'xac-nhan' ? { label: 'Bác sĩ đã xác nhận', tone: 'green', icon: 'checkmark-circle-outline' } : { label: 'Đã lưu, chưa xác nhận', tone: 'amber', icon: 'ellipse-outline' };
   if (kind === 'buoi') return { label: 'Đã ghi', tone: 'blue', icon: 'checkmark-outline' };

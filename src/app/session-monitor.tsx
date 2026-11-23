@@ -161,6 +161,10 @@ export default function SessionMonitor() {
         // Đợt 11 (UX-19): mở thẳng biểu mẫu ghi cảm giác của phiên vừa ghi; không tìm được phiên thì mở Lịch trình như trước.
         <Button label="Ghi cảm giác sau khi điều trị" icon="create-outline" onPress={() => router.push(justRecorded ? { pathname: '/schedule', params: { sessionId: justRecorded.sessionId } } : '/schedule')} />
       )}
+      {/* Giai đoạn B (CN2 A9): ảnh sau điều trị gắn đúng phiên vừa ghi. */}
+      {!running && !linkLost && st?.state === 'done' && isPatient && justRecorded && (
+        <Button label="Chụp ảnh vết sau điều trị" variant="secondary" icon="camera-outline" onPress={() => router.push({ pathname: '/patient-photo', params: { sessionId: justRecorded.sessionId } })} />
+      )}
       {!running && st?.state === 'stopped' && isPatient && <Button label="Báo triệu chứng" variant="secondary" icon="chatbubble-ellipses-outline" onPress={() => router.push('/report')} />}
       {!running && st?.state === 'error' && isPatient && <Button label="Báo sự cố thiết bị" variant="secondary" icon="construct-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'device' } })} />}
       {/* Phản hồi yêu cầu dừng đặt cuối chân màn: nút Dừng biến mất khi máy xác nhận, chỗ đó thành dòng thông báo,

@@ -9,7 +9,8 @@ const p2 = P({ id: 'p-2', code: 'BN002', phone: '0912345678' });
 // Giai đoạn B (CN1): kiểm biểu mẫu sửa hồ sơ chuyển sang patientIdentity.ts (ngày sinh đầy đủ, trùng 3 trường); kiểm thử ở patientIdentity.test.ts.
 
 // Bác sĩ chỉ được sửa họ tên, năm sinh, số điện thoại, đồng ý nghiên cứu; doctorId và các trường định danh bị từ chối.
-assert.deepEqual(splitDoctorPatientPatch({ name: 'X', researchConsent: false, consentDate: undefined }).forbidden, []);
+// Giai đoạn B (CN2 N10, C1): bác sĩ không còn sửa đồng ý dùng dữ liệu thay bệnh nhân.
+assert.deepEqual(splitDoctorPatientPatch({ name: 'X', researchConsent: false, consentDate: undefined }).forbidden, ['researchConsent', 'consentDate']);
 assert.deepEqual(splitDoctorPatientPatch({ doctorId: 'u-bs2' }).forbidden, ['doctorId']);
 assert.deepEqual(splitDoctorPatientPatch({ name: 'X', id: 'p-9', code: 'BN009', archivedAt: 'x', deviceId: 'd-1' } as never).forbidden.sort(), ['archivedAt', 'code', 'deviceId', 'id']);
 

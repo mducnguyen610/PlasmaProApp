@@ -44,7 +44,7 @@ export default function PhotoViewer() {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8 }}>
         <Text style={{ color: C.textSoft, fontSize: T.small, fontWeight: '600', marginRight: 4 }}>{`Ảnh ${pos} trên ${order.length}`}</Text>
         <Chip label={im.areaCm2 === null ? 'Chưa đo' : `Bác sĩ đo ${formatAreaDisplay(im.areaCm2)}`} tone={im.areaCm2 === null ? 'amber' : 'green'} />
-        {im.status === 'excluded' && <Chip label="Đã loại khỏi bộ dữ liệu" tone="gray" />}
+        {im.status === 'excluded' && <Chip label="Không sử dụng" tone="gray" />}
       </View>
       <View style={{ flex: 1, backgroundColor: '#000' }} testID="trinh-xem-anh">
         <ScrollView maximumZoomScale={5} minimumZoomScale={1} centerContent contentContainerStyle={{ flexGrow: 1 }}>

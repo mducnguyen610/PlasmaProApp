@@ -2,6 +2,7 @@ import type { CaptureMetadata } from './capture/types';
 import type { SendResult } from './device/sender';
 import type { TransportKind } from './device/transport';
 import type { PatientEditEntry } from './patientIdentity';
+import type { ImageLabel, LabelEvent } from './imageLabel';
 export type { PatientEditEntry };
 export type Role = 'doctor' | 'patient' | 'admin';
 
@@ -131,6 +132,12 @@ export interface WoundImage {
   researchReviewedBy?: string;
   researchReviewedAt?: string;
   capture?: CaptureMetadata;
+  /** Giai đoạn B (CN2): nhãn theo ảnh để huấn luyện lại mô-đun nhận diện (imageLabel.ts). Ảnh gốc và capture không đổi. */
+  label?: ImageLabel;
+  /** Lịch sử sửa và xác nhận nhãn (N6). Chỉ thêm. */
+  labelHistory?: LabelEvent[];
+  /** A9: ảnh sau điều trị bệnh nhân chụp, gắn phiên điều trị (DeviceSession.sessionId). */
+  sessionId?: string;
 }
 
 export type Severity = 'mild' | 'moderate' | 'severe';

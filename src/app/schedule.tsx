@@ -5,7 +5,7 @@ import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { View } from 'react-native';
 import { DateTile } from '@/components/items';
-import { Card, Disclosure, Divider, Empty, Header, LinkRow, Muted, Notice, Ring, Screen, SectionTitle } from '@/components/ui';
+import { Button, Card, Disclosure, Divider, Empty, Header, LinkRow, Muted, Notice, Ring, Screen, SectionTitle } from '@/components/ui';
 import { courseProgress, courseStatus, fmtDuration, followUpDates, localDay, phasesOf } from '@/lib/course';
 import { fmtDate, fmtDateTime, PLAN_STATUS } from '@/lib/format';
 import { computeReminders } from '@/lib/reminders';
@@ -53,6 +53,8 @@ export default function Schedule() {
         <Text accessibilityRole="header" style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>Ghi cảm giác buổi điều trị</Text>
         <Muted>{`Buổi lúc ${fmtDateTime(noteSession.start)}, ${noteSession.durationMin} phút. Bác sĩ xem được ghi chú này.`}</Muted>
         <SessionNoteForm sessionId={noteSession.sessionId} onDone={(saved) => { setNoteFor(null); setNoteSaved(saved); }} />
+        {/* Giai đoạn B (CN2 A9): gửi ảnh vết sau buổi này, gắn đúng phiên. */}
+        <Button label="Gửi ảnh vết sau buổi này" variant="secondary" icon="camera-outline" onPress={() => router.push({ pathname: '/patient-photo', params: { sessionId: noteSession.sessionId } })} />
       </Card>
     )}
     {noteSaved && <Notice tone="green" icon="checkmark-circle-outline">Đã lưu cảm giác của buổi điều trị. Có thể sửa lại trong lịch tháng bên dưới.</Notice>}

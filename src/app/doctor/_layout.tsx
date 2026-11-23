@@ -1,12 +1,14 @@
 import { router } from 'expo-router';
 
 import { RoleTabs } from '@/components/RoleTabs';
+import { needsLabel } from '@/lib/imageLabel';
 import { useStore } from '@/lib/store';
 
 export default function DoctorTabs() {
   const { data, me } = useStore();
   const mine = new Set(data.patients.filter((p) => p.doctorId === me?.id && !p.archivedAt).map((p) => p.id));
-  const unlabeled = data.images.filter((i) => mine.has(i.patientId) && i.status === 'unlabeled').length;
+  // Giai đoạn B (CN2 T1): huy hiệu tab Ảnh đếm ảnh chưa gán đủ nhãn.
+  const unlabeled = data.images.filter((i) => mine.has(i.patientId) && needsLabel(i)).length;
   return (
     <RoleTabs
       role="doctor"

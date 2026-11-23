@@ -4,7 +4,8 @@ import type { Device, Patient, Wound } from './types';
 
 
 /** Trường bác sĩ phụ trách được sửa trên hồ sơ. doctorId (phân công) chỉ quản trị đổi ở Q01, các trường định danh không ai sửa. */
-export const DOCTOR_EDITABLE_PATIENT_FIELDS = ['name', 'birthYear', 'birthDate', 'phone', 'researchConsent', 'consentDate'] as const;
+export const DOCTOR_EDITABLE_PATIENT_FIELDS = ['name', 'birthYear', 'birthDate', 'phone'] as const;
+// Giai đoạn B (CN2 N10, C1): researchConsent, consentDate do bệnh nhân tự chọn, bác sĩ không sửa.
 type DoctorField = (typeof DOCTOR_EDITABLE_PATIENT_FIELDS)[number];
 
 /** Tách phần bác sĩ được sửa và danh sách trường bị từ chối (ví dụ doctorId, id, code, archivedAt). */
