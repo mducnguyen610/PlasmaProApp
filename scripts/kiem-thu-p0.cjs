@@ -70,12 +70,16 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
   {
     const p = await newPage(); await login(p);
     const checks = [];
-    for (const [name, url] of [['B05', '/wounds/w-1'], ['B06', '/plan/p-1?woundId=w-1'], ['B07', '/evaluate/w-1'], ['B08', '/compare/w-1'], ['B10', '/guided-capture?woundId=w-1'], ['B11', '/images/IMG0003'], ['T01', '/connect-device?patientId=p-1'], ['T02', '/session-monitor?patientId=p-1&woundId=w-1']]) {
+    // Giai đoạn B (AU-03): bác sĩ không mở T01, T02 (chỉ bệnh nhân kết nối, nạp, theo dõi phiên); thanh ngữ cảnh T02 của bệnh nhân kiểm ở TP-ID-01b.
+    for (const [name, url] of [['B05', '/wounds/w-1'], ['B06', '/plan/p-1?woundId=w-1'], ['B07', '/evaluate/w-1'], ['B08', '/compare/w-1'], ['B10', '/guided-capture?woundId=w-1'], ['B11', '/images/IMG0003']]) {
       await go(p, url); const t = await ctxText(p);
       const ok = t.includes('Nguyễn Văn A') && t.includes('BN001') && t.includes('sinh 1958') && (name === 'T01' ? t.includes('VT01') || t.includes('Chưa chọn vết thương') : t.includes('VT01'));
       checks.push(`${name}:${ok ? 'có' : `thiếu "${t.slice(0, 60)}"`}`);
     }
-    rec('TP-ID-01', 'Thanh ngữ cảnh có họ tên, mã BN, năm sinh, mã vết ở B05, B06, B07, B08, B10, B11, T01, T02', checks.every((c) => c.endsWith(':có')), checks.join(', '));
+    for (const [name, url] of [['T01', '/connect-device?patientId=p-1'], ['T02', '/session-monitor?patientId=p-1&woundId=w-1']]) {
+      await go(p, url); checks.push(`${name}:${(await has(p, 'Không có quyền', false)) && !(await has(p, 'Kết nối', true)) ? 'có' : 'bác sĩ vẫn mở được'}`);
+    }
+    rec('TP-ID-01', 'Thanh ngữ cảnh có họ tên, mã BN, năm sinh, mã vết ở B05, B06, B07, B08, B10, B11; bác sĩ không mở được T01, T02 (AU-03)', checks.every((c) => c.endsWith(':có')), checks.join(', '));
 
     // ID-01: B11 chuyển sang ảnh chưa đo của bệnh nhân khác.
     await go(p, '/images/IMG0004');
@@ -127,7 +131,8 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     rec('TP-ID-05b', 'B06 bước Xác nhận nêu vết thương; nút "Lưu phiên bản n cho VT02"', await has(p, 'VT02 · Gót chân phải (P0)') && await has(p, /^Lưu phiên bản \d+ cho VT02$/), '');
 
     // SV-05, ID-05: B07 chọn mức độ rồi quay lại.
-    await go(p, '/wounds/w-1'); await p.getByRole('button', { name: 'Ghi đánh giá', exact: true }).click(); await p.waitForTimeout(1200);
+    // Giai đoạn B (XN-07): B05 bỏ nút "Ghi đánh giá"; B07 còn mở qua đường dẫn nên mở thẳng URL. Ý ca giữ nguyên.
+    await go(p, '/evaluate/w-1');
     await toStep(p, 2);
     await p.getByRole('radio', { name: 'Nặng', exact: true }).click(); await p.waitForTimeout(200);
     p.answer = false; n = p.dialogs.length; await back(p);
@@ -307,7 +312,8 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     rec('TP-SV-03', 'B06 lưu 1 lần tạo 1 phiên bản; bấm lưu 3 lần sau đó không tạo thêm; rời màn sau khi lưu không hỏi', v1 === v0 + 1 && v2 === v1 && !p.dialogs.slice(n).some((d) => d.includes('Bỏ dữ liệu')), `${v0}→${v1}→${v2}`);
     // SV-05 B11: gõ lý do chụp lại rồi rời màn.
     await go(p, '/images/IMG0005');
-    if (!(await p.getByRole('textbox', { name: 'Yêu cầu chụp lại', exact: true }).count())) { await p.getByRole('button', { name: /^Yêu cầu chụp lại, loại ảnh/ }).click(); await p.waitForTimeout(200); }
+    // Giai đoạn B (CN2 A5): mục đổi tên "Yêu cầu chụp lại, không sử dụng ảnh".
+    if (!(await p.getByRole('textbox', { name: 'Yêu cầu chụp lại', exact: true }).count())) { await p.getByRole('button', { name: /^Yêu cầu chụp lại, không sử dụng ảnh/ }).click(); await p.waitForTimeout(200); }
     await p.getByRole('textbox', { name: 'Yêu cầu chụp lại', exact: true }).fill('Ảnh mờ');
     p.answer = false; const m = p.dialogs.length; await back(p);
     rec('TP-SV-05b', 'B11 đang gõ, bấm quay lại: hỏi "Bỏ dữ liệu chưa lưu?", chọn ở lại thì giữ nội dung', p.dialogs.slice(m).some((d) => d.includes('Bỏ dữ liệu chưa lưu?')) && (await p.getByRole('textbox', { name: 'Yêu cầu chụp lại', exact: true }).inputValue()) === 'Ảnh mờ', '');

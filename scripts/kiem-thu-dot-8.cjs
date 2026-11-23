@@ -236,8 +236,17 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const p = await newPage();
     await login(p, 'quantri'); await go(p, '/admin/devices');
     await p.getByText('Đăng ký thiết bị mới').click(); await p.waitForTimeout(300);
-    await p.getByLabel('Mã thiết bị').fill('TB-009'); await p.getByText('Đăng ký', { exact: true }).click(); await p.waitForTimeout(400);
-    await relogin(p, 'bacsi'); await go(p, '/patients/p-3');
+    // Giai đoạn B (CN4 D1): danh mục cần số sê-ri. CN4 D2: chỉ giao khi bệnh nhân có phác đồ đang hoạt động; BN003 trong dữ liệu mẫu
+    // không có, nên dựng sẵn một phác đồ đang hoạt động cho vết VT01 của BN003 (dữ liệu thử) để giữ nguyên ý ca UX-07.
+    await p.getByLabel('Mã thiết bị').fill('TB-009'); await p.getByLabel('Số sê-ri').fill('HFP-0009');
+    await p.getByText('Đăng ký', { exact: true }).click(); await p.waitForTimeout(400);
+    await relogin(p, 'bacsi');
+    // Sửa dữ liệu lưu sau khi đăng nhập, rồi tải lại trang (go) để ứng dụng đọc bản có phác đồ thử.
+    await p.evaluate(() => { const k = 'plasmapro.demo.v2'; const d = JSON.parse(localStorage.getItem(k)); const w = d.wounds.find((x) => x.patientId === 'p-3');
+      const t = new Date().toISOString().slice(0, 10);
+      d.plans.push({ id: 'pl-thu-d8', protocolId: 'pr-thu-d8', patientId: 'p-3', woundId: w.id, version: 1, status: 'active', confirmed: true, phases: [{ from: t, to: t, pattern: 'daily', n: 1 }], sessionsPerDay: 1, startDate: t, endDate: t, reviewAtDay: 28, reviewSchedule: '', notes: '', reason: 'Thử', editedAt: new Date().toISOString(), editedBy: 'u-bs1' });
+      localStorage.setItem(k, JSON.stringify(d)); });
+    await go(p, '/patients/p-3');
     const devOf = async () => (await store(p)).devices.find((d) => d.code === 'TB-009')?.patientId ?? null;
     await p.getByText('Giao máy', { exact: true }).click(); await p.waitForTimeout(300);
     p.answer = false; const n0 = p.dialogs.length;

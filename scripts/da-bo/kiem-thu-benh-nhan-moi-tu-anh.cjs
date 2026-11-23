@@ -1,3 +1,6 @@
+// ĐÃ BỎ (Giai đoạn B, CN2 XN-10, 23/11/2026): kịch bản này kiểm luồng "bệnh nhân mới từ ảnh" (ảnh chờ hồ sơ, pending capture),
+// luồng đã bỏ theo quyết định XN-10 (ảnh chờ còn sót được hủy khi mở ứng dụng). Thay bằng scripts/kiem-thu-gd-b-cn2.cjs (tab "Bệnh nhân mới":
+// tạo hồ sơ rồi chụp VT01). Giữ tệp để đối chiếu, không chạy trong bộ hồi quy.
 // Kiểm thử luồng "Chụp cho bệnh nhân mới" (B09, B10, B09b) và ô tìm bệnh nhân ở B09.
 // Bản web, dữ liệu mô phỏng, Playwright. Không thay cho thử trên máy thật (camera, tệp ảnh trong thư mục ứng dụng) hay thử với bác sĩ.
 // Chạy: node scripts/kiem-thu-benh-nhan-moi-tu-anh.cjs <baseURL> <thư mục kết quả>

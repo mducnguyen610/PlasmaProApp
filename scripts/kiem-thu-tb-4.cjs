@@ -238,8 +238,14 @@ const KEY = 'plasmapro.demo.v2';
     await p.context().close();
     const p2 = await newPage(); await login(p2, 'bacsi2');
     const out = [];
-    for (const u of ['/wound-history/w-1', '/wound-history/w-1/ban-ghi/e-1?loai=danh-gia', '/wound-history/w-1/anh/IMG0001', '/compare/w-1']) { await go(p2, u); out.push(await title(p2)); }
-    rec('TB4-10c', 'Bác sĩ không phụ trách BN001: Lịch sử, chi tiết, trình xem ảnh, B08 đều "Không có quyền"', out.every((x) => x === 'Không có quyền'), out.join(' / '));
+    // Giai đoạn B (CN1 H9): bác sĩ khác xem được hồ sơ và lịch sử ở chế độ chỉ xem, không sửa. Ca cũ "đều Không có quyền" đổi thành:
+    // mở được, đúng màn, không có nút ghi (lưu nhãn, lưu số đo, gửi yêu cầu chụp lại, không sử dụng ảnh).
+    const write = [];
+    for (const u of ['/wound-history/w-1', '/wound-history/w-1/ban-ghi/e-1?loai=danh-gia', '/wound-history/w-1/anh/IMG0001', '/compare/w-1']) {
+      await go(p2, u); out.push(await title(p2));
+      for (const t of ['Lưu nhãn', 'Lưu diện tích', 'Lưu số đo', 'Gửi yêu cầu chụp lại', 'Không sử dụng ảnh này']) if (await p2.getByRole('button', { name: t, exact: true }).locator('visible=true').count()) write.push(`${u}:${t}`);
+    }
+    rec('TB4-10c', 'Bác sĩ không phụ trách BN001: Lịch sử, chi tiết, trình xem ảnh, B08 mở chỉ xem, không có nút ghi (CN1 H9)', out.every((x) => x && x !== 'Không có quyền' && x !== 'Không tìm thấy') && write.length === 0, `${out.join(' / ')} | ${write.join(', ')}`);
     await p2.context().close();
   }
 

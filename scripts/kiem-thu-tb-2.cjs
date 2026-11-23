@@ -137,7 +137,9 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
   // TB2-12: rời màn khi đang nhập dở: hỏi, ở lại giữ dữ liệu và bước; đồng ý thì rời, không lưu.
   {
     const p = await newPage(); await login(p);
-    await go(p, '/wounds/w-1'); await click(btn(p, 'Ghi đánh giá'), 1200);
+    // Giai đoạn B (XN-07): B05 bỏ nút "Ghi đánh giá" (ẩn lối vào B07); màn B07 vẫn mở qua đường dẫn nên mở thẳng URL.
+    // Vì không đi từ B05, điều kiện "rời" đổi từ "về B05" thành "đã rời B07" (ý ca giữ: hỏi, ở lại giữ dữ liệu, rời không lưu).
+    await go(p, '/evaluate/w-1');
     await click(radio(p, 'Bỏng'));
     await click(p.getByRole('tab', { name: /^2\. Mức độ/ }), 500);
     await click(radio(p, 'Nặng'));
@@ -146,7 +148,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     const asked = p.dialogs.slice(n).some((d) => d.includes('Bỏ dữ liệu chưa lưu?'));
     const stayed = (await heading(p)).includes('Bước 2') && await checked(p, 'Nặng');
     p.answer = true; n = p.dialogs.length; await back(p);
-    const left = p.url().includes('/wounds/w-1') && (await store(p)).evaluations.length === ev0;
+    const left = !p.url().includes('/evaluate/w-1') && (await store(p)).evaluations.length === ev0;
     rec('TB2-12', 'Đang nhập dở bấm quay lại trên đầu: hỏi; "Ở lại" giữ bước 2 và lựa chọn; đồng ý thì rời, không lưu', asked && stayed && left, `hỏi ${asked}, ở lại ${stayed}, rời ${left}`);
     await go(p, '/evaluate/w-1');
     rec('TB2-13', 'Mở lại sau khi rời: biểu mẫu mới (không có lưu tạm, như trước)', !(await checked(p, 'Bỏng')) && (await heading(p)).includes('Bước 1'));

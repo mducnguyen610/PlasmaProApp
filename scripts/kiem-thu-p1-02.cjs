@@ -104,7 +104,8 @@ const VT02 = `
     const y = async (t) => (await p.getByText(t, { exact: true }).first().boundingBox())?.y ?? -1;
     const ys = [await y('Vết thương đang quản lý'), await y('Triệu chứng và sự cố bệnh nhân báo'), await y('Đợt điều trị'), await y('Thiết bị và tài khoản')];
     rec('TP1-02a-thu-tu', 'B04 thứ tự: Vết thương, Triệu chứng/sự cố, Đợt điều trị, Thiết bị và tài khoản', ys.every((v, i) => v > 0 && (i === 0 || v > ys[i - 1])), ys.join(' < '));
-    rec('TP1-07a-b04', 'B04 định danh "BN001 · sinh 1958 · Nam"', await has(p, 'BN001 · sinh 1958 · Nam'));
+    // Giai đoạn B (CN1, XN-11): hồ sơ chỉ có năm sinh ghi "1958, chưa đủ ngày sinh".
+    rec('TP1-07a-b04', 'B04 định danh "BN001 · sinh 1958, chưa đủ ngày sinh · Nam"', await has(p, 'BN001 · sinh 1958, chưa đủ ngày sinh · Nam'));
     await p.context().close();
   }
 

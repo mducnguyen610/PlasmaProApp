@@ -69,10 +69,11 @@ const KEY = 'plasmapro.demo.v2';
     rec('TB5-02', 'N06: woundId lạ thì hiện đợt của chính bệnh nhân như lối vào cũ; /plan/p-2 bị chặn; /plan/p-1 không kèm vết vẫn chạy', all && blocked && legacy, `${all}/${blocked}/${legacy}`);
     // TB5-03: N04 thông tin cá nhân thu gọn, mở ra đủ dòng.
     await go(p, '/patient/history');
-    const closed = (await has(p, 'Thông tin cá nhân')) && !(await visible(p, 'Năm sinh'));
+    // Giai đoạn B (CN1, XN-11): hồ sơ ghi ngày sinh nên dòng "Năm sinh" đổi thành "Ngày sinh" (cùng dữ liệu bác sĩ nhập).
+    const closed = (await has(p, 'Thông tin cá nhân')) && !(await visible(p, 'Ngày sinh'));
     await p.getByText('Thông tin cá nhân', { exact: true }).click(); await p.waitForTimeout(400);
-    const opened = await visible(p, 'Năm sinh') && await visible(p, 'Bác sĩ phụ trách') && await visible(p, 'Muốn thay đổi sự đồng ý, hãy báo bác sĩ phụ trách.');
-    rec('TB5-03', 'N04: "Thông tin cá nhân" thu gọn mặc định, mở ra đủ họ tên, năm sinh, bác sĩ, đồng ý nghiên cứu', closed && opened);
+    const opened = await visible(p, 'Ngày sinh') && await visible(p, 'Bác sĩ phụ trách') && await visible(p, 'Muốn thay đổi sự đồng ý, hãy báo bác sĩ phụ trách.');
+    rec('TB5-03', 'N04: "Thông tin cá nhân" thu gọn mặc định, mở ra đủ họ tên, ngày sinh, bác sĩ, đồng ý nghiên cứu', closed && opened);
     // TB5-04: N07 việc cần làm ở màn đầu, trên khối thông tin máy.
     await go(p, '/patient/device');
     const yLoad = await yOf(p, 'Nạp liệu trình vào máy'); const yRep = await yOf(p, 'Báo sự cố thiết bị'); const yChart = await yOf(p, 'Số lần điều trị 7 ngày qua');

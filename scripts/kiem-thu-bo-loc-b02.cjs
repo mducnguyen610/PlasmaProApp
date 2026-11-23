@@ -1,5 +1,6 @@
 // Kiểm thử bộ lọc thu gọn ở B02 (tab Bệnh nhân của bác sĩ), cùng kiểu mục "Bộ lọc" của tab Ảnh (B12).
 // Bản web, dữ liệu mô phỏng, Playwright. Chạy: node scripts/kiem-thu-bo-loc-b02.cjs <baseURL> <thư mục kết quả>
+// Giai đoạn B (CN1 H5): ô tìm bệnh nhân đổi nhãn thành "Tìm bệnh nhân theo mã" (chỉ tìm theo mã); kịch bản đổi theo nhãn mới.
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
@@ -51,7 +52,7 @@ const rec = (id, name, pass, detail = '') => {
     await go(p, '/doctor/patients');
     const all = await listed(p);
     rec('B02F-01', 'Mặc định đóng như tab Ảnh: mục "Bộ lọc" có tóm tắt "Tất cả hồ sơ · Hôm nay: Mọi trạng thái", hai hàng lọc ẩn, ô tìm kiếm vẫn ở đầu màn',
-      await fbtn(p).isVisible() && !(await isOpen(p)) && (await summary(p)) === 'Tất cả hồ sơ · Hôm nay: Mọi trạng thái' && await p.locator('[aria-label="Tìm bệnh nhân"]:visible').count() > 0, `${all} hồ sơ`);
+      await fbtn(p).isVisible() && !(await isOpen(p)) && (await summary(p)) === 'Tất cả hồ sơ · Hôm nay: Mọi trạng thái' && await p.locator('[aria-label="Tìm bệnh nhân theo mã"]:visible').count() > 0, `${all} hồ sơ`);
     await shot(p, 'b02-bo-loc-dong-390');
     await toggle(p);
     rec('B02F-02', 'Chạm "Bộ lọc": hiện hai hàng "Lọc theo hồ sơ" và "Hôm nay"; danh sách không đổi', await isOpen(p) && await radio(p, 'Tất cả').isVisible() && (await listed(p)) === all);
@@ -69,9 +70,9 @@ const rec = (id, name, pass, detail = '') => {
     const both = await listed(p);
     await toggle(p);
     rec('B02F-06', 'Hai hàng lọc cùng dùng: tóm tắt nêu cả hai, kết quả giữ khi đóng', (await summary(p)) === `Có báo cáo · Hôm nay: ${todayLabel}` && (await listed(p)) === both, todayLabel);
-    await p.locator('[aria-label="Tìm bệnh nhân"]:visible').first().fill('zzzz'); await p.waitForTimeout(400);
+    await p.locator('[aria-label="Tìm bệnh nhân theo mã"]:visible').first().fill('zzzz'); await p.waitForTimeout(400);
     rec('B02F-07', 'Ô tìm kiếm dùng được khi bộ lọc đóng; không có kết quả thì báo "Không tìm thấy"', await visibleText(p, 'Không tìm thấy bệnh nhân phù hợp.') && !(await isOpen(p)));
-    await p.locator('[aria-label="Tìm bệnh nhân"]:visible').first().fill(''); await p.waitForTimeout(300);
+    await p.locator('[aria-label="Tìm bệnh nhân theo mã"]:visible').first().fill(''); await p.waitForTimeout(300);
     rec('B02F-08', 'Vùng chạm của mục "Bộ lọc" cao tối thiểu 44 px', ((await fbtn(p).boundingBox()) || { height: 0 }).height >= 44);
     await go(p, '/doctor');
     const tile = p.getByRole('button', { name: /Báo cáo mới/ }).first();
