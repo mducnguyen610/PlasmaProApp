@@ -264,6 +264,27 @@ export interface Device {
   tip?: { code: string; issuedAt: string };
   /** Vòng đời thiết bị cho thuê (slide 24): đang dùng, đã thu hồi, đã khử khuẩn, sẵn sàng cấp. */
   lifecycle?: DeviceLifecycle;
+  /** Giai đoạn B (CN4 D1, AU-25): số sê-ri in trên máy. Máy cũ chưa ghi thì để trống. */
+  serial?: string;
+  /** Giai đoạn B (CN4 D2): người giao và thời điểm giao cho bệnh nhân đang giữ. */
+  assignedAt?: string;
+  assignedBy?: string;
+  /** Giai đoạn B (CN4 D5, D9, AU-28): lỗi máy báo, còn hiệu lực tới khi bác sĩ ghi đã xử lý. Ứng dụng không gửi lệnh khắc phục. */
+  fault?: DeviceFault;
+}
+
+export interface DeviceFault { code: string; message: string; at: string; patientId?: string; sessionId?: string }
+
+/** Giai đoạn B (CN4 D4, AU-27): nhật ký máy, chỉ thêm. Phiên điều trị và lần nạp liệu trình lấy từ sessions, deviceLinks, không ghi lặp ở đây. */
+export type DeviceEventKind = 'register' | 'edit' | 'assign' | 'return' | 'disinfect' | 'care' | 'connect' | 'disconnect' | 'error' | 'fault_clear';
+export interface DeviceEvent {
+  id: string;
+  deviceId: string;
+  at: string;
+  by: string;
+  kind: DeviceEventKind;
+  patientId?: string;
+  detail?: string;
 }
 
 export interface DeviceSession {
@@ -336,5 +357,7 @@ export interface AppData {
   patientEdits?: PatientEditEntry[];
   /** Giai đoạn B: nhật ký thao tác quản lý (xóa vết, xóa phác đồ, tạm dừng, giao, thu hồi, khử khuẩn máy...). Chỉ thêm, không sửa. */
   auditLog?: AuditEntry[];
+  /** Giai đoạn B (CN4 D4): nhật ký máy (giao, thu hồi, khử khuẩn, kết nối, lỗi...). Tùy chọn để dữ liệu cũ đọc được. */
+  deviceEvents?: DeviceEvent[];
   counters: { image: number; patient: number };
 }

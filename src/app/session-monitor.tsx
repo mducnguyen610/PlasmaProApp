@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppState, View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
+import { useConnectionLog } from '@/components/useConnectionLog';
 import { needsPatientAck } from '@/lib/planVersion';
 import { Text } from '@/components/Text';
 import { ClinicalContext } from '@/components/ClinicalContext';
@@ -52,6 +53,8 @@ export default function SessionMonitor() {
     },
   });
 
+  // Giai đoạn B (CN4 D4): ghi nhật ký kết nối, ngắt kết nối; chỉ đọc trạng thái đường truyền.
+  useConnectionLog(link.state, link.kind);
   // Đồng hồ một giây để phát hiện bản tin STA ngừng đến (P5).
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {

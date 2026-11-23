@@ -10,7 +10,7 @@ import type { DeviceSession } from './types';
 export interface CareItem {
   id: string;
   label: string;
-  /** Ai được đánh dấu đã làm: bệnh nhân tự vệ sinh; thay linh kiện do kỹ thuật. */
+  /** Ai được đánh dấu đã làm: bệnh nhân tự vệ sinh; thay linh kiện do bác sĩ (Giai đoạn B, XN-09; giá trị 'tech' giữ tên cũ). */
   doneBy: 'patient' | 'tech';
   everySessions: number;
   howTo: string;
@@ -23,11 +23,15 @@ export const CARE_ITEMS: CareItem[] = [
 /** Còn ≤ mức này thì nhắc bệnh nhân trên màn Thiết bị (0: nhắc ngay sau mỗi phiên). */
 export const CARE_DUE_SOON = 0;
 
-/** Các bước của vòng đời thiết bị cho thuê (slide 24). */
+/**
+ * Các bước của vòng đời thiết bị cho thuê (slide 24).
+ * Giai đoạn B (CN4 D3, XN-09): bác sĩ thu hồi, bác sĩ đánh dấu Đã khử khuẩn, máy về Sẵn sàng (bỏ bước kiểm tra của quản trị).
+ * Máy cũ đang ở "disinfected" cũng chuyển thẳng sang Sẵn sàng bằng cùng thao tác.
+ */
 export const LIFECYCLE: Record<string, { label: string; next?: string; action?: string }> = {
   in_use: { label: 'Đang giao cho bệnh nhân', next: 'returned', action: 'Thu hồi khi kết thúc đợt' },
-  returned: { label: 'Đã thu hồi, chờ khử khuẩn', next: 'disinfected', action: 'Đã khử khuẩn' },
-  disinfected: { label: 'Đã khử khuẩn, chờ kiểm tra', next: 'ready', action: 'Kiểm tra xong' },
+  returned: { label: 'Đã thu hồi, chờ khử khuẩn', next: 'ready', action: 'Đã khử khuẩn' },
+  disinfected: { label: 'Đã khử khuẩn, chờ xác nhận sẵn sàng', next: 'ready', action: 'Đã khử khuẩn' },
   ready: { label: 'Sẵn sàng cấp cho bệnh nhân' },
 };
 

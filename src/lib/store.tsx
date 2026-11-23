@@ -11,6 +11,7 @@ import { Platform } from 'react-native';
 import { reassignDevice } from './devices';
 import { CLOSURE_CONFIRM_DAYS, addDays, isScheduled, localDay } from './course';
 import { CARE_ITEMS, LIFECYCLE } from './maintenance';
+import { assignBlocker, catalogErrors, STA_ERROR_FAULT } from './deviceState';
 import { buildFilename } from './naming';
 import { archiveBlocker, isArchived, splitDoctorPatientPatch, validateWoundLocation } from './patientRecord';
 import { isoToVn, patientEditEntries, validateNewPatient, validatePatientEdit } from './patientIdentity';
@@ -21,7 +22,7 @@ import { createSeed } from './seed';
 import { canLoadPlan, loadedPlanLink, migratePlans, openProtocolId, planDeleteBlocker, planPhotoCandidates, protocolIdFor } from './planVersion';
 import { CAPABILITIES, SIM_MODEL, capabilitiesFor } from './device/capabilities';
 import type {
-  Account, AppData, AuditEntry, Device, DeviceLifecycle, DeviceLinkLog, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
+  Account, AppData, AuditEntry, Device, DeviceEvent, DeviceLifecycle, DeviceLinkLog, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
 } from './types';
 
 // v2: dữ liệu demo theo đợt điều trị (ngày tính từ hôm nay); bản v1 cũ không được đọc lại.
@@ -136,8 +137,15 @@ interface Store {
   acknowledgePlan: (planId: string) => Promise<void>;
   setDevicePower: (deviceId: string, on: boolean) => void;
   simulateSession: (deviceId: string) => { ok: boolean; message: string };
-  registerDevice: (code: string) => Promise<void>;
+  /** Giai đoạn B (CN4 D1, AU-25): quản trị thêm, sửa danh mục máy (mã, số sê-ri, dòng máy). */
+  registerDevice: (input: { code: string; serial: string; model: string }) => Promise<void>;
+  updateDevice: (deviceId: string, input: { code: string; serial: string; model: string }) => Promise<void>;
+  /** Giao máy (CN4 D2, D8): chỉ máy Sẵn sàng, bệnh nhân có phác đồ đang hoạt động và chưa giữ máy khác. null là thu hồi. */
   assignDevice: (deviceId: string, patientId: string | null) => Promise<void>;
+  /** Giai đoạn B (CN4 D5): bác sĩ ghi đã xử lý lỗi máy, bắt buộc ghi chú. Ứng dụng không gửi lệnh khắc phục xuống máy. */
+  clearDeviceFault: (deviceId: string, note: string) => Promise<void>;
+  /** Giai đoạn B (CN4 D4, AU-27): bệnh nhân kết nối, ngắt kết nối máy của mình; chỉ ghi nhật ký, không đổi lớp USB/UART. */
+  recordDeviceConnection: (kind: 'connect' | 'disconnect', transport: string) => Promise<void>;
   addReport: (r: Omit<SymptomReport, 'id' | 'date' | 'handled'>) => Promise<void>;
   setReportHandled: (id: string) => Promise<void>;
   updateAccount: (id: string, patch: Partial<Account>) => Promise<void>;
@@ -899,51 +907,113 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (meRef.current?.role !== 'admin' || meRef.current.locked) throw new Error('Cần quyền quản trị.');
   };
 
-  const registerDevice: Store['registerDevice'] = async (code) => {
+  // Giai đoạn B (CN4 XN-09): việc với máy không gắn bệnh nhân (khử khuẩn, chăm sóc, xử lý lỗi máy ở phòng khám) do bác sĩ bất kỳ làm.
+  // Máy đang giao thì chỉ bác sĩ phụ trách bệnh nhân giữ máy. Chỉ là kiểm tra phía ứng dụng, không thay phân quyền máy chủ.
+  const requireDeviceDoctor = (dev: Device) => {
+    if (dev.patientId) return requireDoctor(dev.patientId, { allowArchived: true });
+    const actor = dataRef.current.accounts.find((a) => a.id === meRef.current?.id);
+    if (!actor || actor.locked || actor.role !== 'doctor') throw new Error('Chỉ bác sĩ thao tác với máy. Quản trị chỉ quản lý danh mục máy.');
+    return actor;
+  };
+  const deviceEvent = (deviceId: string, kind: DeviceEvent['kind'], extra?: Pick<DeviceEvent, 'patientId' | 'detail'>): DeviceEvent =>
+    ({ id: 'de-' + Crypto.randomUUID(), deviceId, at: nowIso(), by: meRef.current?.id ?? '', kind, ...extra });
+  const withEvent = (d: AppData, e: DeviceEvent): AppData['deviceEvents'] => [...(d.deviceEvents ?? []), e];
+
+  const registerDevice: Store['registerDevice'] = async (input) => {
     requireAdmin();
-    const device: Device = { id: `d-${Date.now()}`, code, model: 'Plasma Pro + mô-đun IoMT ESP32', online: false, lastSync: null, firmware: '—', power: 'off', simulated: true };
-    await commit((d) => ({ ...d, devices: [...d.devices, device] }));
+    const err = catalogErrors(input, dataRef.current.devices);
+    const first = err.code ?? err.serial ?? err.model;
+    if (first) throw new Error(first);
+    const device: Device = { id: `d-${Date.now()}`, code: input.code.trim().toUpperCase(), serial: input.serial.trim(), model: input.model.trim(), online: false, lastSync: null, firmware: '—', power: 'off', simulated: true, lifecycle: 'ready' };
+    const e = deviceEvent(device.id, 'register', { detail: `${device.code}, sê-ri ${device.serial}, ${device.model}` });
+    await commit((d) => ({ ...d, devices: [...d.devices, device], deviceEvents: withEvent(d, e) }));
   };
 
-  // Mỗi bệnh nhân giữ tối đa một thiết bị: gán thiết bị mới thì thiết bị cũ của bệnh nhân đó được gỡ,
-  // tránh hai thiết bị cùng trỏ vào một hồ sơ (nhật ký điều trị bị tách đôi).
-  // Giao máy thuộc bác sĩ phụ trách (UR11); bác sĩ không lấy được máy đang giao cho người bệnh của bác sĩ khác.
+  const updateDevice: Store['updateDevice'] = async (deviceId, input) => {
+    requireAdmin();
+    const dev = dataRef.current.devices.find((x) => x.id === deviceId);
+    if (!dev) throw new Error('Không tìm thấy thiết bị.');
+    const err = catalogErrors(input, dataRef.current.devices, deviceId);
+    const first = err.code ?? err.serial ?? err.model;
+    if (first) throw new Error(first);
+    const next = { code: input.code.trim().toUpperCase(), serial: input.serial.trim(), model: input.model.trim() };
+    const changes = ([['Mã', dev.code, next.code], ['Sê-ri', dev.serial ?? '', next.serial], ['Dòng máy', dev.model, next.model]] as const)
+      .filter(([, a, b]) => a !== b).map(([k, a, b]) => `${k}: ${a || '—'} → ${b}`);
+    if (!changes.length) return;
+    const e = deviceEvent(deviceId, 'edit', { detail: changes.join('; ') });
+    await commit((d) => ({ ...d, devices: d.devices.map((x) => (x.id === deviceId ? { ...x, ...next } : x)), deviceEvents: withEvent(d, e) }));
+  };
+
+  // Giai đoạn B (CN4 D2, D8, AU-26): giao máy thuộc bác sĩ phụ trách (UR11). Không tự gỡ máy cũ của bệnh nhân như trước:
+  // bệnh nhân đang giữ máy khác thì phải thu hồi máy đó trước. Chỉ giao khi bệnh nhân có phác đồ đang hoạt động.
   const assignDevice: Store['assignDevice'] = async (deviceId, patientId) => {
     const dev = dataRef.current.devices.find((x) => x.id === deviceId);
     if (!dev) throw new Error('Không tìm thấy thiết bị.');
-    if (patientId) requireDoctor(patientId);
-    if (dev.patientId && dev.patientId !== patientId) requireDoctor(dev.patientId, { allowArchived: !patientId });
-    if (!patientId && !dev.patientId) return;
-    if (patientId && (dev?.lifecycle === 'returned' || dev?.lifecycle === 'disinfected')) throw new Error('Thiết bị chưa khử khuẩn và kiểm tra xong, chưa cấp được cho bệnh nhân khác.');
+    if (!patientId) {
+      if (!dev.patientId) return;
+      return setLifecycle(deviceId, 'returned');
+    }
+    const actor = requireDoctor(patientId);
+    const d0 = dataRef.current;
+    const why = assignBlocker(dev, d0.patients.find((p) => p.id === patientId), d0.devices, d0.plans);
+    if (why) throw new Error(why);
+    if (dev.patientId === patientId) return;
+    const at = nowIso();
+    const e = deviceEvent(deviceId, 'assign', { patientId });
     await commit((d) => {
       const linked = reassignDevice(d.devices, d.patients, deviceId, patientId);
       // Giao thiết bị kèm một đầu phát mới dùng riêng cho bệnh nhân (slide 25).
       const n = d.devices.filter((x) => x.tip).length + 1;
-      const devices = linked.devices.map((x) => (x.id === deviceId && patientId
-        ? { ...x, lifecycle: 'in_use' as const, tip: x.patientId === dev?.patientId && x.tip ? x.tip : { code: `ĐP-${String(n).padStart(4, '0')}`, issuedAt: todayIso() } }
+      const devices = linked.devices.map((x) => (x.id === deviceId
+        ? { ...x, lifecycle: 'in_use' as const, assignedAt: at, assignedBy: actor.id, tip: { code: `ĐP-${String(n).padStart(4, '0')}`, issuedAt: todayIso() } }
         : x));
-      return { ...d, devices, patients: linked.patients };
+      return { ...d, devices, patients: linked.patients, deviceEvents: withEvent(d, e) };
     });
   };
 
+  // Giai đoạn B (CN4 D3, XN-09): bác sĩ phụ trách thu hồi (Đang giao → Đã thu hồi); bác sĩ đánh dấu Đã khử khuẩn (→ Sẵn sàng).
+  // Quản trị không thao tác với máy. Máy cũ chưa có vòng đời mà đang giao được coi là Đang giao.
   const setLifecycle: Store['setLifecycle'] = async (deviceId, next) => {
     const dev = dataRef.current.devices.find((x) => x.id === deviceId);
     if (!dev) throw new Error('Không tìm thấy thiết bị.');
-    // Thu hồi máy khỏi người bệnh thuộc bác sĩ phụ trách (UR11); khử khuẩn, kiểm tra là việc kỹ thuật của quản trị.
-    if (next === 'returned') {
-      if (!dev.patientId) throw new Error('Thiết bị chưa giao cho bệnh nhân nào.');
-      requireDoctor(dev.patientId, { allowArchived: true });
-    } else requireAdmin();
-    if (LIFECYCLE[dev.lifecycle ?? 'ready']?.next !== next) throw new Error('Bước này chưa làm được ở trạng thái hiện tại.');
+    const current = dev.lifecycle ?? (dev.patientId ? 'in_use' : 'ready');
+    if (next === 'returned' && !dev.patientId) throw new Error('Thiết bị chưa giao cho bệnh nhân nào.');
+    requireDeviceDoctor(dev);
+    if (LIFECYCLE[current]?.next !== next) throw new Error('Bước này chưa làm được ở trạng thái hiện tại.');
+    const e = deviceEvent(deviceId, next === 'returned' ? 'return' : 'disinfect', next === 'returned' ? { patientId: dev.patientId } : undefined);
     await commit((d) => {
       // Thu hồi: gỡ khỏi bệnh nhân, bỏ đầu phát cũ (đầu phát dùng riêng không cấp lại).
       const base = next === 'returned' ? reassignDevice(d.devices, d.patients, deviceId, null) : { devices: d.devices, patients: d.patients };
       return {
         ...d,
         patients: base.patients,
-        devices: base.devices.map((x) => (x.id === deviceId ? { ...x, lifecycle: next, ...(next === 'returned' ? { tip: undefined, power: 'off' as const } : {}) } : x)),
+        devices: base.devices.map((x) => (x.id === deviceId
+          ? { ...x, lifecycle: next, ...(next === 'returned' ? { tip: undefined, power: 'off' as const, assignedAt: undefined, assignedBy: undefined } : {}) }
+          : x)),
+        deviceEvents: withEvent(d, e),
       };
     });
+  };
+
+  // Giai đoạn B (CN4 D5): ghi đã xử lý lỗi máy. Chỉ ghi nhận việc bác sĩ đã làm ngoài ứng dụng; không gửi lệnh nào xuống máy.
+  const clearDeviceFault: Store['clearDeviceFault'] = async (deviceId, note) => {
+    const dev = dataRef.current.devices.find((x) => x.id === deviceId);
+    if (!dev) throw new Error('Không tìm thấy thiết bị.');
+    if (!dev.fault) throw new Error('Máy không có lỗi đang mở.');
+    if (!note.trim()) throw new Error('Nhập ghi chú xử lý lỗi.');
+    requireDeviceDoctor(dev);
+    const e = deviceEvent(deviceId, 'fault_clear', { patientId: dev.patientId, detail: `${dev.fault.code}: ${note.trim()}` });
+    await commit((d) => ({ ...d, devices: d.devices.map((x) => (x.id === deviceId ? { ...x, fault: undefined } : x)), deviceEvents: withEvent(d, e) }));
+  };
+
+  const recordDeviceConnection: Store['recordDeviceConnection'] = async (kind, transport) => {
+    const actor = meRef.current;
+    if (!actor || actor.locked || actor.role !== 'patient') return;
+    const p = dataRef.current.patients.find((x) => x.id === actor.patientId);
+    const dev = dataRef.current.devices.find((x) => x.id === p?.deviceId);
+    if (!p || !dev) return;
+    const e = deviceEvent(dev.id, kind, { patientId: p.id, detail: transport });
+    await commit((d) => ({ ...d, deviceEvents: withEvent(d, e) }));
   };
 
   const recordClosure: Store['recordClosure'] = async (woundId, step) => {
@@ -1029,9 +1099,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const dev = dataRef.current.devices.find((x) => x.id === deviceId);
     const item = CARE_ITEMS.find((x) => x.id === itemId);
     if (!actor || !dev || !item) throw new Error('Không tìm thấy mục chăm sóc.');
-    const allowed = actor.role === 'admin' || (actor.role === 'patient' && item.doneBy === 'patient' && dev.patientId === actor.patientId);
-    if (!allowed) throw new Error('Mục này do kỹ thuật viên thực hiện.');
-    await commit((d) => ({ ...d, devices: d.devices.map((x) => (x.id === deviceId ? { ...x, care: { ...x.care, [itemId]: nowIso() } } : x)) }));
+    // Giai đoạn B (CN4 D3, XN-09): mục chăm sóc, thay linh kiện do bác sĩ; bệnh nhân tự làm mục của mình. Quản trị không thao tác với máy.
+    if (actor.role === 'patient') {
+      if (item.doneBy !== 'patient' || dev.patientId !== actor.patientId) throw new Error('Mục này do bác sĩ thực hiện.');
+    } else requireDeviceDoctor(dev);
+    const e = deviceEvent(deviceId, 'care', { patientId: dev.patientId, detail: item.label });
+    // Bệnh nhân vệ sinh sau mỗi phiên: chỉ ghi mốc, không ghi nhật ký máy để lịch sử không bị lấp bởi việc lặp lại hằng ngày.
+    await commit((d) => ({ ...d, devices: d.devices.map((x) => (x.id === deviceId ? { ...x, care: { ...x.care, [itemId]: nowIso() } } : x)), deviceEvents: actor.role === 'patient' ? d.deviceEvents : withEvent(d, e) }));
   };
 
   const recordDeviceLink: Store['recordDeviceLink'] = async (entry) => {
@@ -1072,11 +1146,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Giai đoạn B (AU-05): gắn phiên bản máy đang giữ (lần nạp gần nhất máy đã nhận). Không có thì để trống, phiên vẫn được ghi.
       ...(loadedPlanLink(d0.deviceLinks ?? [], d0.plans, entry.patientId, entry.woundId) ?? {}),
     };
-    await commit((d) => ({
-      ...d,
-      sessions: d.sessions.some((x) => x.sessionId === session.sessionId) ? d.sessions : [...d.sessions, session],
-      devices: d.devices.map((x) => (x.id === dev.id ? { ...x, lastSync: nowIso() } : x)),
-    }));
+    // Giai đoạn B (CN4 D5, D9, AU-28): máy báo lỗi thì máy tự chuyển Lỗi, lưu mã, mô tả, thời điểm, bệnh nhân đang giữ. Không gửi lệnh khắc phục.
+    const isError = entry.outcome === 'error';
+    const at = nowIso();
+    const fault = isError ? { ...STA_ERROR_FAULT, at, patientId: entry.patientId, sessionId: session.sessionId } : undefined;
+    const e = isError ? deviceEvent(dev.id, 'error', { patientId: entry.patientId, detail: `${STA_ERROR_FAULT.code}: ${STA_ERROR_FAULT.message}` }) : null;
+    await commit((d) => {
+      // Bản ghi gửi lại cùng mã phiên: không ghi phiên, lỗi hay nhật ký lần hai.
+      const dup = d.sessions.some((x) => x.sessionId === session.sessionId);
+      return {
+        ...d,
+        sessions: dup ? d.sessions : [...d.sessions, session],
+        devices: d.devices.map((x) => (x.id === dev.id ? { ...x, lastSync: at, ...(fault && !dup ? { fault } : {}) } : x)),
+        ...(e && !dup ? { deviceEvents: withEvent(d, e) } : {}),
+      };
+    });
     return true;
   };
 
@@ -1089,7 +1173,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Store = {
     ready, data, me, authenticate, register, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, setPatientArchived, addWound, updateWound, addImage, labelImage,
-    setExcluded, requestRetake, addEvaluation, savePlan, setPlanPaused, deletePlan, acknowledgePlan, saveImageLabel, confirmImageLabel, deleteWound, setWoundRevisit, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
+    setExcluded, requestRetake, addEvaluation, savePlan, setPlanPaused, deletePlan, acknowledgePlan, saveImageLabel, confirmImageLabel, deleteWound, setWoundRevisit, setDevicePower, simulateSession, registerDevice, updateDevice, assignDevice, clearDeviceFault, recordDeviceConnection, addReport,
     setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle, recordDeviceLink, recordDeviceSession,
     persistIssue, retryPersist, dismissPersistIssue,
   };

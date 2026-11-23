@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
+import { useConnectionLog } from '@/components/useConnectionLog';
 import { Text } from '@/components/Text';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { PlanAckCard } from '@/components/PlanAckCard';
@@ -34,6 +35,8 @@ export default function ConnectDevice() {
   const p = patient(me?.role === 'patient' ? me.patientId : params.patientId);
   const canView = useCanView(p);
   const link = useDeviceLink();
+  // Giai đoạn B (CN4 D4): ghi nhật ký kết nối, ngắt kết nối; chỉ đọc trạng thái đường truyền.
+  useConnectionLog(link.state, link.kind);
   const [chosen, setChosen] = useState<string>(params.woundId ?? '');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);

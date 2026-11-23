@@ -5,6 +5,7 @@ import { Text } from '@/components/Text';
 
 import { Button, Card, Chip, Disclosure, Divider, Empty, InfoRow, Muted, Notice, SectionTitle, Segmented, SimBadge, StatusChip, NumberTile } from '@/components/ui';
 import { noteText } from '@/components/AdherenceCalendar';
+import { DeviceHistoryCard, DeviceManageCard } from '@/components/DeviceManage';
 import { ProgressRows } from '@/components/CourseCard';
 import { courseProgress, isScheduled, localDay } from '@/lib/course';
 import { CARE_ITEMS, careStatus, LIFECYCLE } from '@/lib/maintenance';
@@ -41,7 +42,8 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
   const patientView = level === 'patient';
   // Bật tắt nguồn từ xa trái phương án S1 (nạp qua USB tại nhà); chỉ giữ trong bản phát triển để minh họa.
   // Giai đoạn B (AU-03): bác sĩ không điều khiển thiết bị, nút bật tắt nguồn của bác sĩ đã bỏ.
-  const { data, simulateSession, markCareDone, setLifecycle } = useStore();
+  // Giai đoạn B (CN4 XN-09): quản trị chỉ xem; chăm sóc, khử khuẩn, xử lý lỗi do bác sĩ ở thẻ Trạng thái máy (DeviceManage.tsx).
+  const { data, simulateSession, markCareDone } = useStore();
   const { sessionsOf, patient, woundsOf, coursePlan } = useLookups();
   const sessions = sessionsOf(device.id);
   const rawCount = data.sessions.filter((s) => s.deviceId === device.id).length;
@@ -149,6 +151,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
       {device.simulated && <SimBadge />}
       {tech && <Segmented value={tab} onChange={setTab} options={[{ value: 'overview', label: 'Tổng quan' }, { value: 'care', label: 'Bảo trì' }, { value: 'log', label: 'Nhật ký' }]} />}
       {!doctorView && overviewCard}
+      {doctorView && <DeviceManageCard device={device} />}
       {doctorView && progressCard}
       {/* Chăm sóc thiết bị (mẫu myAir). Bệnh nhân chỉ thấy mục đến hạn; kỹ thuật thấy đủ thanh tuổi thọ. */}
       {patientView && patientDue.map((c) => (
@@ -162,7 +165,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
           <Muted>{c.item.everySessions === 1 ? 'Sau mỗi lần điều trị.' : c.remaining > 0 ? `Còn khoảng ${c.remaining} lần dùng.` : 'Đã đến hạn.'} {c.item.howTo}</Muted>
           {c.item.doneBy === 'patient'
             ? <Button label="Tôi đã làm xong" icon="checkmark" variant="secondary" onPress={() => doCare(c.item.id, c.item.label)} />
-            : <Muted>Kỹ thuật viên sẽ làm khi tái khám. Bạn vẫn dùng thiết bị bình thường.</Muted>}
+            : <Muted>Bác sĩ sẽ làm khi tái khám. Bạn vẫn dùng thiết bị bình thường.</Muted>}
         </Card>
       ))}
       {tech && tab === 'care' && <Card>
@@ -182,30 +185,15 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
                 <View style={{ width: `${pct * 100}%`, height: '100%', backgroundColor: color }} />
               </View>
               <Text style={{ fontSize: T.caption, color: C.textFaint }}>
-                {c.item.everySessions === 1 ? 'Sau mỗi phiên' : `Chu kỳ ${c.item.everySessions} phiên`}, {c.item.doneBy === 'patient' ? 'bệnh nhân tự làm' : 'kỹ thuật làm'}.{'\n'}Lần gần nhất: {c.lastDone ? fmtDate(c.lastDone) : 'chưa ghi nhận'}
+                {c.item.everySessions === 1 ? 'Sau mỗi phiên' : `Chu kỳ ${c.item.everySessions} phiên`}, {c.item.doneBy === 'patient' ? 'bệnh nhân tự làm' : 'bác sĩ làm'}.{'\n'}Lần gần nhất: {c.lastDone ? fmtDate(c.lastDone) : 'chưa ghi nhận'}
               </Text>
-              <Button label="Đánh dấu đã làm" variant="ghost" icon="checkmark-done-outline" onPress={() => doCare(c.item.id, c.item.label)} />
             </View>
           );
         })}
         <Muted>Cách vệ sinh là giả định cho demo, theo hướng dẫn nhà sản xuất khi có.</Muted>
-        {device.lifecycle === 'in_use' && <>
         <Divider />
-        <Muted>Máy đang giao cho bệnh nhân. Bác sĩ phụ trách thu hồi trên hồ sơ bệnh nhân.</Muted>
-        </>}
-        {device.lifecycle !== 'in_use' && LIFECYCLE[device.lifecycle ?? 'ready'].next && <>
-        <Divider />
-        <SectionTitle icon="sync-outline">Vòng đời thiết bị cho thuê</SectionTitle>
-        <Muted>Thu hồi, khử khuẩn, kiểm tra rồi mới cấp lại. Đầu phát cũ không cấp lại.</Muted>
-        <Button
-          label={LIFECYCLE[device.lifecycle ?? 'ready'].action!}
-          icon="arrow-forward-circle-outline"
-          variant="secondary"
-          onPress={() => confirm(LIFECYCLE[device.lifecycle ?? 'ready'].action!, device.lifecycle === 'in_use' ? 'Gỡ thiết bị khỏi bệnh nhân và bỏ đầu phát đang dùng.' : 'Ghi nhận bước này đã làm xong.', async () => {
-            try { await setLifecycle(device.id, LIFECYCLE[device.lifecycle ?? 'ready'].next as NonNullable<Device['lifecycle']>); } catch (e) { notify('Chưa ghi được', e instanceof Error ? e.message : String(e)); }
-          }, 'Xác nhận')}
-        />
-        </>}
+        <InfoRow label="Vòng đời" value={LIFECYCLE[device.lifecycle ?? 'ready'].label} />
+        <Muted>Bác sĩ giao, thu hồi, khử khuẩn, chăm sóc máy và ghi xử lý lỗi. Quản trị chỉ xem.</Muted>
       </Card>}
 
       {/* Mô phỏng phiên kiểu IoMT cũ, trái phương án S1; chỉ hiện trong bản phát triển. */}
@@ -298,6 +286,7 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
         {sessions.length > 5 && <Button label={allSessions ? 'Thu gọn' : `Xem thêm (${Math.min(sessions.length, 30) - 5})`} variant="ghost" onPress={() => setAllSessions(!allSessions)} />}
         </>}
       </Card>}
+      {(doctorView || (tech && tab === 'log')) && <DeviceHistoryCard device={device} />}
       {doctorView && <SectionTitle>Thông tin thiết bị</SectionTitle>}
       {doctorView && overviewCard}
     </>

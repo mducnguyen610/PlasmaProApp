@@ -30,8 +30,13 @@ export default function DoctorHome() {
   const reports = data.reports.filter((r) => ids.has(r.patientId) && !r.handled);
   const drafts = data.plans.filter((p) => ids.has(p.patientId) && p.status === 'draft');
   const offline = mine.map((p) => device(p.deviceId)).filter((d) => d && !d.online);
+  // Giai đoạn B (CN4 D9): máy báo lỗi của bệnh nhân mình và máy ở phòng khám (chưa giao) báo lỗi.
+  const faults = data.devices.filter((d) => d.fault && (!d.patientId || ids.has(d.patientId)));
   // Chỉ hiện việc đang có; số liệu tổng hợp (tỉ lệ gán nhãn, thống kê) nằm ở màn hình quản trị kỹ thuật.
   const candidates: (Task | false)[] = [
+    faults.length > 0 && { key: 'faults', icon: 'warning-outline', tone: 'red', count: faults.length, label: 'Thiết bị báo lỗi', onPress: () => faults.length > 1
+      ? router.push('/devices')
+      : router.push({ pathname: '/devices/[id]', params: { id: faults[0].id } }) },
     reports.length > 0 && { key: 'reports', icon: 'medkit-outline', tone: 'red', count: reports.length, label: 'Báo cáo mới', onPress: () => router.navigate({ pathname: '/doctor/patients', params: { loc: 'bao-cao', t: tapStamp() } }) },
     unlabeled.length > 0 && { key: 'unlabeled', icon: 'pricetag-outline', tone: 'amber', count: unlabeled.length, label: 'Ảnh chưa đo', onPress: () => router.navigate({ pathname: '/doctor/dataset', params: { loc: 'chua-do', t: tapStamp() } }) },
     // P1-01a: từ 2 mục thì mở danh sách đã lọc (trước đây luôn mở mục đầu, các mục sau không mở được từ ô). Một mục: mở thẳng như cũ.
@@ -102,6 +107,7 @@ export default function DoctorHome() {
           </Disclosure>
         </Card>
       )}
+      <TextLink label="Danh sách thiết bị và trạng thái" onPress={() => router.push('/devices')} />
       <SimBadge />
     </Screen>
   );

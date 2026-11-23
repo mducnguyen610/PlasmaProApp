@@ -160,9 +160,9 @@ export function createSeed(): AppData {
       },
     ],
     devices: [
-      { id: 'd-1', code: 'TB-001', model: 'Plasma Pro + mô-đun IoMT ESP32', patientId: 'p-1', online: true, lastSync: at(D(-1), '17:05'), firmware: '0.3.1', power: 'off', simulated: true, care: { clean: new Date(new Date(lastP1).getTime() + 10 * 60000).toISOString() }, tip: { code: 'ĐP-0001', issuedAt: D(-30) }, lifecycle: 'in_use' },
-      { id: 'd-2', code: 'TB-002', model: 'Plasma Pro + mô-đun IoMT ESP32', patientId: 'p-2', online: false, lastSync: at(D(-15), '08:12'), firmware: '0.3.1', power: 'off', simulated: true, tip: { code: 'ĐP-0002', issuedAt: D(-36) }, lifecycle: 'in_use' },
-      { id: 'd-3', code: 'TB-003', model: 'Plasma Pro + mô-đun IoMT ESP32', online: false, lastSync: null, firmware: '0.3.0', power: 'off', simulated: true, lifecycle: 'disinfected' },
+      { id: 'd-1', code: 'TB-001', serial: 'HFP-0001', model: 'Plasma Pro + mô-đun IoMT ESP32', patientId: 'p-1', online: true, lastSync: at(D(-1), '17:05'), firmware: '0.3.1', power: 'off', simulated: true, care: { clean: new Date(new Date(lastP1).getTime() + 10 * 60000).toISOString() }, tip: { code: 'ĐP-0001', issuedAt: D(-30) }, lifecycle: 'in_use' },
+      { id: 'd-2', code: 'TB-002', serial: 'HFP-0002', model: 'Plasma Pro + mô-đun IoMT ESP32', patientId: 'p-2', online: false, lastSync: at(D(-15), '08:12'), firmware: '0.3.1', power: 'off', simulated: true, tip: { code: 'ĐP-0002', issuedAt: D(-36) }, lifecycle: 'in_use' },
+      { id: 'd-3', code: 'TB-003', serial: 'HFP-0003', model: 'Plasma Pro + mô-đun IoMT ESP32', online: false, lastSync: null, firmware: '0.3.0', power: 'off', simulated: true, lifecycle: 'disinfected' },
     ],
     sessions: [...sesP1, ...sesP2],
     sessionNotes: [

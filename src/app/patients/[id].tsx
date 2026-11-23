@@ -13,6 +13,7 @@ import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { archiveBlocker } from '@/lib/patientRecord';
+import { deviceStatus, hasActivePlan } from '@/lib/deviceState';
 import { woundSummary } from '@/lib/woundSummary';
 import type { TreatmentPlan } from '@/lib/types';
 import { useLookups, useStore, type Activation } from '@/lib/store';
@@ -68,8 +69,10 @@ export default function PatientDetail() {
   const login = data.accounts.find((a) => a.patientId === p.id);
   const pending = !login || isPendingActivation(login);
   const codeLive = !!login?.activationHash && !!login.activationExpiresAt && login.activationExpiresAt > new Date().toISOString();
-  // Máy rảnh để giao: chưa gán ai và đã qua khử khuẩn, kiểm tra (vòng đời sẵn sàng).
-  const freeDevices = data.devices.filter((d) => !d.patientId && (d.lifecycle ?? 'ready') === 'ready');
+  // Máy rảnh để giao: chưa gán ai, đã khử khuẩn (Sẵn sàng) và không báo lỗi (CN4 D2).
+  const freeDevices = data.devices.filter((d) => !d.patientId && deviceStatus(d) === 'ready');
+  // CN4 D2: chỉ giao khi bệnh nhân có phác đồ đang hoạt động; store kiểm lại (assignBlocker).
+  const noActivePlan = !hasActivePlan(data.plans, p.id);
   // UX-07 (Đợt 8): giao máy cần xác nhận, nêu mã máy và hồ sơ, vì giao nhầm thì thu hồi kéo theo khử khuẩn. Quy tắc giao giữ nguyên.
   const giveDevice = (deviceId: string, code: string) =>
     confirm(
@@ -87,8 +90,7 @@ export default function PatientDetail() {
   const takeBack = () =>
     confirm('Thu hồi máy', 'Gỡ máy khỏi bệnh nhân và bỏ đầu phát đang dùng. Máy chuyển sang chờ khử khuẩn.', async () => {
       try {
-        if (dev?.lifecycle === 'in_use') await setLifecycle(dev.id, 'returned');
-        else if (dev) await assignDevice(dev.id, null);
+        if (dev) await setLifecycle(dev.id, 'returned');
       } catch (e) {
         notify('Chưa thu hồi được', e instanceof Error ? e.message : String(e));
       }
@@ -149,6 +151,8 @@ export default function PatientDetail() {
             ? <Chip label={`Đã lưu trữ ${fmtDate(localDay(p.archivedAt!))}`} tone="gray" icon="archive-outline" />
             : <Chip label="Đang theo dõi" tone="blue" icon="pulse-outline" />)}
           {dev && cloud ? <StatusChip status={cloud} label={`${dev.code} · ${cloud.label}`} /> : <Chip label="Chưa gán thiết bị" tone="gray" icon="hardware-chip-outline" />}
+          {/* Giai đoạn B (CN4 D9): máy đang giữ báo lỗi thì có cảnh báo ngay ở thẻ định danh. */}
+          {dev?.fault && <Chip label={`${dev.code} báo lỗi ${dev.fault.code}`} tone="red" icon="warning-outline" />}
           {/* Tài khoản chỉ hiện khi còn việc (chưa kích hoạt); trạng thái đầy đủ ở mục "Thiết bị và tài khoản". */}
           {isOwner && pending && <StatusChip status={{ role: 'warning', icon: 'time-outline' }} label={codeLive ? 'Chờ kích hoạt' : 'Chưa kích hoạt'} />}
           {/* Một chip đếm việc chờ; nội dung ở mục "Triệu chứng và sự cố" bên dưới. */}
@@ -287,11 +291,16 @@ export default function PatientDetail() {
         )}
         {/* Giao máy, thu hồi thuộc bác sĩ phụ trách (UR11). */}
         {canEdit && (
-          <Disclosure icon="hardware-chip-outline" title="Giao máy" summary={dev ? `Đang giữ ${dev.code}` : freeDevices.length ? `${freeDevices.length} máy sẵn sàng` : 'Không có máy sẵn sàng'}>
+          <Disclosure icon="hardware-chip-outline" title="Giao máy" summary={dev ? `Đang giữ ${dev.code}` : noActivePlan ? 'Cần phác đồ đang hoạt động' : freeDevices.length ? `${freeDevices.length} máy sẵn sàng` : 'Không có máy sẵn sàng'}>
             {dev ? (
               <Button label={`Thu hồi ${dev.code}`} variant="secondary" icon="return-down-back-outline" onPress={takeBack} />
+            ) : noActivePlan ? (
+              <Muted>Bệnh nhân chưa có phác đồ đang hoạt động. Lập và xác nhận phác đồ trước khi giao máy.</Muted>
             ) : freeDevices.length === 0 ? (
-              <Muted>Chưa có máy nào đã khử khuẩn và kiểm tra xong. Quản trị kỹ thuật cập nhật vòng đời máy.</Muted>
+              <>
+                <Muted>Chưa có máy Sẵn sàng. Máy đã thu hồi cần được đánh dấu Đã khử khuẩn ở danh sách thiết bị.</Muted>
+                <TextLink label="Mở danh sách thiết bị" onPress={() => router.push('/devices')} />
+              </>
             ) : (
               freeDevices.map((d) => <Button key={d.id} label={`Giao ${d.code}`} variant="secondary" icon="arrow-forward-circle-outline" onPress={() => giveDevice(d.id, d.code)} />)
             )}
