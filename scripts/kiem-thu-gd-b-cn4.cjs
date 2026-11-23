@@ -37,7 +37,6 @@ const rec = (id, name, pass, detail = '') => {
   const go = async (p, url) => { await p.goto(BASE + url); await p.waitForTimeout(1500); };
   const has = async (p, t, exact = true) => (await p.locator(`text=${exact ? `"${t}"` : t}`).locator('visible=true').count()) > 0;
   const store = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2') || '{}'));
-  const radio = (p, name) => p.getByRole('radio', { name, exact: true }).locator('visible=true').first();
   const btn = (p, name) => p.getByRole('button', { name, exact: true }).locator('visible=true').last();
   const callStore = async (p, fn, ...args) => {
     const res = await p.evaluate(async ({ fn, args }) => {
