@@ -237,7 +237,14 @@ export interface TreatmentPlan {
   protocolId?: string;
   /** Giai đoạn B (AU-04): thời điểm bệnh nhân xác nhận đã đọc phiên bản này. Chưa có thì không nạp liệu trình, không ghi phiên. */
   patientAckAt?: string;
+  /** Giai đoạn B (CN3 P3, AU-06): ảnh căn cứ khi tạo phác đồ mới: ảnh ứng dụng đề xuất và ảnh bác sĩ chọn. */
+  suggestedBasisImageId?: string;
+  basisImageId?: string;
+  /** Giai đoạn B (CN3 P8, AU-08): nhật ký tạm dừng, tiếp tục của phiên bản này (người, thời điểm, lý do). */
+  statusLog?: PlanStatusEvent[];
 }
+
+export interface PlanStatusEvent { at: string; by: string; action: 'pause' | 'resume'; reason: string }
 
 export type DeviceLifecycle = 'in_use' | 'returned' | 'disinfected' | 'ready';
 export interface Device {

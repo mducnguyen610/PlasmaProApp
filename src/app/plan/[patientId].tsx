@@ -7,7 +7,8 @@ import { DoseRows, PhaseList } from '@/components/CourseCard';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { PlanAckCard } from '@/components/PlanAckCard';
-import { needsPatientAck } from '@/lib/planVersion';
+import { needsPatientAck, openProtocolId, planPhotoCandidates } from '@/lib/planVersion';
+import { PlanEligibility, PlanManageCard, SessionHistoryCard } from '@/components/PlanManage';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { CheckRow } from '@/components/Consent';
 import { PLAN } from '@/theme.status';
@@ -204,6 +205,8 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
   const [clearedByEdit, setClearedByEdit] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [step, setStep] = useState(0);
+  // Giai đoạn B (CN3 P3): ảnh căn cứ bác sĩ chọn khi lập phác đồ mới; trống thì dùng ảnh đề xuất (mới nhất).
+  const [basisPick, setBasisPick] = useState('');
   // P0 SV-05, ID-05: biểu mẫu khác giá trị lúc mở (hoặc lúc vừa lưu) thì rời màn hay đổi vết thương phải hỏi trước.
   const snapshot = JSON.stringify({ status, phases, perVisit, gap, level, mode, duration, spc, reviewDay, review, notes, reason, confirmed });
   const [initial, setInitial] = useState(snapshot);
@@ -257,11 +260,19 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
             <PlanDetails plan={x} editorName={account(x.editedBy)?.name} />
           </Card>
         ))}
+        {woundId && <SessionHistoryCard woundId={woundId} />}
       </Screen>
     );
   }
 
   const suggestion = suggestDurationSec(lastArea?.areaCm2, numOrNull(spc));
+  // Giai đoạn B (CN3 P2, P7): còn phác đồ mở thì lập phiên bản mới của nó; không còn thì lập phác đồ mới cho đợt khác,
+  // cần ảnh căn cứ trong ngày (P1, P3). Nội dung phác đồ (lịch, liều) giữ như cũ (XN-01..05).
+  const isNewProtocol = !openProtocolId(data.plans, patientId, woundId);
+  const candidates = isNewProtocol ? planPhotoCandidates(data.images, woundId, localDay()) : [];
+  const basisId = candidates.some((c) => c.id === basisPick) ? basisPick : candidates[0]?.id ?? '';
+  const blockedNew = isNewProtocol && !candidates.length;
+  const openLatest = latest && latest.status !== 'ended' ? latest : undefined;
   // R-02 (Đợt 10): so với phiên bản đang áp dụng; chưa có thì so với phiên bản gần nhất; lần lập đầu chỉ một cột.
   const base = plans.find((x) => x.status === 'active') ?? latest;
   const baseTitle = base ? (base.status === 'active' ? `Đang áp dụng (v${base.version})` : `Phiên bản ${base.version} (${PLAN_STATUS[base.status].label})`) : undefined;
@@ -344,6 +355,7 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
       patientId: p.id, woundId, status, phases: parsed, sessionsPerDay: nums[0] ?? 1, minIntervalMin: nums[1], targetEnergyWh: null,
       doseLevel: nums[2], treatmentMode: mode ? mode : null, durationSec: nums[3], secondsPerCm2: nums[4], areaAtStart: lastArea?.areaCm2 ?? null, reviewAtDay: nums[5] ?? DEFAULT_REVIEW_DAY,
       startDate: parsed[0].from, endDate: parsed[parsed.length - 1].to, reviewSchedule: review.trim(), notes: notes.trim(), reason: reason.trim(), confirmed,
+      ...(isNewProtocol ? { basisImageId: basisId } : {}),
     });
     } catch (e) {
       // Lưu thất bại: giữ nguyên dữ liệu đã nhập và dấu xác nhận để bác sĩ thử lại.
@@ -372,7 +384,7 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
           {step > 0 && <View style={{ flex: 1 }}><Button label="Quay lại" variant="ghost" onPress={() => setStep(step - 1)} /></View>}
           {step < 2
             ? <View style={{ flex: step > 0 ? 2 : 1 }}><Button label="Tiếp" icon="arrow-forward" onPress={() => setStep(step + 1)} /></View>
-            : <View style={{ flex: 2 }}><Button label={`Lưu phiên bản ${nextVersion}${w ? ` cho ${w.code}` : ''}`} icon="save-outline" onPress={save} /></View>}
+            : <View style={{ flex: 2 }}><Button label={`Lưu phiên bản ${nextVersion}${w ? ` cho ${w.code}` : ''}`} icon="save-outline" disabled={blockedNew} reason="Chưa đủ điều kiện tạo phác đồ mới." onPress={save} /></View>}
         </View>
         </View>
       }>
@@ -393,8 +405,10 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
           </Disclosure>
         </View>
       )}
-      <SectionTitle caption="Mỗi vết thương một đợt. Giá trị điều trị cụ thể do nhóm chuyên môn đặt; ứng dụng không đặt sẵn lịch hay liều.">{`Lập phiên bản ${nextVersion}`}</SectionTitle>
-      <Card>
+      {openLatest && <PlanManageCard plan={openLatest} />}
+      {isNewProtocol && woundId && <PlanEligibility woundId={woundId} candidates={candidates} value={basisId} onChange={setBasisPick} />}
+      <SectionTitle caption="Mỗi vết thương một đợt. Giá trị điều trị cụ thể do nhóm chuyên môn đặt; ứng dụng không đặt sẵn lịch hay liều.">{isNewProtocol ? `Lập phác đồ mới (phiên bản ${nextVersion})` : `Lập phiên bản ${nextVersion}`}</SectionTitle>
+      {!blockedNew && <Card>
         {/* Biểu mẫu chia 3 bước (đề xuất 8): Lịch, Liều, Xác nhận. Lỗi đưa người dùng về đúng bước. */}
         {/* Cùng kiểu thanh bước với T01 (V10); vẫn chạm được để chuyển bước như trước. */}
         <StepRow steps={['Lịch', 'Liều', 'Xác nhận']} step={step + 1} onStep={(n) => setStep(n - 1)} />
@@ -503,7 +517,7 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
             )}
           </>
         )}
-      </Card>
+      </Card>}
 
       <SectionTitle>Lịch sử phiên bản</SectionTitle>
       {plans.length === 0 && <Muted>Chưa có phiên bản nào.</Muted>}
@@ -521,6 +535,7 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
           ))}
         </ListCard>
       )}
+      {woundId && <SessionHistoryCard woundId={woundId} />}
     </Screen>
   );
 }

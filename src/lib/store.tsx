@@ -18,7 +18,7 @@ import { woundDeleteBlocker } from './woundStatus';
 import { applyLabelPatch, missingForConfirm, type ImageLabel } from './imageLabel';
 import { isPendingCapture } from './pendingCapture';
 import { createSeed } from './seed';
-import { canLoadPlan, loadedPlanLink, migratePlans, protocolIdFor } from './planVersion';
+import { canLoadPlan, loadedPlanLink, migratePlans, openProtocolId, planDeleteBlocker, planPhotoCandidates, protocolIdFor } from './planVersion';
 import { CAPABILITIES, SIM_MODEL, capabilitiesFor } from './device/capabilities';
 import type {
   Account, AppData, AuditEntry, Device, DeviceLifecycle, DeviceLinkLog, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
@@ -123,8 +123,15 @@ interface Store {
   setExcluded: (imageId: string, reason: string | null) => Promise<void>;
   requestRetake: (imageId: string, note: string | null) => Promise<void>;
   addEvaluation: (e: Omit<Evaluation, 'id' | 'doctorId'>) => Promise<void>;
-  /** newProtocol: tạo phác đồ mới cho vết thương (mã phác đồ mới) thay vì phiên bản mới của phác đồ đang có. */
-  savePlan: (p: Omit<TreatmentPlan, 'id' | 'version' | 'editedBy' | 'editedAt' | 'protocolId' | 'patientAckAt'> & { id?: string; newProtocol?: boolean }) => Promise<void>;
+  /**
+   * Giai đoạn B (CN3 P2, P6, P7): vết đang có phác đồ mở (nháp, đang áp dụng, tạm dừng) thì lưu thành phiên bản mới của phác đồ đó.
+   * Không có thì tạo phác đồ mới cho đợt khác, cần ảnh căn cứ hợp lệ trong ngày (P1, P3): basisImageId.
+   */
+  savePlan: (p: Omit<TreatmentPlan, 'id' | 'version' | 'editedBy' | 'editedAt' | 'protocolId' | 'patientAckAt' | 'suggestedBasisImageId' | 'statusLog'> & { id?: string }) => Promise<void>;
+  /** Giai đoạn B (CN3 P8, AU-08): bác sĩ tạm dừng hoặc tiếp tục phiên bản đang áp dụng, bắt buộc lý do. Không đổi trạng thái vết. */
+  setPlanPaused: (planId: string, paused: boolean, reason: string) => Promise<void>;
+  /** Giai đoạn B (CN3 P9, AU-09): xóa phác đồ chưa có phiên, bắt buộc lý do; ghi nhật ký. */
+  deletePlan: (protocolId: string, reason: string) => Promise<void>;
   /** Giai đoạn B (AU-04): bệnh nhân xác nhận đã đọc phiên bản đang áp dụng; chỉ sau đó mới nạp liệu trình được. */
   acknowledgePlan: (planId: string) => Promise<void>;
   setDevicePower: (deviceId: string, on: boolean) => void;
@@ -703,7 +710,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await commit(d => ({ ...d, evaluations: [...d.evaluations, { ...e, id: 'e-' + Crypto.randomUUID(), doctorId: actor.id }] }));
   };
 
-  const savePlan: Store['savePlan'] = ({ newProtocol, ...p }) => {
+  const savePlan: Store['savePlan'] = (p) => {
     // Mã phiên bản và mã phác đồ mới sinh ngoài hàm commit để commit chạy lại cho cùng kết quả.
     const planId = 'pl-' + Crypto.randomUUID();
     const freshProtocol = 'pr-' + Crypto.randomUUID();
@@ -720,14 +727,72 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const sameWound = (x: TreatmentPlan) => x.patientId === p.patientId && (x.woundId ?? null) === (p.woundId ?? null);
       const prev = d.plans.filter(sameWound);
       const version = prev.reduce((m, x) => Math.max(m, x.version), 0) + 1;
-      const protocolId = protocolIdFor(d.plans, p.patientId, p.woundId, !!newProtocol, () => freshProtocol);
+      if (!p.reason?.trim()) throw new Error('Nhập lý do thay đổi để lưu phiên bản.');
+      // CN3 P2, P7: còn phác đồ mở thì nối tiếp phiên bản; không còn thì là phác đồ mới cho đợt khác.
+      const open = openProtocolId(d.plans, p.patientId, p.woundId);
+      const isNew = !open;
+      let basis: Pick<TreatmentPlan, 'basisImageId' | 'suggestedBasisImageId'> = {};
+      if (isNew) {
+        // CN3 P1, P3 (AU-06): phác đồ mới cần ảnh của vết chụp hôm nay, chất lượng Đạt, không "Không sử dụng". Không cần AI.
+        const candidates = planPhotoCandidates(d.images, p.woundId, todayIso());
+        if (!candidates.length) throw new Error('Chưa đủ điều kiện tạo phác đồ mới: cần ít nhất một ảnh của vết chụp hôm nay, đã đánh giá chất lượng Đạt.');
+        if (!p.basisImageId || !candidates.some((c) => c.id === p.basisImageId)) throw new Error('Ảnh căn cứ phải là một ảnh hợp lệ của vết chụp hôm nay.');
+        basis = { suggestedBasisImageId: candidates[0].id, basisImageId: p.basisImageId };
+      } else {
+        // Phiên bản tiếp theo giữ ảnh căn cứ của phác đồ.
+        const first = d.plans.filter((x) => x.protocolId === open).sort((a, b) => a.version - b.version)[0];
+        basis = { suggestedBasisImageId: first?.suggestedBasisImageId, basisImageId: first?.basisImageId };
+      }
+      const protocolId = protocolIdFor(d.plans, p.patientId, p.woundId, isNew, () => freshProtocol);
       // Phiên bản mới luôn chờ bệnh nhân xác nhận đọc lại (AU-04).
-      const plan: TreatmentPlan = { ...p, id: planId, version, protocolId, patientAckAt: undefined, editedBy: meRef.current?.id ?? 'unknown', editedAt: nowIso() };
+      const plan: TreatmentPlan = { ...p, ...basis, id: planId, version, protocolId, patientAckAt: undefined, editedBy: meRef.current?.id ?? 'unknown', editedAt: nowIso() };
       // Lưu phiên bản mới, giữ các phiên bản cũ để truy vết (đặc tả 7.1).
       const plans = d.plans.map((x) =>
         sameWound(x) && (x.status === 'active' || x.status === 'paused') && plan.status === 'active' ? { ...x, status: 'ended' as const } : x,
       );
       return { ...d, plans: [...plans, plan] };
+    });
+  };
+
+  const setPlanPaused: Store['setPlanPaused'] = async (planId, paused, reason) => {
+    const plan0 = dataRef.current.plans.find((x) => x.id === planId);
+    if (!plan0) throw new Error('Không tìm thấy phiên bản phác đồ.');
+    const actor = requireDoctor(plan0.patientId);
+    if (!reason.trim()) throw new Error(paused ? 'Nhập lý do tạm dừng.' : 'Nhập lý do tiếp tục.');
+    const latest = dataRef.current.plans.filter((x) => x.protocolId === plan0.protocolId).sort((a, b) => b.version - a.version)[0];
+    if (latest?.id !== planId) throw new Error('Chỉ tạm dừng hoặc tiếp tục phiên bản mới nhất của phác đồ.');
+    if (paused && plan0.status !== 'active') throw new Error('Chỉ tạm dừng phác đồ đang áp dụng.');
+    if (!paused && plan0.status !== 'paused') throw new Error('Phác đồ không ở trạng thái tạm dừng.');
+    const w = dataRef.current.wounds.find((x) => x.id === plan0.woundId);
+    // XN-05 giữ nguyên: đợt tạm dừng do ghi nhận lành lần 1 thì tiếp tục bằng "Chưa liền, tiếp tục đợt" ở màn vết thương.
+    if (!paused && w?.status === 'awaiting_closure') throw new Error('Vết đang chờ xác nhận liền. Dùng "Chưa liền, tiếp tục đợt" ở màn vết thương.');
+    const at = nowIso();
+    const ev = { at, by: actor.id, action: paused ? 'pause' as const : 'resume' as const, reason: reason.trim() };
+    await commit((d) => ({
+      ...d,
+      plans: d.plans.map((x) => (x.id === planId ? { ...x, status: paused ? 'paused' as const : 'active' as const, statusLog: [...(x.statusLog ?? []), ev] } : x)),
+      // Dữ liệu cũ: vết bị tạm dừng theo cách cũ (trạng thái vết "Tạm dừng") được mở lại cùng phác đồ.
+      wounds: !paused && w?.status === 'paused' ? d.wounds.map((x) => (x.id === w.id ? { ...x, status: 'active' as const } : x)) : d.wounds,
+    }));
+  };
+
+  const deletePlan: Store['deletePlan'] = async (protocolId, reason) => {
+    const d0 = dataRef.current;
+    const versions = d0.plans.filter((x) => x.protocolId === protocolId);
+    if (!versions.length) throw new Error('Không tìm thấy phác đồ.');
+    const actor = requireDoctor(versions[0].patientId);
+    if (!reason.trim()) throw new Error('Nhập lý do xóa phác đồ.');
+    const entryId = 'au-' + Crypto.randomUUID();
+    const at = nowIso();
+    await commit((d) => {
+      const blocker = planDeleteBlocker(d.plans, d.sessions, d.deviceLinks ?? [], protocolId);
+      if (blocker) throw new Error(blocker);
+      const vs = d.plans.filter((x) => x.protocolId === protocolId);
+      const entry: AuditEntry = {
+        id: entryId, at, by: actor.id, action: 'plan_delete', patientId: vs[0].patientId, targetId: protocolId,
+        detail: `Xóa phác đồ ${protocolId} (${vs.length} phiên bản: ${vs.map((x) => `v${x.version} ${x.id}`).join(', ')}) của vết ${vs[0].woundId ?? '—'}. Lý do: ${reason.trim()}`,
+      };
+      return { ...d, plans: d.plans.filter((x) => x.protocolId !== protocolId), auditLog: [...(d.auditLog ?? []), entry] };
     });
   };
 
@@ -1024,7 +1089,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Store = {
     ready, data, me, authenticate, register, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, setPatientArchived, addWound, updateWound, addImage, labelImage,
-    setExcluded, requestRetake, addEvaluation, savePlan, acknowledgePlan, saveImageLabel, confirmImageLabel, deleteWound, setWoundRevisit, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
+    setExcluded, requestRetake, addEvaluation, savePlan, setPlanPaused, deletePlan, acknowledgePlan, saveImageLabel, confirmImageLabel, deleteWound, setWoundRevisit, setDevicePower, simulateSession, registerDevice, assignDevice, addReport,
     setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle, recordDeviceLink, recordDeviceSession,
     persistIssue, retryPersist, dismissPersistIssue,
   };

@@ -6,7 +6,7 @@
  * - Bệnh nhân phải xác nhận đã đọc phiên bản đang áp dụng (patientAckAt) trước khi nạp liệu trình hay ghi phiên.
  * - Mỗi phiên điều trị ghi kèm mã phiên bản và phác đồ đang áp dụng lúc ghi; phiên cũ không có thì để trống, không suy đoán.
  */
-import type { DeviceLinkLog, DeviceSession, TreatmentPlan, Wound } from './types.ts';
+import type { DeviceLinkLog, DeviceSession, TreatmentPlan, Wound, WoundImage } from './types.ts';
 
 /** Phiên bản bác sĩ đã xác nhận, đang áp dụng, nhưng bệnh nhân chưa xác nhận đã đọc. */
 export function needsPatientAck(plan: TreatmentPlan | undefined | null): boolean {
@@ -71,4 +71,52 @@ export function migratePlans(plans: TreatmentPlan[], wounds: Wound[]): Treatment
     if (woundId === p.woundId && protocolId === p.protocolId) return p;
     return { ...p, woundId, protocolId };
   });
+}
+
+/**
+ * Giai đoạn B (CN3 P2, P7): phác đồ đang mở của một vết, tức phác đồ của phiên bản mới nhất khi phiên bản đó chưa kết thúc
+ * (nháp, đang áp dụng hoặc tạm dừng). Không có thì lần lưu kế tiếp là phác đồ mới cho đợt khác.
+ */
+export function openProtocolId(plans: TreatmentPlan[], patientId: string, woundId: string | undefined): string | undefined {
+  const latest = plans
+    .filter((p) => p.patientId === patientId && (p.woundId ?? null) === (woundId ?? null))
+    .sort((a, b) => b.version - a.version)[0];
+  return latest && latest.status !== 'ended' ? latest.protocolId : undefined;
+}
+
+/**
+ * Giai đoạn B (CN3 P1, P3; AU-06): ảnh căn cứ để tạo phác đồ mới: ảnh của chính vết đó, chụp trong ngày hôm nay (ngày giờ Việt Nam,
+ * today do nơi gọi truyền từ localDay), đã lưu, chất lượng Đạt, không "Không sử dụng", ngày chụp xác định. Không cần kết quả AI.
+ * Thứ tự: mới nhất trước (ảnh đầu tiên là ảnh đề xuất).
+ */
+export function planPhotoCandidates<T extends Pick<WoundImage, 'id' | 'woundId' | 'captureDate' | 'uploadDate' | 'status' | 'capture' | 'label'>>(images: T[], woundId: string | undefined, today: string): T[] {
+  if (!woundId) return [];
+  return images
+    .filter((im) => im.woundId === woundId && im.captureDate === today && im.status !== 'excluded' && im.label?.quality === 'pass' && im.capture?.sourceDateKnown !== false)
+    .sort((a, b) => (b.capture?.capturedAt ?? b.uploadDate).localeCompare(a.capture?.capturedAt ?? a.uploadDate) || b.id.localeCompare(a.id));
+}
+
+/**
+ * Giai đoạn B (CN3 P9; AU-09): xóa phác đồ chỉ khi chưa có phiên. Phác đồ (mọi phiên bản cùng protocolId) bị chặn khi:
+ * có phiên gắn một phiên bản của nó; đã nạp xuống máy (DeviceLinkLog); hoặc có phiên cũ chưa gắn phiên bản của cùng vết
+ * trong khoảng ngày của phác đồ (không biết phiên đó theo phác đồ nào nên không xóa). Trả lý do chặn, hoặc null.
+ */
+export function planDeleteBlocker(
+  plans: TreatmentPlan[],
+  sessions: Pick<DeviceSession, 'planId' | 'protocolId' | 'woundId' | 'start'>[],
+  links: Pick<DeviceLinkLog, 'planId'>[],
+  protocolId: string,
+): string | null {
+  const versions = plans.filter((p) => p.protocolId === protocolId);
+  if (!versions.length) return 'Không tìm thấy phác đồ.';
+  const ids = new Set(versions.map((p) => p.id));
+  const linked = sessions.filter((s) => s.protocolId === protocolId || (s.planId && ids.has(s.planId))).length;
+  if (linked) return `Phác đồ đã có ${linked} phiên điều trị. Chỉ kết thúc được, không xóa.`;
+  if (links.some((l) => ids.has(l.planId))) return 'Phác đồ đã được nạp xuống máy. Chỉ kết thúc được, không xóa.';
+  const woundId = versions[0].woundId;
+  const from = versions.reduce((m, p) => (p.startDate < m ? p.startDate : m), versions[0].startDate);
+  const to = versions.reduce((m, p) => (p.endDate > m ? p.endDate : m), versions[0].endDate);
+  const legacy = sessions.filter((s) => !s.planId && s.woundId === woundId && s.start.slice(0, 10) >= from && s.start.slice(0, 10) <= to).length;
+  if (legacy) return `Có ${legacy} phiên cũ của vết này trong thời gian phác đồ (chưa ghi phiên bản). Chỉ kết thúc được, không xóa.`;
+  return null;
 }

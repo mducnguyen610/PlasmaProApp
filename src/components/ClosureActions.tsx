@@ -30,12 +30,14 @@ export function ClosureActions({ woundId, status, check1, followUpFrom, today, h
         <Button label="Đánh dấu đã lành" icon="checkmark-circle-outline" variant="secondary"
           onPress={() => run('check1', 'Đánh dấu đã lành', `Ghi nhận lần 1: biểu mô đã khép. Đợt điều trị tạm dừng, thiết bị không phát trong thời gian chờ. Vết thương chuyển sang "Chờ xác nhận liền"; trạng thái đã liền chỉ được ghi khi bác sĩ xác nhận lần 2, cách lần 1 ít nhất ${CLOSURE_CONFIRM_DAYS} ngày. Ảnh, số đo, đánh giá và buổi điều trị giữ nguyên.`, 'Ghi nhận lần 1')} />
         <Muted>{`Lần 1 trong 2 lần xác nhận liền thương (cách ${CLOSURE_CONFIRM_DAYS} ngày).`}</Muted>
-        <Button label="Tạm dừng đợt" icon="pause-outline" variant="ghost" onPress={() => run('pause', 'Tạm dừng', 'Thiết bị sẽ không phát cho tới khi bác sĩ tiếp tục đợt.', 'Tạm dừng')} />
+        {/* Giai đoạn B (CN3 P8, AU-08): tạm dừng, tiếp tục phác đồ chuyển sang màn Đợt điều trị, bắt buộc lý do, không đổi trạng thái vết. */}
+        {hasPlan && <Button label="Tạm dừng hoặc quản lý phác đồ" icon="options-outline" variant="ghost" onPress={onNewCourse} />}
       </View>
     );
   }
   if (status === 'paused') {
-    return <Button label="Tiếp tục đợt" icon="play-outline" variant="secondary" onPress={() => run('resume', 'Tiếp tục đợt', 'Thiết bị phát lại theo lịch của đợt.', 'Tiếp tục')} />;
+    // Dữ liệu cũ: vết bị tạm dừng theo cách cũ. Tiếp tục ở màn Đợt điều trị, có lý do (CN3 P8).
+    return <Button label="Tiếp tục đợt (nhập lý do)" icon="play-outline" variant="secondary" onPress={onNewCourse} />;
   }
   if (status === 'awaiting_closure') {
     const from = check1 ? addDays(check1, CLOSURE_CONFIRM_DAYS) : today;
