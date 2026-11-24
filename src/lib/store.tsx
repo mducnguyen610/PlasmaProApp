@@ -20,6 +20,8 @@ import { applyLabelPatch, missingForConfirm, type ImageLabel } from './imageLabe
 import { isPendingCapture } from './pendingCapture';
 import { createSeed } from './seed';
 import { canLoadPlan, loadedPlanLink, migratePlans, openProtocolId, planDeleteBlocker, planPhotoCandidates, protocolIdFor } from './planVersion';
+import { applyExtension, extendBlocker, pendingExtension, protocolVersions, runBlocker, settlePlans } from './planLifecycle';
+import { protocolSlots, slotChangeBlocker } from './sessionSchedule';
 import { CAPABILITIES, SIM_MODEL, capabilitiesFor } from './device/capabilities';
 import type {
   Account, AppData, AuditEntry, Device, DeviceEvent, DeviceLifecycle, DeviceLinkLog, DeviceSession, Evaluation, Patient, SessionNote, SymptomReport, TreatmentPlan, Wound, WoundImage,
@@ -133,8 +135,20 @@ interface Store {
   setPlanPaused: (planId: string, paused: boolean, reason: string) => Promise<void>;
   /** Giai đoạn B (CN3 P9, AU-09): xóa phác đồ chưa có phiên, bắt buộc lý do; ghi nhật ký. */
   deletePlan: (protocolId: string, reason: string) => Promise<void>;
-  /** Giai đoạn B (AU-04): bệnh nhân xác nhận đã đọc phiên bản đang áp dụng; chỉ sau đó mới nạp liệu trình được. */
+  /** Giai đoạn B (AU-04): bệnh nhân xác nhận đã đọc phiên bản đang áp dụng; chỉ sau đó mới nạp liệu trình được. Logic chốt 25/11 (M32): cũng xác nhận ngày kết thúc mới sau gia hạn. */
   acknowledgePlan: (planId: string) => Promise<void>;
+  /** Logic chốt 25/11 (M32): gia hạn ngày kết thúc, không tạo phiên bản, bắt buộc lý do; bệnh nhân phải xác nhận đã đọc. */
+  extendPlan: (protocolId: string, toEnd: string, reason: string) => Promise<void>;
+  /** M22, M34: kết thúc sớm phác đồ, bắt buộc lý do. Không gửi lệnh nào xuống thiết bị. */
+  endPlan: (protocolId: string, reason: string) => Promise<void>;
+  /** M29: bác sĩ hoãn hoặc hủy một phiên dự kiến chưa diễn ra, bắt buộc lý do. */
+  changeSessionSlot: (input: { protocolId: string; date: string; kind: 'postpone' | 'cancel'; newDate?: string; reason: string }) => Promise<void>;
+  /** M27: điện thoại bệnh nhân ghi mốc máy báo STA running (on) hoặc bỏ mốc khi mất kết nối giữa phiên (off). */
+  setSessionLive: (input: { patientId: string; woundId?: string; startedAt: string } | null) => void;
+  /** TC-8, TC-11: đổi mật khẩu của chính tài khoản, chỉ trên máy (chưa có máy chủ). */
+  changePassword: (oldPassword: string, newPassword: string) => Promise<void>;
+  /** TC-11: email liên hệ của chính tài khoản. */
+  updateMyContact: (input: { email: string }) => Promise<void>;
   setDevicePower: (deviceId: string, on: boolean) => void;
   simulateSession: (deviceId: string) => { ok: boolean; message: string };
   /** Giai đoạn B (CN4 D1, AU-25): quản trị thêm, sửa danh mục máy (mã, số sê-ri, dòng máy). */
@@ -161,7 +175,7 @@ interface Store {
    * Ghi một phiên điều trị nhận qua USB (STA running rồi done, stopped hoặc error); người bệnh của hồ sơ hoặc bác sĩ phụ trách.
    * Trả false khi hồ sơ chưa được giao máy, vì phiên phải gắn với một thiết bị.
    */
-  recordDeviceSession: (entry: { patientId: string; woundId?: string; startedAt: string; durationSec: number; outcome: 'done' | 'stopped' | 'error' }) => Promise<boolean>;
+  recordDeviceSession: (entry: { patientId: string; woundId?: string; startedAt: string; endedAt?: string; durationSec: number; outcome: 'done' | 'stopped' | 'error'; stopRequested?: boolean }) => Promise<boolean>;
   /** Stage 9C (gói D): sự cố lưu trữ đang có (null là bình thường). Màn hình chung hiện thông báo khi khác null. */
   persistIssue: PersistIssue | null;
   /** Ghi lại bản dữ liệu đang hiển thị sau một lần ghi nền lỗi. */
@@ -287,6 +301,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     dataRef.current = next;
     setData(next);
   }, []);
+  // Logic chốt 25/11 (M24): tới ngày bắt đầu áp dụng thì phiên bản chờ thành Đang áp dụng, phiên bản cũ "Đã thay thế".
+  // Kiểm khi mở ứng dụng và mỗi phút (qua nửa đêm). Không xóa phiên bản nào; ghi nền như các thay đổi khác.
+  useEffect(() => {
+    if (!ready) return;
+    const settle = () => {
+      const next = settlePlans(dataRef.current.plans, localDay());
+      if (next !== dataRef.current.plans) update((d) => ({ ...d, plans: settlePlans(d.plans, localDay()) }));
+    };
+    settle();
+    const t = setInterval(settle, 60000);
+    return () => clearInterval(t);
+  }, [ready, update]);
   /**
    * CR-01 (SV-01, AL-03): ghi bản dữ liệu mới vào bộ nhớ máy trước, chỉ khi ghi xong mới cập nhật màn hình.
    * Ghi lỗi thì ném PersistError và dữ liệu đang hiển thị giữ nguyên, để màn hình không báo "Đã lưu" khi chưa có bằng chứng.
@@ -752,12 +778,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         basis = { suggestedBasisImageId: first?.suggestedBasisImageId, basisImageId: first?.basisImageId };
       }
       const protocolId = protocolIdFor(d.plans, p.patientId, p.woundId, isNew, () => freshProtocol);
+      // Logic chốt 25/11 (M24): phiên bản mới của phác đồ đang mở có ngày bắt đầu áp dụng. Chưa tới ngày thì chờ (scheduled),
+      // phiên bản cũ còn hiệu lực tới ngày đó. Phác đồ mới áp dụng từ ngày bắt đầu.
+      const today = todayIso();
+      const effectiveFrom = isNew ? p.startDate : (p.effectiveFrom ?? today);
+      if (!isNew && effectiveFrom < today) throw new Error('Ngày bắt đầu áp dụng không được trước hôm nay.');
+      if (!isNew && effectiveFrom > p.endDate) throw new Error('Ngày bắt đầu áp dụng phải trong thời gian của phác đồ.');
+      const waits = !isNew && p.status === 'active' && effectiveFrom > today;
       // Phiên bản mới luôn chờ bệnh nhân xác nhận đọc lại (AU-04).
-      const plan: TreatmentPlan = { ...p, ...basis, id: planId, version, protocolId, patientAckAt: undefined, editedBy: meRef.current?.id ?? 'unknown', editedAt: nowIso() };
-      // Lưu phiên bản mới, giữ các phiên bản cũ để truy vết (đặc tả 7.1).
-      const plans = d.plans.map((x) =>
-        sameWound(x) && (x.status === 'active' || x.status === 'paused') && plan.status === 'active' ? { ...x, status: 'ended' as const } : x,
-      );
+      const plan: TreatmentPlan = {
+        ...p, ...basis, id: planId, version, protocolId, patientAckAt: undefined, editedBy: meRef.current?.id ?? 'unknown', editedAt: nowIso(),
+        effectiveFrom, status: waits ? 'scheduled' : p.status, extensions: undefined, statusLog: undefined, supersededBy: undefined,
+      };
+      // Lưu phiên bản mới, giữ các phiên bản cũ để truy vết (đặc tả 7.1). Áp dụng ngay: phiên bản cũ đang áp dụng, tạm dừng
+      // chuyển Kết thúc kèm supersededBy. Chờ áp dụng: chỉ bản chờ cũ (chưa từng áp dụng) bị thay.
+      const plans = d.plans.map((x) => {
+        if (!sameWound(x) || x.protocolId !== protocolId) {
+          return sameWound(x) && (x.status === 'active' || x.status === 'paused') && plan.status === 'active' && isNew ? { ...x, status: 'ended' as const } : x;
+        }
+        if (x.status === 'scheduled') return { ...x, status: 'ended' as const, supersededBy: planId };
+        if (!waits && (x.status === 'active' || x.status === 'paused') && (plan.status === 'active' || plan.status === 'paused')) return { ...x, status: 'ended' as const, supersededBy: planId };
+        return x;
+      });
       return { ...d, plans: [...plans, plan] };
     });
   };
@@ -808,10 +850,106 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const actor = meRef.current;
     const plan = dataRef.current.plans.find((x) => x.id === planId);
     if (!actor || actor.locked || actor.role !== 'patient' || !plan || plan.patientId !== actor.patientId) throw new Error('Chỉ bệnh nhân của hồ sơ xác nhận được phiên bản này.');
-    if (plan.status !== 'active' || !plan.confirmed) throw new Error('Phiên bản này không còn áp dụng.');
-    if (plan.patientAckAt) return;
+    if ((plan.status !== 'active' && plan.status !== 'paused') || !plan.confirmed) throw new Error('Phiên bản này không còn áp dụng.');
+    if (plan.patientAckAt && !pendingExtension(plan)) return;
     const at = nowIso();
-    await commit((d) => ({ ...d, plans: d.plans.map((x) => (x.id === planId && !x.patientAckAt ? { ...x, patientAckAt: at } : x)) }));
+    await commit((d) => ({
+      ...d,
+      plans: d.plans.map((x) => (x.id !== planId ? x : {
+        ...x,
+        patientAckAt: x.patientAckAt ?? (x.status === 'active' ? at : undefined),
+        // M32: xác nhận đã đọc ngày kết thúc mới của lần gia hạn.
+        extensions: x.extensions?.map((e) => (e.ackAt ? e : { ...e, ackAt: at })),
+      })),
+    }));
+  };
+
+  // Logic chốt 25/11 (M32): gia hạn không tạo phiên bản. Phiên bản đang có hiệu lực và bản chờ áp dụng cùng đổi ngày kết thúc.
+  const extendPlan: Store['extendPlan'] = async (protocolId, toEnd, reason) => {
+    const vs0 = protocolVersions(dataRef.current.plans, protocolId);
+    if (!vs0.length) throw new Error('Không tìm thấy phác đồ.');
+    const actor = requireDoctor(vs0[0].patientId);
+    const at = nowIso();
+    await commit((d) => {
+      const vs = protocolVersions(d.plans, protocolId);
+      const cur = vs.find((x) => x.status === 'active' || x.status === 'paused');
+      const why = extendBlocker(cur, toEnd, reason);
+      if (why) throw new Error(why);
+      return {
+        ...d,
+        plans: d.plans.map((x) => (x.protocolId !== protocolId ? x
+          : x.id === cur!.id ? applyExtension(x, toEnd, reason.trim(), actor.id, at)
+          : x.status === 'scheduled' ? applyExtension(x, toEnd, reason.trim(), actor.id, at) : x)),
+      };
+    });
+  };
+
+  // M22, M34: kết thúc sớm. Phiên bản đang hiệu lực chuyển Kết thúc, ghi nhật ký có lý do; bản chờ áp dụng không còn hiệu lực.
+  const endPlan: Store['endPlan'] = async (protocolId, reason) => {
+    const vs0 = protocolVersions(dataRef.current.plans, protocolId);
+    if (!vs0.length) throw new Error('Không tìm thấy phác đồ.');
+    const actor = requireDoctor(vs0[0].patientId);
+    if (!reason.trim()) throw new Error('Nhập lý do kết thúc phác đồ.');
+    const at = nowIso();
+    const ev = { at, by: actor.id, action: 'end' as const, reason: reason.trim() };
+    await commit((d) => {
+      const vs = protocolVersions(d.plans, protocolId);
+      const open = vs.filter((x) => x.status === 'active' || x.status === 'paused' || x.status === 'scheduled' || x.status === 'draft');
+      if (!open.length) throw new Error('Phác đồ đã kết thúc.');
+      return {
+        ...d,
+        plans: d.plans.map((x) => (!open.some((o) => o.id === x.id) ? x : { ...x, status: 'ended' as const, endReason: x.endReason ?? 'stopped', statusLog: [...(x.statusLog ?? []), ev] })),
+      };
+    });
+  };
+
+  // M29: hoãn hoặc hủy phiên dự kiến (chỉ thêm bản ghi thay đổi, không sửa phiên máy báo về).
+  const changeSessionSlot: Store['changeSessionSlot'] = async ({ protocolId, date, kind, newDate, reason }) => {
+    const vs0 = protocolVersions(dataRef.current.plans, protocolId);
+    if (!vs0.length) throw new Error('Không tìm thấy phác đồ.');
+    const actor = requireDoctor(vs0[0].patientId);
+    const id = 'sc-' + Crypto.randomUUID();
+    const at = nowIso();
+    await commit((d) => {
+      const today = todayIso();
+      const slots = protocolSlots({ versions: protocolVersions(d.plans, protocolId), sessions: d.sessions, changes: d.sessionChanges ?? [], live: d.liveSessions, today });
+      const why = slotChangeBlocker(slots.find((s) => s.date === date), kind, reason, newDate ?? null, today);
+      if (why) throw new Error(why);
+      const change = { id, protocolId, patientId: vs0[0].patientId, woundId: vs0[0].woundId ?? '', date, kind, ...(kind === 'postpone' ? { newDate } : {}), reason: reason.trim(), at, by: actor.id };
+      return { ...d, sessionChanges: [...(d.sessionChanges ?? []), change] };
+    });
+  };
+
+  // M27: mốc "Đang thực hiện" từ STA running trên điện thoại bệnh nhân. Ghi nền (không chờ), không đổi lớp USB/UART.
+  const setSessionLive: Store['setSessionLive'] = (input) => {
+    const actor = meRef.current;
+    if (!actor || actor.role !== 'patient') return;
+    const dev = dataRef.current.devices.find((x) => x.id === dataRef.current.patients.find((p) => p.id === actor.patientId)?.deviceId);
+    if (!dev) return;
+    if (input && input.patientId !== actor.patientId) return;
+    update((d) => ({
+      ...d,
+      liveSessions: [...(d.liveSessions ?? []).filter((l) => l.deviceId !== dev.id), ...(input ? [{ deviceId: dev.id, patientId: input.patientId, woundId: input.woundId, startedAt: input.startedAt }] : [])],
+    }));
+  };
+
+  const changePassword: Store['changePassword'] = async (oldPassword, newPassword) => {
+    const actor = dataRef.current.accounts.find((a) => a.id === meRef.current?.id);
+    if (!actor || actor.locked) throw new Error('Chưa đăng nhập.');
+    if (!await verifyPassword(actor, oldPassword)) throw new Error('Mật khẩu hiện tại chưa đúng.');
+    if (newPassword.length < 8) throw new Error('Mật khẩu mới cần ít nhất 8 ký tự.');
+    if (newPassword === oldPassword) throw new Error('Mật khẩu mới phải khác mật khẩu hiện tại.');
+    const salt = Crypto.randomUUID();
+    const passwordHash = await hashDemoPassword(newPassword, salt);
+    await commit((d) => ({ ...d, accounts: d.accounts.map((a) => (a.id === actor.id ? { ...a, passwordSalt: salt, passwordHash } : a)) }));
+  };
+
+  const updateMyContact: Store['updateMyContact'] = async ({ email }) => {
+    const actor = meRef.current;
+    if (!actor || actor.locked) throw new Error('Chưa đăng nhập.');
+    const v = email.trim();
+    if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) throw new Error('Email chưa đúng định dạng, ví dụ ten@benhvien.vn.');
+    await commit((d) => ({ ...d, accounts: d.accounts.map((a) => (a.id === actor.id ? { ...a, email: v || undefined } : a)) }));
   };
 
   const setDevicePower: Store['setDevicePower'] = (deviceId, on) => {
@@ -873,7 +1011,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!plan) {
       status = 'over_limit';
       message = 'Chưa có đợt điều trị đang áp dụng mà bệnh nhân đã xác nhận đọc: thiết bị không phát.';
-    } else if (!isScheduled(plan, today)) {
+    } else if (runBlocker(plan, d0.sessionChanges ?? [], today)) {
+      // Logic chốt 25/11 (M29, M32): phiên bác sĩ đã hoãn, hủy hoặc gia hạn chưa được đọc thì máy giả lập không phát.
+      status = 'over_limit';
+      message = `${runBlocker(plan, d0.sessionChanges ?? [], today)} Thiết bị không phát.`;
+    } else if (!isScheduled(plan, today) && !(d0.sessionChanges ?? []).some((c) => c.protocolId === plan.protocolId && c.kind === 'postpone' && c.newDate === today)) {
       status = 'over_limit';
       message = 'Hôm nay là ngày nghỉ theo lịch của đợt: thiết bị không phát.';
     } else if (todayCount >= perVisit) {
@@ -1144,6 +1286,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       status: entry.outcome === 'done' ? 'completed' : 'interrupted',
       source: 'device',
       woundId: entry.woundId,
+      // Logic chốt 25/11 (M27, M28, M25): thời điểm máy báo kết thúc, trạng thái kết thúc, nguyên nhân dừng lưu riêng.
+      ...(entry.endedAt ? { endedAt: entry.endedAt } : {}),
+      endState: entry.outcome,
+      ...(entry.outcome === 'stopped' && entry.stopRequested ? { stopCause: 'patient_stop' as const } : {}),
       // Giai đoạn B (AU-05): gắn phiên bản máy đang giữ (lần nạp gần nhất máy đã nhận). Không có thì để trống, phiên vẫn được ghi.
       ...(loadedPlanLink(d0.deviceLinks ?? [], d0.plans, entry.patientId, entry.woundId) ?? {}),
     };
@@ -1158,6 +1304,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return {
         ...d,
         sessions: dup ? d.sessions : [...d.sessions, session],
+        liveSessions: (d.liveSessions ?? []).filter((l) => l.deviceId !== dev.id),
         devices: d.devices.map((x) => (x.id === dev.id ? { ...x, lastSync: at, ...(fault && !dup ? { fault } : {}) } : x)),
         ...(e && !dup ? { deviceEvents: withEvent(d, e) } : {}),
       };
@@ -1174,7 +1321,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Store = {
     ready, data, me, authenticate, register, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, setPatientArchived, addWound, updateWound, addImage, labelImage,
-    setExcluded, requestRetake, addEvaluation, savePlan, setPlanPaused, deletePlan, acknowledgePlan, saveImageLabel, confirmImageLabel, deleteWound, setWoundRevisit, setDevicePower, simulateSession, registerDevice, updateDevice, assignDevice, clearDeviceFault, recordDeviceConnection, addReport,
+    setExcluded, requestRetake, addEvaluation, savePlan, setPlanPaused, deletePlan, acknowledgePlan, extendPlan, endPlan, changeSessionSlot, setSessionLive, changePassword, updateMyContact, saveImageLabel, confirmImageLabel, deleteWound, setWoundRevisit, setDevicePower, simulateSession, registerDevice, updateDevice, assignDevice, clearDeviceFault, recordDeviceConnection, addReport,
     setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle, recordDeviceLink, recordDeviceSession,
     persistIssue, retryPersist, dismissPersistIssue,
   };

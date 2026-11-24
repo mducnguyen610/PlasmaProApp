@@ -31,7 +31,7 @@ const STALE_AFTER_SEC = 5;
 
 export default function SessionMonitor() {
   const params = useLocalSearchParams<{ patientId?: string; woundId?: string }>();
-  const { data, me, recordDeviceSession } = useStore();
+  const { data, me, recordDeviceSession, setSessionLive } = useStore();
   const { patient, wound, device, coursePlan } = useLookups();
   const p = patient(me?.role === 'patient' ? me.patientId : params.patientId);
   const canView = useCanView(p);
@@ -41,7 +41,8 @@ export default function SessionMonitor() {
     onSessionEnd: async (done) => {
       if (!p) return;
       try {
-        const ok = await recordDeviceSession({ patientId: p.id, woundId: params.woundId, startedAt: done.startedAt.toISOString(), durationSec: done.durationSec, outcome: done.outcome });
+        // Logic chốt 25/11 (M28, M25): ghi thêm thời điểm máy báo kết thúc và việc bệnh nhân đã bấm Dừng (nguyên nhân dừng lưu riêng).
+        const ok = await recordDeviceSession({ patientId: p.id, woundId: params.woundId, startedAt: done.startedAt.toISOString(), endedAt: done.endedAt.toISOString(), durationSec: done.durationSec, outcome: done.outcome, stopRequested: stopAtRef.current !== null });
         setSaved(ok
           ? done.outcome === 'done'
             ? { kind: 'done', text: `Đã ghi phiên điều trị ${Math.round(done.durationSec / 6) / 10} phút vào nhật ký.`, startedAt: done.startedAt.toISOString() }
@@ -71,6 +72,19 @@ export default function SessionMonitor() {
   // UX-03 (Đợt 8): khi máy đang điều trị, rời màn này (nút quay lại, cử chỉ, phím quay lại) thì phiên sẽ không được ghi.
   // Chỉ hỏi lại, không đổi cách ghi phiên, không chặn nút Dừng điều trị. Hết "Đang điều trị" thì không hỏi nữa.
   const running = link.lastStatus?.state === 'running';
+  // Logic chốt 25/11 (M27): máy báo STA running thì ghi mốc "Đang thực hiện" (bác sĩ thấy khi demo trên cùng máy);
+  // hết running mà không có bản tin kết thúc (mất kết nối) thì bỏ mốc. Chỉ ghi dữ liệu, không gửi lệnh nào xuống máy.
+  const liveStart = useRef<string | null>(null);
+  useEffect(() => {
+    if (!p || me?.role !== 'patient') return;
+    if (running && !liveStart.current) {
+      liveStart.current = new Date().toISOString();
+      setSessionLive({ patientId: p.id, woundId: params.woundId, startedAt: liveStart.current });
+    } else if (!running && liveStart.current) {
+      liveStart.current = null;
+      setSessionLive(null);
+    }
+  }, [running, p, me?.role, params.woundId, setSessionLive]);
   // Người dùng đã chọn "Vẫn rời màn": tắt chặn để không hỏi lại lần nữa (tránh vòng lặp xác nhận).
   const [leaving, setLeaving] = useState(false);
   // Stage 7 (an toàn): hỏi lại ngay trong chân màn thay cho hộp thoại, để không có hộp thoại nào che nút Dừng điều trị.
@@ -90,6 +104,7 @@ export default function SessionMonitor() {
   }, [leaving]);
   // Yêu cầu dừng: ghi thời điểm bấm để phân biệt "đã gửi yêu cầu" với "máy đã xác nhận dừng". Không đổi cách dừng.
   const [stopAt, setStopAt] = useState<number | null>(null);
+  const stopAtRef = useRef<number | null>(null);
 
   // Giai đoạn B (AU-03): chỉ bệnh nhân kết nối máy, nạp liệu trình và theo dõi phiên. Bác sĩ xem lịch sử phiên ở hồ sơ và thiết bị.
   if (!p || !canView || me?.role !== 'patient') return <NoAccess />;
@@ -123,10 +138,13 @@ export default function SessionMonitor() {
   const stopConfirmed = stopView.confirmed;
   const stopWaitSec = stopView.waitSec;
   const requestStop = () => {
-    setStopAt(Date.now());
+    const t = Date.now();
+    stopAtRef.current = t;
+    setStopAt(t);
     link.stopSession?.();
   };
   const requestStart = () => {
+    stopAtRef.current = null;
     setStopAt(null);
     link.startSession?.();
   };

@@ -89,6 +89,7 @@ export const ADHERENCE_DAY: Record<DayKind, StatusStyle> = {
 /** Đợt điều trị. "Đang áp dụng" là info; "Kết thúc" là neutral, không phải danger. */
 export const PLAN: Record<PlanStatus, StatusStyle> = {
   draft: { role: 'neutral', icon: 'create-outline' },
+  scheduled: { role: 'neutral', icon: 'time-outline' },
   active: { role: 'info', icon: 'play-circle-outline' },
   paused: { role: 'warning', icon: 'pause-circle-outline' },
   ended: { role: 'neutral', icon: 'stop-circle-outline' },

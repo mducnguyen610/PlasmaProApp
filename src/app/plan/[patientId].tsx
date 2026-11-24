@@ -24,6 +24,7 @@ import { C, T } from '@/theme';
 // Điều xảy ra khi lưu với từng trạng thái; nội dung theo quy tắc lưu hiện có (đợt "Đang áp dụng" cần mức, thời gian và xác nhận).
 const STATUS_EFFECT: Record<PlanStatus, string> = {
   draft: 'Nháp: bệnh nhân không thấy và chưa nạp được.',
+  scheduled: 'Chờ áp dụng: phiên bản cũ còn hiệu lực tới ngày bắt đầu áp dụng.',
   active: 'Đang áp dụng: cần mức năng lượng, thời gian điều trị và xác nhận của bác sĩ; sau khi lưu, bệnh nhân nạp được xuống máy.',
   paused: 'Tạm dừng: bệnh nhân không nạp được cho tới khi đợt được áp dụng lại.',
   ended: 'Kết thúc: bệnh nhân không nạp được đợt này nữa.',

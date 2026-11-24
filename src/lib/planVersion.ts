@@ -8,9 +8,15 @@
  */
 import type { DeviceLinkLog, DeviceSession, TreatmentPlan, Wound, WoundImage } from './types.ts';
 
-/** Phiên bản bác sĩ đã xác nhận, đang áp dụng, nhưng bệnh nhân chưa xác nhận đã đọc. */
+/**
+ * Phiên bản bác sĩ đã xác nhận, đang áp dụng, nhưng bệnh nhân chưa xác nhận đã đọc; hoặc (logic chốt 25/11, M32) đã gia hạn mà
+ * bệnh nhân chưa xác nhận đọc ngày kết thúc mới.
+ */
 export function needsPatientAck(plan: TreatmentPlan | undefined | null): boolean {
-  return !!plan && plan.status === 'active' && plan.confirmed && !plan.patientAckAt;
+  if (!plan || !plan.confirmed || (plan.status !== 'active' && plan.status !== 'paused')) return false;
+  if (plan.status === 'active' && !plan.patientAckAt) return true;
+  const last = plan.extensions?.[plan.extensions.length - 1];
+  return !!last && !last.ackAt;
 }
 
 /** Chỉ phiên bản đang áp dụng, bác sĩ đã xác nhận và bệnh nhân đã xác nhận đọc mới được nạp xuống máy hay ghi phiên. */

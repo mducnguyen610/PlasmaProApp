@@ -31,6 +31,8 @@ export interface Account {
   /** Thời điểm bệnh nhân xem xong hoặc bỏ qua hướng dẫn lần đầu (đề xuất 3 của bản đánh giá trải nghiệm). */
   onboardingDoneAt?: string;
   locked: boolean;
+  /** Logic chốt 25/11 (TC-11, mục 2.7): email liên hệ hiển thị ở Cài đặt, mục Cá nhân. Tài khoản cũ để trống. */
+  email?: string;
   /** Bác sĩ được cấp quyền xuất dữ liệu nghiên cứu (đặc tả mục 9). */
   researchAccess?: boolean;
   /** Tài khoản bệnh nhân liên kết tới hồ sơ nào. */
@@ -186,7 +188,11 @@ export interface Evaluation {
   assessment?: WoundAssessment;
 }
 
-export type PlanStatus = 'draft' | 'active' | 'paused' | 'ended';
+/**
+ * scheduled (logic chốt 25/11, M24): phiên bản mới đã lưu, chờ tới ngày bắt đầu áp dụng (effectiveFrom). Tới ngày đó phiên bản
+ * chuyển Đang áp dụng, phiên bản cũ chuyển Kết thúc kèm supersededBy ("Đã thay thế"). planLifecycle.settlePlans làm việc này.
+ */
+export type PlanStatus = 'draft' | 'scheduled' | 'active' | 'paused' | 'ended';
 /**
  * Một giai đoạn của đợt điều trị (slide 39, 40: mỗi ngày rồi thưa dần).
  * - daily: mỗi ngày.
@@ -242,9 +248,46 @@ export interface TreatmentPlan {
   basisImageId?: string;
   /** Giai đoạn B (CN3 P8, AU-08): nhật ký tạm dừng, tiếp tục của phiên bản này (người, thời điểm, lý do). */
   statusLog?: PlanStatusEvent[];
+  /** Logic chốt 25/11 (P4, M33): tên phác đồ bác sĩ đặt; trống thì hiện "Phác đồ số 00n". */
+  title?: string;
+  /** M33: khung giờ thực hiện (HH:MM). Chỉ để hiển thị và nhắc, không đổi quy tắc Đã bỏ lỡ, không chặn phiên (giả định 5 mục 8). */
+  timeWindow?: { from: string; to: string };
+  /** M24: ngày (yyyy-mm-dd, giờ Việt Nam) phiên bản bắt đầu áp dụng. Phiên bản cũ (trước 25/11) để trống: áp dụng từ lúc lưu. */
+  effectiveFrom?: string;
+  /** M24: phiên bản thay thế phiên bản này (id). Có giá trị thì phiên bản này hiện "Đã thay thế". */
+  supersededBy?: string;
+  /** M32: các lần gia hạn ngày kết thúc (không tạo phiên bản). Chỉ thêm. */
+  extensions?: PlanExtension[];
 }
 
-export interface PlanStatusEvent { at: string; by: string; action: 'pause' | 'resume'; reason: string }
+/** M31, M22, M32: nhật ký trạng thái phiên bản: tạm dừng, tiếp tục, kết thúc sớm (lý do bắt buộc). */
+export interface PlanStatusEvent { at: string; by: string; action: 'pause' | 'resume' | 'end'; reason: string }
+
+/** M32: một lần gia hạn. ackAt: thời điểm bệnh nhân xác nhận đã đọc ngày kết thúc mới. */
+export interface PlanExtension { at: string; by: string; fromEnd: string; toEnd: string; reason: string; ackAt?: string }
+
+/**
+ * M29: bác sĩ hoãn hoặc hủy một phiên dự kiến của phác đồ (theo ngày có lịch). Chỉ thêm, không sửa; bệnh nhân chỉ thấy kết quả.
+ * postpone: phiên ngày date chuyển sang newDate. cancel: phiên ngày date không còn cần thực hiện.
+ */
+export interface SessionChange {
+  id: string;
+  protocolId: string;
+  patientId: string;
+  woundId: string;
+  date: string;
+  kind: 'postpone' | 'cancel';
+  newDate?: string;
+  reason: string;
+  at: string;
+  by: string;
+}
+
+/**
+ * M27 "Đang thực hiện": điện thoại bệnh nhân thấy STA running thì ghi mốc này; phiên kết thúc (done, stopped, error) thì xóa.
+ * Máy bác sĩ chỉ thấy khi demo trên cùng một máy (đồng bộ hai máy cần backend).
+ */
+export interface LiveSession { deviceId: string; patientId: string; woundId?: string; startedAt: string }
 
 export type DeviceLifecycle = 'in_use' | 'returned' | 'disinfected' | 'ready';
 export interface Device {
@@ -302,6 +345,12 @@ export interface DeviceSession {
   planId?: string;
   planVersion?: number;
   protocolId?: string;
+  /** Logic chốt 25/11 (M28, mục 9 #13): thời điểm máy báo kết thúc (STA done, stopped, error). Phiên cũ để trống: tính từ start + durationMin. */
+  endedAt?: string;
+  /** M27: trạng thái kết thúc máy báo. error là Thất bại; stopped là Bị gián đoạn. Phiên cũ để trống. */
+  endState?: 'done' | 'stopped' | 'error';
+  /** M25 (mục 9 #9): nguyên nhân dừng lưu riêng. patient_stop: bệnh nhân bấm Dừng điều trị trên ứng dụng (dừng khẩn cấp). */
+  stopCause?: 'patient_stop';
 }
 
 export interface SymptomReport {
@@ -359,5 +408,9 @@ export interface AppData {
   auditLog?: AuditEntry[];
   /** Giai đoạn B (CN4 D4): nhật ký máy (giao, thu hồi, khử khuẩn, kết nối, lỗi...). Tùy chọn để dữ liệu cũ đọc được. */
   deviceEvents?: DeviceEvent[];
+  /** M29: hoãn, hủy phiên dự kiến. Tùy chọn để dữ liệu cũ đọc được. */
+  sessionChanges?: SessionChange[];
+  /** M27: phiên đang chạy trên máy (mốc từ STA running). */
+  liveSessions?: LiveSession[];
   counters: { image: number; patient: number };
 }
