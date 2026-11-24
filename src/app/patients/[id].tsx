@@ -206,7 +206,7 @@ export default function PatientDetail() {
         );
       })}
       {wounds.length === 0 && <Muted>Chưa có vết thương.</Muted>}
-      {canEdit && <View style={{ paddingVertical: 4 }}><Disclosure icon="add-circle-outline" title="+ Thêm vết thương">
+      {canEdit && <View style={{ paddingVertical: 4 }}><Disclosure icon="add-circle-outline" title="Thêm vết thương">
         <Field label="Vị trí vết thương" value={newWound} onChangeText={setNewWound} placeholder="Ví dụ: Gót chân phải" />
         <Button
           label="Thêm vết thương"

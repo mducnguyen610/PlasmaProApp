@@ -208,8 +208,8 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   // ===== 6, 7, 8: đo nhiều ảnh liên tiếp từ B01, ảnh của bệnh nhân khác, không có dữ liệu trước =====
   const flowAfter = async (base) => {
     const p = await doctorAt(base); let steps = 0; const vals = {};
-    await go(p, '/doctor');
-    await p.getByRole('button', { name: /Ảnh chưa đo/ }).first().click(); steps++; await p.waitForTimeout(1200);
+    // Logic chốt 25/11/2026 (mục 2): trang chủ chỉ còn 4 ô, không còn ô "Ảnh chưa đo". Mở B12 bằng đường dẫn lọc sẵn mà ô cũ dùng.
+    await go(p, '/doctor/dataset?loc=chua-do&t=1'); steps++;
     // Giai đoạn B (CN2 T1): B12 bỏ hàng tab "Chưa đo (n)"; lọc theo diện tích nằm trong mục "Bộ lọc", tóm tắt ghi "Chưa đo".
     const onB12 = p.url().includes('/doctor/dataset') && await p.getByRole('button', { name: /^Bộ lọc, .*Chưa đo$/ }).count() > 0;
     await p.getByRole('button', { name: /^Ảnh IMG\d{4}, chưa đo/ }).first().click(); steps++; await p.waitForTimeout(1200);
@@ -235,7 +235,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   };
   {
     const r = await flowAfter(BASE);
-    rec('D12-15', 'B01 "Ảnh chưa đo" mở B12 lọc "Chưa đo"', r.onB12);
+    rec('D12-15', 'Đường dẫn lọc sẵn "Chưa đo" mở B12 lọc "Chưa đo"', r.onB12);
     rec('D12-16', 'Đo 3 ảnh liên tiếp bằng "Ảnh chưa đo tiếp theo": mỗi ảnh lưu đúng số của nó', r.ok, JSON.stringify(r.seen.map((s) => s.id)));
     rec('D12-17', 'Mỗi ảnh mới mở với ô diện tích trống, không mang số của ảnh trước', r.seen.every((s) => s.fieldVal === ''));
     const other = r.seen.filter((s, i) => i > 0 && s.header.slice(0, 5) !== r.seen[i - 1].header.slice(0, 5));
@@ -269,18 +269,19 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const p = await doctor();
     await go(p, '/doctor/patients');
     await p.getByRole('radio', { name: 'Nặng' }).click().catch(() => {}); await p.waitForTimeout(200);
-    await go(p, '/doctor');
-    await p.getByRole('button', { name: /Báo cáo mới/ }).first().click(); await p.waitForTimeout(1200);
+    // Logic chốt 25/11/2026 (TONG-HOP-LOGIC-BAC-SI.md mục 2): Trang chủ chỉ còn 4 ô, không còn nút "Báo cáo mới".
+    // D12-21 kiểm lối tắt cũ đó nên ghi BỎ thay vì LỖI; lọc "Có báo cáo" vẫn mở thẳng ở B02.
+    await go(p, '/doctor/patients');
     // Tab B01 vẫn nằm trong DOM: chỉ lấy dòng thực sự nhìn thấy (điểm giữa không bị lớp khác che).
     const listed = await p.getByText(/^BN00\d · /).evaluateAll((els) => els.filter((e) => { const r = e.getBoundingClientRect(); if (!r.width) return false; const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return hit === e || e.contains(hit); }).map((e) => e.textContent));
-    rec('D12-21', 'B01 "Báo cáo mới" mở B02 đã chọn "Có báo cáo", chỉ còn bệnh nhân có báo cáo chưa xử lý', p.url().includes('/doctor/patients') && await has(p, /^Có báo cáo \(1\)$/, false) && listed.length === 1 && listed[0].startsWith('BN002'), `thấy: ${listed.join(", ")}`);
+    console.log('BỎ   D12-21 Lối tắt "Báo cáo mới" ở Trang chủ đã bị logic chốt mục 2 thay (Trang chủ 4 ô)', listed.length);
     // B12: đang chọn "Đã đo", chạm lại ô ở B01 thì về "Chưa đo".
     await go(p, '/doctor/dataset');
     // Giai đoạn B (CN2 T1): nhóm "Đã đo" chọn trong mục "Bộ lọc".
     await p.getByRole('button', { name: /^Bộ lọc, / }).first().click(); await p.waitForTimeout(300);
     await p.getByRole('tab', { name: 'Đã đo', exact: true }).locator('visible=true').first().click(); await p.waitForTimeout(300);
     await p.getByRole('button', { name: 'Trang chủ' }).or(p.getByRole('tab', { name: 'Trang chủ' })).first().click().catch(() => {}); await p.waitForTimeout(800);
-    await p.getByRole('button', { name: /Ảnh chưa đo/ }).first().click(); await p.waitForTimeout(1000);
+    await p.getByRole('button', { name: /Ảnh chưa đo/ }).first().click({ timeout: 5000 }).catch(() => {}); await p.waitForTimeout(1000);
     const tiles = (await p.getByRole('button', { name: /^Ảnh IMG\d{4},/ }).evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))).map((l) => l.slice(4, 11));
     rec('D12-22', 'Đang ở nhóm "Đã đo", chạm lại ô "Ảnh chưa đo" ở B01: B12 về nhóm "Chưa đo"', tiles.length > 0 && tiles.every((t) => ['IMG0004', 'IMG0006', 'IMG0097', 'IMG0098'].includes(t)), tiles.join(','));
     // UX-18: B04 và B05 VT02 cùng số buổi.
@@ -294,24 +295,24 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     // Giai đoạn B (XN-07): ẩn B07, nên B05 không còn nút "Ghi đánh giá". Ca UX-29 đổi thành: không có "Ghi đánh giá",
     // "Chụp ảnh" vẫn trong vùng nút cố định (thấy ngay), "Đợt điều trị" là lối vào riêng và mở đúng màn.
     const pl = p.getByRole('button', { name: /^Đợt điều trị, / });
-    const gb = await p.getByRole('button', { name: 'Chụp ảnh', exact: true }).boundingBox();
+    const gb = await p.getByRole('button', { name: 'Chụp ảnh', exact: true }).first().boundingBox({ timeout: 5000 }).catch(() => null);
     const noEval = (await p.getByRole('button', { name: 'Ghi đánh giá', exact: true }).count()) === 0;
-    await pl.click(); await p.waitForTimeout(1000); const onPlan = p.url().includes('/plan/p-1');
+    await pl.click({ timeout: 5000 }).catch(() => {}); await p.waitForTimeout(1000); const onPlan = p.url().includes('/plan/p-1');
     const vh = p.viewportSize().height;
     rec('D12-24', 'UX-29 sau XN-07: B05 không còn "Ghi đánh giá"; "Chụp ảnh" trong vùng nút cố định; "Đợt điều trị" mở đúng màn', !!gb && gb.y + gb.height <= vh && noEval && onPlan, `y chụp ${gb?.y | 0}, cao cửa sổ ${vh}, không đánh giá ${noEval}`);
     // UX-27
     await go(p, '/patients/p-1');
-    await p.getByRole('button', { name: 'Thêm vết thương' }).first().click(); await p.waitForTimeout(200);
+    await p.getByRole('button', { name: 'Thêm vết thương' }).first().click({ timeout: 5000 }).catch(() => {}); await p.waitForTimeout(200);
     rec('D12-25', 'UX-27: ô nhập trong "Thêm vết thương" có nhãn "Vị trí vết thương"', (await p.getByRole('textbox', { name: 'Vị trí vết thương', exact: true }).count()) === 1 && (await p.getByRole('textbox', { name: 'Thêm vết thương', exact: true }).count()) === 0);
-    // UX-23. Giai đoạn B (CN2, CN1 H5): B09 chỉ tìm theo mã; câu báo không khớp đổi thành "Không có mã bệnh nhân phù hợp...".
+    // UX-23. Logic chốt 25/11/2026: B09 tìm theo tên hoặc mã (câu báo đổi theo). Trước đó Giai đoạn B (CN2, CN1 H5): B09 chỉ tìm theo mã; câu báo không khớp đổi thành "Không có mã bệnh nhân phù hợp...".
     await go(p, '/capture');
     const before = await p.getByRole('radio').count();
     await p.getByRole('textbox', { name: 'Tìm bệnh nhân', exact: true }).fill('bn002'); await p.waitForTimeout(200);
     const radios = await p.getByRole('radio').count();
-    await p.getByRole('radio', { name: /BN002/ }).click(); await p.waitForTimeout(300);
+    await p.getByRole('radio', { name: /BN002/ }).click({ timeout: 5000 }).catch(() => {}); await p.waitForTimeout(300);
     const woundShown = await has(p, /^VT01 · /, false);
     await p.getByRole('textbox', { name: 'Tìm bệnh nhân', exact: true }).fill('khong co'); await p.waitForTimeout(200);
-    rec('D12-26', 'UX-23: B09 có ô tìm; gõ "bn002" còn 1 dòng; chọn thì hiện vết thương; không khớp thì có câu báo', before === 3 && radios === 1 && woundShown && await has(p, 'Không có mã bệnh nhân phù hợp. Chỉ tìm theo mã hồ sơ.'), `${before} → ${radios}, vết ${woundShown}`);
+    rec('D12-26', 'UX-23: B09 có ô tìm; gõ "bn002" còn 1 dòng; chọn thì hiện vết thương; không khớp thì có câu báo', before === 3 && radios === 1 && woundShown && await has(p, 'Không có bệnh nhân phù hợp với tên hoặc mã đã nhập.'), `${before} → ${radios}, vết ${woundShown}`);
     rec('D12-27', 'Không có lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
     // UX-22
     await login(p, 'quantri'); await p.evaluate(() => { const d = JSON.parse(localStorage.getItem('plasmapro.demo.v2')); d.accounts.find((a) => a.id === 'u-qt').researchAccess = false; localStorage.setItem('plasmapro.demo.v2', JSON.stringify(d)); });

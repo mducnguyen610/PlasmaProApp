@@ -60,7 +60,8 @@ const shiftDays = soNgayToiNgayCoLich();
   const pick = async (p) => { const [fc] = await Promise.all([p.waitForEvent('filechooser'), btn(p, 'Chọn ảnh có sẵn').first().click()]); await fc.setFiles(PHOTO); await p.waitForTimeout(3000); };
   const bar = async (p) => { const l = p.locator('[data-testid="device-status-bar"]:visible'); return ((await l.count()) ? await l.last().getAttribute('aria-label') : '') || ''; };
   const notFound = async (p) => /Không tìm thấy|không có quyền|Không có quyền|Chỉ bác sĩ phụ trách/.test(await bodyText(p));
-  const logout = async (p, accountUrl) => { await go(p, accountUrl); await click(btn(p, 'Đăng xuất'), 1500); };
+  // Logic chốt 25/11/2026: Cài đặt của bác sĩ hỏi xác nhận trước khi đăng xuất; bấm Đăng xuất trong bảng hỏi khi có.
+  const logout = async (p, accountUrl) => { await go(p, accountUrl); await click(btn(p, 'Đăng xuất'), 600); const ask = p.getByTestId('hoi-dang-xuat'); if (await ask.count()) await click(ask.getByRole('button', { name: 'Đăng xuất', exact: true }), 1500); };
 
   rec('S8-00', 'Môi trường', `Đồng hồ trình duyệt tiến ${shiftDays} ngày tới ngày có lịch điều trị (thứ 2, 4, 6) để luồng N02 không phụ thuộc thứ trong tuần`, 'note', `ngày theo giờ Việt Nam ${new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10)}`);
 

@@ -275,8 +275,9 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     // CR-01: B06 lưu phiên bản khi ghi bộ nhớ lỗi.
     const p = await newPage(); await login(p);
     await go(p, '/plan/p-1?woundId=w-1');
-    for (let i = 0; i < 2; i++) { await p.getByText('Tiếp', { exact: true }).click(); await p.waitForTimeout(250); }
-    await p.getByRole('textbox', { name: /^Lý do thay đổi/ }).fill('Kiểm thử CR-01'); await p.waitForTimeout(150);
+    // Logic chốt 25/11/2026: biểu mẫu 4 bước; lý do đổi thông số ở bước Thông tin.
+    await p.getByRole('textbox', { name: /^Lý do đổi thông số/ }).fill('Kiểm thử CR-01'); await p.waitForTimeout(150);
+    for (let i = 0; i < 3; i++) { await p.getByText('Tiếp', { exact: true }).click(); await p.waitForTimeout(250); }
     // Đợt "Đang áp dụng" cần dấu xác nhận của bác sĩ (quy tắc cũ, không đổi).
     const cf = p.getByRole('checkbox', { name: /xác nhận/i });
     if (await cf.count()) { await cf.first().click(); await p.waitForTimeout(200); }
@@ -288,7 +289,8 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     const after = await p.evaluate(() => JSON.parse(localStorage.getItem('plasmapro.demo.v2')).plans.length);
     const okDialog = p.dialogs.slice(nd).some((d) => d.includes('Đã lưu phiên bản mới'));
     const err = await has(p, /^Chưa lưu được phiên bản: Không ghi được vào bộ nhớ máy/, false);
-    const reasonKept = (await p.getByRole('textbox', { name: /^Lý do thay đổi/ }).inputValue()) === 'Kiểm thử CR-01';
+    await p.getByRole('tab', { name: '1. Thông tin' }).click(); await p.waitForTimeout(200);
+    const reasonKept = (await p.getByRole('textbox', { name: /^Lý do đổi thông số/ }).inputValue()) === 'Kiểm thử CR-01';
     rec('CR-01e', 'B06 ghi bộ nhớ lỗi (bấm Lưu 3 lần): không báo đã lưu, báo lỗi, đĩa không thêm phiên bản, lý do còn nguyên', !okDialog && err && after === before && reasonKept, `báo đã lưu ${okDialog}; lỗi ${err}; đĩa ${before}→${after}; lý do còn ${reasonKept}`);
     await p.context().close();
   }
@@ -296,16 +298,16 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     // SV-06: B06 lưu "Đang áp dụng" khi đã có phiên bản đang áp dụng.
     const p = await newPage(); await login(p);
     await go(p, '/plan/p-1?woundId=w-1');
-    for (let i = 0; i < 2; i++) { await p.getByText('Tiếp', { exact: true }).click(); await p.waitForTimeout(250); }
-    await p.getByRole('radio', { name: 'Đang áp dụng', exact: true }).click(); await p.waitForTimeout(200);
-    rec('TP-SV-06b', 'B06 chọn "Đang áp dụng": nêu phiên bản đang áp dụng sẽ chuyển sang Kết thúc', await has(p, /^Phiên bản \d+ \(Đang áp dụng\).* sẽ chuyển sang Kết thúc khi lưu/, false), '');
+    // Logic chốt 25/11/2026 (M24): bỏ chọn trạng thái; phiên bản áp dụng từ hôm nay thì phiên bản đang áp dụng thành Đã thay thế khi lưu.
+    await p.getByRole('textbox', { name: 'Lý do đổi thông số', exact: true }).fill('Kiểm thử P0');
+    for (let i = 0; i < 3; i++) { await p.getByText('Tiếp', { exact: true }).click(); await p.waitForTimeout(250); }
+    rec('TP-SV-06b', 'B06 bước Xem lại: nêu phiên bản đang áp dụng sẽ thành Đã thay thế khi lưu', await has(p, /^Phiên bản \d+ \(Đang áp dụng\).* sẽ thành Đã thay thế khi lưu/, false), '');
     // Lưu xong rồi rời màn: không hỏi.
-    await p.getByRole('textbox', { name: 'Lý do thay đổi', exact: true }).fill('Kiểm thử P0');
     await p.getByRole('checkbox').first().click();
     const v0 = (await store(p)).plans.length;
-    await p.getByText(/^Lưu phiên bản \d+ cho VT01$/).click(); await p.waitForTimeout(700);
+    await p.getByText(/^Lưu phiên bản \d+$/).click(); await p.waitForTimeout(700);
     const v1 = (await store(p)).plans.length;
-    for (let i = 0; i < 3; i++) await p.getByText(/^Lưu phiên bản \d+ cho VT01$/).click();
+    for (let i = 0; i < 3; i++) await p.getByText(/^Lưu phiên bản \d+$/).click();
     await p.waitForTimeout(500);
     const v2 = (await store(p)).plans.length;
     const n = p.dialogs.length; await back(p);

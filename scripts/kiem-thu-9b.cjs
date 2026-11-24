@@ -142,7 +142,8 @@ const { ganNgayCoLich } = require('./ngay-co-lich.cjs');
     const handled = d2.reports.find((r) => r.id === mine?.id)?.handled;
     const others = d2.reports.filter((r) => r.patientId === 'p-1' && r.handled).length;
     rec('9B-B05-02', 'Bác sĩ phụ trách đánh dấu báo cáo đã xử lý ở B04: được ghi', n > 0 && (handled === true || others > d1.reports.filter((r) => r.patientId === 'p-1' && r.handled).length), `liên kết ${n}, báo cáo mới handled ${handled}`);
-    await go(p, '/doctor/account'); await click(btn(p, 'Đăng xuất'), 1500);
+    // Logic chốt 25/11/2026 (Cài đặt): đăng xuất hỏi xác nhận; bấm Đăng xuất trong bảng hỏi.
+    await go(p, '/doctor/account'); await click(btn(p, 'Đăng xuất'), 600); await click(p.getByTestId('hoi-dang-xuat').getByRole('button', { name: 'Đăng xuất', exact: true }), 1500);
     await login(p, 'quantri');
     // Dữ liệu kiểm thử: một lỗi đồng bộ chưa xử lý.
     await patch(p, `d.syncErrors.push({ id: 's-9b', at: new Date().toISOString(), deviceId: 'd-2', message: 'Kiểm thử 9B (mô phỏng).', resolved: false }); return d;`);

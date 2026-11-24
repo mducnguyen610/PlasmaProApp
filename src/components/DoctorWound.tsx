@@ -58,7 +58,7 @@ export function DoctorWound({ patient: p, wound: w, initialTab }: { patient: Pat
       <Card testID="tong-quan-vet">
         <View style={{ gap: 2 }}>
           <Text accessibilityRole="header" style={{ fontWeight: '700', fontSize: T.titleM, lineHeight: 26, color: C.text }}>{woundTitle(w.code)}</Text>
-          <Text style={{ color: C.textSoft }}>{`${p.name} · ${p.code}`}</Text>
+          <Text style={{ color: C.textSoft }}>{`${p.name} · ${p.code} · Mã ${w.code}`}</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           <Chip label={care.label} tone={care.tone} icon="medkit-outline" />

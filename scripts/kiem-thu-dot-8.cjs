@@ -1,4 +1,5 @@
 // Kiểm thử tình huống Đợt 8 (ngăn thao tác sai) trên bản web, Playwright.
+// Logic chốt 25/11/2026: biểu mẫu phác đồ 4 bước (Thông tin, Thông số, Lịch, Xem lại); lý do đổi thông số ở bước Thông tin.
 // Chạy: node scripts/kiem-thu-dot-8.cjs <baseURL> <thư mục ảnh>. Dựng web trước: npx expo export -p web, phục vụ dist với SPA fallback.
 // Hộp xác nhận trên web là window.confirm: kịch bản chọn chấp nhận hoặc hủy theo từng bước (p.answer).
 const { chromium } = require('playwright');
@@ -52,38 +53,38 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const p = await newPage();
     await login(p, 'bacsi'); await go(p, '/plan/p-1');
     const v0 = (await store(p)).plans.filter((x) => x.patientId === 'p-1').length;
-    await tab(p, '3. Xác nhận');
+    await tab(p, '4. Xem lại');
     await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(200);
     const on1 = await checked(p, CONFIRM);
     // Nhấn nhầm: quay lại bước Liều, đổi mức năng lượng, rồi về bước Xác nhận.
-    await tab(p, '2. Liều');
+    await tab(p, '2. Thông số');
     await p.getByRole('radio', { name: '5', exact: true }).first().click(); await p.waitForTimeout(200);
-    await tab(p, '3. Xác nhận');
+    await tab(p, '4. Xem lại');
     const off1 = await checked(p, CONFIRM);
     const note1 = await has(p, CLEARED);
     rec('D8-02a', 'Đổi mức năng lượng sau khi tích: dấu xác nhận về trống và có câu giải thích', on1 === 'true' && off1 === 'false' && note1, `trước ${on1}, sau ${off1}, câu ${note1}`);
     // Dữ liệu không đầy đủ: đợt "Đang áp dụng" chưa tích thì không lưu.
-    await p.getByLabel('Lý do thay đổi').fill('Kiểm thử Đợt 8');
+    await tab(p, '1. Thông tin'); await p.getByLabel('Lý do đổi thông số').fill('Kiểm thử Đợt 8'); await tab(p, '4. Xem lại');
     await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click(); await p.waitForTimeout(400);
     const blocked = await has(p, 'Đợt "Đang áp dụng" cần bác sĩ xác nhận.');
     const v1 = (await store(p)).plans.filter((x) => x.patientId === 'p-1').length;
     rec('D8-02b', 'Chưa tích lại: lưu bị chặn bởi quy tắc cũ, không tạo phiên bản', blocked && v1 === v0, `lỗi ${blocked}, phiên bản ${v0}→${v1}`);
     // Đổi thời gian ở ô nhập cũng bỏ dấu xác nhận.
     await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(150);
-    await tab(p, '2. Liều');
+    await tab(p, '2. Thông số');
     await p.getByLabel('Thời gian mỗi lần điều trị (giây)').fill('200'); await p.waitForTimeout(150);
-    await tab(p, '3. Xác nhận');
+    await tab(p, '4. Xem lại');
     rec('D8-02c', 'Sửa ô thời gian: dấu xác nhận về trống', (await checked(p, CONFIRM)) === 'false');
     // Đổi lịch (ngày giai đoạn) cũng bỏ dấu xác nhận.
     await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(150);
-    await tab(p, '1. Lịch');
+    await tab(p, '3. Lịch');
     const d0 = p.getByPlaceholder('dd/mm/yyyy').nth(1); const old = await d0.inputValue();
     await d0.fill(''); await d0.fill(old); await p.waitForTimeout(150);
-    await tab(p, '3. Xác nhận');
+    await tab(p, '4. Xem lại');
     rec('D8-02d', 'Sửa ngày ở bước Lịch: dấu xác nhận về trống', (await checked(p, CONFIRM)) === 'false');
     // Quay lại bước trước mà không đổi gì: dấu xác nhận giữ nguyên (không bắt tích lại vô ích).
     await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(150);
-    await tab(p, '2. Liều'); await tab(p, '3. Xác nhận');
+    await tab(p, '2. Thông số'); await tab(p, '4. Xem lại');
     rec('D8-02e', 'Chỉ chuyển bước, không đổi giá trị: dấu xác nhận giữ nguyên', (await checked(p, CONFIRM)) === 'true');
     // Thao tác đúng: lưu được, rồi dấu xác nhận về trống.
     await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click(); await p.waitForTimeout(600);
@@ -99,7 +100,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     for (const w of [320, 360, 390, 768]) {
       await p.setViewportSize({ width: w, height: 844 });
       await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(100);
-      await tab(p, '2. Liều'); await p.getByRole('radio', { name: '4', exact: true }).first().click(); await tab(p, '3. Xác nhận');
+      await tab(p, '2. Thông số'); await p.getByRole('radio', { name: '4', exact: true }).first().click(); await tab(p, '4. Xem lại');
       await shot(p, `${OUT}/b06c-bo-xac-nhan-${w}.png`);
     }
     rec('D8-02z', 'Không có lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 120));

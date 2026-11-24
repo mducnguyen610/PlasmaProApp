@@ -1,3 +1,5 @@
+// ĐÃ BỎ 25/11/2026: bộ lọc B02 theo mức độ, báo cáo, việc hôm nay được thay bằng 4 trạng thái H7 và Có, Chưa có phác đồ hoạt động
+// (TONG-HOP-LOGIC-BAC-SI.md mục 3.1, M7). Ca thay thế: LC-10 trong scripts/kiem-thu-logic-chot.cjs.
 // Kiểm thử bộ lọc thu gọn ở B02 (tab Bệnh nhân của bác sĩ), cùng kiểu mục "Bộ lọc" của tab Ảnh (B12).
 // Bản web, dữ liệu mô phỏng, Playwright. Chạy: node scripts/kiem-thu-bo-loc-b02.cjs <baseURL> <thư mục kết quả>
 // Giai đoạn B (CN1 H5): ô tìm bệnh nhân đổi nhãn thành "Tìm bệnh nhân theo mã" (chỉ tìm theo mã); kịch bản đổi theo nhãn mới.

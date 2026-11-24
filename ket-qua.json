@@ -1,0 +1,152 @@
+[
+  {
+    "id": "CN2-01",
+    "name": "B11 có thẻ \"Nhãn ảnh\" 5 bước, trạng thái Chưa gán nhãn, Tiếp khóa khi chưa xong bước, chưa có Xác nhận nhãn",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-02",
+    "name": "Vùng vết: có điểm kéo được trên ảnh (XN-08)",
+    "result": "ĐẠT",
+    "detail": "8 điểm, dời 30 px"
+  },
+  {
+    "id": "CN2-03",
+    "name": "Thang 4 mức \"Không có, Thấp, Trung bình, Cao\" (XN-15)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-04",
+    "name": "Chưa chọn tin cậy hoặc chất lượng Không đạt thì khóa Xác nhận; Không đạt gợi ý chụp lại (K1, K2, XN-14)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-05",
+    "name": "Lưu nhãn: đủ 5 tính chất, viền, loại ảnh; trạng thái Đủ nhãn; ảnh gốc và AI gốc không đổi (N4, N5)",
+    "result": "ĐẠT",
+    "detail": "manual, 1 dòng lịch sử"
+  },
+  {
+    "id": "CN2-06",
+    "name": "Bước Xem lại rồi Xác nhận nhãn: có người, thời điểm xác nhận; hộp xác nhận nhắc kiểm tra thông tin nhận dạng",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-07",
+    "name": "Sửa nhãn đã xác nhận thì bỏ xác nhận, ghi lịch sử \"Bỏ xác nhận\" (N6)",
+    "result": "ĐẠT",
+    "detail": "save,confirm,save,unconfirm"
+  },
+  {
+    "id": "CN2-08",
+    "name": "Nhãn còn sau tải lại; xác nhận lại được",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-09",
+    "name": "Không lỗi JS ở B11",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-10",
+    "name": "Tab Ảnh: lọc \"Chưa gán đủ nhãn\" mặc định, số đếm đúng (T1)",
+    "result": "ĐẠT",
+    "detail": "Chưa gán đủ nhãn (1)"
+  },
+  {
+    "id": "CN2-11",
+    "name": "Bộ lọc thời gian có 7, 30, 90 ngày, Tất cả, Tùy chọn",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-12",
+    "name": "Ngày tùy chọn không có thật thì báo lỗi",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-13",
+    "name": "B09: hai lối Bệnh nhân có sẵn/mới; tìm theo tên hoặc mã (M6); thêm vết ngay tại màn chụp (A1)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-14",
+    "name": "Bệnh nhân mới: tạo hồ sơ (bắt buộc vị trí vết) rồi mới chụp; không có ô bác sĩ tích đồng ý; hồ sơ mới chưa đồng ý (A1, N10)",
+    "result": "ĐẠT",
+    "detail": "gone true"
+  },
+  {
+    "id": "CN2-15",
+    "name": "Từ hồ sơ mới mở thẳng màn chụp của VT01",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-16",
+    "name": "Bác sĩ không bật đồng ý thay bệnh nhân (giao diện chỉ xem, store từ chối)",
+    "result": "ĐẠT",
+    "detail": "Bác sĩ không được sửa: researchConsent. Phân công bác sĩ do quản trị thực hiện ở Q01."
+  },
+  {
+    "id": "CN2-17",
+    "name": "Bác sĩ khác: xem nhãn, không sửa; store từ chối lưu và xác nhận",
+    "result": "ĐẠT",
+    "detail": "Chỉ bác sĩ phụ trách được thực hiện thao tác này. / Chỉ bác sĩ phụ trách được thực hiện thao tác này."
+  },
+  {
+    "id": "CN2-18",
+    "name": "Kho dữ liệu của quản trị đếm đúng ảnh đã xác nhận, Đạt, bệnh nhân đồng ý (N9, C1)",
+    "result": "ĐẠT",
+    "detail": "kỳ vọng 4"
+  },
+  {
+    "id": "CN2-19",
+    "name": "labels.csv có cột nhãn mới; không có họ tên, mã hồ sơ lâm sàng (P3)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-20",
+    "name": "Tải ZIP: ảnh PNG, labels.csv, labels.json (viền, tính chất, nhóm tuổi 10 năm); không có định danh, không có năm sinh (S3, P3)",
+    "result": "ĐẠT",
+    "detail": "9 tệp, nhóm tuổi 60-69"
+  },
+  {
+    "id": "CN2-21",
+    "name": "Bệnh nhân gửi ảnh sau phiên: gắn phiên, loại \"Ảnh sau điều trị\"; vết người khác hoặc phiên không có thì bị từ chối (A9)",
+    "result": "ĐẠT",
+    "detail": "Bệnh nhân chỉ gửi ảnh cho vết thương của mình. / Ảnh sau điều trị phải gắn với một phiên điều trị của vết thương này."
+  },
+  {
+    "id": "CN2-22",
+    "name": "Bệnh nhân không gán nhãn được",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-23",
+    "name": "Bác sĩ mở được ảnh bệnh nhân gửi, thẻ nhãn hiện với loại \"Ảnh sau điều trị\" đã chọn sẵn",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "CN2-24",
+    "name": "Kích hoạt: ô đồng ý dữ liệu không bắt buộc; tích thì ghi đồng ý và ngày (N10)",
+    "result": "ĐẠT",
+    "detail": "bn004"
+  },
+  {
+    "id": "CN2-25",
+    "name": "Mở ứng dụng: bỏ ảnh chờ còn sót của bản cũ; dữ liệu chính giữ nguyên (XN-10)",
+    "result": "ĐẠT",
+    "detail": ""
+  }
+]

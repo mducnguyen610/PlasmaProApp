@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/Text';
@@ -396,7 +396,6 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
     setClearedByEdit(false);
     setInitial(JSON.stringify({ title, startVn, endVn, effVn, tFrom, tTo, phases, perVisit, gap, level, mode, duration, spc, reviewDay, review, notes, reason: '', confirmed: false }));
     notify(isNewProtocol ? 'Đã lập phác đồ' : 'Đã lưu phiên bản mới', `${eff && eff > localDay() ? `Phiên bản áp dụng từ ${fmtDate(eff)}; phiên bản cũ còn hiệu lực tới ngày đó. ` : ''}Bệnh nhân cần xác nhận đã đọc rồi mới nạp liệu trình xuống máy.`);
-    if (woundId) router.replace({ pathname: '/wounds/[id]', params: { id: woundId, the: 'phac-do' } });
   };
 
   // Stage 9A (bố cục riêng B06): thứ tự theo việc của bác sĩ: ai, vết nào (ngữ cảnh), đang áp dụng gì (tóm tắt), lập phiên bản mới
