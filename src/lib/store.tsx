@@ -11,7 +11,7 @@ import { Platform } from 'react-native';
 import { reassignDevice } from './devices';
 import { CLOSURE_CONFIRM_DAYS, addDays, isScheduled, localDay } from './course';
 import { CARE_ITEMS, LIFECYCLE } from './maintenance';
-import { assignBlocker, catalogErrors, STA_ERROR_FAULT } from './deviceState';
+import { assignBlocker, catalogErrors, DEVICE_MODEL, STA_ERROR_FAULT } from './deviceState';
 import { buildFilename } from './naming';
 import { archiveBlocker, isArchived, splitDoctorPatientPatch, validateWoundLocation } from './patientRecord';
 import { isoToVn, patientEditEntries, validateNewPatient, validatePatientEdit } from './patientIdentity';
@@ -138,8 +138,8 @@ interface Store {
   setDevicePower: (deviceId: string, on: boolean) => void;
   simulateSession: (deviceId: string) => { ok: boolean; message: string };
   /** Giai đoạn B (CN4 D1, AU-25): quản trị thêm, sửa danh mục máy (mã, số sê-ri, dòng máy). */
-  registerDevice: (input: { code: string; serial: string; model: string }) => Promise<void>;
-  updateDevice: (deviceId: string, input: { code: string; serial: string; model: string }) => Promise<void>;
+  registerDevice: (input: { code: string; serial: string }) => Promise<void>;
+  updateDevice: (deviceId: string, input: { code: string; serial: string }) => Promise<void>;
   /** Giao máy (CN4 D2, D8): chỉ máy Sẵn sàng, bệnh nhân có phác đồ đang hoạt động và chưa giữ máy khác. null là thu hồi. */
   assignDevice: (deviceId: string, patientId: string | null) => Promise<void>;
   /** Giai đoạn B (CN4 D5): bác sĩ ghi đã xử lý lỗi máy, bắt buộc ghi chú. Ứng dụng không gửi lệnh khắc phục xuống máy. */
@@ -922,9 +922,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const registerDevice: Store['registerDevice'] = async (input) => {
     requireAdmin();
     const err = catalogErrors(input, dataRef.current.devices);
-    const first = err.code ?? err.serial ?? err.model;
+    const first = err.code ?? err.serial;
     if (first) throw new Error(first);
-    const device: Device = { id: `d-${Date.now()}`, code: input.code.trim().toUpperCase(), serial: input.serial.trim(), model: input.model.trim(), online: false, lastSync: null, firmware: '—', power: 'off', simulated: true, lifecycle: 'ready' };
+    const device: Device = { id: `d-${Date.now()}`, code: input.code.trim().toUpperCase(), serial: input.serial.trim(), model: DEVICE_MODEL, online: false, lastSync: null, firmware: '—', power: 'off', simulated: true, lifecycle: 'ready' };
     const e = deviceEvent(device.id, 'register', { detail: `${device.code}, sê-ri ${device.serial}, ${device.model}` });
     await commit((d) => ({ ...d, devices: [...d.devices, device], deviceEvents: withEvent(d, e) }));
   };
@@ -934,10 +934,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const dev = dataRef.current.devices.find((x) => x.id === deviceId);
     if (!dev) throw new Error('Không tìm thấy thiết bị.');
     const err = catalogErrors(input, dataRef.current.devices, deviceId);
-    const first = err.code ?? err.serial ?? err.model;
+    const first = err.code ?? err.serial;
     if (first) throw new Error(first);
-    const next = { code: input.code.trim().toUpperCase(), serial: input.serial.trim(), model: input.model.trim() };
-    const changes = ([['Mã', dev.code, next.code], ['Sê-ri', dev.serial ?? '', next.serial], ['Dòng máy', dev.model, next.model]] as const)
+    // Dòng máy không sửa được (DEVICE_MODEL); máy có sẵn giữ dòng máy đang ghi.
+    const next = { code: input.code.trim().toUpperCase(), serial: input.serial.trim() };
+    const changes = ([['Mã', dev.code, next.code], ['Sê-ri', dev.serial ?? '', next.serial]] as const)
       .filter(([, a, b]) => a !== b).map(([k, a, b]) => `${k}: ${a || '—'} → ${b}`);
     if (!changes.length) return;
     const e = deviceEvent(deviceId, 'edit', { detail: changes.join('; ') });

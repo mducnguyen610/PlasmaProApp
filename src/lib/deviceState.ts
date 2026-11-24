@@ -50,20 +50,22 @@ export function assignBlocker(
   return null;
 }
 
-/** D1 (AU-25): kiểm danh mục máy. Mã TB-xxx, sê-ri và dòng máy bắt buộc, mã và sê-ri không trùng máy khác. */
+/** Đề tài chỉ dùng dòng máy HFP: máy đăng ký mới luôn mang dòng này, Admin không sửa (người dùng chốt 24/11/2026). */
+export const DEVICE_MODEL = 'Plasma Pro HFP';
+
+/** D1 (AU-25): kiểm danh mục máy. Mã TB-xxx và sê-ri bắt buộc, không trùng máy khác. Dòng máy cố định (DEVICE_MODEL). */
 export function catalogErrors(
-  input: { code: string; serial: string; model: string },
+  input: { code: string; serial: string },
   devices: Pick<Device, 'id' | 'code' | 'serial'>[],
   selfId?: string,
-): { code?: string; serial?: string; model?: string } {
-  const code = input.code.trim().toUpperCase(), serial = input.serial.trim(), model = input.model.trim();
+): { code?: string; serial?: string } {
+  const code = input.code.trim().toUpperCase(), serial = input.serial.trim();
   const others = devices.filter((d) => d.id !== selfId);
-  const out: { code?: string; serial?: string; model?: string } = {};
+  const out: { code?: string; serial?: string } = {};
   if (!/^TB-\d{3,}$/.test(code)) out.code = 'Định dạng TB-xxx.';
   else if (others.some((d) => d.code.toUpperCase() === code)) out.code = 'Mã thiết bị đã tồn tại.';
   if (!serial) out.serial = 'Nhập số sê-ri.';
   else if (others.some((d) => (d.serial ?? '').trim().toUpperCase() === serial.toUpperCase())) out.serial = 'Số sê-ri đã có ở máy khác.';
-  if (!model) out.model = 'Nhập dòng máy.';
   return out;
 }
 

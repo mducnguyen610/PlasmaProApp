@@ -46,12 +46,12 @@ assert.equal(assignBlocker(undefined, pt('p2'), devs, plans), 'Không tìm thấ
 
 // catalogErrors (AU-25)
 const cat = [{ id: 'd1', code: 'TB-001', serial: 'SN-1' }, { id: 'd2', code: 'TB-002' }] as never[];
-assert.deepEqual(catalogErrors({ code: 'tb-010', serial: 'SN-9', model: 'HFP' }, cat), {});
-assert.equal(catalogErrors({ code: 'TB-001', serial: 'SN-9', model: 'HFP' }, cat).code, 'Mã thiết bị đã tồn tại.');
-assert.equal(catalogErrors({ code: 'TB-001', serial: 'SN-1', model: 'HFP' }, cat, 'd1').code, undefined, 'sửa chính máy đó không tính trùng');
-assert.equal(catalogErrors({ code: 'X1', serial: '', model: ' ' }, cat).code, 'Định dạng TB-xxx.');
-assert.equal(catalogErrors({ code: 'TB-011', serial: 'sn-1', model: 'HFP' }, cat).serial, 'Số sê-ri đã có ở máy khác.');
-assert.equal(catalogErrors({ code: 'TB-011', serial: '', model: '' }, cat).model, 'Nhập dòng máy.');
+assert.deepEqual(catalogErrors({ code: 'tb-010', serial: 'SN-9' }, cat), {});
+assert.equal(catalogErrors({ code: 'TB-001', serial: 'SN-9' }, cat).code, 'Mã thiết bị đã tồn tại.');
+assert.equal(catalogErrors({ code: 'TB-001', serial: 'SN-1' }, cat, 'd1').code, undefined, 'sửa chính máy đó không tính trùng');
+assert.equal(catalogErrors({ code: 'X1', serial: '' }, cat).code, 'Định dạng TB-xxx.');
+assert.equal(catalogErrors({ code: 'TB-011', serial: 'sn-1' }, cat).serial, 'Số sê-ri đã có ở máy khác.');
+assert.equal(catalogErrors({ code: 'TB-011', serial: '' }, cat).serial, 'Nhập số sê-ri.');
 
 // deviceHistory (D4): gộp, bỏ phiên trùng mã, mới trước, chỉ của máy đó
 const h = deviceHistory('d1',

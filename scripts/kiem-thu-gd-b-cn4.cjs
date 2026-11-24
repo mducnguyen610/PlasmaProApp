@@ -74,14 +74,16 @@ const rec = (id, name, pass, detail = '') => {
   await p.getByLabel('Số sê-ri').locator('visible=true').fill('HFP-0001');
   await p.waitForTimeout(300);
   const dupSerial = await has(p, 'Số sê-ri đã có ở máy khác.');
+  // Dòng máy cố định HFP, không có ô nhập (người dùng chốt 24/11/2026).
+  const modelFixed = await p.getByLabel('Dòng máy').locator('input:visible, textarea:visible').count() === 0 && await p.locator('input:visible').evaluateAll((xs) => xs.length) === 2 && await has(p, 'Plasma Pro HFP');
   await p.getByLabel('Số sê-ri').locator('visible=true').fill('HFP-0010');
   await btn(p, 'Đăng ký').click(); await p.waitForTimeout(800);
   let d = await store(p);
   const d10 = d.devices.find((x) => x.code === 'TB-010');
-  rec('CN4-01', 'Quản trị thêm máy có mã, sê-ri, dòng máy; báo trùng sê-ri; máy mới Sẵn sàng; nhật ký thêm', dupSerial && !!d10 && d10.serial === 'HFP-0010' && d10.model === 'Plasma Pro HFP' && d10.lifecycle === 'ready' && ev(d, d10.id, 'register').length === 1, d10 ? `${d10.code} ${d10.serial}` : 'không thấy máy');
-  const r1 = await callStore(p, 'updateDevice', d10.id, { code: 'TB-010', serial: 'HFP-0010A', model: 'Plasma Pro HFP' });
+  rec('CN4-01', 'Quản trị thêm máy có mã, sê-ri; dòng máy cố định Plasma Pro HFP, không có ô sửa; báo trùng sê-ri; máy mới Sẵn sàng; nhật ký thêm', dupSerial && modelFixed && !!d10 && d10.serial === 'HFP-0010' && d10.model === 'Plasma Pro HFP' && d10.lifecycle === 'ready' && ev(d, d10.id, 'register').length === 1, d10 ? `${d10.code} ${d10.serial}` : 'không thấy máy');
+  const r1 = await callStore(p, 'updateDevice', d10.id, { code: 'TB-010', serial: 'HFP-0010A', model: 'Dòng khác' });
   d = await store(p);
-  rec('CN4-02', 'Quản trị sửa sê-ri; nhật ký sửa ghi cũ và mới', r1.ok && dev(d, d10.id).serial === 'HFP-0010A' && /HFP-0010 → HFP-0010A/.test(ev(d, d10.id, 'edit')[0]?.detail ?? ''));
+  rec('CN4-02', 'Quản trị sửa sê-ri; dòng máy gửi kèm bị bỏ qua; nhật ký sửa ghi cũ và mới', r1.ok && dev(d, d10.id).serial === 'HFP-0010A' && dev(d, d10.id).model === 'Plasma Pro HFP' && /HFP-0010 → HFP-0010A/.test(ev(d, d10.id, 'edit')[0]?.detail ?? ''));
   const r2 = await callStore(p, 'setLifecycle', 'd-3', 'ready');
   const r3 = await callStore(p, 'markCareDone', 'd-1', 'clean');
   rec('CN4-03', 'Quản trị không thao tác với máy: store từ chối khử khuẩn, chăm sóc (XN-09)', !r2.ok && !r3.ok, `${r2.error} | ${r3.error}`);

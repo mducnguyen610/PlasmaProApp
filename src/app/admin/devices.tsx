@@ -5,17 +5,17 @@ import { Text } from '@/components/Text';
 
 import { Sheet } from '@/components/Sheet';
 import { Button, Disclosure, Field, Header, InfoRow, ListCard, Notice, Screen, SectionTitle, SimBadge, StatusChip } from '@/components/ui';
-import { DEVICE_STATUS, catalogErrors, deviceStatus } from '@/lib/deviceState';
+import { DEVICE_MODEL, DEVICE_STATUS, catalogErrors, deviceStatus } from '@/lib/deviceState';
 import { fmtDateTime } from '@/lib/format';
 import { notify } from '@/lib/dialog';
 import { useStore } from '@/lib/store';
 import { C, T } from '@/theme';
 import { CLOUD_LINK, cloudState } from '@/theme.status';
 
-// Q03 Quản trị: danh mục máy (thêm, sửa mã, số sê-ri, dòng máy) và xem máy đang giao cho ai.
+// Q03 Quản trị: danh mục máy (thêm, sửa mã, số sê-ri; dòng máy cố định HFP) và xem máy đang giao cho ai.
 // Giai đoạn B (CN4 D1, XN-09): giao, thu hồi, khử khuẩn, chăm sóc, xử lý lỗi do bác sĩ; quản trị không thao tác với máy.
-type Form = { code: string; serial: string; model: string };
-const EMPTY: Form = { code: '', serial: '', model: 'Plasma Pro HFP' };
+type Form = { code: string; serial: string };
+const EMPTY: Form = { code: '', serial: '' };
 
 export default function AdminDevices() {
   const { data, registerDevice, updateDevice } = useStore();
@@ -28,15 +28,15 @@ export default function AdminDevices() {
   const [added, setAdded] = useState<string | null>(null);
   const submitting = useRef(false);
   const err = catalogErrors(form, data.devices, editing ?? undefined);
-  const touched = { code: !!form.code, serial: !!form.serial, model: true };
-  const invalid = !!(err.code || err.serial || err.model);
+  const touched = { code: !!form.code, serial: !!form.serial };
+  const invalid = !!(err.code || err.serial);
   // Máy báo lỗi lên đầu (CN4 D9), rồi máy cần chú ý kết nối (V24); thứ tự còn lại giữ như dữ liệu.
   const attn = (d: (typeof data.devices)[number]) => (d.fault ? 2 : 0) + Number(CLOUD_LINK[cloudState(d.online, d.lastSync, now)].role === 'warning');
   const openNew = () => { submitting.current = false; setAdded(null); if (editing) { setEditing(null); setForm(EMPTY); } setSheet(true); };
   const openEdit = (id: string) => {
     const d = data.devices.find((x) => x.id === id);
     if (!d) return;
-    submitting.current = false; setAdded(null); setEditing(id); setForm({ code: d.code, serial: d.serial ?? '', model: d.model }); setSheet(true);
+    submitting.current = false; setAdded(null); setEditing(id); setForm({ code: d.code, serial: d.serial ?? '' }); setSheet(true);
   };
 
   return (
@@ -54,7 +54,7 @@ export default function AdminDevices() {
           error={touched.code ? err.code : null} />
         <Field label="Số sê-ri" value={form.serial} onChangeText={(v) => setForm({ ...form, serial: v })} autoCapitalize="characters" placeholder="Số in trên nhãn máy"
           error={touched.serial ? err.serial : null} />
-        <Field label="Dòng máy" value={form.model} onChangeText={(v) => setForm({ ...form, model: v })} placeholder="Plasma Pro HFP" error={err.model} />
+        <InfoRow label="Dòng máy" value={(editing && data.devices.find((x) => x.id === editing)?.model) || DEVICE_MODEL} />
         <Button
           label={editing ? 'Lưu thay đổi' : 'Đăng ký'}
           icon={editing ? 'save-outline' : 'add'}
