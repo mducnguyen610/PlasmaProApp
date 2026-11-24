@@ -3,9 +3,10 @@ import { View } from 'react-native';
 
 import { OutlineEditor } from '@/components/OutlineEditor';
 import { Text } from '@/components/Text';
-import { Button, Chip, Choices, Disclosure, Divider, Field, InfoRow, Muted, Notice, SectionTitle } from '@/components/ui';
+import { Button, Chip, Choices, Disclosure, Divider, Field, InfoRow, Muted, Notice, SectionTitle, StepRow } from '@/components/ui';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDateTime } from '@/lib/format';
+import { formatAreaDisplay } from '@/lib/naming';
 import {
   defaultOutline, IMAGE_TYPE_LABEL, IMAGE_TYPES, LABEL_STATE, labelState, missingForConfirm, missingLabelParts, QUALITY_REASONS, simplifyOutline,
   suggestImageType, TRAIT_LEVEL_LABEL, TRAIT_LEVELS, TRAITS, type ImageLabel, type ImageType, type Point, type TraitKey, type TraitLevel,
@@ -21,14 +22,30 @@ const toDraft = (l: ImageLabel | undefined): Draft => {
 };
 const same = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b);
 
+/** Logic chốt 25/11/2026 (mục 6, G4): 5 màn nối tiếp; phải xong bước trước mới sang bước sau; mọi bước có Lưu nháp. */
+export const LABEL_STEPS = ['Loại ảnh', 'Vùng vết và diện tích', 'Năm tính chất', 'Chất lượng và tin cậy', 'Xem lại'];
+/** Bước đã xong của bản đang gán (0..3). Bước 4 là xem lại. */
+export function labelStepDone(d: Pick<ImageLabel, 'imageType' | 'outline' | 'traits' | 'quality' | 'qualityReason' | 'confidence'>): boolean[] {
+  return [
+    !!d.imageType,
+    (d.outline?.length ?? 0) >= 3,
+    TRAITS.every((t) => !!d.traits?.[t.key]?.level),
+    !!d.confidence && (d.quality === 'pass' || (d.quality === 'fail' && !!d.qualityReason)),
+  ];
+}
+// Bước đang mở của từng ảnh, giữ khi màn chuyển sang chế độ đo diện tích rồi quay lại.
+const lastStep = new Map<string, number>();
+
 /**
  * Giai đoạn B (CN2, N3..N9, K1..K4, XN-08, XN-14, XN-15): gán nhãn theo ảnh.
  * Loại ảnh, vùng vết (kéo điểm viền AI hoặc viền mặc định), 5 tính chất có ghi chú, ghi chú chung, mức tin cậy, chất lượng.
  * "Lưu nhãn" lưu bản đang gán; "Xác nhận nhãn" chỉ bật khi đủ điều kiện. Sửa nhãn đã xác nhận đưa về Đang gán (store ghi lịch sử).
  * Bác sĩ khác xem nhãn, không sửa.
  */
-export function ImageLabelCard({ im, patient, canEdit, onDirty, onRetake }: {
+export function ImageLabelCard({ im, patient, canEdit, onDirty, onRetake, onEditArea }: {
   im: WoundImage; patient: Patient; canEdit: boolean; onDirty: (dirty: boolean) => void; onRetake: (reason: string) => void;
+  /** Mở khối nhập diện tích của màn ảnh (bước 2). Bản nháp nhãn được lưu trước. */
+  onEditArea?: () => void;
 }) {
   const { data, saveImageLabel, confirmImageLabel } = useStore();
   const { account } = useLookups();
@@ -38,6 +55,13 @@ export function ImageLabelCard({ im, patient, canEdit, onDirty, onRetake }: {
   const busy = useRef(false);
   const [working, setWorking] = useState(false);
   const dirty = canEdit && !same(draft, saved);
+  const done = labelStepDone(draft);
+  const firstOpen = done.findIndex((x) => !x);
+  const [step, setStepState] = useState(() => lastStep.get(im.id) ?? (firstOpen < 0 ? 4 : firstOpen));
+  const setStep = (n: number) => { lastStep.set(im.id, n); setStepState(n); };
+  // Bước được mở khi mọi bước trước đã xong.
+  const reachable = (n: number) => done.slice(0, n).every(Boolean);
+  const show = (n: number) => !canEdit || step === n;
   useEffect(() => { onDirty(dirty); }, [dirty, onDirty]);
 
   const state = labelState(im);
@@ -57,7 +81,7 @@ export function ImageLabelCard({ im, patient, canEdit, onDirty, onRetake }: {
     catch (e) { notify('Chưa lưu được nhãn', e instanceof Error ? e.message : String(e)); }
     finally { busy.current = false; setWorking(false); }
   };
-  const save = () => run(() => saveImageLabel(im.id, draft), 'Đã lưu nhãn');
+  const save = () => run(() => saveImageLabel(im.id, draft), 'Đã lưu nháp');
   const doConfirm = () => confirm('Xác nhận nhãn',
     'Nhãn đã xác nhận sẽ vào tập huấn luyện nếu bệnh nhân đồng ý dùng dữ liệu. Bác sĩ đã kiểm tra ảnh không chứa khuôn mặt, tên, giấy tờ hoặc thông tin nhận dạng cá nhân?',
     () => run(async () => { if (!same(draft, saved)) await saveImageLabel(im.id, draft); await confirmImageLabel(im.id); }, 'Đã xác nhận nhãn'), 'Xác nhận nhãn');
@@ -83,16 +107,21 @@ export function ImageLabelCard({ im, patient, canEdit, onDirty, onRetake }: {
       {unused && <Notice tone="gray" icon="eye-off-outline">{`Ảnh đã đánh dấu Không sử dụng${im.excludeReason ? `: ${im.excludeReason}` : ''}. Ảnh được giữ lại nhưng không tính cho phác đồ, biểu đồ và tập huấn luyện.`}</Notice>}
       {!patient.researchConsent && <Muted>Bệnh nhân chưa đồng ý dùng dữ liệu: nhãn vẫn lưu cho hồ sơ, ảnh không vào tập huấn luyện.</Muted>}
 
+      {canEdit && <StepRow steps={LABEL_STEPS} step={step + 1} onStep={(n) => { if (reachable(n - 1)) setStep(n - 1); }} marks={[...done.map((x) => (x ? 'ok' as const : null)), null]} />}
       {/* L1 loại ảnh */}
+      {show(0) && <>
       <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Loại ảnh</Text>
       {canEdit ? <>
         <Choices<ImageType> value={draft.imageType ?? ('' as ImageType)} onChange={(v) => set({ imageType: v })} options={IMAGE_TYPES} />
         {!draft.imageType && <Muted>{`Gợi ý: ${IMAGE_TYPE_LABEL[suggested]}.`}</Muted>}
       </> : <Muted>{draft.imageType ? IMAGE_TYPE_LABEL[draft.imageType] : 'Chưa chọn'}</Muted>}
+      </>}
 
       {/* N4, XN-08 vùng vết */}
-      <Divider />
+      {show(1) && <>
+      {!canEdit && <Divider />}
       <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Vùng vết</Text>
+      <Muted>Chỉ khoanh viền vết, không khoanh riêng từng loại mô. AI chỉ gợi ý; bác sĩ xác nhận, chỉnh hoặc khoanh tay.</Muted>
       {outline.length >= 3 || editingOutline ? (
         <OutlineEditor image={im} value={outline} aiHull={aiHull} readOnly={!canEdit || !editingOutline} onChange={moveOutline} />
       ) : <Muted>{aiHull?.length ? 'Chưa chốt vùng vết. Có thể bắt đầu từ viền AI rồi kéo điểm cho khớp bờ vết.' : 'Ảnh không có viền AI. Bắt đầu từ viền mặc định rồi kéo điểm vào bờ vết.'}</Muted>}
@@ -105,9 +134,15 @@ export function ImageLabelCard({ im, patient, canEdit, onDirty, onRetake }: {
         </View>
       )}
       {draft.outlineSource && outline.length >= 3 && <Muted>{`Nguồn viền: ${draft.outlineSource === 'ai' ? 'viền AI giữ nguyên' : draft.outlineSource === 'ai_edited' ? 'viền AI đã chỉnh' : 'bác sĩ khoanh'} · ${outline.length} điểm`}</Muted>}
+      <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Diện tích</Text>
+      <Muted>{im.areaCm2 !== null ? `${formatAreaDisplay(im.areaCm2)} (bác sĩ nhập)` : 'Chưa nhập diện tích. Diện tích không bắt buộc để đủ nhãn.'}</Muted>
+      {canEdit && onEditArea && <Button label={im.areaCm2 !== null ? 'Sửa diện tích' : 'Nhập diện tích'} variant="secondary" icon="resize-outline"
+        onPress={() => run(async () => { if (dirty) await saveImageLabel(im.id, draft); onEditArea(); })} />}
+      </>}
 
       {/* G1, G2 năm tính chất */}
-      <Divider />
+      {show(2) && <>
+      {!canEdit && <Divider />}
       <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Tính chất vết</Text>
       {TRAITS.map((t) => {
         const v = draft.traits?.[t.key];
@@ -123,11 +158,13 @@ export function ImageLabelCard({ im, patient, canEdit, onDirty, onRetake }: {
         );
       })}
 
-      <Divider />
       {canEdit ? <Field label="Ghi chú chung" optional value={draft.note ?? ''} onChangeText={(note) => set({ note })} />
         : draft.note ? <InfoRow label="Ghi chú chung" value={draft.note} /> : null}
+      </>}
 
       {/* K4 mức tin cậy, K2 chất lượng */}
+      {show(3) && <>
+      {!canEdit && <Divider />}
       <Text style={{ color: C.text, fontSize: T.small, fontWeight: '600' }}>Mức tin cậy của nhãn</Text>
       {canEdit ? <Choices<'certain' | 'uncertain'> value={draft.confidence ?? ('' as 'certain')} onChange={(confidence) => set({ confidence })}
         options={[{ value: 'certain', label: 'Chắc chắn' }, { value: 'uncertain', label: 'Không chắc' }]} />
@@ -143,17 +180,35 @@ export function ImageLabelCard({ im, patient, canEdit, onDirty, onRetake }: {
           {!im.retakeRequested && <Button label="Yêu cầu chụp lại" variant="secondary" icon="refresh" onPress={() => onRetake(draft.qualityReason ?? '')} />}
         </>}
       </> : <Muted>{draft.quality === 'pass' ? 'Đạt' : draft.quality === 'fail' ? `Không đạt${draft.qualityReason ? ` (${draft.qualityReason})` : ''}` : 'Chưa đánh giá'}</Muted>}
+      </>}
+
+      {/* Bước 5: xem lại toàn bộ nhãn rồi "Xác nhận nhãn" (K1). */}
+      {canEdit && step === 4 && (
+        <View testID="xem-lai-nhan" style={{ gap: 2 }}>
+          <InfoRow label="Loại ảnh" value={draft.imageType ? IMAGE_TYPE_LABEL[draft.imageType] : 'Chưa chọn'} />
+          <InfoRow label="Vùng vết" value={outline.length >= 3 ? `${outline.length} điểm viền` : 'Chưa khoanh'} />
+          <InfoRow label="Diện tích" value={im.areaCm2 !== null ? formatAreaDisplay(im.areaCm2) : 'Chưa nhập'} />
+          {TRAITS.map((t) => <InfoRow key={t.key} label={t.label} value={`${draft.traits?.[t.key]?.level ? TRAIT_LEVEL_LABEL[draft.traits[t.key]!.level!] : 'Chưa gán'}${draft.traits?.[t.key]?.note ? ` · ${draft.traits[t.key]!.note}` : ''}`} />)}
+          <InfoRow label="Chất lượng" value={draft.quality === 'pass' ? 'Đạt' : draft.quality === 'fail' ? `Không đạt (${draft.qualityReason ?? ''})` : 'Chưa đánh giá'} />
+          <InfoRow label="Mức tin cậy" value={draft.confidence === 'certain' ? 'Chắc chắn' : draft.confidence === 'uncertain' ? 'Không chắc' : 'Chưa chọn'} />
+        </View>
+      )}
 
       {canEdit && !unused && (
         <View style={{ gap: 6 }}>
           <Divider />
-          {missingLabelParts(draft).length > 0 && <Muted>{`Còn thiếu để đủ nhãn: ${missingLabelParts(draft).join('; ')}.`}</Muted>}
+          {step === 4 && missingLabelParts(draft).length > 0 && <Muted>{`Còn thiếu để đủ nhãn: ${missingLabelParts(draft).join('; ')}.`}</Muted>}
+          {step < 4 && !done[step] && <Muted>Hoàn tất bước này để sang bước sau.</Muted>}
           <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-            <Button style={{ flex: 1, minWidth: 140 }} label="Lưu nhãn" variant="secondary" icon="save-outline" loading={working} disabled={!dirty} reason="Chưa có thay đổi để lưu." onPress={save} />
-            <Button style={{ flex: 1, minWidth: 140 }} label={im.label?.confirmedAt && !dirty ? 'Đã xác nhận' : 'Xác nhận nhãn'} icon="checkmark-done-outline" loading={working}
+            {step > 0 && <Button style={{ flex: 1, minWidth: 100 }} label="Quay lại" variant="ghost" onPress={() => setStep(step - 1)} />}
+            <Button style={{ flex: 1, minWidth: 120 }} label="Lưu nháp" variant="secondary" icon="save-outline" loading={working} disabled={!dirty} reason="Chưa có thay đổi để lưu." onPress={save} />
+            {step < 4 && <Button style={{ flex: 1, minWidth: 100 }} label="Tiếp" icon="arrow-forward" disabled={!done[step]} onPress={() => setStep(step + 1)} />}
+          </View>
+          {step === 4 && <View style={{ flexDirection: 'row' }}>
+            <Button style={{ flex: 1 }} label={im.label?.confirmedAt && !dirty ? 'Đã xác nhận' : 'Xác nhận nhãn'} icon="checkmark-done-outline" loading={working}
               disabled={draftMissing.length > 0 || (!!im.label?.confirmedAt && !dirty)}
               reason={draftMissing.length ? `Còn thiếu: ${draftMissing.join('; ')}.` : 'Nhãn đã xác nhận.'} onPress={doConfirm} />
-          </View>
+          </View>}
           {im.label?.confirmedAt && <Muted>Sửa nhãn đã xác nhận sẽ đưa nhãn về Đang gán; cần bấm Xác nhận nhãn lại.</Muted>}
         </View>
       )}

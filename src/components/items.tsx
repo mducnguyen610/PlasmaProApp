@@ -15,6 +15,7 @@ import { bar, C, numeric, radius, T, space } from '@/theme';
 import { SEVERITY_ROLE, SOURCE } from '@/theme.status';
 import { TODAY_LABEL, type Attention, type TodayState } from '@/lib/attention';
 import { birthShort } from '@/lib/patientIdentity';
+import { woundUpdatedAt } from '@/lib/woundStatus';
 
 /** Một lịch hẹn: vạch màu, ngày (đỏ nếu hôm nay), tiêu đề đậm, mô tả. Dùng chung cho Trang chủ và Lịch trình. */
 /** Ô ngày làm điểm neo: số ngày lớn, tháng nhỏ; nền đỏ nhạt nếu là hôm nay. */
@@ -147,6 +148,34 @@ export function TaskRow({ icon, tone, title, detail, onPress }: { icon: IconName
       <View style={{ flex: 1 }}>
         <Text style={{ fontWeight: '600', color: C.text }}>{title}</Text>
         <Text style={{ color: C.textSoft, fontSize: T.caption }} numberOfLines={2}>{detail}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
+    </Pressable>
+  );
+}
+
+/**
+ * Logic chốt 25/11/2026 (TONG-HOP-LOGIC-BAC-SI.md mục 3.1, M2): thẻ bệnh nhân ở danh sách của bác sĩ gồm họ tên, mã, số vết thương,
+ * lần cập nhật gần nhất và số phác đồ đang hoạt động. Phác đồ đang hoạt động gồm cả phiên bản Tạm dừng (chưa kết thúc).
+ */
+export function DoctorPatientCard({ patient, readOnly }: { patient: Patient; readOnly?: boolean }) {
+  const { data } = useStore();
+  const wounds = data.wounds.filter((w) => w.patientId === patient.id);
+  const plans = data.plans.filter((p) => p.patientId === patient.id);
+  const activeProtocols = new Set(plans.filter((p) => p.status === 'active' || p.status === 'paused').map((p) => p.protocolId ?? p.id)).size;
+  const updated = wounds.map((w) => woundUpdatedAt(w, data.images, data.plans, data.sessions)).concat(patient.createdAt ?? []).sort().pop();
+  const planLine = activeProtocols ? `${activeProtocols} phác đồ đang hoạt động` : 'Chưa có phác đồ hoạt động';
+  const line2 = `${patient.code} · ${wounds.length} vết thương${updated ? ` · cập nhật ${fmtDate(updated)}` : ''}`;
+  return (
+    <Pressable testID={`the-bn-${patient.code}`} onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityRole="button"
+      accessibilityLabel={`${patient.name}, ${line2}, ${planLine}${readOnly ? ', bác sĩ khác phụ trách, chỉ xem' : ''}`}
+      style={({ pressed }) => ({ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: space.m, opacity: pressed ? 0.7 : 1 })}>
+      <PatientAvatar name={patient.name} muted={!!patient.archivedAt} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontSize: T.body, fontWeight: '700', color: C.text }}>{patient.name}</Text>
+        <Text style={[{ color: C.textSoft, fontSize: T.caption }, numeric]}>{line2}</Text>
+        <Text style={{ color: activeProtocols ? C.primary : C.textSoft, fontSize: T.caption, fontWeight: '600' }}>{planLine}</Text>
+        {readOnly ? <Text style={{ color: C.textSoft, fontSize: T.caption, fontWeight: '600' }}>Bác sĩ khác phụ trách · chỉ xem</Text> : null}
       </View>
       <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
     </Pressable>

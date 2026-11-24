@@ -378,7 +378,7 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
 
       {/* Giai đoạn B (CN2): gán nhãn theo ảnh. Ẩn khi đang đo diện tích; bác sĩ khác xem, không sửa. */}
       {isDoctor && !measuring && <Card>
-        <ImageLabelCard im={im} patient={p} canEdit={canEditImg} onDirty={onLabelDirty}
+        <ImageLabelCard im={im} patient={p} canEdit={canEditImg} onDirty={onLabelDirty} onEditArea={canEditImg ? () => startEdit() : undefined}
           onRetake={(reason) => confirm('Yêu cầu chụp lại', `Bệnh nhân sẽ thấy yêu cầu chụp lại ảnh ${im.id}${reason ? ` (${reason})` : ''}.`, () => persist(() => requestRetake(im.id, `Ảnh không đạt${reason ? `: ${reason}` : ''}`)), 'Gửi yêu cầu')} />
       </Card>}
 

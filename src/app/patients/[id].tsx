@@ -7,27 +7,27 @@ import { Text } from '@/components/Text';
 import { ActivationCode } from '@/components/ActivationCode';
 import { noteNeedsAttention, noteText } from '@/components/AdherenceCalendar';
 import { NoAccess, useCanView } from '@/components/Guard';
-import { Button, Card, Chip, Disclosure, Divider, Field, Header, IconBadge, InfoRow, LinkRow, ListCard, Muted, Notice, PatientAvatar, Screen, SectionTitle, WoundPhoto, StatusChip, Empty, TextLink } from '@/components/ui';
+import { Button, Card, Chip, Disclosure, Divider, Field, Header, InfoRow, LinkRow, ListCard, Muted, Notice, PatientAvatar, Screen, SectionTitle, WoundPhoto, StatusChip, Empty, TextLink } from '@/components/ui';
 import { isPendingActivation } from '@/lib/auth';
 import { confirm, notify } from '@/lib/dialog';
-import { fmtDate, fmtDateTime, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
+import { fmtDate, fmtDateTime, PLAN_STATUS, WOUND_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
 import { archiveBlocker } from '@/lib/patientRecord';
 import { deviceStatus, hasActivePlan } from '@/lib/deviceState';
 import { woundSummary } from '@/lib/woundSummary';
-import type { TreatmentPlan } from '@/lib/types';
 import { useLookups, useStore, type Activation } from '@/lib/store';
 import { C, numeric, T } from '@/theme';
-import { CLOUD_LINK, SOURCE, WOUND, cloudState } from '@/theme.status';
-import { courseProgress, localDay, sessionsForWound } from '@/lib/course';
-import { birthLabel, birthShort } from '@/lib/patientIdentity';
+import { CLOUD_LINK, WOUND, cloudState } from '@/theme.status';
+import { localDay } from '@/lib/course';
+import { birthLabel } from '@/lib/patientIdentity';
 import { CARE_STATUS, patientCareStatus, woundCareStatus, woundUpdatedAt } from '@/lib/woundStatus';
+import { protocolsOfWound } from '@/lib/planLifecycle';
 
 // BS03 – Hồ sơ bệnh nhân: thông tin, bác sĩ phụ trách, thiết bị, liệu trình, vết thương.
 export default function PatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, me, setPatientArchived, addWound, setReportHandled, issueActivation, assignDevice, setLifecycle } = useStore();
-  const { patient, account, device, woundsOf, imagesOf, sessionsOf, coursePlan } = useLookups();
+  const { patient, account, device, woundsOf, imagesOf, sessionsOf } = useLookups();
   const p = patient(id);
   const canView = useCanView(p);
   const [newWound, setNewWound] = useState('');
@@ -51,11 +51,6 @@ export default function PatientDetail() {
   const wounds = [...woundsOf(p.id)].sort((a, b) => updatedOf(b.id).localeCompare(updatedOf(a.id)) || b.code.localeCompare(a.code));
   // CN1 H7 (XN-12): trạng thái chung theo ưu tiên đang điều trị > cần tái khám > chưa điều trị > đã kết thúc.
   const overall = CARE_STATUS[patientCareStatus(wounds, data.plans)];
-  // P1-02a: mỗi vết một dòng đợt. Cùng cách chọn với B05 (coursePlan); bác sĩ thấy thêm bản nháp khi vết chưa có đợt nào khác.
-  // UX-18: tiến độ dùng cùng bộ lọc phiên với B05 (sessionsForWound).
-  const planOf = (woundId: string): TreatmentPlan | undefined => coursePlan(woundId, { patientView: !isDoctor })
-    ?? (isDoctor ? data.plans.filter((x) => x.patientId === p.id && x.woundId === woundId).sort((a, b) => b.version - a.version)[0] : undefined);
-  const progressOf = (plan: TreatmentPlan, woundId: string) => (dev ? courseProgress(plan, sessionsForWound(sessionsOf(dev.id), woundId), localDay(), dev.lastSync ? localDay(dev.lastSync) : null) : null);
   const reports = data.reports.filter((r) => r.patientId === p.id);
   // P1-02a (A-11): báo cáo chưa xử lý trước, đã xử lý thu gọn.
   const openReports = reports.filter((r) => !r.handled);
@@ -140,7 +135,6 @@ export default function PatientDetail() {
           <View style={{ flex: 1 }}>
             <Text accessibilityRole="header" style={{ fontSize: T.titleL, lineHeight: 26, fontWeight: '700', color: C.text }}>{p.name}</Text>
             {/* P1-07a: cùng định dạng với thanh ngữ cảnh và thẻ B02. */}
-            <Text style={[{ color: C.textSoft, fontSize: T.small }, numeric]}>{`${p.code} · sinh ${birthShort(p)} · ${p.sex}`}</Text>
           </View>
         </View>
         {/* Giai đoạn 1 giao diện theo tác vụ: trạng thái cần biết ngay ở thẻ định danh (máy và kết nối, việc chờ xử lý).
@@ -159,6 +153,14 @@ export default function PatientDetail() {
           {openReports.length + flaggedNotes.length > 0 && <Chip tone="amber" icon="alert-circle-outline"
             label={`Cần xem: ${[openReports.length ? `${openReports.length} báo cáo` : '', flaggedNotes.length ? `${flaggedNotes.length} ghi chú` : ''].filter(Boolean).join(', ')}`} />}
         </View>
+        {/* Logic chốt 25/11/2026 (mục 3.3, M11): khối thông tin cá nhân gồm mã, ngày sinh, giới tính, số điện thoại, trạng thái chung. */}
+        <View testID="thong-tin-ca-nhan">
+          <InfoRow label="Mã bệnh nhân" value={p.code} mono />
+          <InfoRow label="Ngày sinh" value={birthLabel(p)} />
+          <InfoRow label="Giới tính" value={p.sex} />
+          <InfoRow label="Số điện thoại" value={p.phone || 'Chưa có'} />
+          {isDoctor && <InfoRow label="Trạng thái chung" value={overall.label} />}
+        </View>
         {canEdit && <Button label="Chỉnh sửa hồ sơ" icon="create-outline" variant="secondary" onPress={() => router.push({ pathname: '/patient-edit/[id]', params: { id: p.id } })} />}
       </Card>
       {isDoctor && !isOwner && (
@@ -172,15 +174,21 @@ export default function PatientDetail() {
       <ListCard>
       {wounds.map((w) => {
         const imgs = imagesOf(w.id);
-        const last = imgs[imgs.length - 1];
         const sum = woundSummary(imgs, data.evaluations.filter((e) => isDoctor || e.visibleToPatient), w.id);
-        const areaLine = sum.latest ? `Diện tích ${formatAreaDisplay(sum.latest.areaCm2)} · chụp ${fmtDate(sum.latest.captureDate)} · ${SOURCE.doctor.label}` : 'Chưa có số đo';
-        const evalLine = sum.lastEval ? `Đánh giá ${fmtDate(sum.lastEval.date)} · ${TREND[sum.lastEval.trend].label} (bác sĩ đánh giá)` : 'Chưa có đánh giá';
+        // Logic chốt 25/11/2026 (mục 3.3, M37): ảnh nhỏ khoảng 52 px lấy từ ảnh mới nhất của vết (mọi loại ảnh), kèm diện tích mới nhất và phác đồ đang hoạt động.
+        const last = [...imgs].sort((a, b) => (a.captureDate || a.uploadDate).localeCompare(b.captureDate || b.uploadDate)).pop();
+        const areaLine = sum.latest ? `Diện tích mới nhất ${formatAreaDisplay(sum.latest.areaCm2)} · ${fmtDate(sum.latest.captureDate)}` : 'Chưa có số đo';
+        const openProto = protocolsOfWound(data.plans, p.id, w.id).find((x) => x.current.status === 'active' || x.current.status === 'paused');
+        const planLine = openProto ? `${openProto.title} · ${PLAN_STATUS[openProto.current.status].label}` : 'Chưa có phác đồ hoạt động';
         return (
-          <Pressable key={w.id} testID="dong-vet" accessibilityRole="button" accessibilityLabel={`${w.code}, ${w.location}, ${CARE_STATUS[woundCareStatus(w, data.plans)].label}. ${areaLine}. ${evalLine}.${isDoctor && sum.newerUnmeasured.length ? ` Có ${sum.newerUnmeasured.length} ảnh mới chưa đo.` : ''}`}
+          <Pressable key={w.id} testID="dong-vet" accessibilityRole="button" accessibilityLabel={`${w.code}, ${w.location}, ${CARE_STATUS[woundCareStatus(w, data.plans)].label}. ${areaLine}. ${planLine}.${isDoctor && sum.newerUnmeasured.length ? ` Có ${sum.newerUnmeasured.length} ảnh mới chưa đo.` : ''}`}
             onPress={() => router.push({ pathname: '/wounds/[id]', params: { id: w.id } })} style={({ pressed }) => ({ paddingVertical: 12, opacity: pressed ? 0.7 : 1 })}>
             <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-              {last ? <WoundPhoto image={last} style={{ width: 72, height: 72, borderRadius: 10 }} /> : <IconBadge icon="image-outline" size={72} tone="gray" />}
+              {last ? <WoundPhoto image={last} style={{ width: 52, height: 52, borderRadius: 8 }} /> : (
+                <View testID="chua-co-anh" style={{ width: 52, height: 52, borderRadius: 8, backgroundColor: C.photoPlaceholder, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: C.textSoft, fontSize: 11, textAlign: 'center' }}>Chưa có ảnh</Text>
+                </View>
+              )}
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={{ fontWeight: '700', color: C.text }}>{w.code} · {w.location}</Text>
                 {/* CN1 H7: trạng thái theo 4 mức; bước của quy trình liền thương ghi thêm khi đang chờ xác nhận lần 2. */}
@@ -189,7 +197,7 @@ export default function PatientDetail() {
                   {w.status === 'awaiting_closure' && <StatusChip status={WOUND[w.status]} label={WOUND_STATUS[w.status].label} />}
                 </View>
                 <Text style={[{ color: C.text, fontSize: T.small, fontWeight: '500' }, numeric]}>{areaLine}</Text>
-                <Muted>{evalLine}</Muted>
+                <Text style={{ color: openProto ? C.primary : C.textSoft, fontSize: T.small, fontWeight: '600' }}>{planLine}</Text>
                 {isDoctor && sum.newerUnmeasured.length > 0 ? <Text style={{ color: C.amber, fontSize: T.small, fontWeight: '600' }}>{`Có ${sum.newerUnmeasured.length} ảnh mới chưa đo`}</Text> : null}
               </View>
               <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
@@ -198,7 +206,7 @@ export default function PatientDetail() {
         );
       })}
       {wounds.length === 0 && <Muted>Chưa có vết thương.</Muted>}
-      {canEdit && <View style={{ paddingVertical: 4 }}><Disclosure icon="add-circle-outline" title="Thêm vết thương">
+      {canEdit && <View style={{ paddingVertical: 4 }}><Disclosure icon="add-circle-outline" title="+ Thêm vết thương">
         <Field label="Vị trí vết thương" value={newWound} onChangeText={setNewWound} placeholder="Ví dụ: Gót chân phải" />
         <Button
           label="Thêm vết thương"
@@ -239,22 +247,13 @@ export default function PatientDetail() {
         )}
       </Card>}
 
-      {/* P1-02a: mỗi vết một dòng đợt; chạm mở B06 đúng vết của dòng (cùng quy tắc PX-01). */}
-      <SectionTitle icon="flash-outline">Đợt điều trị</SectionTitle>
+      {/* Logic chốt 25/11/2026 (mục 3.3, D8): thiết bị đang giữ ở cấp bệnh nhân, tối đa một máy, dùng cho mọi vết. */}
+      <SectionTitle icon="hardware-chip-outline">Thiết bị đang giữ</SectionTitle>
       <Card>
-        {wounds.length === 0 ? <Muted>Thêm vết thương trước khi lập đợt.</Muted> : wounds.map((w) => {
-          const plan = planOf(w.id);
-          const pr = plan ? progressOf(plan, w.id) : null;
-          return (
-            <LinkRow key={w.id} icon="flash-outline" tone="violet" title={`${w.code} · ${w.location}`}
-              sub={plan ? `${pr ? `${pr.done}/${pr.total} buổi đã làm` : `Phiên bản ${plan.version}`}${pr && plan.status === 'active' ? '' : ` · ${PLAN_STATUS[plan.status].label}`}` : 'Chưa lập đợt'}
-              onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: w.id } })} />
-          );
-        })}
-      </Card>
-
-      {/* P1-02a: thiết bị và tài khoản, mở sẵn khi còn việc (chưa kích hoạt hoặc chưa giao máy). */}
-      <Card>
+        <View testID="thiet-bi-dang-giu">
+          <InfoRow label="Thiết bị" value={dev ? `${dev.code}${cloud ? ` · ${cloud.label}` : ''}${dev.fault ? ' · báo lỗi' : ''}` : 'Chưa giữ máy nào'} />
+        </View>
+        <Divider />
         {/* Lối vào lịch sử điều trị: nhật ký thiết bị và buổi điều trị (B13), luôn hiện thay vì nằm trong mục thu gọn. */}
         {/* Chỉ hiện khi đã gán máy; chưa gán thì mục "Thiết bị và tài khoản" bên dưới đã nói rõ. */}
         {dev && (

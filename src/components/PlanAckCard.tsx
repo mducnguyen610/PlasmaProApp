@@ -6,7 +6,8 @@ import { DoseRows } from '@/components/CourseCard';
 import { Text } from '@/components/Text';
 import { Button, Notice } from '@/components/ui';
 import { notify } from '@/lib/dialog';
-import { fmtDateTime } from '@/lib/format';
+import { fmtDate, fmtDateTime } from '@/lib/format';
+import { pendingExtension } from '@/lib/planLifecycle';
 import { useStore } from '@/lib/store';
 import type { TreatmentPlan, Wound } from '@/lib/types';
 import { C } from '@/theme';
@@ -18,6 +19,23 @@ import { C } from '@/theme';
 export function PlanAckCard({ plan, wound, showDetailLink = true }: { plan: TreatmentPlan; wound?: Wound; showDetailLink?: boolean }) {
   const { acknowledgePlan } = useStore();
   const [busy, setBusy] = useState(false);
+  // Logic chốt 25/11/2026 (M32): phiên bản đã đọc nhưng bác sĩ vừa gia hạn thì chỉ cần đọc ngày kết thúc mới.
+  const ext = plan.patientAckAt ? pendingExtension(plan) : undefined;
+  if (ext) {
+    return (
+      <View style={{ gap: 10 }} testID="xac-nhan-gia-han">
+        <Notice tone="amber" icon="calendar-outline">
+          {`Bác sĩ đã gia hạn đợt điều trị${wound ? ` ${wound.code}` : ''} từ ${fmtDate(ext.fromEnd)} đến ${fmtDate(ext.toEnd)} lúc ${fmtDateTime(ext.at)}. Liều và lịch không đổi. Hãy xác nhận đã đọc ngày kết thúc mới; chưa xác nhận thì không chạy được phiên sau ${fmtDate(ext.fromEnd)}.`}
+        </Notice>
+        {ext.reason ? <Text style={{ color: C.textSoft }}>{`Lý do gia hạn: ${ext.reason}`}</Text> : null}
+        <Button label={`Tôi đã đọc ngày kết thúc mới ${fmtDate(ext.toEnd)}`} icon="checkmark-done-outline" loading={busy}
+          onPress={async () => {
+            setBusy(true);
+            try { await acknowledgePlan(plan.id); } catch (e) { notify('Chưa ghi được xác nhận', e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
+          }} />
+      </View>
+    );
+  }
   return (
     <View style={{ gap: 10 }} testID="xac-nhan-phien-ban">
       <Notice tone="amber" icon="document-text-outline">
