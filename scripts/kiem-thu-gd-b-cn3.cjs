@@ -80,7 +80,7 @@ const rec = (id, name, pass, detail = '') => {
     await go(p, '/plan/p-3?woundId=w-3');
     const radios = await p.getByRole('radio', { name: /^Ảnh căn cứ/ }).count();
     const proposed = await p.getByRole('radio', { name: `Ảnh căn cứ ${b2.r.id}, đề xuất` }).count();
-    rec('CN3-03', 'Đủ điều kiện: liệt kê 2 ảnh hợp lệ hôm nay (không gồm ảnh ngày cũ), đề xuất ảnh mới nhất; mở biểu mẫu (P3)', radios === 2 && proposed === 1 && await has(p, 'Lập phác đồ mới', false), `${radios} ảnh`);
+    rec('CN3-03', 'Đủ điều kiện: liệt kê 2 ảnh hợp lệ hôm nay (không gồm ảnh ngày cũ), đề xuất ảnh mới nhất; mở biểu mẫu (P3)', radios === 2 && proposed === 1 && await has(p, 'Tạo phác đồ mới', false), `${radios} ảnh`);
     const bad = await callStore(p, 'savePlan', { ...basePlan, basisImageId: old.r.id });
     const ok = await callStore(p, 'savePlan', { ...basePlan, basisImageId: a.r.id });
     let d = await store(p);
@@ -93,10 +93,9 @@ const rec = (id, name, pass, detail = '') => {
     rec('CN3-05', 'Còn phác đồ mở thì lưu thành phiên bản mới cùng mã phác đồ, giữ ảnh căn cứ (P2, P6)', v2.ok && w3.length === 2 && w3[0].protocolId === w3[1].protocolId && w3.every((x) => x.basisImageId === a.r.id));
     const noReason = await callStore(p, 'savePlan', { ...basePlan, reason: '  ' });
     rec('CN3-06', 'Lưu phiên bản không có lý do bị từ chối (P6)', !noReason.ok, noReason.error);
-    // AU-09: xóa phác đồ chưa có phiên
-    await go(p, '/plan/p-3?woundId=w-3');
-    const manage = p.getByTestId('quan-ly-phac-do');
-    await manage.getByText('Xóa phác đồ', { exact: true }).first().click(); await p.waitForTimeout(300);
+    // AU-09: xóa phác đồ chưa có phiên. Logic chốt 25/11/2026 (mục 4.2): xóa nằm ở màn Chi tiết phác đồ.
+    await go(p, `/plan-detail/${created.protocolId}`);
+    await p.getByText('Xóa phác đồ', { exact: true }).first().click(); await p.waitForTimeout(300);
     const delBtnLocked = await btn(p, 'Xóa phác đồ').isDisabled();
     await p.getByLabel('Lý do xóa').fill('Lập nhầm vết thương');
     await btn(p, 'Xóa phác đồ').click(); await p.waitForTimeout(1200);
@@ -107,32 +106,44 @@ const rec = (id, name, pass, detail = '') => {
     // Có phiên thì không xóa
     const pr1 = d.plans.find((x) => x.woundId === 'w-1').protocolId;
     const del1 = await callStore(p, 'deletePlan', pr1, 'thử');
-    await go(p, '/plan/p-1?woundId=w-1');
-    await p.getByTestId('quan-ly-phac-do').getByText('Xóa phác đồ', { exact: true }).first().click(); await p.waitForTimeout(300);
+    await go(p, `/plan-detail/${pr1}`);
+    await p.getByText('Xóa phác đồ', { exact: true }).first().click(); await p.waitForTimeout(300);
     rec('CN3-08', 'Phác đồ đã có phiên: không xóa được, giao diện nêu lý do, store từ chối', !del1.ok && await has(p, 'Chỉ kết thúc được, không xóa.', false), del1.error);
     // AU-08: tạm dừng, tiếp tục có lý do
     const wBefore = d.wounds.find((x) => x.id === 'w-1').status;
     const latest1 = d.plans.filter((x) => x.woundId === 'w-1').sort((a2, b3) => b3.version - a2.version)[0];
-    const pauseLocked = await btn(p, 'Tạm dừng phác đồ').isDisabled();
-    await p.getByLabel('Lý do tạm dừng').fill('Da quanh vết kích ứng');
-    await btn(p, 'Tạm dừng phác đồ').click(); await p.waitForTimeout(1200);
+    // Logic chốt 25/11/2026 (mục 4.1, M31): Tạm dừng, Tiếp tục ở thẻ Phác đồ của trang vết thương, bảng hỏi lý do bắt buộc.
+    await go(p, '/wounds/w-1?the=phac-do');
+    await btn(p, 'Tạm dừng').click(); await p.waitForTimeout(400);
+    const sheet = p.getByTestId('bang-phac-do');
+    await sheet.getByRole('button', { name: 'Tạm dừng', exact: true }).click(); await p.waitForTimeout(600);
+    const pauseLocked = await has(p, 'Nhập lý do tạm dừng.') && (await store(p)).plans.find((x) => x.id === latest1.id).status === 'active';
+    await sheet.getByLabel('Lý do').fill('Da quanh vết kích ứng');
+    await sheet.getByRole('button', { name: 'Tạm dừng', exact: true }).click(); await p.waitForTimeout(1200);
     d = await store(p);
     let pl = d.plans.find((x) => x.id === latest1.id);
     rec('CN3-09', 'Tạm dừng: bắt buộc lý do; phác đồ Tạm dừng, có người, thời điểm, lý do; trạng thái vết không đổi (P8, AU-08)',
       latest1.status === 'active' && pauseLocked && pl.status === 'paused' && pl.statusLog?.[0]?.reason === 'Da quanh vết kích ứng' && pl.statusLog[0].by === 'u-bs1' && d.wounds.find((x) => x.id === 'w-1').status === wBefore);
     await p.reload(); await p.waitForTimeout(1500);
-    await p.getByLabel('Lý do tiếp tục').fill('Hết kích ứng');
-    await btn(p, 'Tiếp tục phác đồ').click(); await p.waitForTimeout(1200);
+    await btn(p, 'Tiếp tục').click(); await p.waitForTimeout(400);
+    await p.getByTestId('bang-phac-do').getByLabel('Lý do').fill('Hết kích ứng');
+    await p.getByTestId('bang-phac-do').getByRole('button', { name: 'Tiếp tục', exact: true }).click(); await p.waitForTimeout(1200);
     d = await store(p); pl = d.plans.find((x) => x.id === latest1.id);
     rec('CN3-10', 'Tiếp tục có lý do; nhật ký giữ cả hai lần; còn sau tải lại', pl.status === 'active' && pl.statusLog.length === 2 && pl.statusLog[1].action === 'resume');
     const noR = await callStore(p, 'setPlanPaused', latest1.id, true, '');
     rec('CN3-11', 'Store từ chối tạm dừng không có lý do', !noR.ok, noR.error);
     // P10: lịch sử phiên chỉ xem
+    // Logic chốt 25/11/2026 (mục 4.2 nhóm 4, M28): theo dõi thực hiện ở Chi tiết phác đồ; phiên có dữ liệu máy mở Chi tiết phiên, chỉ xem.
     const nSes = d.sessions.filter((s) => s.woundId === 'w-1').length;
-    rec('CN3-12', 'Lịch sử phiên theo vết: đếm đúng, có thực tế, dự kiến, phiên bản (P10)', await has(p, `Lịch sử phiên (${nSes})`) && await has(p, 'Dự kiến') && await has(p, 'Thực tế'), `${nSes} phiên`);
-    // Màn vết thương: không còn nút tạm dừng đổi trạng thái vết
+    await go(p, `/plan-detail/${pr1}`);
+    const track = await has(p, 'Theo dõi thực hiện') && await has(p, 'Tổng phiên dự kiến') && await has(p, 'Thất bại hoặc gián đoạn') && await has(p, 'Lịch sử thay đổi');
+    const ses = d.sessions.filter((s) => s.woundId === 'w-1').sort((a2, b3) => b3.start.localeCompare(a2.start))[0];
+    await go(p, `/session-detail/${ses.sessionId}`);
+    const detail = await has(p, 'Bệnh nhân bắt đầu') && await has(p, 'Thiết bị hoàn thành') && await has(p, 'Thời lượng thực tế') && await has(p, 'Thiết bị đã dùng') && await has(p, 'Các phiên trước');
+    rec('CN3-12', 'Theo dõi thực hiện ở Chi tiết phác đồ; Chi tiết phiên chỉ xem có giờ bắt đầu, giờ máy hoàn thành, thời lượng, thiết bị (P10, M28)', track && detail, `${nSes} phiên`);
+    // Màn vết thương: không còn nút tạm dừng đổi trạng thái vết; phác đồ ở thẻ Phác đồ
     await go(p, '/wounds/w-1');
-    rec('CN3-13', 'Màn vết thương: bỏ "Tạm dừng đợt" đổi trạng thái vết; lối sang quản lý phác đồ', !(await has(p, 'Tạm dừng đợt')) && await has(p, 'Tạm dừng hoặc quản lý phác đồ'));
+    rec('CN3-13', 'Màn vết thương: bỏ "Tạm dừng đợt" đổi trạng thái vết; có thẻ Phác đồ', !(await has(p, 'Tạm dừng đợt')) && await p.getByRole('tab', { name: 'Phác đồ' }).count() === 1);
     rec('CN3-14', 'Không lỗi JS', p.errors.length === 0, p.errors.join(' | '));
     await p.context().close();
   }

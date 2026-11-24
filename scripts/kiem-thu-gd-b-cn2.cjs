@@ -66,8 +66,13 @@ const rec = (id, name, pass, detail = '') => {
     // Ảnh chưa đo mở sẵn biểu mẫu đo: hủy để thấy thẻ gán nhãn.
     if (await has(p, 'Hủy')) { await btn(p, 'Hủy').click(); await p.waitForTimeout(500); }
     const card = p.getByTestId('the-gan-nhan');
-    rec('CN2-01', 'B11 có thẻ "Nhãn ảnh", trạng thái Chưa gán nhãn, nút Xác nhận khóa', await card.count() === 1 && await has(p, 'Chưa gán nhãn') && await btn(p, 'Xác nhận nhãn').isDisabled());
+    // Logic chốt 25/11/2026 (mục 6, G4): gán nhãn theo 5 màn nối tiếp; chưa xong bước thì khóa Tiếp; Xác nhận nhãn chỉ ở bước Xem lại.
+    const tiep = () => card.getByRole('button', { name: 'Tiếp', exact: true });
+    const lui = () => card.getByRole('button', { name: 'Quay lại', exact: true });
+    rec('CN2-01', 'B11 có thẻ "Nhãn ảnh" 5 bước, trạng thái Chưa gán nhãn, Tiếp khóa khi chưa xong bước, chưa có Xác nhận nhãn', await card.count() === 1 && await has(p, 'Chưa gán nhãn')
+      && await card.getByRole('tab').count() === 5 && await tiep().isDisabled() && await card.getByRole('button', { name: 'Xác nhận nhãn', exact: true }).count() === 0);
     await radio(p, 'Ảnh theo dõi trong điều trị').click();
+    await tiep().click(); await p.waitForTimeout(300);
     const hasAi = await has(p, 'Dùng viền AI');
     await btn(p, hasAi ? 'Dùng viền AI' : 'Khoanh từ viền mặc định').click(); await p.waitForTimeout(500);
     const handles = p.getByLabel(/^Điểm viền \d+$/);
@@ -79,27 +84,34 @@ const rec = (id, name, pass, detail = '') => {
     await p.waitForTimeout(300);
     const box2 = await handles.first().boundingBox();
     rec('CN2-02', 'Vùng vết: có điểm kéo được trên ảnh (XN-08)', nh >= 3 && box2.x > box.x + 15, `${nh} điểm, dời ${Math.round(box2.x - box.x)} px`);
+    await tiep().click(); await p.waitForTimeout(300);
     for (const t of ['Mô hạt', 'Mô hoại tử', 'Dịch tiết', 'Da quanh vết', 'Dấu hiệu nhiễm khuẩn']) await radio(p, `${t}: ${t === 'Mô hạt' ? 'Trung bình' : 'Không có'}`).click();
     await p.getByLabel('Ghi chú dịch tiết').fill('dịch trong');
     rec('CN2-03', 'Thang 4 mức "Không có, Thấp, Trung bình, Cao" (XN-15)', await radio(p, 'Mô hạt: Thấp').count() === 1 && await radio(p, 'Mô hạt: Cao').count() === 1);
-    const lockedNoConfidence = await btn(p, 'Xác nhận nhãn').isDisabled();
+    await tiep().click(); await p.waitForTimeout(300);
+    const lockedNoConfidence = await tiep().isDisabled();
     await radio(p, 'Chắc chắn').click();
     await radio(p, 'Không đạt').click(); await p.waitForTimeout(200);
     const failHint = await has(p, 'Ảnh Không đạt không vào tập huấn luyện và không xác nhận được. Nên yêu cầu chụp lại.') && await btn(p, 'Yêu cầu chụp lại').count() === 1;
+    await radio(p, 'Mờ').click(); await tiep().click(); await p.waitForTimeout(300);
     const lockedFail = await btn(p, 'Xác nhận nhãn').isDisabled();
+    await lui().click(); await p.waitForTimeout(300);
     await radio(p, 'Đạt').click(); await p.waitForTimeout(200);
     rec('CN2-04', 'Chưa chọn tin cậy hoặc chất lượng Không đạt thì khóa Xác nhận; Không đạt gợi ý chụp lại (K1, K2, XN-14)', lockedNoConfidence && lockedFail && failHint);
-    await btn(p, 'Lưu nhãn').click(); await p.waitForTimeout(800);
+    await btn(p, 'Lưu nháp').click(); await p.waitForTimeout(800);
     let d = await store(p); let im = img(d, 'IMG0004');
     rec('CN2-05', 'Lưu nhãn: đủ 5 tính chất, viền, loại ảnh; trạng thái Đủ nhãn; ảnh gốc và AI gốc không đổi (N4, N5)',
       im.label?.imageType === 'follow_up' && im.label.outline.length >= 3 && im.label.traits.exudate.note === 'dịch trong' && !im.label.confirmedAt
       && im.uri === before.uri && JSON.stringify(im.capture ?? null) === JSON.stringify(before.capture ?? null) && await has(p, 'Đủ nhãn'),
       `${im.label?.outlineSource}, ${im.labelHistory?.length} dòng lịch sử`);
+    await tiep().click(); await p.waitForTimeout(300);
+    const review = await card.getByTestId('xem-lai-nhan').count() === 1;
     await btn(p, 'Xác nhận nhãn').click(); await p.waitForTimeout(900);
     d = await store(p); im = img(d, 'IMG0004');
-    rec('CN2-06', 'Xác nhận nhãn: có người, thời điểm xác nhận; hộp xác nhận nhắc kiểm tra thông tin nhận dạng', !!im.label.confirmedAt && im.label.confirmedBy === 'u-bs1' && p.dialogs.some((x) => x.includes('thông tin nhận dạng')));
+    rec('CN2-06', 'Bước Xem lại rồi Xác nhận nhãn: có người, thời điểm xác nhận; hộp xác nhận nhắc kiểm tra thông tin nhận dạng', review && !!im.label.confirmedAt && im.label.confirmedBy === 'u-bs1' && p.dialogs.some((x) => x.includes('thông tin nhận dạng')));
     // Sửa sau xác nhận → về Đang gán
-    await radio(p, 'Dịch tiết: Cao').click(); await btn(p, 'Lưu nhãn').click(); await p.waitForTimeout(900);
+    await lui().click(); await lui().click(); await p.waitForTimeout(300);
+    await radio(p, 'Dịch tiết: Cao').click(); await btn(p, 'Lưu nháp').click(); await p.waitForTimeout(900);
     d = await store(p); im = img(d, 'IMG0004');
     rec('CN2-07', 'Sửa nhãn đã xác nhận thì bỏ xác nhận, ghi lịch sử "Bỏ xác nhận" (N6)', !im.label.confirmedAt && im.labelHistory.some((h) => h.action === 'unconfirm'), im.labelHistory.map((h) => h.action).join(','));
     // Tải lại và đăng xuất: dữ liệu còn
@@ -131,15 +143,16 @@ const rec = (id, name, pass, detail = '') => {
     const p = await newPage(); await login(p, 'bacsi');
     await go(p, '/capture');
     const modes = await p.getByRole('tab', { name: 'Bệnh nhân có sẵn' }).count() === 1 && await p.getByRole('tab', { name: 'Bệnh nhân mới' }).count() === 1;
-    await p.getByPlaceholder('Tìm theo mã bệnh nhân, ví dụ BN001').fill('Nguyễn'); await p.waitForTimeout(300);
-    const byName = await has(p, 'Không có mã bệnh nhân phù hợp. Chỉ tìm theo mã hồ sơ.');
-    await p.getByPlaceholder('Tìm theo mã bệnh nhân, ví dụ BN001').fill('002'); await p.waitForTimeout(300);
+    // Logic chốt 25/11/2026 (M6): tìm theo một phần tên (bỏ dấu) hoặc một phần mã.
+    await p.getByPlaceholder('Tìm theo tên hoặc mã, ví dụ BN001').fill('xyzkhongco'); await p.waitForTimeout(300);
+    const byName = await has(p, 'Không có bệnh nhân phù hợp với tên hoặc mã đã nhập.');
+    await p.getByPlaceholder('Tìm theo tên hoặc mã, ví dụ BN001').fill('002'); await p.waitForTimeout(300);
     await p.getByRole('radio', { name: /BN002/ }).first().click(); await p.waitForTimeout(300);
     const n0 = (await store(p)).wounds.length;
     await p.getByLabel('Thêm vết thương mới').fill('Gót chân phải'); await btn(p, 'Thêm vết').click(); await p.waitForTimeout(900);
     const d = await store(p);
     const nw = d.wounds.find((w) => w.patientId === 'p-2' && w.location === 'Gót chân phải');
-    rec('CN2-13', 'B09: hai lối Bệnh nhân có sẵn/mới; tìm theo mã, không theo tên; thêm vết ngay tại màn chụp (A1)', modes && byName && !!nw && d.wounds.length === n0 + 1 && !(await btn(p, 'Chụp có hướng dẫn').isDisabled()));
+    rec('CN2-13', 'B09: hai lối Bệnh nhân có sẵn/mới; tìm theo tên hoặc mã (M6); thêm vết ngay tại màn chụp (A1)', modes && byName && !!nw && d.wounds.length === n0 + 1 && !(await btn(p, 'Chụp có hướng dẫn').isDisabled()));
     await go(p, '/capture-new-patient');
     const gone = await has(p, 'Không tìm thấy', false) || (await p.locator('text=Ảnh chờ').count()) === 0;
     await go(p, '/capture'); await p.getByRole('tab', { name: 'Bệnh nhân mới' }).click(); await p.waitForTimeout(300);

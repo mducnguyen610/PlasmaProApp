@@ -151,13 +151,16 @@ const rec = (id, name, pass, detail = '') => {
 
   // Bác sĩ thấy cảnh báo và xử lý lỗi
   await relog(p, 'bacsi');
+  // Logic chốt 25/11/2026 (mục 2): trang chủ chỉ còn 4 ô; cảnh báo lỗi nằm ở chấm đỏ của chuông, trang Thông báo (nhóm Máy báo lỗi).
   await go(p, '/doctor');
-  const tile = await has(p, 'Thiết bị báo lỗi');
+  const dot = await p.getByTestId('cham-do').count() > 0;
+  await go(p, '/notifications');
+  const tile = dot && await has(p, 'Máy báo lỗi (1)') && await has(p, 'TB-001');
   await go(p, '/patients/p-1');
   const chip = await has(p, 'TB-001 báo lỗi');
   await go(p, '/devices');
   const first = await p.locator('[data-testid^="may-"]').first().getAttribute('data-testid').catch(() => '');
-  rec('CN4-16', 'Cảnh báo lỗi: ô việc ở trang chủ, chip ở hồ sơ, máy lỗi đứng đầu danh sách (D9)', tile && chip && /TB-001/.test(first ?? ''), `tile ${tile} chip ${chip} first ${first}`);
+  rec('CN4-16', 'Cảnh báo lỗi: chấm đỏ ở chuông và nhóm Máy báo lỗi ở Thông báo, chip ở hồ sơ, máy lỗi đứng đầu danh sách (D9)', tile && chip && /TB-001/.test(first ?? ''), `tile ${tile} chip ${chip} first ${first}`);
   await go(p, '/devices/d-1');
   const faultShown = await has(p, 'Máy báo lỗi lúc', false) && !(await has(p, 'STA-4', false)) && await has(p, 'Ứng dụng không gửi lệnh khắc phục xuống máy.', false);
   const noControl = !(await has(p, 'Kết nối')) && !(await has(p, 'Nạp liệu trình vào máy')) && !(await has(p, 'Bật nguồn')) && !(await has(p, 'Tắt nguồn'));
