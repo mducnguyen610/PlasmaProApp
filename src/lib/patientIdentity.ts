@@ -63,6 +63,16 @@ export function matchesCode(p: Pick<Patient, 'code'>, query: string): boolean {
   return !q || codeKey(p.code).includes(q);
 }
 
+/** Bỏ dấu tiếng Việt, đưa về chữ thường, gộp khoảng trắng (logic chốt 25/11, M6: tìm không phân biệt dấu, hoa thường). */
+export const foldVi = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim().replace(/\s+/g, ' ');
+
+/** M6 (thay H5): tìm theo một phần tên (không phân biệt dấu, hoa thường) hoặc một phần mã bệnh nhân. Ô trống khớp mọi hồ sơ. */
+export function matchesNameOrCode(p: Pick<Patient, 'code' | 'name'>, query: string): boolean {
+  const q = foldVi(query);
+  if (!q) return true;
+  return matchesCode(p, query) || foldVi(p.name).includes(q);
+}
+
 /** Một trang kết quả; trang ngoài khoảng được kéo về trang hợp lệ gần nhất. */
 export function paginate<T>(items: T[], page: number, size = PAGE_SIZE): { items: T[]; page: number; pages: number; total: number } {
   const pages = Math.max(1, Math.ceil(items.length / size));

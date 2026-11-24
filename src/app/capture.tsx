@@ -9,11 +9,11 @@ import { Text } from '@/components/Text';
 import { Button, Card, Choices, Field, Header, ListCard, Muted, PatientAvatar, Screen, SearchField, SectionTitle, Segmented, WoundPhoto } from '@/components/ui';
 import { notify } from '@/lib/dialog';
 import { fmtDate } from '@/lib/format';
-import { matchesCode } from '@/lib/patientIdentity';
+import { matchesNameOrCode } from '@/lib/patientIdentity';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
 
-// Nút giữa thanh tab của bác sĩ. Giai đoạn B (CN2 A1): chọn "Bệnh nhân có sẵn" (tìm theo mã, chọn hoặc thêm vết) hoặc
+// Nút "Chụp ảnh" ở chức năng Chụp ảnh và gán nhãn (logic chốt 25/11). Giai đoạn B (CN2 A1): chọn "Bệnh nhân có sẵn" (tìm theo mã, chọn hoặc thêm vết) hoặc
 // "Bệnh nhân mới" (tạo hồ sơ và vết trước), rồi mới chụp. Không còn ảnh chụp trước chưa thuộc hồ sơ nào.
 export default function Capture() {
   const { data, me, addWound } = useStore();
@@ -27,9 +27,9 @@ export default function Capture() {
   // P0 ID-03: như với bệnh nhân, chỉ chọn sẵn khi có đúng một vết đang theo dõi; từ 2 vết thì bác sĩ phải chọn.
   const woundId = wounds.some((w) => w.id === wid) ? wid : wounds.length === 1 ? wounds[0].id : '';
   const last = woundId ? imagesOf(woundId).at(-1) : undefined;
-  // CN1 H5: tìm theo mã bệnh nhân (một phần mã), không theo họ tên.
+  // Logic chốt 25/11 (M6): tìm theo một phần tên (không phân biệt dấu) hoặc một phần mã.
   const [q, setQ] = useState('');
-  const found = patients.filter((x) => matchesCode(x, q));
+  const found = patients.filter((x) => matchesNameOrCode(x, q));
   const [newLoc, setNewLoc] = useState('');
   const [adding, setAdding] = useState(false);
 
@@ -75,9 +75,9 @@ export default function Capture() {
       <SectionTitle right={picked(chosen?.code)}>1. Bệnh nhân</SectionTitle>
       {patients.length > 1 && (
         // Ô tìm kiếm luôn hiện (người dùng chốt 16/11/2026, bỏ nút đóng, mở bộ lọc): đây là cách chọn bệnh nhân chính khi có nhiều hồ sơ.
-        <SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo mã bệnh nhân, ví dụ BN001" />
+        <SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã, ví dụ BN001" />
       )}
-      {patients.length > 0 && found.length === 0 && <Muted>Không có mã bệnh nhân phù hợp. Chỉ tìm theo mã hồ sơ.</Muted>}
+      {patients.length > 0 && found.length === 0 && <Muted>Không có bệnh nhân phù hợp với tên hoặc mã đã nhập.</Muted>}
       <View accessibilityRole="radiogroup">
         <ListCard>
           {found.map((x) => {

@@ -15,7 +15,7 @@ import { useLookups, useStore } from '@/lib/store';
 type Filter = 'all' | DeviceStatus;
 const ORDER: Record<DeviceStatus, number> = { fault: 0, maintenance: 1, ready: 2, in_use: 3 };
 
-export default function DoctorDevices() {
+export default function DoctorDevices({ tab }: { tab?: boolean } = {}) {
   const { data, me } = useStore();
   const { patient } = useLookups();
   const [filter, setFilter] = useState<Filter>('all');
@@ -25,13 +25,14 @@ export default function DoctorDevices() {
   const shown = filter === 'all' ? list : list.filter((d) => deviceStatus(d) === filter);
   const faults = count('fault');
   return (
-    <Screen header={<Header back title="Thiết bị" subtitle="Danh sách máy và trạng thái" />}>
-      {faults > 0 && <Notice tone="red" icon="warning-outline">{`${faults} máy đang báo lỗi. Mở máy để xem mã lỗi và ghi xử lý.`}</Notice>}
+    <Screen header={<Header back={!tab} home={tab ? '/doctor' : undefined} title="Thiết bị" subtitle="Danh sách máy và trạng thái" />}>
+      {/* Logic chốt 25/11 (D5): không ghi mã lỗi, chỉ trạng thái Lỗi và mô tả. */}
+      {faults > 0 && <Notice tone="red" icon="warning-outline">{`${faults} máy đang báo lỗi. Mở máy để xem mô tả lỗi và ghi đã xử lý.`}</Notice>}
       <Choices value={filter} onChange={setFilter} options={[
         { value: 'all', label: `Tất cả (${list.length})` },
         { value: 'ready', label: `Sẵn sàng (${count('ready')})` },
         { value: 'in_use', label: `Đang giao (${count('in_use')})` },
-        { value: 'maintenance', label: `Bảo trì (${count('maintenance')})` },
+        { value: 'maintenance', label: `Chờ khử khuẩn (${count('maintenance')})` },
         { value: 'fault', label: `Lỗi (${faults})` },
       ]} />
       <SectionTitle caption="Giao và thu hồi máy trên hồ sơ bệnh nhân. Danh mục máy do quản trị quản lý.">{`${shown.length} máy`}</SectionTitle>

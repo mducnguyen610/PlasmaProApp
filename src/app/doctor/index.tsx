@@ -1,114 +1,73 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
+import { Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { DateBadge } from '@/components/DateBadge';
-import { View } from 'react-native';
-import { PatientCard, TaskRow } from '@/components/items';
-import { Card, Disclosure, Header, ListCard, Muted, NumberTile, Screen, SectionTitle, SimBadge, TextLink, type IconName } from '@/components/ui';
-import { useRankedPatients } from '@/components/useRankedPatients';
-import { fmtDate, fmtDateTime } from '@/lib/format';
-import { formatAreaDisplay } from '@/lib/naming';
-import { useLookups, useStore } from '@/lib/store';
+import { Text } from '@/components/Text';
+import { Screen, type IconName } from '@/components/ui';
+import { doctorTasks } from '@/lib/doctorTasks';
+import { useStore } from '@/lib/store';
+import { C, radius, T } from '@/theme';
 
-// Mốc riêng cho mỗi lần chạm ô, để màn đích lọc lại kể cả khi tab đã mở sẵn (UX-17).
-let tapCount = 0;
-const tapStamp = () => String(++tapCount);
+type Tile = { key: string; title: string; icon: IconName; href: string };
 
-type Task = { key: string; icon: IconName; tone: 'amber' | 'red' | 'blue' | 'violet'; count: number; label: string; onPress: () => void };
+/**
+ * Logic chốt 25/11/2026 (TONG-HOP-LOGIC-BAC-SI.md mục 2; TC-6, TC-7, TC-12, M10): Trang chủ bác sĩ.
+ * Thanh trên: tên ứng dụng bên trái, chuông thông báo bên phải (chấm đỏ khi có việc chờ). Dải chào kèm hình minh họa.
+ * Bốn ô 2x2: Bệnh nhân, Chụp ảnh và gán nhãn, Thiết bị, Cài đặt; mỗi ô chỉ có tên và biểu tượng, không có số.
+ * Bên dưới các ô không có gì thêm. Không có thanh dưới (giả định 1 mục 8: Cài đặt là ô thứ 4).
+ */
+const TILES: Tile[] = [
+  { key: 'patients', title: 'Bệnh nhân', icon: 'people-outline', href: '/doctor/patients' },
+  { key: 'capture', title: 'Chụp ảnh và gán nhãn', icon: 'camera-outline', href: '/doctor/dataset' },
+  { key: 'devices', title: 'Thiết bị', icon: 'hardware-chip-outline', href: '/doctor/devices' },
+  { key: 'settings', title: 'Cài đặt', icon: 'settings-outline', href: '/doctor/account' },
+];
 
-// BS01 – Trang chủ bác sĩ: danh sách việc cần làm rồi danh sách bệnh nhân; số liệu tổng hợp chuyển sang quản trị kỹ thuật.
 export default function DoctorHome() {
   const { data, me } = useStore();
-  const { device, patient, wound } = useLookups();
-  // Hồ sơ đã lưu trữ không vào việc cần làm hôm nay; lịch sử vẫn mở được từ B02.
-  const mine = data.patients.filter((p) => p.doctorId === me?.id && !p.archivedAt);
-  // Xếp người bệnh theo mức cần chú ý (FR10); cách tính ở src/lib/attention.ts, dùng chung với B02 (V09).
-  const ranked = useRankedPatients();
-  const ids = new Set(mine.map((p) => p.id));
-  const myImages = data.images.filter((i) => ids.has(i.patientId));
-  const unlabeled = myImages.filter((i) => i.status === 'unlabeled');
-  const retakes = myImages.filter((i) => i.retakeRequested);
-  const reports = data.reports.filter((r) => ids.has(r.patientId) && !r.handled);
-  const drafts = data.plans.filter((p) => ids.has(p.patientId) && p.status === 'draft');
-  const offline = mine.map((p) => device(p.deviceId)).filter((d) => d && !d.online);
-  // Giai đoạn B (CN4 D9): máy báo lỗi của bệnh nhân mình và máy ở phòng khám (chưa giao) báo lỗi.
-  const faults = data.devices.filter((d) => d.fault && (!d.patientId || ids.has(d.patientId)));
-  // Chỉ hiện việc đang có; số liệu tổng hợp (tỉ lệ gán nhãn, thống kê) nằm ở màn hình quản trị kỹ thuật.
-  const candidates: (Task | false)[] = [
-    faults.length > 0 && { key: 'faults', icon: 'warning-outline', tone: 'red', count: faults.length, label: 'Thiết bị báo lỗi', onPress: () => faults.length > 1
-      ? router.push('/devices')
-      : router.push({ pathname: '/devices/[id]', params: { id: faults[0].id } }) },
-    reports.length > 0 && { key: 'reports', icon: 'medkit-outline', tone: 'red', count: reports.length, label: 'Báo cáo mới', onPress: () => router.navigate({ pathname: '/doctor/patients', params: { loc: 'bao-cao', t: tapStamp() } }) },
-    unlabeled.length > 0 && { key: 'unlabeled', icon: 'pricetag-outline', tone: 'amber', count: unlabeled.length, label: 'Ảnh chưa đo', onPress: () => router.navigate({ pathname: '/doctor/dataset', params: { loc: 'chua-do', t: tapStamp() } }) },
-    // P1-01a: từ 2 mục thì mở danh sách đã lọc (trước đây luôn mở mục đầu, các mục sau không mở được từ ô). Một mục: mở thẳng như cũ.
-    retakes.length > 0 && { key: 'retakes', icon: 'camera-outline', tone: 'amber', count: retakes.length, label: 'Ảnh cần chụp lại', onPress: () => retakes.length > 1
-      ? router.navigate({ pathname: '/doctor/dataset', params: { loc: 'chup-lai', t: tapStamp() } })
-      : router.push({ pathname: '/images/[id]', params: { id: retakes[0].id } }) },
-    // P1-01d: nháp của từ 2 vết khác nhau thì mở B02 lọc "Có đợt nháp"; nháp của một vết thì mở thẳng B06 đúng vết như P0.
-    drafts.length > 0 && { key: 'drafts', icon: 'flash-outline', tone: 'amber', count: drafts.length, label: 'Đợt nháp chờ xác nhận', onPress: () => new Set(drafts.map((d) => `${d.patientId}:${d.woundId ?? ''}`)).size > 1
-      ? router.navigate({ pathname: '/doctor/patients', params: { loc: 'dot-nhap', t: tapStamp() } })
-      : router.push({ pathname: '/plan/[patientId]', params: { patientId: drafts[0].patientId, ...(drafts[0].woundId ? { woundId: drafts[0].woundId } : {}) } }) },
-    offline.length > 0 && { key: 'offline', icon: 'cloud-offline-outline', tone: 'blue', count: offline.length, label: 'Thiết bị chưa đồng bộ', onPress: () => offline.length > 1
-      ? router.navigate({ pathname: '/doctor/patients', params: { loc: 'chua-dong-bo', t: tapStamp() } })
-      : router.push({ pathname: '/devices/[id]', params: { id: offline[0]!.id } }) },
-  ];
-  const tasks = candidates.filter((t): t is Task => !!t);
-  // P1-01c (QĐ-P1-2 A): chỉ hiện bệnh nhân có việc chờ theo kết quả xếp hạng sẵn có (score > 0), giữ nguyên thứ tự rankPatients.
-  // Không đổi điểm, không đổi thứ tự, không thêm tiêu chí; người còn lại xem ở B02.
-  const waiting = ranked.filter((a) => a.score > 0);
-  const rest = ranked.length - waiting.length;
-  // P1-01e: 5 việc gần nhất chính bác sĩ đã làm, chỉ đọc từ dữ liệu có sẵn: lần ghi số đo (history, có giờ) và đánh giá (chỉ có ngày).
-  // Sắp theo ngày giảm dần; cùng ngày thì số đo có giờ đứng trước đánh giá chỉ có ngày.
-  type Recent = { key: string; day: string; at: string; title: string; detail: string; onPress: () => void };
-  const recentMeasures: Recent[] = myImages.flatMap((im) => {
-    const h = [...im.history].reverse().find((x) => x.by === me?.id);
-    if (!h) return [];
-    const pt = patient(im.patientId), w = wound(im.woundId);
-    return [{ key: `m-${im.id}`, day: h.at.slice(0, 10), at: h.at, title: `Số đo ${im.id}: ${formatAreaDisplay(h.toArea)}`,
-      detail: `${pt?.name ?? ''} · ${pt?.code ?? ''} · ${w?.code ?? ''} · ${fmtDateTime(h.at)}`,
-      onPress: () => router.push({ pathname: '/images/[id]', params: { id: im.id } }) }];
-  });
-  const recentEvals: Recent[] = data.evaluations.filter((e) => e.doctorId === me?.id).flatMap((e) => {
-    const w = wound(e.woundId); const pt = patient(w?.patientId);
-    if (!w || !pt || !ids.has(pt.id)) return [];
-    return [{ key: `e-${e.id}`, day: e.date.slice(0, 10), at: '', title: `Đánh giá ${w.code}`, detail: `${pt.name} · ${pt.code} · ${fmtDate(e.date)}`,
-      onPress: () => router.push({ pathname: '/wounds/[id]', params: { id: w.id } }) }];
-  });
-  const recent = [...recentMeasures, ...recentEvals]
-    .sort((a, b) => b.day.localeCompare(a.day) || b.at.localeCompare(a.at))
-    .slice(0, 5);
-
+  const insets = useSafeAreaInsets();
+  const tasks = doctorTasks(data, me?.id);
+  const name = (me?.name ?? '').replace(/^BS\.?\s+/i, '');
   return (
-    <Screen header={<Header title="Trang chủ" subtitle={`Xin chào, ${me?.name ?? ''}`} right={<DateBadge />} />}>
-      <SectionTitle caption={tasks.length ? `${tasks.reduce((n, t) => n + t.count, 0)} mục đang chờ, chạm ô để mở danh sách` : undefined}>Việc cần làm</SectionTitle>
-      {/* Ô số lớn làm điểm neo. UX-17 (Đợt 12): "Báo cáo mới" mở B02 lọc "Có báo cáo", "Ảnh chưa đo" mở B12 lọc "Chưa đo"; các ô khác mở việc đầu tiên như cũ. */}
-      {tasks.length === 0 ? <Card><Muted>Không có việc nào đang chờ.</Muted></Card> : (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {tasks.map((t) => <NumberTile key={t.key} value={t.count} label={t.label} icon={t.icon} tone={t.tone} onPress={t.onPress} />)}
+    <Screen header={
+      <View style={{ backgroundColor: C.navy, paddingTop: insets.top + 12, paddingBottom: 12, paddingHorizontal: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', maxWidth: 720, alignSelf: 'center' }}>
+          <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: C.brandMint, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="pulse" size={18} color={C.navy} /></View>
+          <Text accessibilityRole="header" style={{ flex: 1, color: C.onPrimary, fontWeight: '700', fontSize: T.titleM }}>Plasma Pro</Text>
+          <Pressable testID="chuong-thong-bao" onPress={() => router.push('/notifications')} accessibilityRole="button"
+            accessibilityLabel={tasks.total ? `Thông báo, có ${tasks.total} việc chờ` : 'Thông báo, không có việc chờ'} hitSlop={8}
+            style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? C.onNavyTint : 'transparent' })}>
+            <Ionicons name="notifications-outline" size={24} color={C.onPrimary} />
+            {tasks.total > 0 && <View testID="cham-do" style={{ position: 'absolute', top: 9, right: 10, width: 10, height: 10, borderRadius: 5, backgroundColor: C.red, borderWidth: 1.5, borderColor: C.navy }} />}
+          </Pressable>
         </View>
-      )}
-
-      {/* PP-10: nêu tiêu chí xếp, theo đúng thứ tự trọng số trong src/lib/attention.ts (không đổi cách xếp). Stage 9A: thành dòng chú thích dưới tiêu đề. Dòng chú thích đã bỏ theo yêu cầu người dùng (21/11/2026). */}
-      <SectionTitle action="Danh sách" onAction={() => router.navigate('/doctor/patients')}>{`Bệnh nhân cần xem (${waiting.length})`}</SectionTitle>
-      {waiting.length === 0 ? <Card><Muted>Không có bệnh nhân nào cần xem lúc này.</Muted></Card> : (
-        <ListCard>
-          {waiting.map((a) => {
-            const p = mine.find((x) => x.id === a.patientId);
-            return p ? <PatientCard key={p.id} patient={p} attention={a} /> : null;
-          })}
-        </ListCard>
-      )}
-      {/* Không nói "ổn định": chỉ là không có việc chờ theo tiêu chí xếp. */}
-      {rest > 0 && <TextLink label={`Còn ${rest} bệnh nhân không có việc chờ theo tiêu chí trên · Xem danh sách`} onPress={() => router.navigate('/doctor/patients')} />}
-
-      {recent.length > 0 && (
-        <Card style={{ paddingVertical: 4 }}>
-          <Disclosure icon="time-outline" title="Vừa xử lý" summary={`${recent.length} việc gần nhất của bạn`}>
-            {recent.map((r) => <TaskRow key={r.key} icon={r.key.startsWith('m-') ? 'resize-outline' : 'clipboard-outline'} tone="blue" title={r.title} detail={r.detail} onPress={r.onPress} />)}
-          </Disclosure>
-        </Card>
-      )}
-      <TextLink label="Danh sách thiết bị và trạng thái" onPress={() => router.push('/devices')} />
-      <SimBadge />
+      </View>
+    }>
+      {/* TC-6: dải chào có hình minh họa. */}
+      <View testID="dai-chao" style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: radius.card, backgroundColor: C.primarySoft }}>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={{ color: C.text, fontSize: T.titleM, fontWeight: '700' }}>{`Bác sĩ ${name}, chào mừng đến Plasma Pro`}</Text>
+        </View>
+        <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="medkit" size={34} color={C.primary} />
+          <View style={{ position: 'absolute', right: 4, bottom: 6, width: 26, height: 26, borderRadius: 13, backgroundColor: C.navy, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="pulse" size={15} color={C.brandMint} />
+          </View>
+        </View>
+      </View>
+      {/* TC-2, TC-12: 4 ô 2x2, chỉ tên và biểu tượng. */}
+      <View testID="o-chuc-nang" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+        {TILES.map((t) => (
+          <Pressable key={t.key} testID={`o-${t.key}`} accessibilityRole="button" accessibilityLabel={t.title} onPress={() => router.navigate(t.href as never)}
+            style={({ pressed }) => ({ flexGrow: 1, flexBasis: '45%', minHeight: 128, borderRadius: radius.card, borderWidth: 1, borderColor: C.border, backgroundColor: pressed ? C.primarySoft : C.card, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 12 })}>
+            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={t.icon} size={28} color={C.primary} />
+            </View>
+            <Text style={{ color: C.text, fontWeight: '700', fontSize: T.body, textAlign: 'center' }}>{t.title}</Text>
+          </Pressable>
+        ))}
+      </View>
     </Screen>
   );
 }

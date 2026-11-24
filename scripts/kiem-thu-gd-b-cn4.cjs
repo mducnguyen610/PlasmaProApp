@@ -93,7 +93,7 @@ const rec = (id, name, pass, detail = '') => {
   // Bác sĩ: danh sách, trạng thái (D1)
   await relog(p, 'bacsi');
   await go(p, '/devices');
-  const listOk = await has(p, 'Đang giao cho bệnh nhân') && await has(p, 'Bảo trì, chờ khử khuẩn') && await has(p, 'Sẵn sàng') && await p.getByTestId('may-TB-010').count() === 1;
+  const listOk = await has(p, 'Đang giao cho bệnh nhân') && await has(p, 'Đã thu hồi chờ khử khuẩn') && await has(p, 'Sẵn sàng') && await p.getByTestId('may-TB-010').count() === 1;
   rec('CN4-05', 'Bác sĩ xem danh sách máy và trạng thái (Sẵn sàng, Đang giao, Bảo trì)', listOk);
   // D2: chưa có phác đồ hoạt động thì không giao
   await go(p, '/patients/p-3');

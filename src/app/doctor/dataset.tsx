@@ -1,10 +1,10 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { ImageTile } from '@/components/items';
-import { Card, Choices, Disclosure, Empty, Field, Header, Screen, SectionTitle, Segmented } from '@/components/ui';
+import { Button, Card, Choices, Disclosure, Empty, Field, Header, Screen, SectionTitle, Segmented } from '@/components/ui';
 import { C, T } from '@/theme';
 import { useStore } from '@/lib/store';
 import type { WoundImage } from '@/lib/types';
@@ -58,7 +58,10 @@ export default function Dataset() {
   const tileW = Math.floor((content - 12 * (cols - 1)) / cols);
   const byPatient = myPatients.map((p) => ({ p, list: shown.filter((i) => i.patientId === p.id) })).filter((g) => g.list.length);
   return (
-    <Screen header={<Header title="Ảnh vết thương" subtitle="Gán nhãn và ghi diện tích" />}>
+    // Logic chốt 25/11 (mục 2, mục 6): chức năng "Chụp ảnh và gán nhãn": nút Chụp ảnh (chọn bệnh nhân và vết trước, A1)
+    // thay cho nút giữa thanh tab cũ, rồi trang Hình ảnh chung (T1).
+    <Screen header={<Header home="/doctor" title="Chụp ảnh và gán nhãn" subtitle="Hình ảnh của bệnh nhân bạn phụ trách" />}>
+      <Button label="Chụp ảnh" icon="camera" onPress={() => router.push('/capture')} />
       <Choices<LabelFilter>
         value={filter}
         onChange={setFilter}

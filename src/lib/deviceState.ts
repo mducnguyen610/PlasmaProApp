@@ -9,7 +9,7 @@ export type DeviceStatus = 'ready' | 'in_use' | 'maintenance' | 'fault';
 export const DEVICE_STATUS: Record<DeviceStatus, { label: string; tone: 'green' | 'blue' | 'amber' | 'red' }> = {
   ready: { label: 'Sẵn sàng', tone: 'green' },
   in_use: { label: 'Đang giao cho bệnh nhân', tone: 'blue' },
-  maintenance: { label: 'Bảo trì, chờ khử khuẩn', tone: 'amber' },
+  maintenance: { label: 'Đã thu hồi chờ khử khuẩn', tone: 'amber' },
   fault: { label: 'Lỗi', tone: 'red' },
 };
 

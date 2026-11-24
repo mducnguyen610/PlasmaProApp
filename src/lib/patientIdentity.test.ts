@@ -2,7 +2,7 @@
 // Giai đoạn B (CN1 H1, H3, H5, H8; XN-11): ngày sinh, trùng hồ sơ, tìm theo mã, phân trang, nhật ký sửa.
 import assert from 'node:assert/strict';
 import {
-  birthLabel, birthShort, findDuplicates, isoToVn, matchesCode, paginate, parseBirthDate, patientEditEntries, patientFormDirty, validateNewPatient, validatePatientEdit,
+  birthLabel, birthShort, findDuplicates, foldVi, isoToVn, matchesCode, matchesNameOrCode, paginate, parseBirthDate, patientEditEntries, patientFormDirty, validateNewPatient, validatePatientEdit,
 } from './patientIdentity.ts';
 
 const TODAY = '2026-11-23';
@@ -74,6 +74,13 @@ assert.equal(matchesCode(p1, '001'), true);
 assert.equal(matchesCode(p1, ' bn 001 '), true);
 assert.equal(matchesCode(p1, 'Nguyễn'), false, 'không tìm theo họ tên');
 assert.equal(matchesCode(p1, ''), true);
+// Logic chốt 25/11 (M6, thay H5): tìm theo một phần tên, không phân biệt dấu và hoa thường, hoặc một phần mã
+assert.equal(foldVi('  Nguyễn  Văn Đức '), 'nguyen van duc');
+assert.equal(matchesNameOrCode(p1, 'nguyen van'), true, 'bỏ dấu');
+assert.equal(matchesNameOrCode(p1, 'VĂN A'), true, 'hoa thường, có dấu');
+assert.equal(matchesNameOrCode(p1, 'bn001'), true, 'theo mã');
+assert.equal(matchesNameOrCode(p1, 'Trần'), false);
+assert.equal(matchesNameOrCode(p1, ''), true);
 
 // Phân trang 20 mỗi trang
 const many = Array.from({ length: 45 }, (_, i) => i);
