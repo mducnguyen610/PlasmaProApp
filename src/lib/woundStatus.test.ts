@@ -15,7 +15,8 @@ assert.equal(woundCareStatus(W({ status: 'closed' }), []), 'ended', 'kết thúc
 assert.equal(woundCareStatus(W({ revisitAt: '2026-11-20' }), []), 'revisit', 'bác sĩ đặt');
 assert.equal(woundCareStatus(W({ revisitAt: '2026-11-20' }), [plan('w-1', 'active')]), 'treating', 'đang điều trị ưu tiên hơn tái khám');
 assert.equal(woundCareStatus(W({}), [plan('w-2', 'active')]), 'not_treated', 'phác đồ của vết khác');
-assert.equal(woundCareStatus(W({}), [plan('w-1', 'ended')]), 'not_treated', 'giả định: phác đồ đã kết thúc, chưa lành');
+assert.equal(woundCareStatus(W({}), [plan('w-1', 'ended')]), 'revisit', 'phác đồ đã kết thúc, chưa lành: tự hiện Cần tái khám (chốt 24/11/2026)');
+assert.equal(woundCareStatus(W({}), [plan('w-1', 'ended'), plan('w-1', 'draft')]), 'revisit', 'bản nháp mới không đổi trạng thái');
 
 // Trạng thái chung theo ưu tiên
 const ws = [W({ id: 'a', status: 'follow_up' }), W({ id: 'b', revisitAt: 'x' }), W({ id: 'c' })];

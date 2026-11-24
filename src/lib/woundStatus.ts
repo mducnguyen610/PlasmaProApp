@@ -3,12 +3,10 @@
  *
  * - Đã kết thúc: vết đã lành (đang theo dõi sau điều trị) hoặc đã kết thúc theo dõi.
  * - Đang điều trị: có phác đồ Đang áp dụng hoặc Tạm dừng (gồm tạm dừng tự động khi ghi nhận khép lần 1).
- * - Cần tái khám: bác sĩ đặt thủ công (Wound.revisitAt).
+ * - Cần tái khám: bác sĩ đặt thủ công (Wound.revisitAt), hoặc vết từng có phác đồ, phác đồ đã kết thúc mà vết chưa lành
+ *   (người dùng chốt 24/11/2026).
  * - Chưa điều trị: chưa từng có phác đồ (bản nháp không tính).
  * Trạng thái quy trình liền thương (WoundStatus) giữ nguyên, chỉ dùng để suy ra; không đổi quy tắc 2 lần khám cách 14 ngày.
- *
- * Giả định chưa có trong XN-12: vết từng có phác đồ, phác đồ đã kết thúc mà vết chưa lành và bác sĩ chưa đặt "Cần tái khám"
- * thì hiện "Chưa điều trị" (không có phác đồ đang áp dụng). Ghi trong báo cáo bàn giao để chủ dự án xác nhận.
  */
 import type { TreatmentPlan, Wound } from './types.ts';
 
@@ -28,7 +26,7 @@ export function woundCareStatus(w: Pick<Wound, 'id' | 'status' | 'revisitAt'>, p
   if (w.status === 'follow_up' || w.status === 'closed') return 'ended';
   const mine = plans.filter((p) => p.woundId === w.id);
   if (mine.some((p) => p.status === 'active' || p.status === 'paused')) return 'treating';
-  if (w.revisitAt) return 'revisit';
+  if (w.revisitAt || mine.some((p) => p.status === 'ended')) return 'revisit';
   return 'not_treated';
 }
 
