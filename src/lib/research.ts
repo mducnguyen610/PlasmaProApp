@@ -6,6 +6,7 @@ import type { AppData, WoundImage } from './types';
  * Giai đoạn B (CN2 N9, C1, C2): xuất tập huấn luyện từ ảnh đã xác nhận nhãn.
  * Chỉ dùng mã nghiên cứu; không có họ tên, số điện thoại, năm sinh, mã hồ sơ lâm sàng, ngày chụp tuyệt đối,
  * mã bác sĩ hay mã thiết bị. Mốc thời gian quy về số ngày kể từ ngày bắt đầu theo dõi vết.
+ * Tuổi chỉ ghi theo nhóm 10 năm lúc chụp, không ghi năm sinh (người dùng chốt 24/11/2026).
  */
 export function researchFilename(data: AppData, im: WoundImage) {
   const p = data.patients.find(p => p.id === im.patientId);
@@ -13,6 +14,22 @@ export function researchFilename(data: AppData, im: WoundImage) {
   if (!p?.researchCode || !w) throw new Error('Ảnh chưa đủ thông tin nghiên cứu.');
   const area = im.areaCm2 !== null && Number.isFinite(im.areaCm2) && im.areaCm2 >= 0 ? im.areaCm2 : null;
   return buildFilename(p.researchCode, w.code, im.id, area, 'png');
+}
+
+/**
+ * Nhóm tuổi 10 năm lúc chụp ảnh ("40-49"); từ 90 tuổi gộp "90+" để nhóm cao tuổi ít người không lộ danh tính.
+ * Có ngày sinh đầy đủ thì tính đúng tuổi, chỉ có năm sinh thì lấy năm chụp trừ năm sinh. Thiếu hoặc sai thì null.
+ */
+export function ageGroup(p: { birthYear?: number; birthDate?: string }, captureDate: string): string | null {
+  const birth = p.birthDate && /^\d{4}-\d{2}-\d{2}/.test(p.birthDate) ? p.birthDate.slice(0, 10) : null;
+  const year = birth ? Number(birth.slice(0, 4)) : p.birthYear;
+  if (!year || !Number.isInteger(year) || !/^\d{4}-\d{2}-\d{2}/.test(captureDate)) return null;
+  let age = Number(captureDate.slice(0, 4)) - year;
+  if (birth && captureDate.slice(5, 10) < birth.slice(5, 10)) age -= 1;
+  if (age < 0 || age > 130) return null;
+  if (age >= 90) return '90+';
+  const lo = Math.floor(age / 10) * 10;
+  return `${lo}-${lo + 9}`;
 }
 
 const dayIndex = (iso: string) => Math.floor(Date.parse(iso.slice(0, 10) + 'T00:00:00Z') / 86400000);
@@ -37,14 +54,14 @@ const csvCell = (v: string | number | null | undefined) => {
 };
 
 export function researchCsv(data: AppData, images: WoundImage[]) {
-  const head = ['image_id', 'filename', 'subject_code', 'wound_code', 'split', 'image_type', 'label_state', 'confidence', 'quality',
+  const head = ['image_id', 'filename', 'subject_code', 'wound_code', 'split', 'age_group', 'image_type', 'label_state', 'confidence', 'quality',
     ...TRAITS.map(t => t.key), 'area_cm2', 'days_since_start', 'capture_order', 'after_session', 'plan_version'];
   const rows = images.map(im => {
     const p = data.patients.find(p => p.id === im.patientId)!;
     const w = data.wounds.find(w => w.id === im.woundId)!;
     const t = researchTimeline(data, im);
     const s = sessionLink(data, im);
-    return [im.id, researchFilename(data, im), p.researchCode!, w.code, splitForPatient(p.researchCode!), im.label?.imageType ?? '', labelState(im),
+    return [im.id, researchFilename(data, im), p.researchCode!, w.code, splitForPatient(p.researchCode!), ageGroup(p, im.captureDate) ?? '', im.label?.imageType ?? '', labelState(im),
       im.label?.confidence ?? '', im.label?.quality ?? '', ...TRAITS.map(tr => im.label?.traits?.[tr.key]?.level ?? ''),
       im.areaCm2 !== null && Number.isFinite(im.areaCm2) ? formatAreaForName(im.areaCm2) : '', t.daysSinceStart, t.captureOrder, s.linked ? 1 : 0, s.planVersion];
   });
@@ -73,6 +90,7 @@ export function researchLabels(data: AppData, images: WoundImage[]) {
       subject_code: p.researchCode,
       wound_code: w.code,
       split: splitForPatient(p.researchCode!),
+      age_group: ageGroup(p, im.captureDate),
       image_type: l.imageType ?? null,
       image_type_label: l.imageType ? IMAGE_TYPE_LABEL[l.imageType] : null,
       outline: (l.outline ?? []).map(pt => [...pt]),

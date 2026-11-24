@@ -16,7 +16,7 @@ function load(file) {
 const { latestEvaluation, patientSeverity, canManagePatient } = load('access');
 // Giai đoạn B (CN2): tập huấn luyện lấy ảnh đã xác nhận nhãn (trainingImages), thay researchImages (ảnh đã nhập diện tích và bấm chia sẻ).
 const { trainingImages } = load('imageLabel');
-const { researchCsv, researchCaptureMetadata, researchLabels } = load('research');
+const { researchCsv, researchCaptureMetadata, researchLabels, ageGroup } = load('research');
 const doctor = { id: 'd1', role: 'doctor', researchAccess: true, locked: false };
 const tech = { id: 't1', role: 'admin', researchAccess: true, locked: false };
 const patient = { id: 'u1', role: 'patient', locked: false };
@@ -50,6 +50,15 @@ assert.equal(rows[1][col('split')],rows[2][col('split')]);
 assert.equal(rows[1][col('days_since_start')],'11');
 assert.equal(rows[2][col('capture_order')],'2');
 assert.equal(rows[1][col('exudate')],'low');
+// Nhóm tuổi 10 năm lúc chụp, không ghi năm sinh (chốt 24/11/2026).
+assert.equal(rows[1][col('age_group')],'40-49');
+assert.equal(JSON.parse(labels)[0].age_group,'40-49');
+assert.equal(ageGroup({ birthDate:'1980-12-01', birthYear:1980 },'2026-10-12'),'40-49');
+assert.equal(ageGroup({ birthDate:'1976-12-01', birthYear:1976 },'2026-10-12'),'40-49','chưa tới sinh nhật thì chưa tròn 50');
+assert.equal(ageGroup({ birthDate:'1976-10-12', birthYear:1976 },'2026-10-12'),'50-59');
+assert.equal(ageGroup({ birthYear:1930 },'2026-10-12'),'90+');
+assert.equal(ageGroup({ birthYear:0 },'2026-10-12'),null);
+assert.equal(ageGroup({ birthYear:2030 },'2026-10-12'),null);
 assert.equal(JSON.parse(labels)[0].outline.length,3);
 assert.equal(researchCsv({...data,images:[{...image,areaCm2:null}]},[{...image,areaCm2:null}]).includes('RS-A1B2_VT01_IMG0001.png'),true);
 data.evaluations = [

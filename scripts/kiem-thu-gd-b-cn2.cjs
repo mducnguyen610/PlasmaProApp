@@ -198,9 +198,14 @@ const rec = (id, name, pass, detail = '') => {
       const raw = await z.file('labels.json').async('string') + await z.file('labels.csv').async('string');
       zipOk = names.filter((n) => n.startsWith('images/') && n.endsWith('.png')).length === expected && labels.length === expected
         && labels.every((x) => x.outline.length >= 3 && x.traits.granulation) && !raw.includes('Nguyễn') && !raw.includes('BN00') && !raw.includes('u-bs1');
-      detail = `${names.length} tệp`;
+      // Nhóm tuổi 10 năm, không có năm sinh (người dùng chốt 24/11/2026).
+      const years = [...new Set(d.patients.filter((x) => consent.has(x.id)).map((x) => String(x.birthYear)))];
+      const ageOk = labels.every((x) => x.age_group === null || /^\d0-\d9$|^90\+$/.test(x.age_group)) && labels.some((x) => x.age_group)
+        && (await z.file('labels.csv').async('string')).split('\n')[0].includes('age_group') && years.every((y) => !raw.includes(y));
+      zipOk = zipOk && ageOk;
+      detail = `${names.length} tệp, nhóm tuổi ${[...new Set(labels.map((x) => x.age_group))].join(' ')}${ageOk ? '' : ' (lỗi nhóm tuổi hoặc lộ năm sinh)'}`;
     }
-    rec('CN2-20', 'Tải ZIP: ảnh PNG, labels.csv, labels.json (viền, tính chất); không có định danh (S3, P3)', zipOk, detail);
+    rec('CN2-20', 'Tải ZIP: ảnh PNG, labels.csv, labels.json (viền, tính chất, nhóm tuổi 10 năm); không có định danh, không có năm sinh (S3, P3)', zipOk, detail);
     await p.context().close();
   }
 

@@ -50,7 +50,7 @@ export default function TechnicalDataset() {
         </ScrollView>
       </Disclosure>
     </Card>
-    <Notice tone="gray" icon="shield-checkmark-outline">{'Chỉ gồm ảnh bác sĩ đã xác nhận nhãn, chất lượng Đạt, không đánh dấu Không sử dụng, và bệnh nhân đồng ý dùng dữ liệu. Dùng mã nghiên cứu; không hiển thị họ tên, số điện thoại, năm sinh hay hồ sơ lâm sàng.\nẢnh trong tệp ZIP được vẽ lại để bỏ metadata. Ảnh gốc giữ nguyên trong ứng dụng.'}</Notice>
+    <Notice tone="gray" icon="shield-checkmark-outline">{'Chỉ gồm ảnh bác sĩ đã xác nhận nhãn, chất lượng Đạt, không đánh dấu Không sử dụng, và bệnh nhân đồng ý dùng dữ liệu. Dùng mã nghiên cứu; không hiển thị họ tên, số điện thoại, năm sinh hay hồ sơ lâm sàng. Tuổi chỉ ghi theo nhóm 10 năm lúc chụp.\nẢnh trong tệp ZIP được vẽ lại để bỏ metadata. Ảnh gốc giữ nguyên trong ứng dụng.'}</Notice>
     <SectionTitle caption={`${shown.length} ảnh theo bộ lọc đang chọn`}>Bộ ảnh đã xác nhận nhãn</SectionTitle>
     {shown.length === 0 && <Empty text={me.researchAccess ? 'Chưa có ảnh đủ điều kiện. Bác sĩ cần gán đủ nhãn và bấm Xác nhận nhãn.' : 'Quản trị cần cấp quyền nghiên cứu cho tài khoản này.'} />}
     {/* Lưới 2 cột ảnh vuông như danh sách ảnh của bác sĩ (V25); tên tệp đầy đủ vẫn chọn sao chép được. */}
