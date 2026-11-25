@@ -1,4 +1,5 @@
 // Kiểm thử tình huống Đợt 8 (ngăn thao tác sai) trên bản web, Playwright.
+// Logic chốt 25/11/2026: biểu mẫu phác đồ 4 bước (Thông tin, Thông số, Lịch, Xem lại); lý do đổi thông số ở bước Thông tin.
 // Chạy: node scripts/kiem-thu-dot-8.cjs <baseURL> <thư mục ảnh>. Dựng web trước: npx expo export -p web, phục vụ dist với SPA fallback.
 // Hộp xác nhận trên web là window.confirm: kịch bản chọn chấp nhận hoặc hủy theo từng bước (p.answer).
 const { chromium } = require('playwright');
@@ -52,38 +53,38 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const p = await newPage();
     await login(p, 'bacsi'); await go(p, '/plan/p-1');
     const v0 = (await store(p)).plans.filter((x) => x.patientId === 'p-1').length;
-    await tab(p, '3. Xác nhận');
+    await tab(p, '4. Xem lại');
     await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(200);
     const on1 = await checked(p, CONFIRM);
     // Nhấn nhầm: quay lại bước Liều, đổi mức năng lượng, rồi về bước Xác nhận.
-    await tab(p, '2. Liều');
+    await tab(p, '2. Thông số');
     await p.getByRole('radio', { name: '5', exact: true }).first().click(); await p.waitForTimeout(200);
-    await tab(p, '3. Xác nhận');
+    await tab(p, '4. Xem lại');
     const off1 = await checked(p, CONFIRM);
     const note1 = await has(p, CLEARED);
     rec('D8-02a', 'Đổi mức năng lượng sau khi tích: dấu xác nhận về trống và có câu giải thích', on1 === 'true' && off1 === 'false' && note1, `trước ${on1}, sau ${off1}, câu ${note1}`);
     // Dữ liệu không đầy đủ: đợt "Đang áp dụng" chưa tích thì không lưu.
-    await p.getByLabel('Lý do thay đổi').fill('Kiểm thử Đợt 8');
+    await tab(p, '1. Thông tin'); await p.getByLabel('Lý do đổi thông số').fill('Kiểm thử Đợt 8'); await tab(p, '4. Xem lại');
     await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click(); await p.waitForTimeout(400);
     const blocked = await has(p, 'Đợt "Đang áp dụng" cần bác sĩ xác nhận.');
     const v1 = (await store(p)).plans.filter((x) => x.patientId === 'p-1').length;
     rec('D8-02b', 'Chưa tích lại: lưu bị chặn bởi quy tắc cũ, không tạo phiên bản', blocked && v1 === v0, `lỗi ${blocked}, phiên bản ${v0}→${v1}`);
     // Đổi thời gian ở ô nhập cũng bỏ dấu xác nhận.
     await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(150);
-    await tab(p, '2. Liều');
+    await tab(p, '2. Thông số');
     await p.getByLabel('Thời gian mỗi lần điều trị (giây)').fill('200'); await p.waitForTimeout(150);
-    await tab(p, '3. Xác nhận');
+    await tab(p, '4. Xem lại');
     rec('D8-02c', 'Sửa ô thời gian: dấu xác nhận về trống', (await checked(p, CONFIRM)) === 'false');
     // Đổi lịch (ngày giai đoạn) cũng bỏ dấu xác nhận.
     await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(150);
-    await tab(p, '1. Lịch');
+    await tab(p, '3. Lịch');
     const d0 = p.getByPlaceholder('dd/mm/yyyy').nth(1); const old = await d0.inputValue();
     await d0.fill(''); await d0.fill(old); await p.waitForTimeout(150);
-    await tab(p, '3. Xác nhận');
+    await tab(p, '4. Xem lại');
     rec('D8-02d', 'Sửa ngày ở bước Lịch: dấu xác nhận về trống', (await checked(p, CONFIRM)) === 'false');
     // Quay lại bước trước mà không đổi gì: dấu xác nhận giữ nguyên (không bắt tích lại vô ích).
     await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(150);
-    await tab(p, '2. Liều'); await tab(p, '3. Xác nhận');
+    await tab(p, '2. Thông số'); await tab(p, '4. Xem lại');
     rec('D8-02e', 'Chỉ chuyển bước, không đổi giá trị: dấu xác nhận giữ nguyên', (await checked(p, CONFIRM)) === 'true');
     // Thao tác đúng: lưu được, rồi dấu xác nhận về trống.
     await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click(); await p.waitForTimeout(600);
@@ -99,7 +100,7 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     for (const w of [320, 360, 390, 768]) {
       await p.setViewportSize({ width: w, height: 844 });
       await p.getByRole('checkbox', { name: CONFIRM }).click(); await p.waitForTimeout(100);
-      await tab(p, '2. Liều'); await p.getByRole('radio', { name: '4', exact: true }).first().click(); await tab(p, '3. Xác nhận');
+      await tab(p, '2. Thông số'); await p.getByRole('radio', { name: '4', exact: true }).first().click(); await tab(p, '4. Xem lại');
       await shot(p, `${OUT}/b06c-bo-xac-nhan-${w}.png`);
     }
     rec('D8-02z', 'Không có lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 120));
@@ -236,8 +237,17 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     const p = await newPage();
     await login(p, 'quantri'); await go(p, '/admin/devices');
     await p.getByText('Đăng ký thiết bị mới').click(); await p.waitForTimeout(300);
-    await p.getByLabel('Mã thiết bị').fill('TB-009'); await p.getByText('Đăng ký', { exact: true }).click(); await p.waitForTimeout(400);
-    await relogin(p, 'bacsi'); await go(p, '/patients/p-3');
+    // Giai đoạn B (CN4 D1): danh mục cần số sê-ri. CN4 D2: chỉ giao khi bệnh nhân có phác đồ đang hoạt động; BN003 trong dữ liệu mẫu
+    // không có, nên dựng sẵn một phác đồ đang hoạt động cho vết VT01 của BN003 (dữ liệu thử) để giữ nguyên ý ca UX-07.
+    await p.getByLabel('Mã thiết bị').fill('TB-009'); await p.getByLabel('Số sê-ri').fill('HFP-0009');
+    await p.getByText('Đăng ký', { exact: true }).click(); await p.waitForTimeout(400);
+    await relogin(p, 'bacsi');
+    // Sửa dữ liệu lưu sau khi đăng nhập, rồi tải lại trang (go) để ứng dụng đọc bản có phác đồ thử.
+    await p.evaluate(() => { const k = 'plasmapro.demo.v2'; const d = JSON.parse(localStorage.getItem(k)); const w = d.wounds.find((x) => x.patientId === 'p-3');
+      const t = new Date().toISOString().slice(0, 10);
+      d.plans.push({ id: 'pl-thu-d8', protocolId: 'pr-thu-d8', patientId: 'p-3', woundId: w.id, version: 1, status: 'active', confirmed: true, phases: [{ from: t, to: t, pattern: 'daily', n: 1 }], sessionsPerDay: 1, startDate: t, endDate: t, reviewAtDay: 28, reviewSchedule: '', notes: '', reason: 'Thử', editedAt: new Date().toISOString(), editedBy: 'u-bs1' });
+      localStorage.setItem(k, JSON.stringify(d)); });
+    await go(p, '/patients/p-3');
     const devOf = async () => (await store(p)).devices.find((d) => d.code === 'TB-009')?.patientId ?? null;
     await p.getByText('Giao máy', { exact: true }).click(); await p.waitForTimeout(300);
     p.answer = false; const n0 = p.dialogs.length;

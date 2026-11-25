@@ -1,4 +1,5 @@
 // Kịch bản kiểm thử giao diện tự động (Playwright, bản web).
+// Logic chốt 25/11/2026: biểu mẫu phác đồ 4 bước (Thông tin, Thông số, Lịch, Xem lại); lý do đổi thông số ở bước Thông tin.
 // Chạy: node kiem-thu.cjs <baseURL> <thư mục ảnh lỗi>. Ghi kết quả JSON ra stdout dòng cuối.
 // Cần Playwright (không nằm trong dependencies). Dựng web trước: npx expo export -p web, rồi phục vụ thư mục dist với SPA fallback.
 const { chromium } = require('playwright');
@@ -170,17 +171,17 @@ const rec = (id, name, pass, detail) => { results.push({ id, name, pass, detail 
     const p = await newPage();
     await login(p, 'bacsi'); await go(p, '/plan/p-1');
     const step1 = await visible(p, 'Lịch theo giai đoạn');
-    await p.getByRole('tab', { name: '3. Xác nhận' }).click(); await p.waitForTimeout(300);
+    await p.getByRole('tab', { name: '4. Xem lại' }).click(); await p.waitForTimeout(300);
     await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click(); await p.waitForTimeout(400);
     const e1 = await visible(p, 'Nhập lý do thay đổi để lưu vết phiên bản.');
     // Đợt 10 (R-02): tóm tắt dạng bảng so với phiên bản đang áp dụng; mỗi dòng có nhãn trợ năng "thông số: hiện tại …, mới …".
     const sumOk = (await p.getByLabel(/^Lịch: hiện tại Mỗi ngày[\s\S]*mới Mỗi ngày/).count()) > 0 && (await p.getByLabel('Mức năng lượng: hiện tại 4, mới 4').count()) > 0
       && (await p.getByLabel('Chế độ: hiện tại Cold, mới Cold').count()) > 0 && (await p.getByLabel('Thời gian mỗi lần: hiện tại 3 phút, mới 3 phút').count()) > 0 && (await p.getByLabel('Số lần mỗi buổi: hiện tại 1, mới 1').count()) > 0;
     // Xóa ngày của giai đoạn 1 rồi lưu từ bước 3: phải quay về bước 1 và báo lỗi.
-    await p.getByRole('tab', { name: '1. Lịch' }).click(); await p.waitForTimeout(300);
+    await p.getByRole('tab', { name: '3. Lịch' }).click(); await p.waitForTimeout(300);
     await p.getByPlaceholder('dd/mm/yyyy').first().fill('');
-    await p.getByRole('tab', { name: '3. Xác nhận' }).click(); await p.waitForTimeout(300);
-    await p.getByLabel('Lý do thay đổi').fill('Kiểm thử');
+    await p.getByRole('tab', { name: '4. Xem lại' }).click(); await p.waitForTimeout(300);
+    await p.getByRole('tab', { name: '1. Thông tin' }).click(); await p.getByLabel('Lý do đổi thông số').fill('Kiểm thử'); await p.getByRole('tab', { name: '4. Xem lại' }).click();
     await p.getByText(/^Lưu phiên bản \d+( cho VT\d+)?$/).click(); await p.waitForTimeout(400);
     const e2 = await visible(p, 'Giai đoạn 1: ngày theo dạng dd/mm/yyyy.');
     const back = await visible(p, 'Lịch theo giai đoạn');

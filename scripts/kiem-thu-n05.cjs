@@ -149,11 +149,11 @@ const KEY = 'plasmapro.demo.v2';
     rec('N05-09', 'Bệnh nhân khác không xem được N05, Đợt điều trị, Lịch sử vết thương của BN001', blocked.every(Boolean), blocked.join('/'));
     await p.context().close();
   }
-  // N05-10: B05 bác sĩ giữ nguyên.
+  // N05-10: B05 bác sĩ giữ nguyên. Giai đoạn B (XN-07): chân màn B05 bỏ "Ghi đánh giá", còn "Chụp ảnh".
   {
     const p = await newPage(); await login(p, 'bacsi');
     await go(p, '/wounds/w-1');
-    const b05 = await has(p, 'Hiện trạng') && await has(p, 'Việc với vết thương') && (await inFooter(p, 'Ghi đánh giá').count()) === 1 && !(await has(p, /^Ảnh \(\d+\)$/, false)) && (await p.getByTestId('dong-lich-su').count()) === 0;
+    const b05 = await has(p, 'Hiện trạng') && await has(p, 'Việc với vết thương') && (await inFooter(p, 'Ghi đánh giá').count()) === 0 && (await inFooter(p, 'Chụp ảnh').count()) === 1 && !(await has(p, /^Ảnh \(\d+\)$/, false)) && (await p.getByTestId('dong-lich-su').count()) === 0;
     await go(p, '/wound-history/w-1?tab=dien-tich');
     const noStrip = !(await has(p, 'Ảnh theo thời gian'));
     await go(p, '/wound-history/w-1/dot-dieu-tri');

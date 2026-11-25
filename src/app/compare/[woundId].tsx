@@ -142,7 +142,7 @@ export default function Compare() {
               {im.areaCm2 !== null && <View style={{ flexDirection: 'row' }}><StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} /></View>}
               {im.areaCm2 !== null && <Muted>{`Phương pháp: ${methodOf(im) ?? 'chưa ghi'}`}</Muted>}
               {im.areaCm2 !== null && <Muted>{sourceText(im)}</Muted>}
-              {im.status === 'excluded' && <View style={{ flexDirection: 'row' }}><Chip label="Đã loại khỏi bộ dữ liệu" tone="gray" /></View>}
+              {im.status === 'excluded' && <View style={{ flexDirection: 'row' }}><Chip label="Không sử dụng" tone="gray" /></View>}
             </View>
           </View>
         ))}

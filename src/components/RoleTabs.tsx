@@ -11,7 +11,8 @@ import type { Role } from '@/lib/types';
 import { C, radius, size, T } from '@/theme';
 
 type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
-type TabDef = { name: string; title: string; icon: IconName; iconOn: IconName; badge?: number };
+/** hidden: màn không có trong thanh tab; khi đang mở màn đó thì ẩn cả thanh (logic chốt 25/11, TC-3: Trang chủ bác sĩ không có thanh dưới). */
+type TabDef = { name: string; title: string; icon: IconName; iconOn: IconName; badge?: number; hidden?: boolean };
 
 /** Lề ngang của thanh tab: nhãn ngoài cùng ("Trang chủ", "Tài khoản") cách mép màn hình tối thiểu 16 pt. */
 const BAR_SIDE = 12;
@@ -32,7 +33,9 @@ function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarPro
   // Stage 9A: dưới 340 pt (máy 320) nhãn mục chọn không in đậm (đã có vạch chỉ báo, biểu tượng đặc, màu), ô chữ của nút giữa thu còn 60 để "Trang chủ", "Bệnh nhân" không bị cắt; nút tròn vẫn 56 nhô trên thanh.
   const fabSlot = winW < 340 ? 60 : narrow ? 72 : FAB_SLOT;
   const tier = useLayoutTier();
-  const items = state.routes.map((r, i) => ({ route: r, index: i, def: tabs.find((t) => t.name === r.name)! })).filter((x) => x.def);
+  const all = state.routes.map((r, i) => ({ route: r, index: i, def: tabs.find((t) => t.name === r.name)! })).filter((x) => x.def);
+  if (all.find((x) => x.index === state.index)?.def.hidden) return null;
+  const items = all.filter((x) => !x.def.hidden);
   if (tier === 'desktop') return <SideBar items={items} state={state} emitter={emitter} navigateToTab={navigateToTab} fab={fab} />;
   const half = Math.ceil(items.length / 2);
   const render = (x: (typeof items)[number]) => {
@@ -47,7 +50,8 @@ function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarPro
           const ev = emitter.emit({ type: 'tabPress', target: x.route.key, canPreventDefault: true });
           if (!on && !ev.defaultPrevented) navigateToTab(x.route.key);
         }}
-        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingTop: 10 }}>
+        // Logic chốt 25/11 (TC-3, TC-12): khi không có nút giữa (bác sĩ), mục đang mở được tô nền.
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingTop: 10, ...(fab ? {} : { marginVertical: 4, marginHorizontal: 2, borderRadius: radius.m, backgroundColor: on ? C.primarySoft : 'transparent' }) }}>
         {/* Vạch chỉ báo ở mép trên mục đang chọn, cùng với biểu tượng đặc và chữ đậm (không chỉ dựa vào màu). */}
         <View style={{ position: 'absolute', top: 0, width: 28, height: 3, borderBottomLeftRadius: 3, borderBottomRightRadius: 3, backgroundColor: on ? C.primary : 'transparent' }} />
         <View>
@@ -58,7 +62,7 @@ function BottomBar({ state, emitter, navigateToTab, tabs, fab }: BottomTabBarPro
             </View>
           ) : null}
         </View>
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.3} style={{ fontSize: labelSize, color: on ? C.primary : C.textFaint, fontWeight: on && winW >= 340 ? '700' : '500' }}>{x.def.title}</Text>
+        <Text numberOfLines={fab ? 1 : 2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.3} style={{ fontSize: fab ? labelSize : labelSize - 1, textAlign: 'center', color: on ? C.primary : C.textFaint, fontWeight: on && winW >= 340 ? '700' : '500' }}>{x.def.title}</Text>
         <View style={{ height: 5 }} />
       </Pressable>
     );
@@ -129,7 +133,7 @@ function SideBar({ items, state, emitter, navigateToTab, fab }: Pick<BottomTabBa
           <Text style={{ color: C.onPrimary, fontWeight: '600', fontSize: T.small }}>{fab.title}</Text>
         </Pressable>
       ) : null}
-      {items.map((x) => {
+      {items.filter((x) => !x.def.hidden).map((x) => {
         const on = state.index === x.index;
         return (
           <Pressable key={x.route.key} accessibilityRole="tab" accessibilityLabel={x.def.badge ? `${x.def.title}, ${x.def.badge} mục mới` : x.def.title} accessibilityState={{ selected: on }}

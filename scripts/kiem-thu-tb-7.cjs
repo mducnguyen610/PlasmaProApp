@@ -139,19 +139,25 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
     await p.context().close();
   }
 
-  // ===== Bác sĩ: T01 thông tin kỹ thuật, B13 lối vào ở chân màn; quản trị không có lối vào =====
+  // ===== Bác sĩ: không kết nối, không theo dõi phiên; quản trị không có lối vào =====
+  // Giai đoạn B (AU-03, CN4 D6): bác sĩ không kết nối, không nạp, không chạy phiên. Ca cũ TB7-23..25 (bác sĩ dùng T01, lối vào T01, T02
+  // ở chân màn B13) đổi thành: T01, T02 báo "Không có quyền" với bác sĩ; B13 không có lối vào, không có chân màn, có lịch sử máy.
   {
     const p = await newPage(360, 740); await login(p, 'bacsi');
     await go(p, '/connect-device?patientId=p-1');
-    await footer(p).getByText('Kết nối', { exact: true }).click(); await p.waitForTimeout(1500);
-    rec('TB7-23', 'Bác sĩ T01 sau kết nối: thanh trạng thái, dòng giao thức, firmware; nút "Ngắt" trong thẻ thiết bị, không ở chân màn', (await bar(p)).includes('Trạng thái thiết bị') && await has(p, 'Giao thức của máy') && await has(p, 'Ngắt') && !(await inFooter(p, 'Ngắt')), await bar(p));
-    await p.getByText('Ngắt', { exact: true }).click(); await p.waitForTimeout(600);
+    const t01 = await has(p, 'Không có quyền') && (await footer(p).getByText('Kết nối', { exact: true }).count()) === 0;
+    await go(p, '/session-monitor?patientId=p-1&woundId=w-1');
+    const t02 = await has(p, 'Không có quyền') && !(await has(p, 'Bắt đầu điều trị'));
+    rec('TB7-23', 'Bác sĩ mở T01, T02 bằng đường dẫn: "Không có quyền", không có nút kết nối, bắt đầu điều trị (AU-03)', t01 && t02, `${t01}/${t02}`);
     const pos = [];
-    for (const [w, h] of [[320, 640], [360, 740], [390, 844], [768, 1024]]) { await p.setViewportSize({ width: w, height: h }); await go(p, '/devices/d-1'); const r = await visibleNoCover(p, 'Kết nối máy và nạp liệu trình'); pos.push(`${w}x${h}:${r.ok ? 'thấy' : 'LỖI'} ${r.why}`); }
+    for (const [w, h] of [[320, 640], [360, 740], [390, 844], [768, 1024]]) {
+      await p.setViewportSize({ width: w, height: h }); await go(p, '/devices/d-1');
+      const none = !(await has(p, 'Kết nối máy và nạp liệu trình')) && !(await has(p, 'Theo dõi phiên điều trị')) && (await footer(p).count()) === 0;
+      pos.push(`${w}x${h}:${none ? 'không có' : 'LỖI còn lối vào'}`);
+    }
     await p.setViewportSize({ width: 360, height: 740 });
-    rec('TB7-24', 'B13 bác sĩ phụ trách: hai lối vào T01, T02 ở chân màn, thấy ngay ở 4 khổ', await inFooter(p, 'Kết nối máy và nạp liệu trình') && await inFooter(p, 'Theo dõi phiên điều trị') && pos.every((x) => x.includes('thấy')), pos.join(', '));
-    await footer(p).getByText('Theo dõi phiên điều trị', { exact: true }).click(); await p.waitForTimeout(1200);
-    rec('TB7-25', 'B13 mở T02 đúng bệnh nhân của máy (thanh ngữ cảnh có tên bệnh nhân)', (await p.getByTestId('clinical-context').count()) > 0, '');
+    rec('TB7-24', 'B13 bác sĩ: không có lối vào T01, T02, không có chân màn ở 4 khổ', pos.every((x) => x.includes('không có')), pos.join(', '));
+    rec('TB7-25', 'B13 bác sĩ: có thẻ trạng thái máy và lịch sử máy (chỉ xem)', (await p.getByTestId('quan-ly-may').count()) === 1 && (await p.getByTestId('lich-su-may').count()) === 1, '');
     rec('TB7-z3', 'Không có lỗi JS (bác sĩ)', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));
     await p.context().close();
   }
@@ -165,8 +171,10 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, result: 
   {
     const bad = [];
     for (const w of [320, 360, 390, 768]) {
-      const p = await newPage(w); await login(p, 'bacsi');
-      for (const url of ['/connect-device?patientId=p-1', '/session-monitor?patientId=p-1&woundId=w-1', '/devices/d-1']) {
+      // Giai đoạn B (AU-03): T01, T02 chỉ bệnh nhân dùng, nên đo tràn ngang T01, T02 bằng tài khoản bệnh nhân, B13 bằng bác sĩ.
+      const p = await newPage(w); await login(p, 'benhnhan');
+      for (const url of ['/connect-device', '/session-monitor?woundId=w-1', 'bac-si', '/devices/d-1']) {
+        if (url === 'bac-si') { await p.evaluate(() => localStorage.removeItem('plasmapro.session.v1')); await login(p, 'bacsi'); continue; }
         await go(p, url); const o = await p.evaluate(() => { const W = window.innerWidth; return [...document.querySelectorAll('div,span')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.right > W + 1 && getComputedStyle(e).position !== 'fixed'; }).length; });
         if (o) bad.push(`${url}@${w}:${o}`);
       }

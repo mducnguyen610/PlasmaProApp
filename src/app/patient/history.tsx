@@ -9,6 +9,7 @@ import { WOUND } from '@/theme.status';
 import { fmtDate, fmtDateTime, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
+import { birthLabel } from '@/lib/patientIdentity';
 
 // P2-08 (A27): tiêu đề "Lịch sử và hồ sơ" khớp tên tab "Lịch sử" (câu chữ chờ duyệt). Hồ sơ và lịch sử của bệnh nhân: thông tin cá nhân, bác sĩ phụ trách, vết thương, ảnh và nhận xét.
 export default function PatientHistory() {
@@ -83,7 +84,7 @@ export default function PatientHistory() {
       <Card>
         <Disclosure icon="person-outline" title="Thông tin cá nhân" summary={`${account(p.doctorId)?.name ?? 'Chưa có bác sĩ phụ trách'} · ${p.researchConsent ? 'đồng ý dùng ảnh cho nghiên cứu' : 'không dùng ảnh cho nghiên cứu'}`}>
           <InfoRow label="Họ tên" value={p.name} />
-          <InfoRow label="Năm sinh" value={String(p.birthYear)} />
+          <InfoRow label="Ngày sinh" value={birthLabel(p)} />
           <InfoRow label="Bác sĩ phụ trách" value={account(p.doctorId)?.name ?? '—'} />
           <InfoRow label="Đồng ý dùng ảnh cho nghiên cứu" value={p.researchConsent ? `Có (${fmtDate(p.consentDate)})` : 'Không'} />
           <Muted>Muốn thay đổi sự đồng ý, hãy báo bác sĩ phụ trách.</Muted>

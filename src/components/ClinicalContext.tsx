@@ -5,6 +5,7 @@ import { Text } from '@/components/Text';
 import type { Patient, Wound } from '@/lib/types';
 import { PatientAvatar } from '@/components/ui';
 import { C, numeric, radius, semantic, space, T } from '@/theme';
+import { birthShort } from '@/lib/patientIdentity';
 
 /**
  * P0 G1 (ID-04, ID-07): thanh ngữ cảnh lâm sàng đặt đầu nội dung các màn thao tác lâm sàng.
@@ -17,7 +18,7 @@ import { C, numeric, radius, semantic, space, T } from '@/theme';
  */
 export function ClinicalContext({ patient, wound, patientChanged }: { patient: Patient; wound?: Wound | null; patientChanged?: boolean }) {
   const warn = semantic.warning;
-  const idLine = `${patient.code} · sinh ${patient.birthYear} · ${patient.sex}`;
+  const idLine = `${patient.code} · sinh ${birthShort(patient)} · ${patient.sex}`;
   const woundLine = wound ? `${wound.code} · ${wound.location}` : 'Chưa chọn vết thương';
   return (
     <View

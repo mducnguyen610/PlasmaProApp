@@ -60,7 +60,8 @@ const shiftDays = soNgayToiNgayCoLich();
   const pick = async (p) => { const [fc] = await Promise.all([p.waitForEvent('filechooser'), btn(p, 'Chọn ảnh có sẵn').first().click()]); await fc.setFiles(PHOTO); await p.waitForTimeout(3000); };
   const bar = async (p) => { const l = p.locator('[data-testid="device-status-bar"]:visible'); return ((await l.count()) ? await l.last().getAttribute('aria-label') : '') || ''; };
   const notFound = async (p) => /Không tìm thấy|không có quyền|Không có quyền|Chỉ bác sĩ phụ trách/.test(await bodyText(p));
-  const logout = async (p, accountUrl) => { await go(p, accountUrl); await click(btn(p, 'Đăng xuất'), 1500); };
+  // Logic chốt 25/11/2026: Cài đặt của bác sĩ hỏi xác nhận trước khi đăng xuất; bấm Đăng xuất trong bảng hỏi khi có.
+  const logout = async (p, accountUrl) => { await go(p, accountUrl); await click(btn(p, 'Đăng xuất'), 600); const ask = p.getByTestId('hoi-dang-xuat'); if (await ask.count()) await click(ask.getByRole('button', { name: 'Đăng xuất', exact: true }), 1500); };
 
   rec('S8-00', 'Môi trường', `Đồng hồ trình duyệt tiến ${shiftDays} ngày tới ngày có lịch điều trị (thứ 2, 4, 6) để luồng N02 không phụ thuộc thứ trong tuần`, 'note', `ngày theo giờ Việt Nam ${new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10)}`);
 
@@ -70,7 +71,9 @@ const shiftDays = soNgayToiNgayCoLich();
     const p = await newPage(); await login(p, 'bacsi'); await go(p, '/patients/new');
     const d0 = await store(p);
     await p.getByLabel('Họ và tên').first().fill('Kiểm Thử Tám');
-    await p.getByLabel('Năm sinh').first().fill('1970');
+    // Giai đoạn B (CN1 H1, H2): tạo hồ sơ cần ngày sinh đủ (dd/mm/yyyy) và số điện thoại; thay ô "Năm sinh" cũ.
+    await p.getByLabel('Ngày sinh').first().fill('15031970');
+    await p.getByLabel('Số điện thoại').first().fill('0977123456');
     await p.getByLabel('Vị trí vết thương đầu tiên').first().fill('Cẳng tay phải');
     await tripleTap(btn(p, 'Lưu hồ sơ và tạo tài khoản'));
     await p.waitForTimeout(1500);
@@ -326,12 +329,13 @@ const shiftDays = soNgayToiNgayCoLich();
   {
     const p = await newPage(); await login(p, 'bacsi'); await go(p, '/doctor/patients');
     const search = p.getByRole('searchbox').or(p.getByPlaceholder(/Tìm/)).locator('visible=true').first();
-    await search.fill('pham'); await p.waitForTimeout(600);
+    // Giai đoạn B (CN1 H5): B02 chỉ tìm theo mã; từ khóa "pham" đổi thành mã "BN002" (Phạm Thị B).
+    await search.fill('BN002'); await p.waitForTimeout(600);
     await click(p.getByText('Phạm Thị B', { exact: false }).locator('visible=true'), 1500);
     const onProfile = /\/patients\/p-2/.test(p.url());
     await back(p);
-    const kept = (await search.inputValue()) === 'pham';
-    rec('S8-NV-03', 'Điều hướng, trạng thái', 'B02 tìm "pham" → mở hồ sơ → quay lại: giữ từ khóa', onProfile && kept, `${p.url().replace(BASE, '')}; ô tìm "${await search.inputValue()}"`);
+    const kept = (await search.inputValue()) === 'BN002';
+    rec('S8-NV-03', 'Điều hướng, trạng thái', 'B02 tìm "BN002" → mở hồ sơ → quay lại: giữ từ khóa', onProfile && kept, `${p.url().replace(BASE, '')}; ô tìm "${await search.inputValue()}"`);
     await go(p, '/wound-history/w-1?tab=anh');
     await p.reload(); await p.waitForTimeout(2000);
     rec('S8-NV-04', 'Điều hướng, trạng thái', 'Tải lại trang lịch sử ở thẻ Ảnh: vẫn đăng nhập, vẫn đúng vết thương và thẻ (tham số trên URL)', p.url().includes('tab=anh') && await has(p, 'VT01', false), p.url().replace(BASE, ''));

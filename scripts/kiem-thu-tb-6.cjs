@@ -187,13 +187,14 @@ const KEY = 'plasmapro.demo.v2';
   // ---------- Q02 ----------
   {
     const p = await newPage(); await login(p); await go(p, '/admin/dataset');
-    const pos = await p.evaluate(() => { const f = (t) => { const e = [...document.querySelectorAll('div')].find((x) => x.textContent.trim() === t || [...x.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim() === t)); return e ? e.getBoundingClientRect().y : null; }; return { dl: f('Tải dữ liệu theo bộ lọc'), grid: f('Bộ ảnh đã gán diện tích') }; });
+    const pos = await p.evaluate(() => { const f = (t) => { const e = [...document.querySelectorAll('div')].find((x) => x.textContent.trim() === t || [...x.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim() === t)); return e ? e.getBoundingClientRect().y : null; }; return { dl: f('Tải dữ liệu theo bộ lọc'), grid: f('Bộ ảnh đã xác nhận nhãn') }; });
     const order = pos.dl != null && pos.grid != null && pos.dl < pos.grid;
     const folded = await has(p, 'Xem trước labels.csv') && !(await has(p, /^image,|^filename|labels/i, false) && false);
     const btn = p.getByRole('button', { name: /^Tải bộ dữ liệu/ });
     const enabled = !(await btn.first().isDisabled());
     await mutate(p, "d.accounts.find((a) => a.id === 'u-qt').researchAccess = false;"); await go(p, '/admin/dataset');
     const disabled = await has(p, 'Tài khoản chưa được cấp quyền xuất dữ liệu nghiên cứu.');
+    // Giai đoạn B (CN2): tập huấn luyện là ảnh đã xác nhận nhãn; tiêu đề lưới đổi "Bộ ảnh đã gán diện tích" thành "Bộ ảnh đã xác nhận nhãn".
     rec('TB6-12', 'Q02: thẻ tải ở trên lưới ảnh, bản xem trước CSV thu gọn; có quyền thì nút tải bật, không có quyền thì tắt và nêu lý do', order && folded && enabled && disabled, `${JSON.stringify(pos)} ${enabled}/${disabled}`);
     await p.context().close();
   }
@@ -215,6 +216,8 @@ const KEY = 'plasmapro.demo.v2';
     const closed = (await p.getByTestId('bang-dang-ky-thiet-bi').count()) === 0 && await has(p, 'Tiếp tục đăng ký thiết bị') && (await count()) === c0;
     await p.getByText('Tiếp tục đăng ký thiết bị', { exact: true }).click(); await p.waitForTimeout(500);
     const kept = (await p.getByTestId('bang-dang-ky-thiet-bi').getByLabel('Mã thiết bị').inputValue()) === 'TB-009';
+    // Giai đoạn B (CN4 D1, AU-25): danh mục máy cần số sê-ri; dòng máy điền sẵn. Điền sê-ri trước khi bấm Đăng ký.
+    await p.getByTestId('bang-dang-ky-thiet-bi').getByLabel('Số sê-ri').fill('HFP-0009'); await p.waitForTimeout(200);
     await p.getByTestId('bang-dang-ky-thiet-bi').getByRole('button', { name: 'Đăng ký', exact: true }).dblclick(); await p.waitForTimeout(600);
     const once = (await count()) === c0 + 1 && (await store(p)).devices.filter((d) => d.code === 'TB-009').length === 1;
     const success = await has(p, 'Đã đăng ký thiết bị TB-009.') && (await p.getByTestId('bang-dang-ky-thiet-bi').count()) === 0;
@@ -276,12 +279,13 @@ const KEY = 'plasmapro.demo.v2';
   {
     const p = await newPage(); await login(p, 'bacsi');
     await go(p, '/devices/d-1');
-    const b13 = await has(p, 'Kết nối máy và nạp liệu trình') && await has(p, 'Theo dõi phiên điều trị');
+    // Giai đoạn B (AU-03, CN4 D6): bác sĩ không kết nối, không nạp, không theo dõi phiên; B13 bỏ hai nút đó, chỉ xem lịch sử máy.
+    const b13 = !(await has(p, 'Kết nối máy và nạp liệu trình')) && !(await has(p, 'Theo dõi phiên điều trị')) && await p.getByTestId('lich-su-may').count() === 1;
     await go(p, '/doctor');
     const home = !(await has(p, 'Không có quyền'));
     await go(p, '/doctor/account');
     const acct = await has(p, 'Đăng xuất') && !(await has(p, 'Khôi phục dữ liệu mô phỏng'));
-    rec('TB6-19', 'Bác sĩ: B13 còn hai nút; trang chủ mở; trang Cá nhân không có nút khôi phục dữ liệu (như cũ)', b13 && home && acct, `${b13}/${home}/${acct}`);
+    rec('TB6-19', 'Bác sĩ: B13 không còn nút kết nối, theo dõi phiên (AU-03), có lịch sử máy; trang chủ mở; trang Cá nhân không có nút khôi phục dữ liệu (như cũ)', b13 && home && acct, `${b13}/${home}/${acct}`);
     rec('TB6-20', 'Không lỗi JS trong hồi quy bác sĩ', p.errors.length === 0, p.errors.join(' | ').slice(0, 200));
     await p.context().close();
   }

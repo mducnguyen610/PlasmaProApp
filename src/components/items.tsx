@@ -8,11 +8,14 @@ import { latestAreaIncrease } from '@/lib/areaChange';
 import { Chip, IconBadge, PatientAvatar, StatusChip, WoundPhoto, type IconName } from '@/components/ui';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
+import { IMAGE_TYPE_LABEL, LABEL_STATE, labelState } from '@/lib/imageLabel';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, WoundImage } from '@/lib/types';
 import { bar, C, numeric, radius, T, space } from '@/theme';
 import { SEVERITY_ROLE, SOURCE } from '@/theme.status';
 import { TODAY_LABEL, type Attention, type TodayState } from '@/lib/attention';
+import { birthShort } from '@/lib/patientIdentity';
+import { woundUpdatedAt } from '@/lib/woundStatus';
 
 /** Một lịch hẹn: vạch màu, ngày (đỏ nếu hôm nay), tiêu đề đậm, mô tả. Dùng chung cho Trang chủ và Lịch trình. */
 /** Ô ngày làm điểm neo: số ngày lớn, tháng nhỏ; nền đỏ nhạt nếu là hôm nay. */
@@ -44,7 +47,7 @@ export function AppointmentRow({ date, title, body, today }: { date: string; tit
 // Theo DESIGN_SYSTEM.md mục 6.2: đã chiếu success, bỏ lỡ warning, đến hạn hôm nay info, còn lại neutral.
 const TODAY_TONE: Record<TodayState, 'green' | 'amber' | 'gray' | 'teal'> = { treated: 'green', missed: 'amber', due: 'teal', no_data: 'gray', rest: 'gray', no_plan: 'gray' };
 
-export function PatientCard({ patient, attention }: { patient: Patient; attention?: Attention }) {
+export function PatientCard({ patient, attention, readOnly }: { patient: Patient; attention?: Attention; readOnly?: boolean }) {
   const { device, woundsOf } = useLookups();
   const { data } = useStore();
   const dev = device(patient.deviceId);
@@ -64,7 +67,7 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
   // P1-07 (IA 2.2): bệnh nhân có từ 2 vết thì ngày đánh giá kèm mã vết.
   const lastEvalWound = lastEvalRec && wounds.length > 1 ? wounds.find((w) => w.id === lastEvalRec.woundId)?.code : undefined;
   // P1-07a (IA 2.1): dòng định danh cùng định dạng với thanh ngữ cảnh lâm sàng; mã thiết bị không nằm trong dòng định danh.
-  const idLine = `${patient.code} · sinh ${patient.birthYear} · ${patient.sex}`;
+  const idLine = `${patient.code} · sinh ${birthShort(patient)} · ${patient.sex}`;
   // P1-01b: không có vết đang điều trị thì chip "Chưa có đợt" chỉ lặp ý của dòng "không có vết thương đang điều trị"; bỏ chip, giữ dòng chữ.
   const showToday = !!attention && !(attention.state === 'no_plan' && !active);
   const reasons = attention?.reasons ?? [];
@@ -76,6 +79,8 @@ export function PatientCard({ patient, attention }: { patient: Patient; attentio
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: T.body, fontWeight: '700', color: C.text }}>{patient.name}</Text>
           <Text style={[{ color: C.textSoft, fontSize: T.caption }, numeric]}>{idLine}</Text>
+          {/* Giai đoạn B (CN1 H9): hồ sơ của bác sĩ khác chỉ xem. */}
+          {readOnly ? <Text style={{ color: C.textSoft, fontSize: T.caption, fontWeight: '600' }}>Bác sĩ khác phụ trách · chỉ xem</Text> : null}
         </View>
         {severity ? <StatusChip status={SEVERITY_ROLE[severity]} label={SEVERITY[severity].label} /> : null}
         <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
@@ -128,6 +133,8 @@ export function ImageTile({ image, width = 150, showOwner }: { image: WoundImage
       )}
       <Text style={{ fontSize: T.caption, color: C.text, fontWeight: '600', marginTop: 6 }}>{image.id} · {image.capture?.sourceDateKnown === false ? 'Ngày chụp chưa rõ' : fmtDate(image.captureDate)}</Text>
       {showOwner ? <Text style={{ fontSize: T.caption, color: C.textSoft }} numberOfLines={1}>{patient(image.patientId)?.code ?? '—'} · {wound(image.woundId)?.code ?? '—'}</Text> : null}
+      {/* Giai đoạn B (CN2 S1, A9): trạng thái nhãn và loại ảnh (ví dụ "Ảnh sau điều trị" bệnh nhân gửi). */}
+      <Text style={{ fontSize: T.caption, color: C.textSoft }} numberOfLines={1}>{[LABEL_STATE[labelState(image)].label, image.label?.imageType ? IMAGE_TYPE_LABEL[image.label.imageType] : null].filter(Boolean).join(' · ')}</Text>
       {/* PP-01: ảnh có diện tích thì ghi nguồn số đo ngay dưới ảnh. */}
       {image.areaCm2 !== null ? <View style={{ flexDirection: 'row', marginTop: 4 }}><StatusChip status={SOURCE.doctor} label={SOURCE.doctor.label} /></View> : null}
     </Pressable>
@@ -141,6 +148,34 @@ export function TaskRow({ icon, tone, title, detail, onPress }: { icon: IconName
       <View style={{ flex: 1 }}>
         <Text style={{ fontWeight: '600', color: C.text }}>{title}</Text>
         <Text style={{ color: C.textSoft, fontSize: T.caption }} numberOfLines={2}>{detail}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
+    </Pressable>
+  );
+}
+
+/**
+ * Logic chốt 25/11/2026 (TONG-HOP-LOGIC-BAC-SI.md mục 3.1, M2): thẻ bệnh nhân ở danh sách của bác sĩ gồm họ tên, mã, số vết thương,
+ * lần cập nhật gần nhất và số phác đồ đang hoạt động. Phác đồ đang hoạt động gồm cả phiên bản Tạm dừng (chưa kết thúc).
+ */
+export function DoctorPatientCard({ patient, readOnly }: { patient: Patient; readOnly?: boolean }) {
+  const { data } = useStore();
+  const wounds = data.wounds.filter((w) => w.patientId === patient.id);
+  const plans = data.plans.filter((p) => p.patientId === patient.id);
+  const activeProtocols = new Set(plans.filter((p) => p.status === 'active' || p.status === 'paused').map((p) => p.protocolId ?? p.id)).size;
+  const updated = wounds.map((w) => woundUpdatedAt(w, data.images, data.plans, data.sessions)).concat(patient.createdAt ?? []).sort().pop();
+  const planLine = activeProtocols ? `${activeProtocols} phác đồ đang hoạt động` : 'Chưa có phác đồ hoạt động';
+  const line2 = `${patient.code} · ${wounds.length} vết thương${updated ? ` · cập nhật ${fmtDate(updated)}` : ''}`;
+  return (
+    <Pressable testID={`the-bn-${patient.code}`} onPress={() => router.push({ pathname: '/patients/[id]', params: { id: patient.id } })} accessibilityRole="button"
+      accessibilityLabel={`${patient.name}, ${line2}, ${planLine}${readOnly ? ', bác sĩ khác phụ trách, chỉ xem' : ''}`}
+      style={({ pressed }) => ({ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: space.m, opacity: pressed ? 0.7 : 1 })}>
+      <PatientAvatar name={patient.name} muted={!!patient.archivedAt} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontSize: T.body, fontWeight: '700', color: C.text }}>{patient.name}</Text>
+        <Text style={[{ color: C.textSoft, fontSize: T.caption }, numeric]}>{line2}</Text>
+        <Text style={{ color: activeProtocols ? C.primary : C.textSoft, fontSize: T.caption, fontWeight: '600' }}>{planLine}</Text>
+        {readOnly ? <Text style={{ color: C.textSoft, fontSize: T.caption, fontWeight: '600' }}>Bác sĩ khác phụ trách · chỉ xem</Text> : null}
       </View>
       <Ionicons name="chevron-forward" size={18} color={C.textFaint} />
     </Pressable>

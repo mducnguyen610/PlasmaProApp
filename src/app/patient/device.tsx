@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 
 import { DeviceView } from '@/components/DeviceView';
+import { PlanAckCard } from '@/components/PlanAckCard';
+import { needsPatientAck } from '@/lib/planVersion';
 import { Button, Card, Empty, Header, Notice, Screen } from '@/components/ui';
 import { courseProgress, courseStatus, localDay } from '@/lib/course';
 import { fmtDate } from '@/lib/format';
@@ -40,7 +42,10 @@ export default function PatientDevice() {
         <Card hero testID="n07-hom-nay">
           {status && treatToday ? <Text style={{ color: C.text, fontSize: T.cardTitle, fontWeight: '700' }}>{status.title}</Text> : null}
           {!treatToday && status && <Notice tone={semantic.neutral.tone} icon={status.kind === 'rest' ? 'moon-outline' : 'information-circle-outline'}>{`${status.title}. Không cần nạp liệu trình hôm nay.`}</Notice>}
-          <Button label="Nạp liệu trình vào máy" variant={treatToday ? 'primary' : 'secondary'} icon="arrow-down-circle-outline" onPress={() => router.push('/connect-device')} />
+          {/* Giai đoạn B (AU-04): phiên bản mới chưa được bệnh nhân xác nhận đọc thì xác nhận trước, rồi mới nạp. */}
+          {treating?.plan && needsPatientAck(treating.plan)
+            ? <PlanAckCard plan={treating.plan} wound={treating.w} />
+            : <Button label="Nạp liệu trình vào máy" variant={treatToday ? 'primary' : 'secondary'} icon="arrow-down-circle-outline" onPress={() => router.push('/connect-device')} />}
         </Card>
       )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>

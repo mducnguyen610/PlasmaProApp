@@ -1,0 +1,457 @@
+[
+  {
+    "id": "S8-00",
+    "area": "Môi trường",
+    "name": "Đồng hồ trình duyệt tiến 0 ngày tới ngày có lịch điều trị (thứ 2, 4, 6) để luồng N02 không phụ thuộc thứ trong tuần",
+    "result": "GHI NHẬN",
+    "detail": "ngày theo giờ Việt Nam 2026-11-25"
+  },
+  {
+    "id": "S8-W1-01",
+    "area": "Workflow 1",
+    "name": "Tạo bệnh nhân (bấm lưu 3 lần liền): đúng 1 hồ sơ, 1 tài khoản, 1 vết thương VT01; bác sĩ phụ trách là người tạo",
+    "result": "ĐẠT",
+    "detail": "hồ sơ +1, tài khoản +1, vết thương +1, mã BN004"
+  },
+  {
+    "id": "S8-W1-02",
+    "area": "Workflow 1",
+    "name": "Mở hồ sơ vừa tạo: đúng URL và đúng họ tên, mã hồ sơ",
+    "result": "ĐẠT",
+    "detail": "/patients/p-fea705c3-162f-4c07-befd-ec532a5b22fa"
+  },
+  {
+    "id": "S8-W1-03",
+    "area": "Workflow 1",
+    "name": "Thêm vết thương (bấm đúp): đúng 1 vết thương mới VT02, mã vết thương và id không trùng",
+    "result": "ĐẠT",
+    "detail": "vết thương của hồ sơ: VT01/w-62005190-8e2c-4e55-b2f6-113ccd370371, VT02/w-42a0132d-39d2-497e-b90b-b152c42a1924"
+  },
+  {
+    "id": "S8-W1-04",
+    "area": "Workflow 1",
+    "name": "Sau khi thêm mở chi tiết vết thương mới, hiện đúng bệnh nhân và mã vết thương",
+    "result": "ĐẠT",
+    "detail": "/wounds/w-42a0132d-39d2-497e-b90b-b152c42a1924"
+  },
+  {
+    "id": "S8-W1-z",
+    "area": "Workflow 1",
+    "name": "Không lỗi JS",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W2-01",
+    "area": "Workflow 2",
+    "name": "Đánh giá đủ 4 bước, bấm lưu 3 lần: đúng 1 đánh giá, đúng vết thương, có bác sĩ thực hiện, ngày đánh giá là hôm nay",
+    "result": "ĐẠT",
+    "detail": "Lưu và công bố cho bệnh nhân; {\"woundId\":\"w-62005190-8e2c-4e55-b2f6-113ccd370371\",\"date\":\"2026-11-25\",\"areaCm2\":null,\"characteristics\":\"\",\"symptoms\":\"\",\"symptomSource\":\"Bác sĩ hỏi trực tiếp\""
+  },
+  {
+    "id": "S8-W2-02",
+    "area": "Workflow 2",
+    "name": "Lịch sử vết thương, thẻ Đánh giá: thấy đúng 1 đánh giá vừa lưu, ngày và bác sĩ thực hiện",
+    "result": "ĐẠT",
+    "detail": "25/11/2026"
+  },
+  {
+    "id": "S8-W2-03",
+    "area": "Workflow 2",
+    "name": "Vết thương VT02 cùng hồ sơ không nhận đánh giá của VT01",
+    "result": "ĐẠT",
+    "detail": "0"
+  },
+  {
+    "id": "S8-QD1-01",
+    "area": "QĐ-1",
+    "name": "B10 bước nhập số đo: ô diện tích trống, không có nút \"Dùng số này\"",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W3-01",
+    "area": "Workflow 3",
+    "name": "Lưu ảnh và số đo (bấm 3 lần): đúng 1 ảnh, đúng hồ sơ và vết thương, diện tích 5,5 cm² do bác sĩ nhập, người tải là bác sĩ",
+    "result": "ĐẠT",
+    "detail": "1 ảnh; IMG0007 w-62005190-8e2c-4e55-b2f6-113ccd370371 5.5"
+  },
+  {
+    "id": "S8-W3-02",
+    "area": "Workflow 3",
+    "name": "Ảnh mới: tên tệp chứa mã hồ sơ, mã vết thương, mã ảnh; có ngày chụp và ngày tải riêng",
+    "result": "ĐẠT",
+    "detail": "BN004_VT01_IMG0007_area_5.5_cm2.png"
+  },
+  {
+    "id": "S8-W3-03",
+    "area": "Workflow 3",
+    "name": "Sau khi lưu mở B11 của đúng ảnh vừa lưu",
+    "result": "ĐẠT",
+    "detail": "/images/IMG0007"
+  },
+  {
+    "id": "S8-W3-04",
+    "area": "Workflow 3",
+    "name": "Lịch sử diện tích: ảnh thư viện có số đo nhưng không rõ ngày, không báo \"Chưa có lần đo diện tích\", nêu rõ lý do không vẽ",
+    "result": "ĐẠT",
+    "detail": " Lịch sử vết thương  Bác sĩ TT Kiểm Thử Tám BN004 · sinh 15/03/1970 · Nam  VT01 · Cẳng tay phải Lịch sử Ảnh (1) Số đo Biểu đồ Kết quả đã lưu Tiến triển diện tích Chưa có lần đo nào vẽ được trên biểu đồ. Ảnh đã chụp: 1. Không đưa vào biểu đồ: 1 ảnh không rõ ngày chụp."
+  },
+  {
+    "id": "S8-W3-05",
+    "area": "Workflow 3",
+    "name": "Vết thương VT02 không nhận lần đo của VT01",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W3-z",
+    "area": "Workflow 3",
+    "name": "Không lỗi JS ở luồng 2, 3",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W4-01",
+    "area": "Workflow 4",
+    "name": "B05 w-1: có tên và mã bệnh nhân, mã vết thương, vị trí",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W4-02",
+    "area": "Workflow 4",
+    "name": "B05 không tự kết luận cải thiện từ diện tích: chữ \"Cải thiện\" chỉ xuất hiện như xu hướng do bác sĩ đánh giá",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W4-03",
+    "area": "Workflow 4",
+    "name": "Lịch sử thẻ Ảnh: ảnh IMG0001 hiện ngày chụp đúng với dữ liệu",
+    "result": "ĐẠT",
+    "detail": "26/10/2026"
+  },
+  {
+    "id": "S8-W4-04",
+    "area": "Workflow 4",
+    "name": "Lịch sử diện tích: 3 lần đo (12,5 và 8,4 cm² ở đầu, cuối), ảnh chưa đo tách riêng, \"Lần đo gần nhất … chụp <ngày>\" ghi ngày chụp",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W4-05",
+    "area": "Workflow 4",
+    "name": "Dữ liệu mô phỏng có nhãn mô phỏng hoặc dữ liệu mẫu ở B05 hoặc lịch sử",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W4-06",
+    "area": "Workflow 4",
+    "name": "So sánh ảnh w-1 mở được, không có ảnh của vết thương khác (IMG0005, IMG0006 thuộc w-2)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W4-07",
+    "area": "Workflow 4",
+    "name": "Lịch sử thẻ Buổi điều trị mở được",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W4-z",
+    "area": "Workflow 4",
+    "name": "Không lỗi JS",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W5-01",
+    "area": "Workflow 5",
+    "name": "N02 ngày có lịch: có nút \"Nạp liệu trình vào máy\" (lối vào T01)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-B01",
+    "area": "Thiết bị (an toàn)",
+    "name": "Chạm đúp \"Kết nối\" (cách 300 ms): chỉ kết nối, không gửi liệu trình xuống máy",
+    "result": "ĐẠT",
+    "detail": "số lần nạp ghi thêm: 0"
+  },
+  {
+    "id": "S8-W5-02",
+    "area": "Workflow 5",
+    "name": "Bấm nạp 3 lần liền: đúng 1 lần nạp được ghi (không gửi lặp)",
+    "result": "ĐẠT",
+    "detail": "1 bản ghi; [\"acked\"]"
+  },
+  {
+    "id": "S8-B02",
+    "area": "Thiết bị (an toàn)",
+    "name": "Chạm nhiều lần vào nút nạp: sau ACK vẫn ở T01, không mở T02 ngoài ý muốn (nút \"Theo dõi\" hiện đúng chỗ cũ)",
+    "result": "ĐẠT",
+    "detail": "/connect-device"
+  },
+  {
+    "id": "S8-W5-03",
+    "area": "QĐ-6",
+    "name": "Sau khi máy nhận, chờ 5 giây vẫn ở T01 (không tự chuyển T02)",
+    "result": "ĐẠT",
+    "detail": "/connect-device"
+  },
+  {
+    "id": "S8-W5-04",
+    "area": "Workflow 5",
+    "name": "Mở T02 không tự bắt đầu phiên",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W5-05",
+    "area": "Workflow 5",
+    "name": "Đang điều trị: nút \"Dừng điều trị\" ở chân màn",
+    "result": "ĐẠT",
+    "detail": "Trạng thái thiết bị: Máy đang bận. Máy TB-001. Cáp USB: Đã kết nối. Phiên: Đang điều trị. Cập nhật lúc 05:32:32. Thiết bị giả lập."
+  },
+  {
+    "id": "S8-NV-01",
+    "area": "Điều hướng, trạng thái",
+    "name": "Tải lại trang T02 giữa phiên: không tự kết nối, không tự bắt đầu, không nạp lại; thanh trạng thái không báo \"Đang điều trị\" hay \"Máy đang bận\"",
+    "result": "ĐẠT",
+    "detail": "nạp 1→1; thanh: Trạng thái thiết bị: Chưa kết nối. Máy TB-001. Cáp USB: Chưa kết nối. Phiên: Chưa nhận trạng thái. Thiết bị giả lập."
+  },
+  {
+    "id": "S8-NV-02",
+    "area": "Điều hướng, trạng thái",
+    "name": "Tải lại giữa phiên không ghi phiên giả (phiên dở bị bỏ, không ghi hoàn tất)",
+    "result": "ĐẠT",
+    "detail": "31→31"
+  },
+  {
+    "id": "S8-NV-01b",
+    "area": "Điều hướng, trạng thái",
+    "name": "Tải lại T02: URL giữ patient_id và wound_id",
+    "result": "ĐẠT",
+    "detail": "/session-monitor?patientId=p-1&woundId=w-1"
+  },
+  {
+    "id": "S8-T-01",
+    "area": "Thiết bị",
+    "name": "Kết nối lại sau khi tải trang: thanh trạng thái theo bản tin máy, không báo \"Máy đang bận\" khi máy (giả lập) đã rảnh",
+    "result": "ĐẠT",
+    "detail": "Trạng thái thiết bị: Đã kết nối. Máy TB-001. Cáp USB: Đã kết nối. Phiên: Chưa nhận trạng thái. Thiết bị giả lập."
+  },
+  {
+    "id": "S8-T-01b",
+    "area": "Thiết bị",
+    "name": "Sau tải lại, máy giả lập chưa có liệu trình: nút \"Bắt đầu điều trị\" ẩn, phiên không chạy (giả lập không tự nạp lại)",
+    "result": "ĐẠT",
+    "detail": "nút ẩn (S8-B07)"
+  },
+  {
+    "id": "S8-T-02",
+    "area": "Dừng khẩn cấp (giả lập)",
+    "name": "Dừng: chỉ báo \"Máy đã xác nhận: Đã dừng\" sau bản tin máy, trước đó báo đang chờ",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-T-03",
+    "area": "Dừng khẩn cấp (giả lập)",
+    "name": "Dừng ghi đúng một bản ghi phiên",
+    "result": "ĐẠT",
+    "detail": "31→32"
+  },
+  {
+    "id": "S8-W5-06",
+    "area": "Workflow 5",
+    "name": "Bản ghi phiên: thiết bị của bệnh nhân (d-1), vết thương w-1, nguồn \"device\", đơn vị phút",
+    "result": "ĐẠT",
+    "detail": "{\"sessionId\":\"TB-001-1795559564807\",\"deviceId\":\"d-1\",\"start\":\"2026-11-24T22:32:44.807Z\",\"durationMin\":0,\"energyWh\":null,\"status\":\"interrupted\",\"source\":\"device\",\"woundId\":\"w-1\",\"endedAt\":\"2026-11-24T2"
+  },
+  {
+    "id": "S8-W5-07",
+    "area": "Workflow 5",
+    "name": "Lịch sử bệnh nhân mở được sau phiên",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-W5-z",
+    "area": "Workflow 5",
+    "name": "Không lỗi JS",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-DI-01",
+    "area": "Toàn vẹn dữ liệu",
+    "name": "Phiên mở từ N07 \"Theo dõi phiên điều trị\" có gắn vết thương và hiện trong lịch sử N05",
+    "result": "ĐẠT",
+    "detail": "T02 \"Chưa chọn vết thương\": false; woundId w-1; N05 Lịch sử 25→26"
+  },
+  {
+    "id": "S8-T-04",
+    "area": "Thiết bị thật",
+    "name": "Kết nối USB, UART, dừng khẩn cấp với máy thật",
+    "result": "GHI NHẬN",
+    "detail": "BLOCKED: không có máy; giao thức không có lệnh dừng ứng dụng → máy"
+  },
+  {
+    "id": "S8-W6-01",
+    "area": "Workflow 6",
+    "name": "Quản trị đăng nhập vào khu quản trị, Q01 có danh sách tài khoản",
+    "result": "ĐẠT",
+    "detail": "/admin"
+  },
+  {
+    "id": "S8-W6-02",
+    "area": "Workflow 6",
+    "name": "Quản trị mở URL màn bác sĩ (hồ sơ, vết thương, đánh giá, chụp, đợt): không thao tác lâm sàng được",
+    "result": "ĐẠT",
+    "detail": "/patients/p-1:chặn, /wounds/w-1:chặn, /evaluate/w-1:chặn, /guided-capture?woundId=w-1:chặn, /plan/p-1:chặn"
+  },
+  {
+    "id": "S8-W6-02b",
+    "area": "Workflow 6",
+    "name": "Đăng xuất từ trang Cá nhân của quản trị về màn đăng nhập",
+    "result": "ĐẠT",
+    "detail": "/"
+  },
+  {
+    "id": "S8-W6-03",
+    "area": "Workflow 6",
+    "name": "Đăng xuất, đăng nhập bác sĩ: vào trang bác sĩ",
+    "result": "ĐẠT",
+    "detail": "/doctor"
+  },
+  {
+    "id": "S8-W6-04",
+    "area": "Phân quyền",
+    "name": "Bác sĩ mở URL quản trị: không vào được chức năng quản trị",
+    "result": "ĐẠT",
+    "detail": "/admin:chặn, /admin/devices:chặn, /admin/logs:chặn, /admin-account/u-bn1:chặn, /admin/dataset:chặn"
+  },
+  {
+    "id": "S8-W6-z",
+    "area": "Workflow 6",
+    "name": "Không lỗi JS",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-PQ-01",
+    "area": "Phân quyền",
+    "name": "Bệnh nhân BN001 mở URL hồ sơ, vết thương, ảnh của BN002 và màn bác sĩ, quản trị: không thấy dữ liệu, không có nút thao tác",
+    "result": "ĐẠT",
+    "detail": "/patients/p-2:chặn, /wounds/w-2:chặn, /images/IMG0005:chặn, /wound-history/w-2:chặn, /evaluate/w-1:chặn, /guided-capture?woundId=w-1:chặn, /plan/p-1:chặn, /doctor:chặn, /admin:chặn"
+  },
+  {
+    "id": "S8-PQ-02",
+    "area": "Phân quyền",
+    "name": "Bác sĩ khác (bacsi2) mở URL của bệnh nhân không phụ trách: không có nút thao tác lâm sàng",
+    "result": "ĐẠT",
+    "detail": "/patients/p-1:chặn, /evaluate/w-1:chặn, /guided-capture?woundId=w-1:chặn, /plan/p-1:chặn, /images/IMG0004:chặn"
+  },
+  {
+    "id": "S8-NV-03",
+    "area": "Điều hướng, trạng thái",
+    "name": "B02 tìm \"BN002\" → mở hồ sơ → quay lại: giữ từ khóa",
+    "result": "ĐẠT",
+    "detail": "/doctor/patients; ô tìm \"BN002\""
+  },
+  {
+    "id": "S8-NV-04",
+    "area": "Điều hướng, trạng thái",
+    "name": "Tải lại trang lịch sử ở thẻ Ảnh: vẫn đăng nhập, vẫn đúng vết thương và thẻ (tham số trên URL)",
+    "result": "ĐẠT",
+    "detail": "/wound-history/w-1?tab=anh"
+  },
+  {
+    "id": "S8-NV-05",
+    "area": "Điều hướng, trạng thái",
+    "name": "B11 đang nhập số đo, bấm quay lại: hỏi; chọn ở lại giữ số đã gõ",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-NV-06",
+    "area": "Điều hướng, trạng thái",
+    "name": "Tải lại trang khi đang nhập: số chưa lưu không bị ghi thành kết quả",
+    "result": "ĐẠT",
+    "detail": "null"
+  },
+  {
+    "id": "S8-NV-z",
+    "area": "Điều hướng, trạng thái",
+    "name": "Không lỗi JS",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-QD2-01",
+    "area": "QĐ-2",
+    "name": "B07: mặc định công bố như hiện trạng (nút \"Lưu và công bố cho bệnh nhân\"), không tự đổi",
+    "result": "ĐẠT",
+    "detail": "Lưu và công bố cho bệnh nhân"
+  },
+  {
+    "id": "S8-QD5-01",
+    "area": "QĐ-5",
+    "name": "B07: lưu đánh giá không tự đánh dấu báo cáo đã xử lý",
+    "result": "ĐẠT",
+    "detail": "2→2"
+  },
+  {
+    "id": "S8-QD4-01",
+    "area": "QĐ-4",
+    "name": "B06: trạng thái khi lập phiên bản mới giữ như hiện trạng (không tự đổi sang Nháp)",
+    "result": "GHI NHẬN",
+    "detail": "Không thấy chữ Nháp"
+  },
+  {
+    "id": "S8-QD3-01",
+    "area": "QĐ-3",
+    "name": "Ghi chú phiên (đau ≥ 7, đỏ da, sưng) chưa vào điểm chú ý",
+    "result": "GHI NHẬN",
+    "detail": "QĐ-3 chưa có quyết định; mã attention.ts không đổi trong Stage 8 (kiểm bằng git diff)"
+  },
+  {
+    "id": "S8-RS-01",
+    "area": "Responsive",
+    "name": "Không tràn ngang ở 204 lượt (màn × khổ 320, 360, 390, 768, 1024, 1280)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-RS-02",
+    "area": "Responsive",
+    "name": "Không lỗi JS khi đổi khổ và mở mọi màn",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-RS-03",
+    "area": "Responsive",
+    "name": "Vùng chạm dưới 24 px ở 360 px (WCAG 2.2 SC 2.5.8 mức tối thiểu)",
+    "result": "ĐẠT",
+    "detail": ""
+  },
+  {
+    "id": "S8-RS-04",
+    "area": "Responsive",
+    "name": "Nút \"Dừng điều trị\" thấy ngay, không bị che ở 1024 và 1280 px",
+    "result": "ĐẠT",
+    "detail": "1024x768:thấy, 1280x800:thấy"
+  },
+  {
+    "id": "S8-CE-01",
+    "area": "Lỗi console, mạng",
+    "name": "Không có lỗi console hay yêu cầu mạng hỏng ở các trang còn mở",
+    "result": "ĐẠT",
+    "detail": ""
+  }
+]

@@ -76,50 +76,53 @@ const rec = (id, name, pass, detail = '') => {
     rec('PE-01', 'B04 có nút "Chỉnh sửa hồ sơ" và chip "Đang theo dõi"', await has(p, 'Chỉnh sửa hồ sơ') && await has(p, 'Đang theo dõi'));
     const d0 = await store(p); const before = d0.patients.find((x) => x.id === 'p-1'); const clin0 = clinical(d0, 'p-1');
     await click(p, 'Chỉnh sửa hồ sơ');
-    rec('PE-02', 'Biểu mẫu hiện giá trị đang lưu', (await input(p, 'Họ và tên').inputValue()) === before.name && (await input(p, 'Năm sinh').inputValue()) === String(before.birthYear) && (await input(p, 'Số điện thoại, không bắt buộc').inputValue()) === before.phone);
-    await input(p, 'Họ và tên').fill(''); await input(p, 'Năm sinh').fill('1800'); await input(p, 'Số điện thoại, không bắt buộc').fill('123');
+    // Giai đoạn B (CN1 H2, H8, XN-11): "Năm sinh" thay bằng "Ngày sinh" dd/mm/yyyy; hồ sơ cũ chỉ có năm thì ô trống và có gợi ý bổ sung.
+    // Số điện thoại bắt buộc (nhãn không còn "không bắt buộc"). Các ca kiểm giữ nguyên ý: hiện giá trị, từ chối dữ liệu sai, lưu đúng.
+    rec('PE-02', 'Biểu mẫu hiện giá trị đang lưu; hồ sơ chỉ có năm sinh thì gợi ý nhập ngày sinh đủ', (await input(p, 'Họ và tên').inputValue()) === before.name && (await input(p, 'Ngày sinh').inputValue()) === '' && await has(p, `Hồ sơ cũ chỉ có năm sinh ${before.birthYear}. Nhập ngày sinh đầy đủ.`) && (await input(p, 'Số điện thoại').inputValue()) === before.phone);
+    await input(p, 'Họ và tên').fill(''); await input(p, 'Ngày sinh').fill('01011800'); await input(p, 'Số điện thoại').fill('123');
     await click(p, 'Lưu');
-    const errs = [await has(p, 'Nhập họ tên bệnh nhân.'), await has(p, 'Năm sinh là số có 4 chữ số', false), await has(p, 'Số điện thoại gồm 10 số', false)];
+    const errs = [await has(p, 'Nhập họ tên bệnh nhân.'), await has(p, 'Năm sinh từ 1900.', false), await has(p, 'Số điện thoại gồm 10 số', false)];
     const d1 = await store(p);
-    rec('PE-03', 'Dữ liệu sai bị từ chối, báo lỗi theo từng ô, dữ liệu không đổi, nội dung đang nhập giữ nguyên', errs.every(Boolean) && JSON.stringify(d1.patients.find((x) => x.id === 'p-1')) === JSON.stringify(before) && (await input(p, 'Năm sinh').inputValue()) === '1800', errs.join(','));
+    rec('PE-03', 'Dữ liệu sai bị từ chối, báo lỗi theo từng ô, dữ liệu không đổi, nội dung đang nhập giữ nguyên', errs.every(Boolean) && JSON.stringify(d1.patients.find((x) => x.id === 'p-1')) === JSON.stringify(before) && (await input(p, 'Ngày sinh').inputValue()) === '01/01/1800', errs.join(','));
     // Hủy khi đã sửa: hỏi trước khi bỏ; đồng ý bỏ thì dữ liệu không đổi.
     await input(p, 'Họ và tên').fill('Tên tạm không lưu');
     p.dialogs = []; p.accept = true; await click(p, 'Hủy'); p.accept = false;
     const d2 = await store(p);
     rec('PE-04', 'Hủy không đổi dữ liệu (có hỏi bỏ dữ liệu chưa lưu)', p.dialogs.some((x) => x.includes('Bỏ dữ liệu chưa lưu')) && JSON.stringify(d2.patients.find((x) => x.id === 'p-1')) === JSON.stringify(before), p.dialogs.join(' / '));
-    // Lưu hợp lệ: họ tên, năm sinh, số điện thoại.
+    // Lưu hợp lệ: họ tên, ngày sinh, số điện thoại.
     await go(p, '/patient-edit/p-1');
-    await input(p, 'Họ và tên').fill('Nguyễn Văn An'); await input(p, 'Năm sinh').fill('1959'); await input(p, 'Số điện thoại, không bắt buộc').fill('0912 000 111');
+    await input(p, 'Họ và tên').fill('Nguyễn Văn An'); await input(p, 'Ngày sinh').fill('15031959'); await input(p, 'Số điện thoại').fill('0912 000 111');
     p.dialogs = [];
     const btn = p.getByText('Lưu', { exact: true }).locator('visible=true').last();
     await btn.click(); await btn.click({ force: true, timeout: 500 }).catch(() => {}); await p.waitForTimeout(1500);
     const d3 = await store(p); const after = d3.patients.find((x) => x.id === 'p-1');
-    rec('PE-05', 'Lưu họ tên, năm sinh, số điện thoại', after.name === 'Nguyễn Văn An' && after.birthYear === 1959 && after.phone === '0912 000 111', `${after.name}, ${after.birthYear}, ${after.phone}`);
+    rec('PE-05', 'Lưu họ tên, ngày sinh (năm sinh suy theo), số điện thoại', after.name === 'Nguyễn Văn An' && after.birthDate === '1959-03-15' && after.birthYear === 1959 && after.phone === '0912 000 111', `${after.name}, ${after.birthDate}, ${after.phone}`);
     const keep = ['id', 'code', 'doctorId', 'deviceId', 'researchCode', 'researchConsent', 'consentDate', 'createdAt', 'sex'].every((k) => after[k] === before[k]);
     rec('PE-06', 'Giữ mã hồ sơ, bác sĩ phụ trách, thiết bị, đồng ý nghiên cứu; không tạo hồ sơ mới; lịch sử lâm sàng không đổi', keep && d3.patients.length === d0.patients.length && clinical(d3, 'p-1') === clin0);
     rec('PE-07', 'Chạm Lưu hai lần chỉ lưu một lần (một thông báo "Đã lưu hồ sơ")', p.dialogs.filter((x) => x.includes('Đã lưu hồ sơ')).length === 1, p.dialogs.join(' / '));
     rec('PE-08', 'Sau lưu quay về B04, B04 hiện tên mới', p.url().includes('/patients/p-1') && await has(p, 'Nguyễn Văn An'), p.url());
-    // Đồng ý nghiên cứu giữ cách cũ.
-    p.accept = true;
+    // Giai đoạn B (CN2, XN-06): đồng ý dùng dữ liệu do bệnh nhân chọn khi kích hoạt; B04 chỉ hiện, bác sĩ không bật tắt.
+    // Ca cũ "bác sĩ rút rồi ghi nhận đồng ý" đổi thành: không có công tắc trên B04, store từ chối bác sĩ đổi đồng ý.
     await p.getByRole('button', { name: /Thông tin hồ sơ/ }).locator('visible=true').last().click(); await p.waitForTimeout(500);
-    await p.getByRole('switch').locator('visible=true').last().click(); await p.waitForTimeout(1200);
-    const d4 = await store(p); const c1 = d4.patients.find((x) => x.id === 'p-1');
-    await p.getByRole('switch').locator('visible=true').last().click(); await p.waitForTimeout(1200);
-    const d5 = await store(p); const c2 = d5.patients.find((x) => x.id === 'p-1');
-    p.accept = false;
-    rec('PE-09', 'Rút lại rồi ghi nhận đồng ý nghiên cứu vẫn chạy như cũ (rút: bỏ ngày; ghi nhận: có ngày), họ tên không đổi', c1.researchConsent === false && c1.consentDate === undefined && c2.researchConsent === true && !!c2.consentDate && c2.name === 'Nguyễn Văn An', `${c1.researchConsent}/${c1.consentDate} → ${c2.researchConsent}/${c2.consentDate}`);
+    const noSwitch = await p.getByRole('switch').locator('visible=true').count() === 0 && await has(p, 'Đồng ý dùng dữ liệu');
+    const rc = await callStore(p, 'updatePatient', 'p-1', { researchConsent: false });
+    const c2 = (await store(p)).patients.find((x) => x.id === 'p-1');
+    rec('PE-09', 'Đồng ý dùng dữ liệu chỉ hiện trên B04; bác sĩ không đổi được, kể cả gọi thẳng store; họ tên không đổi', noSwitch && !rc.ok && c2.researchConsent === before.researchConsent && c2.name === 'Nguyễn Văn An', rc.error);
     // Trùng số điện thoại với hồ sơ khác.
     await go(p, '/patient-edit/p-2');
-    await input(p, 'Số điện thoại, không bắt buộc').fill('0912000111'); await click(p, 'Lưu');
-    rec('PE-10', 'Số điện thoại trùng hồ sơ khác bị từ chối', await has(p, 'Số điện thoại đã có ở hồ sơ BN001.') && (await store(p)).patients.find((x) => x.id === 'p-2').phone !== '0912000111');
+    // Giai đoạn B (CN1 H3): chỉ trùng số điện thoại thì hỏi lại, bác sĩ vẫn lưu được; chọn "Sửa lại" thì không lưu.
+    p.dialogs = []; p.accept = false;
+    await input(p, 'Ngày sinh').fill('01021965'); await input(p, 'Số điện thoại').fill('0912000111'); await click(p, 'Lưu');
+    rec('PE-10', 'Số điện thoại trùng hồ sơ khác: hỏi lại, chọn "Sửa lại" thì không lưu (CN1 H3)', p.dialogs.some((x) => x.includes('Số điện thoại đã có ở hồ sơ BN001.')) && (await store(p)).patients.find((x) => x.id === 'p-2').phone !== '0912000111', p.dialogs.join(' / '));
     // Store: bác sĩ không đổi được phân công hay trường định danh, kể cả gọi thẳng hàm.
     const r1 = await callStore(p, 'updatePatient', 'p-1', { doctorId: 'u-bs2' });
     const r2 = await callStore(p, 'updatePatient', 'p-1', { name: 'X', code: 'BN999' });
-    const r3 = await callStore(p, 'updatePatient', 'p-1', { birthYear: 1800 });
+    // Giai đoạn B: năm sinh suy từ ngày sinh; ca năm sinh sai đổi thành ngày sinh sai (trước 1900).
+    const r3 = await callStore(p, 'updatePatient', 'p-1', { birthDate: '1800-01-01' });
     const d6 = await store(p); const c3 = d6.patients.find((x) => x.id === 'p-1');
     rec('PM-01', 'Store từ chối bác sĩ đổi doctorId (phân công)', !r1.ok && c3.doctorId === 'u-bs1', r1.error);
     rec('PM-02', 'Store từ chối bác sĩ đổi mã hồ sơ, cả lời gọi lẫn trường được phép (không lưu một phần)', !r2.ok && c3.code === 'BN001' && c3.name === 'Nguyễn Văn An', r2.error);
-    rec('PM-03', 'Store từ chối năm sinh sai khi gọi thẳng', !r3.ok && c3.birthYear === 1959, r3.error);
+    rec('PM-03', 'Store từ chối ngày sinh sai khi gọi thẳng', !r3.ok && c3.birthYear === 1959 && c3.birthDate === '1959-03-15', r3.error);
     const r4 = await callStore(p, 'updateWound', 'w-1', { status: 'follow_up' });
     rec('PM-04', 'Store từ chối đổi trạng thái vết qua updateWound (chỉ qua quy trình liền thương)', !r4.ok && (await store(p)).wounds.find((w) => w.id === 'w-1').status === d0.wounds.find((w) => w.id === 'w-1').status, r4.error);
     rec('PM-05', 'Giao diện bác sĩ không có điều khiển phân công', !(await has(p, 'Phân công')) && !(await has(p, 'Đổi bác sĩ phụ trách')));

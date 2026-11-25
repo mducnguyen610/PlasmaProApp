@@ -83,10 +83,15 @@ const SETUP = `
   {
     const p = await newPage(); await login(p); await mutate(p, SETUP);
     await go(p, '/doctor/patients');
-    await p.getByPlaceholder('Tìm theo tên hoặc mã bệnh nhân…').fill('pham'); await p.waitForTimeout(400);
+    // Giai đoạn B (CN1 H5): B02 chỉ tìm theo mã (một phần mã, không phân biệt hoa thường), không tìm theo tên.
+    // Ca cũ "gõ pham ra Phạm Thị B" đổi thành: gõ "bn002" ra đúng Phạm Thị B, gõ tên "pham" không ra hồ sơ nào.
+    const search = p.getByPlaceholder('Tìm theo mã bệnh nhân, ví dụ BN001…').locator('visible=true').first();
+    await search.fill('bn002'); await p.waitForTimeout(400);
     const found = await cards(p);
-    rec('TP1-01', 'B02 gõ "pham" (không dấu) chỉ còn Phạm Thị B', found.length === 1 && found[0].startsWith('Phạm Thị B'), found.map(codeOf).join(','));
-    await p.getByPlaceholder('Tìm theo tên hoặc mã bệnh nhân…').fill(''); await p.waitForTimeout(400);
+    await search.fill('pham'); await p.waitForTimeout(400);
+    const byName = await cards(p);
+    rec('TP1-01', 'B02 gõ "bn002" chỉ còn Phạm Thị B; gõ tên "pham" không ra hồ sơ (chỉ tìm theo mã, CN1 H5)', found.length === 1 && found[0].startsWith('Phạm Thị B') && byName.length === 0, `${found.map(codeOf).join(',')} | tên: ${byName.length}`);
+    await search.fill(''); await p.waitForTimeout(400);
     const all = await cards(p);
     const allCodes = all.map(codeOf);
     // Bộ lọc B02 gom vào mục "Bộ lọc" thu gọn (mặc định đóng như tab Ảnh): mở trước khi chọn.
@@ -112,8 +117,10 @@ const SETUP = `
     const comb = (await cards(p)).map(codeOf);
     rec('TP1-04', 'Hai hàng lọc kết hợp: "Có báo cáo" + "Mọi trạng thái" chỉ còn BN002', comb.join() === 'BN002', comb.join());
     // Định danh theo IA 2.1
-    const idOk = all.every((l) => /BN\d{3} · sinh \d{4} · (Nam|Nữ)/.test(l));
-    const idVisible = await p.getByText(/^BN\d{3} · sinh \d{4} · (Nam|Nữ)$/).count();
+    // Giai đoạn B (CN1, XN-11): dòng định danh ghi ngày sinh đủ, hồ sơ chỉ có năm sinh thì ghi "1958, chưa đủ ngày sinh".
+    const SINH = '(\\d{2}/\\d{2}/\\d{4}|\\d{4}, chưa đủ ngày sinh)';
+    const idOk = all.every((l) => new RegExp(`BN\\d{3} · sinh ${SINH} · (Nam|Nữ)`).test(l));
+    const idVisible = await p.getByText(new RegExp(`^BN\\d{3} · sinh ${SINH} · (Nam|Nữ)$`)).count();
     rec('TP1-05', 'Thẻ bệnh nhân dùng định dạng định danh "BN001 · sinh 1958 · Nam", không còn mã máy trong dòng định danh', idOk && idVisible > 0 && !(await p.getByText(/^BN\d{3} · TB-\d{3}$/).count()), `${idVisible} dòng`);
     rec('TP1-06', 'Không lỗi JavaScript trên B02', p.errors.length === 0, p.errors.join(' | '));
     await p.context().close();
@@ -127,7 +134,8 @@ const SETUP = `
     await go(p, '/doctor');
     await p.getByRole('button', { name: /Ảnh cần chụp lại/ }).first().click(); await p.waitForTimeout(1200);
     const tiles = (await p.getByRole('button', { name: /^Ảnh IMG\d{4},/ }).evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().width > 0).map((e) => e.getAttribute('aria-label').slice(4, 11)))).sort();
-    rec('TP1-07', `B01 ô "Ảnh cần chụp lại" (${retakeIds.length} ảnh, 2 bệnh nhân) mở B12 nhóm "Chụp lại" có đủ các ảnh`, p.url().includes('/doctor/dataset') && tiles.join() === retakeIds.join() && await p.getByRole('tab', { name: `Chụp lại (${retakeIds.length})` }).count() > 0, `${p.url().replace(BASE, '')} · thấy ${tiles.join(',')} · cần ${retakeIds.join(',')} · tab ${await p.getByRole('tab', { name: /^Chụp lại/ }).count()}`);
+    // Giai đoạn B (CN2 T1): B12 bỏ hàng tab theo diện tích; lọc "Chụp lại" nằm trong mục "Bộ lọc" (tóm tắt ghi "Chụp lại"). Kiểm đủ ảnh như cũ.
+    rec('TP1-07', `B01 ô "Ảnh cần chụp lại" (${retakeIds.length} ảnh, 2 bệnh nhân) mở B12 nhóm "Chụp lại" có đủ các ảnh`, p.url().includes('/doctor/dataset') && tiles.join() === retakeIds.join() && await p.getByRole('button', { name: /^Bộ lọc, .*Chụp lại$/ }).count() > 0, `${p.url().replace(BASE, '')} · thấy ${tiles.join(',')} · cần ${retakeIds.join(',')} · lọc ${await p.getByRole('button', { name: /^Bộ lọc, / }).first().getAttribute('aria-label')}`);
     // (Trạng thái chọn của tab, radio không có aria-checked trên bản web; nhóm đang chọn được kiểm bằng nội dung danh sách.)
     // Một ảnh: mở thẳng ảnh như cũ.
     await mutate(p, `let k = 0; for (const im of d.images) if (im.retakeRequested && k++ > 0) delete im.retakeRequested;`);

@@ -1,4 +1,5 @@
 // Kiểm thử tình huống Đợt 10 (R-02 ở B06, R-05 ở B07) trên bản web, Playwright.
+// Logic chốt 25/11/2026: biểu mẫu phác đồ 4 bước (Thông tin, Thông số, Lịch, Xem lại); lý do đổi thông số ở bước Thông tin.
 // Chạy: node scripts/kiem-thu-dot-10.cjs <baseURL> <thư mục ảnh> [nhãn ảnh]. Dựng web trước: npx expo export -p web, phục vụ với SPA fallback.
 // Thêm "--chi-anh" để chỉ chụp ảnh (dùng cho bản trước khi sửa).
 const { chromium } = require('playwright');
@@ -53,10 +54,10 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   // Ảnh trước/sau ở 4 khổ: B06 bước 3 sau khi đổi mức 4 → 5, B06 bước 2, B07 đầu và cuối màn.
   for (const w of [320, 360, 390, 768]) {
     const p = await newPage(w); await login(p);
-    await go(p, '/plan/p-1'); await tab(p, '2. Liều');
+    await go(p, '/plan/p-1'); await tab(p, '2. Thông số');
     await shot(p, `b06b-${TAG}-${w}.png`);
     await p.getByRole('radio', { name: '5', exact: true }).first().click(); await p.waitForTimeout(200);
-    await tab(p, '3. Xác nhận'); await shot(p, `b06c-${TAG}-${w}.png`);
+    await tab(p, '4. Xem lại'); await shot(p, `b06c-${TAG}-${w}.png`);
     await go(p, '/evaluate/w-2'); await shot(p, `b07-${TAG}-${w}.png`);
     await p.context().close();
   }
@@ -66,34 +67,34 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
   {
     const p = await newPage(); await login(p); await go(p, '/plan/p-1');
     const v0 = (await plansW1(p)).length;
-    await tab(p, '3. Xác nhận');
+    await tab(p, '4. Xem lại');
     rec('D10-06a', 'Bước 3 có bảng "Đang áp dụng (v2) | Phiên bản mới", nút "Lưu phiên bản 3", báo không có thay đổi',
       await has(p, 'Đang áp dụng (v2)') && await has(p, 'Phiên bản mới') && await has(p, /^Lưu phiên bản 3( cho VT\d+)?$/) && await has(p, 'Không có thay đổi lịch hoặc liều so với phiên bản đang so sánh.'));
-    await p.getByText('Sửa liều', { exact: true }).click(); await p.waitForTimeout(300);
+    await p.getByText('Sửa thông số', { exact: true }).click(); await p.waitForTimeout(300);
     const atDose = await vis(p, 'Liều khóa trên máy');
     await p.getByRole('radio', { name: '5', exact: true }).first().click(); await p.waitForTimeout(200);
-    await tab(p, '3. Xác nhận');
+    await tab(p, '4. Xem lại');
     rec('D10-06b', '"Sửa liều" về đúng bước Liều; đổi mức 4 → 5 thì dòng Mức được tô và đếm 1 thay đổi',
       atDose && (await p.getByLabel('Mức năng lượng: hiện tại 4, mới 5, đã thay đổi').count()) > 0 && await has(p, '1 thay đổi được tô vàng.'));
     await p.getByText('Sửa lịch', { exact: true }).click(); await p.waitForTimeout(300);
     const atSched = await vis(p, 'Lịch theo giai đoạn');
-    await tab(p, '3. Xác nhận');
+    await tab(p, '4. Xem lại');
     rec('D10-06c', '"Sửa lịch" về bước Lịch; quay lại bước 3 vẫn giữ mức 5 đã đổi', atSched && (await p.getByLabel('Mức năng lượng: hiện tại 4, mới 5, đã thay đổi').count()) > 0);
     // Trạng thái và câu hậu quả sát nút Lưu.
     const nb = await p.getByText(/^Đang áp dụng: cần mức năng lượng/).boundingBox(); const bb = await p.getByText(SAVE06).boundingBox();
     rec('D10-06h', 'Câu hậu quả của trạng thái nằm ngay trên nút Lưu', !!nb && !!bb && bb.y > nb.y && bb.y - (nb.y + nb.height) < 60, `khoảng ${bb && nb ? Math.round(bb.y - nb.y - nb.height) : '?'} px`);
     // Thiếu dữ liệu: xóa thời gian, lưu trạng thái Đang áp dụng.
-    await tab(p, '2. Liều'); await p.getByLabel('Thời gian mỗi lần điều trị (giây)').fill(''); await tab(p, '3. Xác nhận');
+    await tab(p, '2. Thông số'); await p.getByLabel('Thời gian mỗi lần điều trị (giây)').fill(''); await tab(p, '4. Xem lại');
     rec('D10-06j', 'Bảng hiện "—" cho thời gian bị xóa, không tự điền', (await p.getByLabel(/^Thời gian mỗi lần: hiện tại 3 phút, mới —/).count()) > 0);
-    await p.getByLabel('Lý do thay đổi').fill('Kiểm thử Đợt 10');
+    await tab(p, '1. Thông tin'); await p.getByLabel('Lý do đổi thông số').fill('Kiểm thử Đợt 10'); await tab(p, '4. Xem lại');
     await p.getByRole('checkbox', { name: /Tôi xác nhận liều và lịch này/ }).click();
     await p.getByText(SAVE06).click(); await p.waitForTimeout(400);
     rec('D10-06d', 'Thiếu thời gian: lưu bị chặn theo quy tắc cũ, về bước Liều, không tạo phiên bản',
       await has(p, 'Đợt "Đang áp dụng" cần mức năng lượng và thời gian điều trị để khóa trên thiết bị.') && await vis(p, 'Liều khóa trên máy') && (await plansW1(p)).length === v0);
     await p.getByLabel('Thời gian mỗi lần điều trị (giây)').fill('200');
     rec('D10-06i', 'Công cụ gợi ý thời gian thu gọn mặc định, mở được', !(await vis(p, 'Hệ số (giây cho mỗi cm²)')) && await (async () => { await p.getByText('Công cụ gợi ý thời gian', { exact: true }).click(); await p.waitForTimeout(200); return vis(p, 'Hệ số (giây cho mỗi cm²)'); })());
-    await tab(p, '3. Xác nhận');
-    const keptReason = (await p.getByLabel('Lý do thay đổi').inputValue()) === 'Kiểm thử Đợt 10';
+    await tab(p, '4. Xem lại');
+    const keptReason = (await tab(p, '1. Thông tin'), await p.getByLabel('Lý do đổi thông số').inputValue()) === 'Kiểm thử Đợt 10';
     rec('D10-06k', 'Quay lại sửa: lý do đã nhập còn nguyên; dấu xác nhận bị bỏ vì liều đổi (Đợt 8)', keptReason && (await p.getByRole('checkbox', { name: /Tôi xác nhận liều/ }).getAttribute('aria-checked')) === 'false');
     await p.getByRole('checkbox', { name: /Tôi xác nhận liều và lịch này/ }).click();
     const nd = p.dialogs.length;
@@ -106,8 +107,8 @@ const rec = (id, name, pass, detail = '') => { results.push({ id, name, pass, de
     await p.waitForTimeout(400);
     rec('D10-06f', 'Nhấn Lưu 3 lần ngay sau đó: không tạo phiên bản trùng; nút thành "Lưu phiên bản 4"', (await plansW1(p)).length === v0 + 1 && await has(p, /^Lưu phiên bản 4( cho VT\d+)?$/));
     // Rời màn giữa chừng.
-    await tab(p, '2. Liều'); await p.getByRole('radio', { name: '3', exact: true }).first().click(); await tab(p, '3. Xác nhận');
-    await p.getByLabel('Lý do thay đổi').fill('Rời giữa chừng');
+    await tab(p, '2. Thông số'); await p.getByRole('radio', { name: '3', exact: true }).first().click(); await tab(p, '4. Xem lại');
+    await tab(p, '1. Thông tin'); await p.getByLabel('Lý do đổi thông số').fill('Rời giữa chừng'); await tab(p, '4. Xem lại');
     await go(p, '/patients/p-1'); await go(p, '/plan/p-1');
     rec('D10-06g', 'Rời màn khi đang kiểm tra: không lưu gì; mở lại thấy theo phiên bản đã lưu', (await plansW1(p)).length === v0 + 1);
     rec('D10-06z', 'Không có lỗi JS', p.errors.length === 0, p.errors.join(' | ').slice(0, 160));

@@ -1,7 +1,21 @@
 import type { CaptureMetadata } from './capture/types';
 import type { SendResult } from './device/sender';
 import type { TransportKind } from './device/transport';
+import type { PatientEditEntry } from './patientIdentity';
+import type { ImageLabel, LabelEvent } from './imageLabel';
+export type { PatientEditEntry };
 export type Role = 'doctor' | 'patient' | 'admin';
+
+/** Giai đoạn B: một dòng nhật ký thao tác. action là mã ngắn (ví dụ wound_delete); detail là câu đọc được. */
+export interface AuditEntry {
+  id: string;
+  at: string;
+  by: string;
+  action: string;
+  patientId?: string;
+  targetId?: string;
+  detail: string;
+}
 
 export interface Account {
   id: string;
@@ -17,6 +31,8 @@ export interface Account {
   /** Thời điểm bệnh nhân xem xong hoặc bỏ qua hướng dẫn lần đầu (đề xuất 3 của bản đánh giá trải nghiệm). */
   onboardingDoneAt?: string;
   locked: boolean;
+  /** Logic chốt 25/11 (TC-11, mục 2.7): email liên hệ hiển thị ở Cài đặt, mục Cá nhân. Tài khoản cũ để trống. */
+  email?: string;
   /** Bác sĩ được cấp quyền xuất dữ liệu nghiên cứu (đặc tả mục 9). */
   researchAccess?: boolean;
   /** Tài khoản bệnh nhân liên kết tới hồ sơ nào. */
@@ -40,7 +56,10 @@ export interface Patient {
   code: string;
   researchCode?: string;
   name: string;
+  /** Năm sinh. Giữ cho dữ liệu cũ và các màn đang dùng; hồ sơ mới suy từ birthDate. */
   birthYear: number;
+  /** Giai đoạn B (CN1 H1): ngày sinh đầy đủ yyyy-mm-dd. Hồ sơ cũ chỉ có năm thì trống (hiện "Chưa đủ ngày sinh"). */
+  birthDate?: string;
   sex: 'Nam' | 'Nữ';
   phone: string;
   doctorId: string;
@@ -71,6 +90,10 @@ export interface Wound {
   closureCheck1?: string;
   /** Ngày xác nhận liền lần 2, bắt đầu theo dõi sau điều trị. */
   followUpFrom?: string;
+  /** Giai đoạn B (CN1 H7): thời điểm bác sĩ đặt "Cần tái khám" thủ công; trống là không đặt. */
+  revisitAt?: string;
+  /** Lần sửa vị trí, nhóm hoặc trạng thái tái khám gần nhất (để xếp vết mới cập nhật trước). */
+  updatedAt?: string;
 }
 
 export type LabelStatus = 'unlabeled' | 'labeled' | 'excluded';
@@ -111,6 +134,12 @@ export interface WoundImage {
   researchReviewedBy?: string;
   researchReviewedAt?: string;
   capture?: CaptureMetadata;
+  /** Giai đoạn B (CN2): nhãn theo ảnh để huấn luyện lại mô-đun nhận diện (imageLabel.ts). Ảnh gốc và capture không đổi. */
+  label?: ImageLabel;
+  /** Lịch sử sửa và xác nhận nhãn (N6). Chỉ thêm. */
+  labelHistory?: LabelEvent[];
+  /** A9: ảnh sau điều trị bệnh nhân chụp, gắn phiên điều trị (DeviceSession.sessionId). */
+  sessionId?: string;
 }
 
 export type Severity = 'mild' | 'moderate' | 'severe';
@@ -159,7 +188,11 @@ export interface Evaluation {
   assessment?: WoundAssessment;
 }
 
-export type PlanStatus = 'draft' | 'active' | 'paused' | 'ended';
+/**
+ * scheduled (logic chốt 25/11, M24): phiên bản mới đã lưu, chờ tới ngày bắt đầu áp dụng (effectiveFrom). Tới ngày đó phiên bản
+ * chuyển Đang áp dụng, phiên bản cũ chuyển Kết thúc kèm supersededBy ("Đã thay thế"). planLifecycle.settlePlans làm việc này.
+ */
+export type PlanStatus = 'draft' | 'scheduled' | 'active' | 'paused' | 'ended';
 /**
  * Một giai đoạn của đợt điều trị (slide 39, 40: mỗi ngày rồi thưa dần).
  * - daily: mỗi ngày.
@@ -203,7 +236,58 @@ export interface TreatmentPlan {
   editedAt: string;
   reason: string;
   confirmed: boolean;
+  /**
+   * Giai đoạn B (AU-05): mã phác đồ. Các phiên bản sửa của cùng phác đồ chung mã này; phác đồ mới cho vết thương có mã mới.
+   * Mã phiên bản là id. Dữ liệu cũ được gán khi đọc (planVersion.ts, migratePlans).
+   */
+  protocolId?: string;
+  /** Giai đoạn B (AU-04): thời điểm bệnh nhân xác nhận đã đọc phiên bản này. Chưa có thì không nạp liệu trình, không ghi phiên. */
+  patientAckAt?: string;
+  /** Giai đoạn B (CN3 P3, AU-06): ảnh căn cứ khi tạo phác đồ mới: ảnh ứng dụng đề xuất và ảnh bác sĩ chọn. */
+  suggestedBasisImageId?: string;
+  basisImageId?: string;
+  /** Giai đoạn B (CN3 P8, AU-08): nhật ký tạm dừng, tiếp tục của phiên bản này (người, thời điểm, lý do). */
+  statusLog?: PlanStatusEvent[];
+  /** Logic chốt 25/11 (P4, M33): tên phác đồ bác sĩ đặt; trống thì hiện "Phác đồ số 00n". */
+  title?: string;
+  /** M33: khung giờ thực hiện (HH:MM). Chỉ để hiển thị và nhắc, không đổi quy tắc Đã bỏ lỡ, không chặn phiên (giả định 5 mục 8). */
+  timeWindow?: { from: string; to: string };
+  /** M24: ngày (yyyy-mm-dd, giờ Việt Nam) phiên bản bắt đầu áp dụng. Phiên bản cũ (trước 25/11) để trống: áp dụng từ lúc lưu. */
+  effectiveFrom?: string;
+  /** M24: phiên bản thay thế phiên bản này (id). Có giá trị thì phiên bản này hiện "Đã thay thế". */
+  supersededBy?: string;
+  /** M32: các lần gia hạn ngày kết thúc (không tạo phiên bản). Chỉ thêm. */
+  extensions?: PlanExtension[];
 }
+
+/** M31, M22, M32: nhật ký trạng thái phiên bản: tạm dừng, tiếp tục, kết thúc sớm (lý do bắt buộc). */
+export interface PlanStatusEvent { at: string; by: string; action: 'pause' | 'resume' | 'end'; reason: string }
+
+/** M32: một lần gia hạn. ackAt: thời điểm bệnh nhân xác nhận đã đọc ngày kết thúc mới. */
+export interface PlanExtension { at: string; by: string; fromEnd: string; toEnd: string; reason: string; ackAt?: string }
+
+/**
+ * M29: bác sĩ hoãn hoặc hủy một phiên dự kiến của phác đồ (theo ngày có lịch). Chỉ thêm, không sửa; bệnh nhân chỉ thấy kết quả.
+ * postpone: phiên ngày date chuyển sang newDate. cancel: phiên ngày date không còn cần thực hiện.
+ */
+export interface SessionChange {
+  id: string;
+  protocolId: string;
+  patientId: string;
+  woundId: string;
+  date: string;
+  kind: 'postpone' | 'cancel';
+  newDate?: string;
+  reason: string;
+  at: string;
+  by: string;
+}
+
+/**
+ * M27 "Đang thực hiện": điện thoại bệnh nhân thấy STA running thì ghi mốc này; phiên kết thúc (done, stopped, error) thì xóa.
+ * Máy bác sĩ chỉ thấy khi demo trên cùng một máy (đồng bộ hai máy cần backend).
+ */
+export interface LiveSession { deviceId: string; patientId: string; woundId?: string; startedAt: string }
 
 export type DeviceLifecycle = 'in_use' | 'returned' | 'disinfected' | 'ready';
 export interface Device {
@@ -223,6 +307,27 @@ export interface Device {
   tip?: { code: string; issuedAt: string };
   /** Vòng đời thiết bị cho thuê (slide 24): đang dùng, đã thu hồi, đã khử khuẩn, sẵn sàng cấp. */
   lifecycle?: DeviceLifecycle;
+  /** Giai đoạn B (CN4 D1, AU-25): số sê-ri in trên máy. Máy cũ chưa ghi thì để trống. */
+  serial?: string;
+  /** Giai đoạn B (CN4 D2): người giao và thời điểm giao cho bệnh nhân đang giữ. */
+  assignedAt?: string;
+  assignedBy?: string;
+  /** Giai đoạn B (CN4 D5, D9, AU-28): lỗi máy báo, còn hiệu lực tới khi bác sĩ ghi đã xử lý. Ứng dụng không gửi lệnh khắc phục. */
+  fault?: DeviceFault;
+}
+
+export interface DeviceFault { message: string; at: string; patientId?: string; sessionId?: string }
+
+/** Giai đoạn B (CN4 D4, AU-27): nhật ký máy, chỉ thêm. Phiên điều trị và lần nạp liệu trình lấy từ sessions, deviceLinks, không ghi lặp ở đây. */
+export type DeviceEventKind = 'register' | 'edit' | 'assign' | 'return' | 'disinfect' | 'care' | 'connect' | 'disconnect' | 'error' | 'fault_clear';
+export interface DeviceEvent {
+  id: string;
+  deviceId: string;
+  at: string;
+  by: string;
+  kind: DeviceEventKind;
+  patientId?: string;
+  detail?: string;
 }
 
 export interface DeviceSession {
@@ -236,6 +341,16 @@ export interface DeviceSession {
   source: 'device' | 'manual' | 'simulated';
   /** Vết thương được chiếu trong phiên (bệnh nhân chọn trên thiết bị hoặc ứng dụng khi có nhiều vết). */
   woundId?: string;
+  /** Giai đoạn B (AU-05): phiên bản phác đồ (TreatmentPlan.id), số phiên bản và mã phác đồ áp dụng khi ghi phiên. Phiên cũ để trống. */
+  planId?: string;
+  planVersion?: number;
+  protocolId?: string;
+  /** Logic chốt 25/11 (M28, mục 9 #13): thời điểm máy báo kết thúc (STA done, stopped, error). Phiên cũ để trống: tính từ start + durationMin. */
+  endedAt?: string;
+  /** M27: trạng thái kết thúc máy báo. error là Thất bại; stopped là Bị gián đoạn. Phiên cũ để trống. */
+  endState?: 'done' | 'stopped' | 'error';
+  /** M25 (mục 9 #9): nguyên nhân dừng lưu riêng. patient_stop: bệnh nhân bấm Dừng điều trị trên ứng dụng (dừng khẩn cấp). */
+  stopCause?: 'patient_stop';
 }
 
 export interface SymptomReport {
@@ -287,5 +402,15 @@ export interface AppData {
   syncErrors: SyncError[];
   /** Nhật ký gửi cấu hình xuống máy. Tùy chọn để dữ liệu cũ đọc được. */
   deviceLinks?: DeviceLinkLog[];
+  /** Giai đoạn B (CN1 H8): nhật ký sửa hồ sơ (cũ, mới, người sửa, thời điểm). */
+  patientEdits?: PatientEditEntry[];
+  /** Giai đoạn B: nhật ký thao tác quản lý (xóa vết, xóa phác đồ, tạm dừng, giao, thu hồi, khử khuẩn máy...). Chỉ thêm, không sửa. */
+  auditLog?: AuditEntry[];
+  /** Giai đoạn B (CN4 D4): nhật ký máy (giao, thu hồi, khử khuẩn, kết nối, lỗi...). Tùy chọn để dữ liệu cũ đọc được. */
+  deviceEvents?: DeviceEvent[];
+  /** M29: hoãn, hủy phiên dự kiến. Tùy chọn để dữ liệu cũ đọc được. */
+  sessionChanges?: SessionChange[];
+  /** M27: phiên đang chạy trên máy (mốc từ STA running). */
+  liveSessions?: LiveSession[];
   counters: { image: number; patient: number };
 }

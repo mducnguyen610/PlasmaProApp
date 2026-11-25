@@ -5,18 +5,18 @@ import { Pressable, View } from 'react-native';
 
 import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
-import { Image } from 'expo-image';
 
-import { Button, Card, Chip, Choices, Header, ListCard, Muted, PatientAvatar, Screen, SearchField, SectionTitle, Segmented, WoundPhoto } from '@/components/ui';
-import { confirm } from '@/lib/dialog';
-import { fmtDate, fmtDateTime } from '@/lib/format';
+import { Button, Card, Choices, Field, Header, ListCard, Muted, PatientAvatar, Screen, SearchField, SectionTitle, Segmented, WoundPhoto } from '@/components/ui';
+import { notify } from '@/lib/dialog';
+import { fmtDate } from '@/lib/format';
+import { matchesNameOrCode } from '@/lib/patientIdentity';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
 
-// Nút giữa thanh tab của bác sĩ: chọn bệnh nhân, vết thương rồi chụp/tải ảnh, sau đó mở ngay màn đổi tên (BS05).
+// Nút "Chụp ảnh" ở chức năng Chụp ảnh và gán nhãn (logic chốt 25/11). Giai đoạn B (CN2 A1): chọn "Bệnh nhân có sẵn" (tìm theo mã, chọn hoặc thêm vết) hoặc
+// "Bệnh nhân mới" (tạo hồ sơ và vết trước), rồi mới chụp. Không còn ảnh chụp trước chưa thuộc hồ sơ nào.
 export default function Capture() {
-  const { data, me, pendingCapture: held, discardPendingCapture } = useStore();
-  // Hai lối vào tách bạch: chụp cho hồ sơ có sẵn (luồng cũ, mặc định, giữ nguyên) và chụp cho bệnh nhân mới (tạo hồ sơ sau khi chụp).
+  const { data, me, addWound } = useStore();
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
   const { woundsOf, imagesOf } = useLookups();
   const patients = data.patients.filter((p) => p.doctorId === me?.id && !p.archivedAt);
@@ -27,51 +27,37 @@ export default function Capture() {
   // P0 ID-03: như với bệnh nhân, chỉ chọn sẵn khi có đúng một vết đang theo dõi; từ 2 vết thì bác sĩ phải chọn.
   const woundId = wounds.some((w) => w.id === wid) ? wid : wounds.length === 1 ? wounds[0].id : '';
   const last = woundId ? imagesOf(woundId).at(-1) : undefined;
-  // UX-23 (Đợt 12): tìm theo tên hoặc mã như B02, danh sách một cột thay cho hàng chip.
+  // Logic chốt 25/11 (M6): tìm theo một phần tên (không phân biệt dấu) hoặc một phần mã.
   const [q, setQ] = useState('');
-  const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase();
-  const found = patients.filter((x) => !q || norm(`${x.name} ${x.code}`).includes(norm(q)));
+  const found = patients.filter((x) => matchesNameOrCode(x, q));
+  const [newLoc, setNewLoc] = useState('');
+  const [adding, setAdding] = useState(false);
 
   if (me?.role !== 'doctor') return <NoAccess />;
 
   const go = () => router.push({ pathname: '/guided-capture', params: { woundId } });
-  const goNew = () => router.push({ pathname: '/guided-capture', params: { moi: '1' } });
-  const dropHeld = () => confirm('Bỏ ảnh chờ tạo hồ sơ?', 'Ảnh này chưa thuộc hồ sơ nào và sẽ bị xóa. Chưa có hồ sơ nào được tạo.', () => { void discardPendingCapture().catch(() => {}); }, 'Bỏ ảnh', 'Ở lại');
-  // Ảnh chờ (nếu có): luôn hiện ở đầu màn, ở cả hai lối vào, để không bị quên hay bị bỏ mà không biết.
-  const heldCard = held ? (
-    <Card style={{ gap: 10 }}>
-      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-        <View style={{ width: 80, height: 60, borderRadius: 8, overflow: 'hidden', backgroundColor: C.text }}>
-          <Image source={{ uri: held.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" accessibilityLabel="Ảnh chờ tạo hồ sơ" />
-        </View>
-        <View style={{ flex: 1, gap: 4 }}>
-          <View style={{ flexDirection: 'row' }}><Chip label="Ảnh chờ tạo hồ sơ" tone="amber" icon="time-outline" /></View>
-          <Text style={{ color: C.textSoft, fontSize: T.small }}>{held.capture.capturedAt ? `Chụp ${fmtDateTime(held.capture.capturedAt)}` : `Ảnh thư viện · ${fmtDate(held.captureDate)}`}{held.form.name.trim() ? ` · ${held.form.name.trim()}` : ''}</Text>
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <Button label="Bỏ ảnh" variant="secondary" onPress={dropHeld} style={{ flexShrink: 0 }} />
-        <Button label="Tiếp tục tạo hồ sơ" icon="person-add-outline" onPress={() => router.push('/capture-new-patient')} style={{ flex: 1 }} />
-      </View>
-    </Card>
-  ) : null;
+  const addAndPick = async () => {
+    if (!pid || !newLoc.trim() || adding) return;
+    setAdding(true);
+    try { const w = await addWound(pid, newLoc.trim()); setWid(w.id); setNewLoc(''); }
+    catch (e) { notify('Chưa thêm được vết thương', e instanceof Error ? e.message : String(e)); }
+    finally { setAdding(false); }
+  };
   const modeSwitch = (
-    <Segmented<'existing' | 'new'> value={mode} onChange={setMode} options={[{ value: 'existing', label: 'Chọn bệnh nhân hiện có' }, { value: 'new', label: 'Chụp cho bệnh nhân mới' }]} />
+    <Segmented<'existing' | 'new'> value={mode} onChange={setMode} options={[{ value: 'existing', label: 'Bệnh nhân có sẵn' }, { value: 'new', label: 'Bệnh nhân mới' }]} />
   );
 
   if (mode === 'new') {
     return (
-      <Screen header={<Header back title="Chụp ảnh vết thương" subtitle="Chụp trước, tạo hồ sơ sau" />}
-        footer={<Button label="Chụp cho bệnh nhân mới" icon="camera" disabled={!!held} onPress={goNew} reason="Đang có ảnh chờ tạo hồ sơ. Tiếp tục hoặc bỏ ảnh đó trước." />}>
+      <Screen header={<Header back title="Chụp ảnh vết thương" subtitle="Tạo hồ sơ trước, rồi chụp" />}
+        footer={<Button label="Tạo hồ sơ bệnh nhân mới" icon="person-add-outline" onPress={() => router.push({ pathname: '/patients/new', params: { chup: '1' } })} />}>
         {modeSwitch}
-        {heldCard}
         <SectionTitle>Các bước</SectionTitle>
         <Card style={{ gap: 8 }}>
-          <Text style={{ color: C.text }}>1. Chụp, kiểm tra ảnh và nhập số đo như khi chụp cho hồ sơ có sẵn.</Text>
-          <Text style={{ color: C.text }}>2. Nhập thông tin bệnh nhân và vị trí vết thương; ảnh vừa chụp hiện ở đầu biểu mẫu.</Text>
-          <Text style={{ color: C.text }}>3. Lưu: hồ sơ, vết thương VT01 và ảnh được tạo cùng lúc, rồi mở vết thương.</Text>
+          <Text style={{ color: C.text }}>1. Nhập họ tên, ngày sinh, số điện thoại và vị trí vết thương.</Text>
+          <Text style={{ color: C.text }}>2. Lưu: hồ sơ, tài khoản và vết thương VT01 được tạo; ứng dụng kiểm tra hồ sơ trùng trước khi lưu.</Text>
+          <Text style={{ color: C.text }}>{"3. Bấm \"Chụp ảnh VT01\" để chụp; ảnh lưu thẳng vào vết thương này."}</Text>
         </Card>
-        <Muted>Ảnh chưa thuộc hồ sơ nào cho tới khi lưu hồ sơ. Nếu thoát giữa chừng, ảnh chờ hiện lại ở màn này.</Muted>
       </Screen>
     );
   }
@@ -86,13 +72,12 @@ export default function Capture() {
     <Screen header={<Header back title="Chụp ảnh vết thương" subtitle="Ảnh vào đúng hồ sơ, rồi ghi diện tích" />}
       footer={<Button label="Chụp có hướng dẫn" icon="camera" disabled={!woundId} onPress={go} reason={pid ? 'Chọn vết thương trước.' : 'Chọn bệnh nhân và vết thương trước.'} />}>
       {modeSwitch}
-      {heldCard}
       <SectionTitle right={picked(chosen?.code)}>1. Bệnh nhân</SectionTitle>
       {patients.length > 1 && (
         // Ô tìm kiếm luôn hiện (người dùng chốt 16/11/2026, bỏ nút đóng, mở bộ lọc): đây là cách chọn bệnh nhân chính khi có nhiều hồ sơ.
-        <SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã bệnh nhân…" />
+        <SearchField label="Tìm bệnh nhân" value={q} onChangeText={setQ} placeholder="Tìm theo tên hoặc mã, ví dụ BN001" />
       )}
-      {patients.length > 0 && found.length === 0 && <Muted>Không tìm thấy bệnh nhân phù hợp.</Muted>}
+      {patients.length > 0 && found.length === 0 && <Muted>Không có bệnh nhân phù hợp với tên hoặc mã đã nhập.</Muted>}
       <View accessibilityRole="radiogroup">
         <ListCard>
           {found.map((x) => {
@@ -116,10 +101,15 @@ export default function Capture() {
       <SectionTitle right={picked(chosenWound?.code)}>2. Vết thương</SectionTitle>
       {!pid ? (
         <Muted>Chọn bệnh nhân trước.</Muted>
-      ) : wounds.length ? (
-        <Choices value={woundId} onChange={setWid} options={wounds.map((w) => ({ value: w.id, label: `${w.code} · ${w.location}` }))} />
       ) : (
-        <Muted>Bệnh nhân chưa có vết thương đang theo dõi; thêm trong hồ sơ bệnh nhân.</Muted>
+        <>
+          {wounds.length ? <Choices value={woundId} onChange={setWid} options={wounds.map((w) => ({ value: w.id, label: `${w.code} · ${w.location}` }))} />
+            : <Muted>Bệnh nhân chưa có vết thương đang theo dõi. Thêm vết mới bên dưới.</Muted>}
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <View style={{ flex: 1, minWidth: 180 }}><Field label="Thêm vết thương mới" optional value={newLoc} onChangeText={setNewLoc} placeholder="Vị trí, ví dụ: Gót chân phải" /></View>
+            <Button label="Thêm vết" icon="add" variant="secondary" loading={adding} disabled={!newLoc.trim()} onPress={addAndPick} />
+          </View>
+        </>
       )}
       {woundId ? <SectionTitle>3. Chụp</SectionTitle> : null}
       {last && (

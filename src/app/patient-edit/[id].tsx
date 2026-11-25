@@ -6,11 +6,13 @@ import { NoAccess, useCanView } from '@/components/Guard';
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
 import { Button, Card, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle } from '@/components/ui';
-import { notify } from '@/lib/dialog';
-import { patientEditDirty, validatePatientEdit, type PatientEditErrors } from '@/lib/patientRecord';
+import { localDay } from '@/lib/course';
+import { confirm, notify } from '@/lib/dialog';
+import { maskDateInput } from '@/lib/format';
+import { isoToVn, patientFormDirty, validatePatientEdit, type PatientFormErrors } from '@/lib/patientIdentity';
 import { useLookups, useStore } from '@/lib/store';
 
-// B04a – Chỉnh sửa hồ sơ (bác sĩ phụ trách): họ tên, năm sinh, số điện thoại. Mã hồ sơ, giới tính và bác sĩ phụ trách chỉ xem.
+// B04a – Chỉnh sửa hồ sơ (bác sĩ phụ trách): họ tên, ngày sinh (Giai đoạn B, XN-11), số điện thoại. Mã hồ sơ, giới tính và bác sĩ phụ trách chỉ xem.
 // Lưu gọi updatePatient (cùng hàm với đồng ý nghiên cứu); quyền và kiểm tra nằm ở store, màn này chỉ hiện lỗi theo ô.
 export default function PatientEdit() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -19,19 +21,21 @@ export default function PatientEdit() {
   const p = patient(id);
   const canView = useCanView(p);
   const [name, setName] = useState(p?.name ?? '');
-  const [birthYear, setBirthYear] = useState(p ? String(p.birthYear) : '');
+  // Hồ sơ cũ chỉ có năm sinh: ô trống, bác sĩ phải nhập ngày đầy đủ; không tự đặt ngày.
+  const [birthDate, setBirthDate] = useState(isoToVn(p?.birthDate));
   const [phone, setPhone] = useState(p?.phone ?? '');
-  const [errors, setErrors] = useState<PatientEditErrors>({});
+  const [errors, setErrors] = useState<PatientFormErrors>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
-  const dirty = !!p && patientEditDirty({ name, birthYear, phone }, p);
+  const dirty = !!p && patientFormDirty({ name, birthDate, phone }, p);
   const allowLeave = useDiscardGuard(dirty && !busy);
   // Mở thẳng bằng đường dẫn (không có màn trước) thì về màn gốc thay vì không đi đâu.
   const leave = () => (router.canGoBack() ? router.back() : router.replace({ pathname: '/patients/[id]', params: { id: (id ?? '') } }));
 
   if (!p) return <NoAccess notFound />;
-  if (!canView || me?.role !== 'doctor') return <NoAccess />;
+  // Giai đoạn B (CN1 H8, H9): chỉ bác sĩ phụ trách sửa; bác sĩ khác xem hồ sơ nhưng không vào được màn sửa.
+  if (!canView || me?.role !== 'doctor' || p.doctorId !== me.id) return <NoAccess />;
   if (p.archivedAt) {
     return (
       <Screen header={<Header back title="Chỉnh sửa hồ sơ" subtitle={`${p.name} · ${p.code}`} />}>
@@ -41,17 +45,23 @@ export default function PatientEdit() {
     );
   }
 
-  const save = async () => {
+  const save = async (force = false) => {
     // Chặn chạm đúp: ref đổi ngay, trạng thái busy chỉ đổi ở lần vẽ sau.
     if (saving.current) return;
-    const { errors: errs } = validatePatientEdit({ name, birthYear, phone }, p, data.patients);
+    const { errors: errs, warnings } = validatePatientEdit({ name, birthDate, phone }, p, data.patients, localDay());
     setErrors(errs);
     setFailure(null);
     if (Object.keys(errs).length) return;
+    // CN1 H3: chỉ trùng số điện thoại thì hỏi lại, vẫn cho lưu.
+    if (warnings.phone && !force) {
+      confirm('Số điện thoại đã có', `${warnings.phone} Vẫn lưu số này cho ${p.code}?`, () => { void save(true); }, 'Vẫn lưu', 'Sửa lại');
+      return;
+    }
     saving.current = true;
     setBusy(true);
     try {
-      await updatePatient(p.id, { name, birthYear: Number(birthYear.trim()), phone: phone.trim() });
+      const iso = birthDate.trim().split('/').reverse().join('-');
+      await updatePatient(p.id, { name, birthDate: iso, phone: phone.trim() });
       allowLeave();
       notify('Đã lưu hồ sơ', `Thông tin của ${p.code} đã cập nhật. Mã hồ sơ, vết thương và lịch sử điều trị giữ nguyên.`);
       leave();
@@ -74,7 +84,7 @@ export default function PatientEdit() {
           {failure && <Notice tone="red" icon="alert-circle-outline">{`Chưa lưu được: ${failure}`}</Notice>}
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Button style={{ flex: 1 }} label="Hủy" variant="secondary" disabled={busy} onPress={() => leave()} />
-            <Button style={{ flex: 1 }} label="Lưu" icon="save-outline" loading={busy} disabled={!dirty} onPress={save} />
+            <Button style={{ flex: 1 }} label="Lưu" icon="save-outline" loading={busy} disabled={!dirty} onPress={() => save()} />
           </View>
         </View>
       }>
@@ -84,10 +94,11 @@ export default function PatientEdit() {
         <Field label="Họ và tên" value={name} onChangeText={(v) => { setName(v); setErrors((x) => ({ ...x, name: undefined })); }} error={errors.name} />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           <View style={{ flexGrow: 1, flexBasis: 120 }}>
-            <Field label="Năm sinh" value={birthYear} onChangeText={(v) => { setBirthYear(v); setErrors((x) => ({ ...x, birthYear: undefined })); }} keyboardType="number-pad" maxLength={4} error={errors.birthYear} />
+            <Field label="Ngày sinh" value={birthDate} onChangeText={(v) => { setBirthDate(maskDateInput(v)); setErrors((x) => ({ ...x, birthDate: undefined })); }} keyboardType="number-pad" maxLength={10} placeholder="dd/mm/yyyy" error={errors.birthDate}
+              hint={p.birthDate ? undefined : `Hồ sơ cũ chỉ có năm sinh ${p.birthYear}. Nhập ngày sinh đầy đủ.`} />
           </View>
           <View style={{ flexGrow: 2, flexBasis: 220 }}>
-            <Field label="Số điện thoại" optional value={phone} onChangeText={(v) => { setPhone(v); setErrors((x) => ({ ...x, phone: undefined })); }} keyboardType="phone-pad"
+            <Field label="Số điện thoại" value={phone} onChangeText={(v) => { setPhone(v); setErrors((x) => ({ ...x, phone: undefined })); }} keyboardType="phone-pad"
               error={errors.phone} hint="10 số bắt đầu bằng 0, hoặc +84 và 9 số" />
           </View>
         </View>

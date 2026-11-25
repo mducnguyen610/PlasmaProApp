@@ -25,11 +25,12 @@ export const WOUND_STATUS: Record<WoundStatus, { label: string; tone: 'green' | 
 export const LABEL_STATUS: Record<LabelStatus, { label: string; tone: 'green' | 'amber' | 'gray' }> = {
   labeled: { label: 'Đã có diện tích', tone: 'green' },
   unlabeled: { label: 'Chưa có nhãn diện tích', tone: 'amber' },
-  excluded: { label: 'Loại khỏi bộ dữ liệu', tone: 'gray' },
+  excluded: { label: 'Không sử dụng', tone: 'gray' },
 };
 
 export const PLAN_STATUS: Record<PlanStatus, { label: string; tone: 'gray' | 'teal' | 'amber' }> = {
   draft: { label: 'Nháp', tone: 'gray' },
+  scheduled: { label: 'Chờ áp dụng', tone: 'gray' },
   active: { label: 'Đang áp dụng', tone: 'teal' },
   paused: { label: 'Tạm dừng', tone: 'amber' },
   ended: { label: 'Kết thúc', tone: 'gray' },

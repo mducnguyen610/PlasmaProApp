@@ -1,68 +1,76 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { ImageTile } from '@/components/items';
-import { Card, Choices, Disclosure, Empty, Header, Screen, SectionTitle, Segmented } from '@/components/ui';
+import { Button, Card, Choices, Disclosure, Empty, Field, Header, Screen, SectionTitle, Segmented } from '@/components/ui';
 import { C, T } from '@/theme';
 import { useStore } from '@/lib/store';
-import type { LabelStatus } from '@/lib/types';
+import type { WoundImage } from '@/lib/types';
+import { LABEL_STATE, labelState, needsLabel } from '@/lib/imageLabel';
+import { isoToVn, parseBirthDate } from '@/lib/patientIdentity';
 import { localDay } from '@/lib/course';
 
-// BS08 – Ảnh vết thương: lọc ảnh đã/chưa có diện tích để bác sĩ ghi nhãn.
-// Xuất ZIP và xem trước labels.csv chuyển sang màn hình Dữ liệu của quản trị kỹ thuật.
+// BS08 – Ảnh vết thương. Giai đoạn B (CN2 T1): trang Hình ảnh chung của mọi bệnh nhân bác sĩ phụ trách, lọc theo trạng thái nhãn
+// (mặc định "Chưa gán đủ nhãn"), bệnh nhân, vết, thời gian (7, 30, 90 ngày, tất cả, tùy chọn) và diện tích (chưa đo, đã đo, chụp lại).
+// Xuất ZIP và xem trước labels.csv ở màn Dữ liệu của quản trị.
+type LabelFilter = 'needs' | 'complete' | 'confirmed' | 'rejected' | 'all';
+type AreaFilter = 'all' | 'unlabeled' | 'labeled' | 'retake';
 export default function Dataset() {
   const { data, me } = useStore();
   const { width } = useWindowDimensions();
-  // P1-01a: thêm nhóm "Chụp lại" (ảnh bác sĩ đã yêu cầu chụp lại, ở bất kỳ trạng thái nhãn nào). Ba nhóm cũ và số đếm giữ nguyên.
-  const [filter, setFilter] = useState<LabelStatus | 'retake'>('unlabeled');
+  const [filter, setFilter] = useState<LabelFilter>('needs');
+  const [area, setArea] = useState<AreaFilter>('all');
   const [pf, setPf] = useState('all');
   const [wf, setWf] = useState('all');
-  const [range, setRange] = useState<'7' | '30' | 'all'>('all');
+  const [range, setRange] = useState<'7' | '30' | '90' | 'all' | 'custom'>('all');
   const [since, setSince] = useState('');
-  // UX-17: mở từ ô "Ảnh chưa đo" ở B01 thì về nhóm "Chưa đo", bỏ các bộ lọc đang chọn để thấy đủ ảnh chưa đo.
+  const [sinceText, setSinceText] = useState('');
+  // UX-17, P1-01a: mở từ ô "Ảnh chưa đo" hoặc "Ảnh cần chụp lại" ở B01 thì lọc theo diện tích tương ứng, bỏ các bộ lọc khác.
   const { loc, t } = useLocalSearchParams<{ loc?: string; t?: string }>();
   const [seen, setSeen] = useState<string | undefined>(undefined);
-  // P1-01a: mở từ ô "Ảnh cần chụp lại" (khi có từ 2 ảnh) thì về nhóm "Chụp lại", cùng cách bỏ bộ lọc như UX-17.
-  const target = loc === 'chua-do' ? 'unlabeled' : loc === 'chup-lai' ? 'retake' : null;
-  if (target && `${loc}:${t}` !== seen) { setSeen(`${loc}:${t}`); setFilter(target); setPf('all'); setWf('all'); setRange('all'); setSince(''); }
+  const target: AreaFilter | null = loc === 'chua-do' ? 'unlabeled' : loc === 'chup-lai' ? 'retake' : null;
+  if (target && `${loc}:${t}` !== seen) { setSeen(`${loc}:${t}`); setArea(target); setFilter('all'); setPf('all'); setWf('all'); setRange('all'); setSince(''); }
   const mine = new Set(data.patients.filter((p) => p.doctorId === me?.id && !p.archivedAt).map((p) => p.id));
   const images = data.images.filter((i) => mine.has(i.patientId));
-  const count = (s: LabelStatus) => images.filter((i) => i.status === s).length;
-  const retakeCount = images.filter((i) => i.retakeRequested).length;
-  // Tìm ảnh theo bệnh nhân / vết thương / ngày chụp (đặc tả mục 8).
+  const inLabel = (f: LabelFilter, i: WoundImage) => f === 'all' || (f === 'needs' ? needsLabel(i) : labelState(i) === f);
+  const count = (f: LabelFilter) => images.filter((i) => inLabel(f, i)).length;
+  const inArea = (i: WoundImage) => area === 'all' || (area === 'retake' ? !!i.retakeRequested : i.status === area);
   const shown = images
-    .filter((i) => (filter === 'retake' ? !!i.retakeRequested : i.status === filter))
+    .filter((i) => inLabel(filter, i))
+    .filter(inArea)
     .filter((i) => pf === 'all' || i.patientId === pf)
     .filter((i) => wf === 'all' || i.woundId === wf)
     .filter((i) => !since || i.captureDate >= since)
     .sort((a, b) => b.captureDate.localeCompare(a.captureDate));
   const myPatients = data.patients.filter((p) => mine.has(p.id));
   const woundOpts = data.wounds.filter((w) => w.patientId === pf);
-  // Stage 9A (bố cục riêng B12): hàng đợi ghi diện tích. Bộ lọc gom vào một mục thu gọn có tóm tắt lựa chọn đang áp dụng
-  // (thay cho ba hàng nút luôn mở); kết quả chia theo bệnh nhân để thấy ngay ảnh của ai, vết nào; ô ảnh giãn đủ hai cột ở điện thoại.
-  // Câu về xuất bộ dữ liệu nghiên cứu chuyển vào trang Hướng dẫn. Nhóm, số đếm và điều kiện lọc giữ nguyên.
+  const customError = range === 'custom' && sinceText.trim() ? parseBirthDate(sinceText, '9999-12-31').error?.replace('Ngày sinh', 'Ngày').replace('Năm sinh', 'Năm') : undefined;
   const filterSummary = [
     pf === 'all' ? 'Mọi bệnh nhân' : myPatients.find((p) => p.id === pf)?.code,
     pf !== 'all' && wf !== 'all' ? woundOpts.find((w) => w.id === wf)?.code : null,
-    range === 'all' ? 'Mọi ngày' : `${range} ngày`,
+    range === 'all' ? 'Mọi ngày' : range === 'custom' ? (since ? `Từ ${isoToVn(since)}` : 'Tùy chọn ngày') : `${range} ngày`,
+    area === 'all' ? null : area === 'unlabeled' ? 'Chưa đo' : area === 'labeled' ? 'Đã đo' : 'Chụp lại',
   ].filter(Boolean).join(' · ');
   const content = Math.min(width, 720) - 32;
   const cols = content >= 600 ? 4 : content >= 420 ? 3 : 2;
   const tileW = Math.floor((content - 12 * (cols - 1)) / cols);
   const byPatient = myPatients.map((p) => ({ p, list: shown.filter((i) => i.patientId === p.id) })).filter((g) => g.list.length);
   return (
-    <Screen header={<Header title="Ảnh vết thương" subtitle="Ghi diện tích cho ảnh đã chụp" />}>
-      <Segmented<LabelStatus | 'retake'>
+    // Logic chốt 25/11 (mục 2, mục 6): chức năng "Chụp ảnh và gán nhãn": nút Chụp ảnh (chọn bệnh nhân và vết trước, A1)
+    // thay cho nút giữa thanh tab cũ, rồi trang Hình ảnh chung (T1).
+    <Screen header={<Header home="/doctor" title="Chụp ảnh và gán nhãn" subtitle="Hình ảnh của bệnh nhân bạn phụ trách" />}>
+      <Button label="Chụp ảnh" icon="camera" onPress={() => router.push('/capture')} />
+      <Choices<LabelFilter>
         value={filter}
         onChange={setFilter}
         options={[
-          { value: 'unlabeled', label: `Chưa đo (${count('unlabeled')})` },
-          { value: 'labeled', label: `Đã đo (${count('labeled')})` },
-          { value: 'excluded', label: `Đã loại (${count('excluded')})` },
-          // Chỉ hiện khi có ảnh cần chụp lại hoặc đang chọn, để thanh ba nhóm cũ không chật thêm ở 320 px.
-          ...(retakeCount > 0 || filter === 'retake' ? [{ value: 'retake' as const, label: `Chụp lại (${retakeCount})` }] : []),
+          { value: 'needs', label: `Chưa gán đủ nhãn (${count('needs')})` },
+          { value: 'complete', label: `${LABEL_STATE.complete.label} (${count('complete')})` },
+          { value: 'confirmed', label: `${LABEL_STATE.confirmed.label} (${count('confirmed')})` },
+          { value: 'rejected', label: `${LABEL_STATE.rejected.label} (${count('rejected')})` },
+          { value: 'all', label: `Tất cả (${images.length})` },
         ]}
       />
       <Card style={{ paddingVertical: 4 }}>
@@ -83,14 +91,22 @@ export default function Dataset() {
               value={range}
               onChange={(v) => {
                 setRange(v);
-                setSince(v === 'all' ? '' : localDay(Date.now() - Number(v) * 86400000));
+                setSince(v === 'all' ? '' : v === 'custom' ? (parseBirthDate(sinceText, localDay(Date.now())).value ?? '') : localDay(Date.now() - Number(v) * 86400000));
               }}
-              options={[{ value: 'all', label: 'Mọi ngày' }, { value: '7', label: '7 ngày' }, { value: '30', label: '30 ngày' }]} />
+              options={[{ value: 'all', label: 'Mọi ngày' }, { value: '7', label: '7 ngày' }, { value: '30', label: '30 ngày' }, { value: '90', label: '90 ngày' }, { value: 'custom', label: 'Tùy chọn' }]} />
+            {range === 'custom' && (
+              <Field label="Chụp từ ngày" value={sinceText} placeholder="dd/mm/yyyy" error={customError}
+                onChangeText={(v) => { setSinceText(v); const r = parseBirthDate(v, localDay(Date.now())); setSince(r.value ?? ''); }} />
+            )}
+            <Segmented<AreaFilter> value={area} onChange={setArea} options={[
+              { value: 'all', label: 'Mọi ảnh' }, { value: 'unlabeled', label: 'Chưa đo' }, { value: 'labeled', label: 'Đã đo' },
+              ...(images.some((i) => i.retakeRequested) || area === 'retake' ? [{ value: 'retake' as const, label: 'Chụp lại' }] : []),
+            ]} />
           </View>
         </Disclosure>
       </Card>
       {shown.length === 0 ? (
-        <Card><Empty icon="images-outline" text="Không có ảnh trong nhóm này." /></Card>
+        <Card><Empty icon="images-outline" text={filter === 'needs' ? 'Không còn ảnh cần gán nhãn theo bộ lọc này.' : 'Không có ảnh trong nhóm này.'} /></Card>
       ) : byPatient.map(({ p, list }) => (
         <View key={p.id} style={{ gap: 10 }}>
           <SectionTitle right={<Text style={{ color: C.textSoft, fontSize: T.small }}>{`${list.length} ảnh`}</Text>}>{`${p.code} · ${p.name}`}</SectionTitle>

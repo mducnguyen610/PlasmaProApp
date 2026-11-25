@@ -51,15 +51,15 @@ export default function WoundHistory() {
 
   const images = imagesOf(w.id);
   const dev = data.devices.find((x) => x.id === p.deviceId);
-  const firstWound = data.wounds.find((x) => x.patientId === w.patientId)?.id;
+  // Giai đoạn B (AU-05): phiên bản cũ đã được gán vết thương khi đọc dữ liệu, không suy theo vết đầu tiên trong mảng.
   // Buổi điều trị: cùng bộ lọc sessionsForWound với B05 và tiến độ đợt. Chỉ bác sĩ.
   const woundSessions = isDoctor && dev ? sessionsForWound(sessionsOf(dev.id), w.id) : [];
-  const timeline = buildTimeline({ wound: w, firstWoundId: firstWound, images, evaluations: data.evaluations, plans: data.plans, sessions: woundSessions, isDoctor });
+  const timeline = buildTimeline({ wound: w, firstWoundId: undefined, images, evaluations: data.evaluations, plans: data.plans, sessions: woundSessions, isDoctor });
   const shown = timeline.filter((t) => (filter === 'kham' ? t.kind !== 'buoi' : filter === 'danh-gia' ? t.kind === 'danh-gia' : t.kind === 'buoi'));
   const evalCount = timeline.filter((t) => t.kind === 'danh-gia').length;
   const sessionCount = timeline.filter((t) => t.kind === 'buoi').length;
   // PP-08 (chuyển từ B05): mỗi ngày bắt đầu khác nhau của các đợt (không tính bản nháp) là một mốc "Đợt n" trên biểu đồ.
-  const courseMarkers = [...new Set(plansOfWound(data.plans, w, firstWound).filter((pl) => pl.status !== 'draft').map((pl) => pl.startDate))]
+  const courseMarkers = [...new Set(plansOfWound(data.plans, w, undefined).filter((pl) => pl.status !== 'draft').map((pl) => pl.startDate))]
     .sort()
     .map((date, i) => ({ date, label: `Đợt ${i + 1}` }));
 

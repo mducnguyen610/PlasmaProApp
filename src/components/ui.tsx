@@ -28,8 +28,8 @@ export const useHeaderTone = () => useContext(HeaderToneContext);
  * Nội dung, nút quay lại, nhãn vai trò cho trình đọc màn hình giữ như trước.
  */
 export function Header({
-  title, subtitle, back, right, children, titleLines = 1,
-}: { title: string; subtitle?: string; back?: boolean; right?: ReactNode; children?: ReactNode; titleLines?: number }) {
+  title, subtitle, back, home, right, children, titleLines = 1,
+}: { title: string; subtitle?: string; back?: boolean; home?: string; right?: ReactNode; children?: ReactNode; titleLines?: number }) {
   const insets = useSafeAreaInsets();
   const { me } = useStore();
   const hub = !back;
@@ -49,6 +49,14 @@ export function Header({
             <Text style={s.brandText}>Plasma Pro</Text>
             {me ? <Text style={s.brandRole}>· {ROLE_BADGE[me.role].label}</Text> : null}
           </View>
+        ) : null}
+        {/* Logic chốt 25/11 (TC-4): màn chức năng của bác sĩ có nút "← Trang chủ" ở góc trên trái; màn con dùng nút quay lại. */}
+        {home && !back ? (
+          <Pressable hitSlop={8} onPress={() => router.navigate(home as never)} accessibilityRole="button" accessibilityLabel="Về Trang chủ"
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', minHeight: 36, paddingRight: 10, marginBottom: 4, opacity: pressed ? 0.7 : 1 })}>
+            <Ionicons name="arrow-back" size={18} color={hub ? C.onPrimary : C.primary} />
+            <Text style={{ color: hub ? C.onPrimary : C.primary, fontWeight: '600', fontSize: T.small }}>Trang chủ</Text>
+          </Pressable>
         ) : null}
         <View style={s.headerRow}>
           {back && (
@@ -138,12 +146,14 @@ export function Screen({ children, header, padded = true, scrollRef, footer }: {
   const inTabGroup = TAB_GROUPS.includes(segments[0] ?? '');
   // Stage 9A: từ 1024 px, nhóm có thanh tab dùng thanh bên trái (RoleTabs); không còn thanh tab ở đáy.
   const sidebar = inTabGroup && tier === 'desktop';
-  const hasTabBar = inTabGroup && !sidebar;
+  // Logic chốt 25/11 (TC-3): Trang chủ bác sĩ không có thanh dưới; các màn chức năng của bác sĩ có thanh 4 mục, không có nút giữa.
+  const doctorHome = segments[0] === 'doctor' && (segments.length === 1 || segments[1] === 'index');
+  const hasTabBar = inTabGroup && !sidebar && !doctorHome;
   const gutter = layout.gutter[tier];
   // Thanh tab cao TAB_BAR_HEIGHT + vùng an toàn, nút giữa nhô thêm FAB_RISE: chừa đủ để mục cuối không nằm dưới nút.
   // Kéo hết trang: mục cuối dừng ngay trên thanh tab (và trên phần nút giữa nhô lên, kể cả viền 4, nếu vai trò có nút giữa), chỉ chừa 8.
   // Quản trị không có nút giữa nên không cộng FAB_RISE. Màn không có thanh tab chỉ chừa vùng an toàn và 16.
-  const hasFab = segments[0] === 'patient' || segments[0] === 'doctor';
+  const hasFab = segments[0] === 'patient';
   // Có footer: vùng an toàn đáy do footer chừa, nội dung chỉ cần khoảng thở 16 trên footer.
   const bottom = footer ? 16 : sidebar ? insets.bottom + 32 : hasTabBar ? TAB_BAR_HEIGHT + (hasFab ? FAB_RISE + 4 : 0) + insets.bottom + 8 : insets.bottom + 16;
   // Giai đoạn 2: màn có footer và ô nhập (B07) cần đẩy footer lên trên bàn phím; ứng dụng edge-to-edge nên cửa sổ không tự co.
