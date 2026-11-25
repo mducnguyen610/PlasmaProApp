@@ -1,0 +1,10 @@
+const { chromium } = require('playwright');const BASE='http://localhost:8600';
+(async()=>{const b=await chromium.launch();for(const user of ['benhnhan','bacsi'])for(const [w,h] of [[320,640],[360,740],[390,844]]){const ctx=await b.newContext({viewport:{width:w,height:h}});const p=await ctx.newPage();p.on('dialog',d=>d.dismiss());
+await p.goto(BASE+'/');await p.waitForTimeout(1000);await p.getByPlaceholder('Nhập tên đăng nhập').fill(user);await p.getByPlaceholder('Nhập mật khẩu').fill('Demo@123');await p.getByText('Đăng nhập',{exact:true}).last().click();await p.waitForTimeout(1000);
+const cb=p.getByRole('checkbox');if(await cb.count()){await cb.first().click();await p.getByText('Đăng nhập',{exact:true}).last().click();await p.waitForTimeout(1200);}const sk=p.getByText('Bỏ qua');if(await sk.count()){await sk.first().click();await p.waitForTimeout(600);}
+await p.goto(BASE+'/connect-device?patientId=p-1');await p.waitForTimeout(1500);await p.getByText('Kết nối',{exact:true}).first().click();await p.waitForTimeout(2000);
+const bb=await p.getByText('Nạp liệu trình vào máy',{exact:true}).last().boundingBox();
+const H=await p.evaluate(()=>{let m=0;for(const el of document.querySelectorAll('body *')){const cs=getComputedStyle(el);if((cs.overflowY==='auto'||cs.overflowY==='scroll'))m=Math.max(m,el.scrollHeight);}return m;});
+let after='';try{await p.getByText('Nạp liệu trình vào máy',{exact:true}).last().click();await p.waitForTimeout(2500);const t=await p.getByText('Theo dõi phiên điều trị',{exact:true}).last().boundingBox();after=t?Math.round(t.y+t.height):'không thấy';
+await p.getByText('Theo dõi phiên điều trị',{exact:true}).last().click();await p.waitForTimeout(1500);await p.getByText('Bắt đầu điều trị').last().click();await p.waitForTimeout(2000);const s=await p.getByText('Dừng điều trị').last().boundingBox();after+=' | dừng '+(s?Math.round(s.y+s.height):'không thấy');if(w===360)await p.screenshot({path:`anh/T02run-${user}-360.png`});}catch(e){after+=' lỗi '+String(e).slice(0,60)}
+console.log(user,w,h,'cao',H,'Nạp đáy',bb?Math.round(bb.y+bb.height):'không thấy','| Theo dõi đáy',after);await ctx.close();}await b.close();})();
