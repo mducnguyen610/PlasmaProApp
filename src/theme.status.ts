@@ -92,6 +92,7 @@ export const PLAN: Record<PlanStatus, StatusStyle> = {
   scheduled: { role: 'neutral', icon: 'time-outline' },
   active: { role: 'info', icon: 'play-circle-outline' },
   paused: { role: 'warning', icon: 'pause-circle-outline' },
+  expired: { role: 'warning', icon: 'alarm-outline' },
   ended: { role: 'neutral', icon: 'stop-circle-outline' },
 };
 

@@ -192,7 +192,8 @@ export interface Evaluation {
  * scheduled (logic chốt 25/11, M24): phiên bản mới đã lưu, chờ tới ngày bắt đầu áp dụng (effectiveFrom). Tới ngày đó phiên bản
  * chuyển Đang áp dụng, phiên bản cũ chuyển Kết thúc kèm supersededBy ("Đã thay thế"). planLifecycle.settlePlans làm việc này.
  */
-export type PlanStatus = 'draft' | 'scheduled' | 'active' | 'paused' | 'ended';
+// 'expired' (Hết hạn): logic chốt mục 4.3, người dùng chốt 25/11/2026 làm theo mục 4.3 thay vì bỏ AU-07 ở mục 10.
+export type PlanStatus = 'draft' | 'scheduled' | 'active' | 'paused' | 'expired' | 'ended';
 /**
  * Một giai đoạn của đợt điều trị (slide 39, 40: mỗi ngày rồi thưa dần).
  * - daily: mỗi ngày.
@@ -261,7 +262,8 @@ export interface TreatmentPlan {
 }
 
 /** M31, M22, M32: nhật ký trạng thái phiên bản: tạm dừng, tiếp tục, kết thúc sớm (lý do bắt buộc). */
-export interface PlanStatusEvent { at: string; by: string; action: 'pause' | 'resume' | 'end'; reason: string }
+/** by = 'system' khi ứng dụng tự chuyển trạng thái (Hết hạn). */
+export interface PlanStatusEvent { at: string; by: string; action: 'pause' | 'resume' | 'end' | 'expire'; reason: string }
 
 /** M32: một lần gia hạn. ackAt: thời điểm bệnh nhân xác nhận đã đọc ngày kết thúc mới. */
 export interface PlanExtension { at: string; by: string; fromEnd: string; toEnd: string; reason: string; ackAt?: string }

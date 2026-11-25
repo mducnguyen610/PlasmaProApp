@@ -20,7 +20,7 @@ import { applyLabelPatch, missingForConfirm, type ImageLabel } from './imageLabe
 import { isPendingCapture } from './pendingCapture';
 import { createSeed } from './seed';
 import { canLoadPlan, loadedPlanLink, migratePlans, openProtocolId, planDeleteBlocker, planPhotoCandidates, protocolIdFor } from './planVersion';
-import { applyExtension, extendBlocker, pendingExtension, protocolVersions, runBlocker, settlePlans } from './planLifecycle';
+import { applyExtension, extendBlocker, isOpenStatus, pendingExtension, protocolVersions, runBlocker, settlePlans } from './planLifecycle';
 import { protocolSlots, slotChangeBlocker } from './sessionSchedule';
 import { CAPABILITIES, SIM_MODEL, capabilitiesFor } from './device/capabilities';
 import type {
@@ -794,10 +794,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // chuyển Kết thúc kèm supersededBy. Chờ áp dụng: chỉ bản chờ cũ (chưa từng áp dụng) bị thay.
       const plans = d.plans.map((x) => {
         if (!sameWound(x) || x.protocolId !== protocolId) {
-          return sameWound(x) && (x.status === 'active' || x.status === 'paused') && plan.status === 'active' && isNew ? { ...x, status: 'ended' as const } : x;
+          return sameWound(x) && isOpenStatus(x.status) && plan.status === 'active' && isNew ? { ...x, status: 'ended' as const } : x;
         }
         if (x.status === 'scheduled') return { ...x, status: 'ended' as const, supersededBy: planId };
-        if (!waits && (x.status === 'active' || x.status === 'paused') && (plan.status === 'active' || plan.status === 'paused')) return { ...x, status: 'ended' as const, supersededBy: planId };
+        if (!waits && isOpenStatus(x.status) && (plan.status === 'active' || plan.status === 'paused')) return { ...x, status: 'ended' as const, supersededBy: planId };
         return x;
       });
       return { ...d, plans: [...plans, plan] };
@@ -872,8 +872,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const at = nowIso();
     await commit((d) => {
       const vs = protocolVersions(d.plans, protocolId);
-      const cur = vs.find((x) => x.status === 'active' || x.status === 'paused');
-      const why = extendBlocker(cur, toEnd, reason);
+      const cur = vs.find((x) => isOpenStatus(x.status));
+      const why = extendBlocker(cur, toEnd, reason, localDay());
       if (why) throw new Error(why);
       return {
         ...d,
@@ -894,7 +894,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const ev = { at, by: actor.id, action: 'end' as const, reason: reason.trim() };
     await commit((d) => {
       const vs = protocolVersions(d.plans, protocolId);
-      const open = vs.filter((x) => x.status === 'active' || x.status === 'paused' || x.status === 'scheduled' || x.status === 'draft');
+      const open = vs.filter((x) => isOpenStatus(x.status) || x.status === 'scheduled' || x.status === 'draft');
       if (!open.length) throw new Error('Phác đồ đã kết thúc.');
       return {
         ...d,

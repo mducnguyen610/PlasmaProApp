@@ -17,7 +17,7 @@ import { CAPABILITIES, SIM_MODEL, capabilitiesFor, modeLabel } from '@/lib/devic
 import { addDays, dayDiff, DEFAULT_REVIEW_DAY, fmtDuration, localDay, phaseLabel, phasesOf, suggestDurationSec } from '@/lib/course';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, maskDateInput, PLAN_STATUS } from '@/lib/format';
-import { protocolsOfWound } from '@/lib/planLifecycle';
+import { isOpenStatus, protocolsOfWound } from '@/lib/planLifecycle';
 import { useLookups, useStore } from '@/lib/store';
 import type { CoursePhase, PhasePattern, PlanStatus, TreatmentPlan } from '@/lib/types';
 import { C, T } from '@/theme';
@@ -28,6 +28,7 @@ const STATUS_EFFECT: Record<PlanStatus, string> = {
   scheduled: 'Chờ áp dụng: phiên bản cũ còn hiệu lực tới ngày bắt đầu áp dụng.',
   active: 'Đang áp dụng: cần mức năng lượng, thời gian điều trị và xác nhận của bác sĩ; sau khi lưu, bệnh nhân nạp được xuống máy.',
   paused: 'Tạm dừng: bệnh nhân không nạp được cho tới khi đợt được áp dụng lại.',
+  expired: 'Hết hạn: đã qua ngày kết thúc dự kiến, bệnh nhân không chạy được phiên cho tới khi bác sĩ gia hạn.',
   ended: 'Kết thúc: bệnh nhân không nạp được đợt này nữa.',
 };
 
@@ -309,7 +310,7 @@ function PlanBody({ patientId, woundId, setWoundId, woundParam }: { patientId: s
   // P0 SV-06: cùng quy tắc với savePlan: lưu "Đang áp dụng" thì mọi phiên bản đang áp dụng hoặc tạm dừng của vết này chuyển Kết thúc.
   const effIso = isNewProtocol ? fromVn(startVn) : fromVn(effVn);
   const willEnd = effIso !== null && effIso <= localDay()
-    ? data.plans.filter((x) => x.patientId === patientId && (x.woundId ?? null) === (woundId ?? null) && (x.status === 'active' || x.status === 'paused')).sort((a, b) => a.version - b.version)
+    ? data.plans.filter((x) => x.patientId === patientId && (x.woundId ?? null) === (woundId ?? null) && isOpenStatus(x.status)).sort((a, b) => a.version - b.version)
     : [];
   const changeWound = (v: string) => {
     if (v === woundId) return;
