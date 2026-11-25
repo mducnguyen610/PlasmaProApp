@@ -17,7 +17,7 @@ import { localDay } from '@/lib/course';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, PLAN_STATUS, WOUND_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
-import { protocolsOfWound } from '@/lib/planLifecycle';
+import { isOpenStatus, protocolsOfWound } from '@/lib/planLifecycle';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, Wound, WoundImage } from '@/lib/types';
 import { CARE_STATUS, woundCareStatus, woundDeleteBlocker } from '@/lib/woundStatus';
@@ -46,7 +46,7 @@ export function DoctorWound({ patient: p, wound: w, initialTab }: { patient: Pat
   const latest = points[points.length - 1];
   const pct = first && latest && first !== latest && first.areaCm2 ? Math.round(((latest.areaCm2! - first.areaCm2) / first.areaCm2) * 100) : null;
   const views = protocolsOfWound(data.plans, p.id, w.id);
-  const open = views.find((v) => v.current.status === 'active' || v.current.status === 'paused');
+  const open = views.find((v) => isOpenStatus(v.current.status));
   const planText = open ? PLAN_STATUS[open.current.status].label === 'Đang áp dụng' ? 'Đang hoạt động' : PLAN_STATUS[open.current.status].label : 'Chưa có';
   const deleteWhy = woundDeleteBlocker(w.id, data);
   const retakes = images.filter((i) => i.retakeRequested);

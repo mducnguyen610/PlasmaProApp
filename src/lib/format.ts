@@ -33,6 +33,7 @@ export const PLAN_STATUS: Record<PlanStatus, { label: string; tone: 'gray' | 'te
   scheduled: { label: 'Chờ áp dụng', tone: 'gray' },
   active: { label: 'Đang áp dụng', tone: 'teal' },
   paused: { label: 'Tạm dừng', tone: 'amber' },
+  expired: { label: 'Hết hạn', tone: 'amber' },
   ended: { label: 'Kết thúc', tone: 'gray' },
 };
 

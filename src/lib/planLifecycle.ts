@@ -6,10 +6,17 @@
  *   phiên bản chờ ở trạng thái "scheduled", tới ngày thì thành Đang áp dụng, phiên bản cũ thành Kết thúc kèm supersededBy.
  * - Gia hạn chỉ đổi ngày kết thúc, không tạo phiên bản, bắt buộc lý do, bệnh nhân xác nhận đã đọc (M32).
  * - Kết thúc sớm bắt buộc lý do, ghi vào nhật ký trạng thái (M22). Không tự dừng thiết bị.
+ * - Hết hạn (mục 4.3, người dùng chốt 25/11/2026): phác đồ Đang hoạt động qua ngày kết thúc dự kiến thì tự chuyển Hết hạn, ghi nhật ký
+ *   trạng thái với by = 'system'. Bệnh nhân không chạy được phiên (P5). Bác sĩ gia hạn thì phác đồ hoạt động lại; hoặc kết thúc hẳn.
+ *   Phác đồ Tạm dừng giữ Tạm dừng; khi bác sĩ bấm Tiếp tục mà đã qua ngày kết thúc thì lần kiểm kế tiếp chuyển Hết hạn.
  */
+
 // @ts-ignore TS5097: đuôi .ts để chạy kiểm thử bằng node; Metro và tsc vẫn phân giải đúng tệp.
-import { localDay } from './course.ts';
+import { addDays, localDay } from './course.ts';
 import type { PlanExtension, SessionChange, TreatmentPlan } from './types.ts';
+
+/** Trạng thái còn thuộc phác đồ hiện tại của vết (chưa kết thúc): bác sĩ còn gia hạn hoặc kết thúc được. */
+export const isOpenStatus = (s: TreatmentPlan['status']) => s === 'active' || s === 'paused' || s === 'expired';
 
 const byVersion = (a: TreatmentPlan, b: TreatmentPlan) => a.version - b.version;
 
@@ -34,11 +41,26 @@ export function versionStart(v: TreatmentPlan, first: boolean): string {
  * hoặc tạm dừng thành Kết thúc kèm supersededBy. Không xóa phiên bản nào. Trả đúng mảng cũ khi không có gì đổi.
  */
 export function settlePlans(plans: TreatmentPlan[], today: string): TreatmentPlan[] {
+  return expirePlans(applyDueVersions(plans, today), today);
+}
+
+/** Thời điểm ghi nhật ký Hết hạn: đầu ngày sau ngày kết thúc, giờ máy. */
+export const expiryAt = (endDate: string) => new Date(`${addDays(endDate, 1)}T00:00:00`).toISOString();
+
+/** Phác đồ Đang hoạt động có ngày kết thúc trước hôm nay thì chuyển Hết hạn. Trả đúng mảng cũ khi không có gì đổi. */
+export function expirePlans(plans: TreatmentPlan[], today: string): TreatmentPlan[] {
+  if (!plans.some((p) => p.status === 'active' && p.endDate < today)) return plans;
+  return plans.map((p) => (p.status === 'active' && p.endDate < today
+    ? { ...p, status: 'expired' as const, statusLog: [...(p.statusLog ?? []), { at: expiryAt(p.endDate), by: 'system', action: 'expire' as const, reason: 'Qua ngày kết thúc dự kiến' }] }
+    : p));
+}
+
+function applyDueVersions(plans: TreatmentPlan[], today: string): TreatmentPlan[] {
   const due = plans.filter((p) => p.status === 'scheduled' && !!p.effectiveFrom && p.effectiveFrom <= today).sort(byVersion);
   if (!due.length) return plans;
   let out = plans;
   for (const v of due) {
-    const older = out.filter((x) => x.protocolId === v.protocolId && x.version < v.version && (x.status === 'active' || x.status === 'paused' || x.status === 'scheduled'));
+    const older = out.filter((x) => x.protocolId === v.protocolId && x.version < v.version && (isOpenStatus(x.status) || x.status === 'scheduled'));
     const wasPaused = older.some((x) => x.status === 'paused');
     out = out.map((x) => {
       if (x.id === v.id) return { ...x, status: wasPaused ? 'paused' as const : 'active' as const };
@@ -60,19 +82,20 @@ export function pendingExtension(v: Pick<TreatmentPlan, 'extensions'> | undefine
   return last && !last.ackAt ? last : undefined;
 }
 
-/** Áp một lần gia hạn lên phiên bản: đổi ngày kết thúc và giai đoạn cuối, ghi nhật ký gia hạn. Không đổi version. */
+/** Áp một lần gia hạn lên phiên bản: đổi ngày kết thúc và giai đoạn cuối, ghi nhật ký gia hạn. Không đổi version. Hết hạn thì hoạt động lại. */
 export function applyExtension(v: TreatmentPlan, toEnd: string, reason: string, by: string, at: string): TreatmentPlan {
   const fromEnd = v.endDate;
   const phases = v.phases?.length ? v.phases.map((ph, i, all) => (i === all.length - 1 ? { ...ph, to: toEnd } : ph)) : v.phases;
-  return { ...v, endDate: toEnd, phases, extensions: [...(v.extensions ?? []), { at, by, fromEnd, toEnd, reason }] };
+  return { ...v, status: v.status === 'expired' ? 'active' : v.status, endDate: toEnd, phases, extensions: [...(v.extensions ?? []), { at, by, fromEnd, toEnd, reason }] };
 }
 
 /** Lý do chưa gia hạn được, null khi được. */
-export function extendBlocker(v: TreatmentPlan | undefined, toEnd: string | null, reason: string): string | null {
+export function extendBlocker(v: TreatmentPlan | undefined, toEnd: string | null, reason: string, today: string = localDay()): string | null {
   if (!v) return 'Không có phác đồ đang hoạt động.';
-  if (v.status !== 'active' && v.status !== 'paused') return 'Chỉ gia hạn phác đồ đang hoạt động hoặc tạm dừng.';
+  if (!isOpenStatus(v.status)) return 'Chỉ gia hạn phác đồ đang hoạt động, tạm dừng hoặc hết hạn.';
   if (!toEnd) return 'Nhập ngày kết thúc mới dạng dd/mm/yyyy.';
   if (toEnd <= v.endDate) return 'Ngày kết thúc mới phải sau ngày kết thúc hiện tại.';
+  if (v.status === 'expired' && toEnd < today) return 'Phác đồ đã hết hạn: ngày kết thúc mới phải từ hôm nay trở đi.';
   if (!reason.trim()) return 'Nhập lý do gia hạn.';
   return null;
 }
@@ -106,7 +129,7 @@ export interface ProtocolView {
   latest: TreatmentPlan;
   number: number;
   title: string;
-  /** Đang hoạt động hoặc tạm dừng (chưa kết thúc). */
+  /** Đang hoạt động, tạm dừng hoặc hết hạn (chưa kết thúc). */
   open: boolean;
   createdBy: string;
   createdAt: string;
@@ -122,11 +145,11 @@ export function protocolsOfWound(plans: TreatmentPlan[], patientId: string, woun
     const latest = versions[versions.length - 1];
     const pending = versions.filter((v) => v.status === 'scheduled').pop();
     const inEffect = versions.filter((v) => v.status !== 'scheduled' && v.status !== 'draft');
-    const current = inEffect.find((v) => v.status === 'active' || v.status === 'paused') ?? inEffect[inEffect.length - 1] ?? latest;
+    const current = inEffect.find((v) => isOpenStatus(v.status)) ?? inEffect[inEffect.length - 1] ?? latest;
     const number = protocolNumber(plans, woundId, id);
     return {
       protocolId: id, versions, current, pending, latest, number, title: protocolTitle(versions.find((v) => v.title) ?? latest, number),
-      open: versions.some((v) => v.status === 'active' || v.status === 'paused' || v.status === 'scheduled' || v.status === 'draft'),
+      open: versions.some((v) => isOpenStatus(v.status) || v.status === 'scheduled' || v.status === 'draft'),
       createdBy: versions[0].editedBy, createdAt: versions[0].editedAt,
       startDate: versions[0].startDate, endDate: current.endDate,
     };
@@ -134,7 +157,7 @@ export function protocolsOfWound(plans: TreatmentPlan[], patientId: string, woun
 }
 
 /** Một dòng lịch sử thay đổi (mục 4.2 nhóm 5): phiên bản, gia hạn, tạm dừng, tiếp tục, kết thúc. */
-export interface ChangeEntry { at: string; by: string; kind: 'create' | 'version' | 'extend' | 'pause' | 'resume' | 'end'; title: string; reason: string; versionId: string }
+export interface ChangeEntry { at: string; by: string; kind: 'create' | 'version' | 'extend' | 'pause' | 'resume' | 'end' | 'expire'; title: string; reason: string; versionId: string }
 
 export function changeHistory(versions: TreatmentPlan[], fmt: (iso: string) => string): ChangeEntry[] {
   const out: ChangeEntry[] = [];
@@ -147,7 +170,7 @@ export function changeHistory(versions: TreatmentPlan[], fmt: (iso: string) => s
       out.push({ at: e.at, by: e.by, kind: 'extend', versionId: v.id, reason: e.reason, title: `Gia hạn từ ${fmt(e.fromEnd)} đến ${fmt(e.toEnd)}${e.ackAt ? ', bệnh nhân đã đọc' : ', chờ bệnh nhân xác nhận'}` });
     }
     for (const s of v.statusLog ?? []) {
-      out.push({ at: s.at, by: s.by, kind: s.action, versionId: v.id, reason: s.reason, title: s.action === 'pause' ? 'Tạm dừng' : s.action === 'resume' ? 'Tiếp tục' : 'Kết thúc sớm' });
+      out.push({ at: s.at, by: s.by, kind: s.action, versionId: v.id, reason: s.reason, title: s.action === 'pause' ? 'Tạm dừng' : s.action === 'resume' ? 'Tiếp tục' : s.action === 'expire' ? 'Hết hạn (tự động khi qua ngày kết thúc)' : 'Kết thúc sớm' });
     }
   });
   return out.sort((a, b) => b.at.localeCompare(a.at));
@@ -160,6 +183,7 @@ export function changeHistory(versions: TreatmentPlan[], fmt: (iso: string) => s
 export function runBlocker(plan: TreatmentPlan | undefined, changes: SessionChange[], today: string): string | null {
   if (!plan) return 'Chưa có phác đồ đang hoạt động.';
   if (plan.status === 'paused') return 'Phác đồ đang tạm dừng.';
+  if (plan.status === 'expired') return 'Phác đồ đã hết hạn. Liên hệ bác sĩ để gia hạn.';
   if (plan.status !== 'active') return 'Phác đồ không còn hoạt động.';
   if (!plan.patientAckAt) return 'Bệnh nhân chưa xác nhận đã đọc phiên bản đang áp dụng.';
   const ext = pendingExtension(plan);

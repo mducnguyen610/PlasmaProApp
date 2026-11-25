@@ -21,7 +21,7 @@ import { CLOUD_LINK, WOUND, cloudState } from '@/theme.status';
 import { localDay } from '@/lib/course';
 import { birthLabel } from '@/lib/patientIdentity';
 import { CARE_STATUS, patientCareStatus, woundCareStatus, woundUpdatedAt } from '@/lib/woundStatus';
-import { protocolsOfWound } from '@/lib/planLifecycle';
+import { isOpenStatus, protocolsOfWound } from '@/lib/planLifecycle';
 
 // BS03 – Hồ sơ bệnh nhân: thông tin, bác sĩ phụ trách, thiết bị, liệu trình, vết thương.
 export default function PatientDetail() {
@@ -178,7 +178,7 @@ export default function PatientDetail() {
         // Logic chốt 25/11/2026 (mục 3.3, M37): ảnh nhỏ khoảng 52 px lấy từ ảnh mới nhất của vết (mọi loại ảnh), kèm diện tích mới nhất và phác đồ đang hoạt động.
         const last = [...imgs].sort((a, b) => (a.captureDate || a.uploadDate).localeCompare(b.captureDate || b.uploadDate)).pop();
         const areaLine = sum.latest ? `Diện tích mới nhất ${formatAreaDisplay(sum.latest.areaCm2)} · ${fmtDate(sum.latest.captureDate)}` : 'Chưa có số đo';
-        const openProto = protocolsOfWound(data.plans, p.id, w.id).find((x) => x.current.status === 'active' || x.current.status === 'paused');
+        const openProto = protocolsOfWound(data.plans, p.id, w.id).find((x) => isOpenStatus(x.current.status));
         const planLine = openProto ? `${openProto.title} · ${PLAN_STATUS[openProto.current.status].label}` : 'Chưa có phác đồ hoạt động';
         return (
           <Pressable key={w.id} testID="dong-vet" accessibilityRole="button" accessibilityLabel={`${w.code}, ${w.location}, ${CARE_STATUS[woundCareStatus(w, data.plans)].label}. ${areaLine}. ${planLine}.${isDoctor && sum.newerUnmeasured.length ? ` Có ${sum.newerUnmeasured.length} ảnh mới chưa đo.` : ''}`}

@@ -16,7 +16,7 @@ import { modeLabel } from '@/lib/device/capabilities';
 import { notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, maskDateInput, PLAN_STATUS } from '@/lib/format';
 import { formatAreaDisplay } from '@/lib/naming';
-import { extendBlocker, protocolsOfWound, versionStatusLabel, type ProtocolView } from '@/lib/planLifecycle';
+import { extendBlocker, isOpenStatus, protocolsOfWound, versionStatusLabel, type ProtocolView } from '@/lib/planLifecycle';
 import { protocolSlots, slotChangeBlocker, SLOT_STATUS, type Slot } from '@/lib/sessionSchedule';
 import { useLookups, useStore } from '@/lib/store';
 import type { Patient, TreatmentPlan, Wound } from '@/lib/types';
@@ -27,7 +27,7 @@ export const fromVnDate = (s: string) => {
   return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
 };
 
-const PLAN_TONE: Record<TreatmentPlan['status'], 'green' | 'amber' | 'gray' | 'blue'> = { active: 'green', paused: 'amber', ended: 'gray', draft: 'gray', scheduled: 'blue' };
+const PLAN_TONE: Record<TreatmentPlan['status'], 'green' | 'amber' | 'gray' | 'blue'> = { active: 'green', paused: 'amber', expired: 'amber', ended: 'gray', draft: 'gray', scheduled: 'blue' };
 
 /** Tóm tắt thông số và lịch của một phiên bản (một dòng mỗi ý). */
 export function planSummaryLines(v: TreatmentPlan): string[] {
@@ -122,7 +122,8 @@ export function ProtocolTab({ patient: p, wound: w, canEdit }: { patient: Patien
 
   const cur = openView?.current;
   const slots = openView ? slotsOf(openView) : [];
-  const isLive = !!cur && (cur.status === 'active' || cur.status === 'paused');
+  const isLive = !!cur && isOpenStatus(cur.status);
+  const expired = cur?.status === 'expired';
   return (
     <View style={{ gap: 12 }}>
       {openView && cur ? (
@@ -134,16 +135,17 @@ export function ProtocolTab({ patient: p, wound: w, canEdit }: { patient: Patien
           <InfoRow label="Ngày bắt đầu" value={fmtDate(openView.startDate)} />
           <InfoRow label="Ngày kết thúc dự kiến" value={fmtDate(cur.endDate)} />
           {planSummaryLines(cur).map((l) => <Muted key={l}>{l}</Muted>)}
+          {expired && <Notice tone="amber" icon="alarm-outline">{`Đã qua ngày kết thúc dự kiến (${fmtDate(cur.endDate)}). Bệnh nhân không chạy được phiên. Gia hạn để tiếp tục điều trị, hoặc kết thúc phác đồ.`}</Notice>}
           {openView.pending && <Notice tone="blue" icon="time-outline">{`Phiên bản ${openView.pending.version} chờ áp dụng từ ${fmtDate(openView.pending.effectiveFrom)}.`}</Notice>}
           <View style={{ gap: 8 }}>
             {canEdit && isLive && (
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <View style={{ flex: 1 }}><Button label="Gia hạn" icon="calendar-outline" variant="secondary" onPress={() => setAsk({ kind: 'extend', view: openView })} /></View>
-                <View style={{ flex: 1 }}><Button label={cur.status === 'active' ? 'Tạm dừng' : 'Tiếp tục'} icon={cur.status === 'active' ? 'pause-outline' : 'play-outline'} variant="secondary" onPress={() => setAsk({ kind: 'pause', view: openView })} /></View>
+                {!expired && <View style={{ flex: 1 }}><Button label={cur.status === 'active' ? 'Tạm dừng' : 'Tiếp tục'} icon={cur.status === 'active' ? 'pause-outline' : 'play-outline'} variant="secondary" onPress={() => setAsk({ kind: 'pause', view: openView })} /></View>}
               </View>
             )}
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              {canEdit && <View style={{ flex: 1 }}><Button label="Kết thúc sớm" icon="stop-circle-outline" variant="danger" onPress={() => setAsk({ kind: 'end', view: openView })} /></View>}
+              {canEdit && <View style={{ flex: 1 }}><Button label={expired ? 'Kết thúc phác đồ' : 'Kết thúc sớm'} icon="stop-circle-outline" variant="danger" onPress={() => setAsk({ kind: 'end', view: openView })} /></View>}
               <View style={{ flex: 1 }}><Button label="Xem chi tiết" icon="document-text-outline" variant="secondary" onPress={() => router.push({ pathname: '/plan-detail/[protocolId]', params: { protocolId: openView.protocolId } })} /></View>
             </View>
           </View>
@@ -153,7 +155,7 @@ export function ProtocolTab({ patient: p, wound: w, canEdit }: { patient: Patien
       {openView && (
         <Card testID="lich-dieu-tri">
           <SectionTitle icon="calendar-outline" caption="Phiên dự kiến tự sinh theo lịch của phác đồ. Đang thực hiện chỉ khi máy báo đã bắt đầu.">Lịch điều trị</SectionTitle>
-          <SlotList slots={slots} plan={cur} canChange={canEdit && isLive} onChange={(slot, change) => setAsk({ kind: 'slot', view: openView, slot, change })} />
+          <SlotList slots={slots} plan={cur} canChange={canEdit && isLive && !expired} onChange={(slot, change) => setAsk({ kind: 'slot', view: openView, slot, change })} />
         </Card>
       )}
 
@@ -203,6 +205,7 @@ function askTitle(ask: Ask | null): string {
   if (!ask) return '';
   if (ask.kind === 'slot') return `${ask.change === 'postpone' ? 'Hoãn' : 'Hủy'} phiên ${fmtDate(ask.slot.date)}`;
   if (ask.kind === 'pause') return ask.view.current.status === 'active' ? 'Tạm dừng phác đồ' : 'Tiếp tục phác đồ';
+  if (ask.kind === 'end' && ask.view.current.status === 'expired') return 'Kết thúc phác đồ';
   return { extend: 'Gia hạn phác đồ', end: 'Kết thúc sớm phác đồ', endThenNew: 'Kết thúc phác đồ hiện tại' }[ask.kind];
 }
 
@@ -210,6 +213,7 @@ function askButton(ask: Ask | null): string {
   if (!ask) return '';
   if (ask.kind === 'slot') return ask.change === 'postpone' ? 'Hoãn phiên' : 'Hủy phiên';
   if (ask.kind === 'pause') return ask.view.current.status === 'active' ? 'Tạm dừng' : 'Tiếp tục';
+  if (ask.kind === 'end' && ask.view.current.status === 'expired') return 'Kết thúc phác đồ';
   return { extend: 'Gia hạn', end: 'Kết thúc sớm', endThenNew: 'Kết thúc và tạo mới' }[ask.kind];
 }
 

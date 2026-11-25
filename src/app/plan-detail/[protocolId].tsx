@@ -45,7 +45,7 @@ export default function PlanDetail() {
   const history = changeHistory(view.versions, fmtDate);
   const blocker = planDeleteBlocker(data.plans, data.sessions, data.deviceLinks ?? [], protocolId);
   const statusLabel = versionStatusLabel(cur) ?? PLAN_STATUS[cur.status].label;
-  const canChange = canEdit && view.open;
+  const canChange = canEdit && view.open && cur.status !== 'expired';
 
   return (
     <Screen header={<Header back title={view.title} subtitle={`${p.name} · ${w.code} · ${w.location}`} />}
@@ -53,7 +53,7 @@ export default function PlanDetail() {
       <Card testID="nhom-1">
         <SectionTitle>Phác đồ đang áp dụng</SectionTitle>
         <InfoRow label="Mã phác đồ" value={view.title} />
-        <InfoRow label="Trạng thái" value={<Chip label={statusLabel} tone={cur.status === 'active' ? 'green' : cur.status === 'paused' ? 'amber' : 'gray'} />} />
+        <InfoRow label="Trạng thái" value={<Chip label={statusLabel} tone={cur.status === 'active' ? 'green' : cur.status === 'paused' || cur.status === 'expired' ? 'amber' : 'gray'} />} />
         <InfoRow label="Phiên bản" value={`${cur.version}${view.pending ? ` (phiên bản ${view.pending.version} chờ áp dụng từ ${fmtDate(view.pending.effectiveFrom)})` : ''}`} />
         <InfoRow label="Ngày bắt đầu" value={fmtDate(view.startDate)} />
         <InfoRow label="Ngày kết thúc dự kiến" value={fmtDate(cur.endDate)} />
@@ -87,7 +87,7 @@ export default function PlanDetail() {
         {history.map((h, i) => (
           <View key={`${h.at}-${i}`} style={{ gap: 2, paddingVertical: 6, borderTopWidth: i ? 1 : 0, borderTopColor: C.divider }}>
             <Text style={[{ color: C.text, fontWeight: '600', fontSize: T.small }, numeric]}>{`${fmtDateTime(h.at)} · ${h.title}`}</Text>
-            <Muted>{`${account(h.by)?.name ?? h.by}${h.reason ? ` · Lý do: ${h.reason}` : ''}`}</Muted>
+            <Muted>{`${h.by === 'system' ? 'Tự động' : account(h.by)?.name ?? h.by}${h.reason ? ` · Lý do: ${h.reason}` : ''}`}</Muted>
           </View>
         ))}
         {view.versions.length > 1 && (
