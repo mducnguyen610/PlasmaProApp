@@ -5,8 +5,11 @@ import { NoAccess } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { View } from 'react-native';
 import { DateTile } from '@/components/items';
-import { Button, Card, Disclosure, Divider, Empty, Header, LinkRow, Muted, Notice, Ring, Screen, SectionTitle } from '@/components/ui';
-import { courseProgress, courseStatus, fmtDuration, followUpDates, localDay, phasesOf } from '@/lib/course';
+import { Button, Card, Choices, Disclosure, Divider, Empty, Header, LinkRow, Muted, Notice, Ring, Screen, SectionTitle } from '@/components/ui';
+import { ScheduleItemList } from '@/components/ScheduleItemList';
+import { addDays, courseProgress, courseStatus, fmtDuration, followUpDates, localDay, phasesOf, sessionsForWound } from '@/lib/course';
+import { reconciledThrough } from '@/lib/patientSessions';
+import { scheduleItems } from '@/lib/sessionSchedule';
 import { fmtDate, fmtDateTime, PLAN_STATUS } from '@/lib/format';
 import { computeReminders } from '@/lib/reminders';
 import { useLookups, useStore } from '@/lib/store';
@@ -14,9 +17,11 @@ import { C, T } from '@/theme';
 
 export default function Schedule() {
   const { data, me } = useStore();
-  const { patient, sessionsOf, woundsOf, coursePlan } = useLookups();
+  const { patient, sessionsOfPatient, woundsOf, coursePlan } = useLookups();
   // Đợt 11 (UX-19): T02 và mục "Các buổi điều trị gần đây" ở Lịch sử mở màn này kèm mã phiên để ghi cảm giác ngay, không phải tìm trong lịch tháng.
-  const { sessionId } = useLocalSearchParams<{ sessionId?: string }>();
+  const { sessionId, woundId: woundParam } = useLocalSearchParams<{ sessionId?: string; woundId?: string }>();
+  // 27/11/2026 (FR6): vết đang xem do bệnh nhân chọn (hoặc do màn trước truyền), không tự lấy vết đầu tiên khi có nhiều vết.
+  const [pick, setPick] = useState<string | undefined>(woundParam);
   const [noteFor, setNoteFor] = useState<string | null>(sessionId ?? null);
   const [noteSaved, setNoteSaved] = useState(false);
   const today = localDay(new Date());
@@ -26,15 +31,21 @@ export default function Schedule() {
   const reminders = computeReminders(data, p.id, today);
   const dev = data.devices.find(d => d.id === p.deviceId);
   // Đợt đang áp dụng; nếu không có thì đợt gần nhất (đã dừng hoặc kết thúc) để vẫn xem lại được lịch đã làm.
-  const courses = woundsOf(p.id).map((w) => ({ w, plan: coursePlan(w.id, { patientView: true }) })).filter((c) => c.plan);
-  const course = courses.find((c) => c.plan!.status === 'active') ?? courses[0];
+  const courses = woundsOf(p.id).map((w) => ({ w, plan: coursePlan(w.id, { patientView: true }) })).filter((c) => c.plan)
+    .sort((a, b) => a.w.code.localeCompare(b.w.code));
+  const course = courses.find((c) => c.w.id === pick) ?? (courses.length === 1 ? courses[0] : undefined);
   const plan = course?.plan;
-  const pr = plan && dev ? courseProgress(plan, sessionsOf(dev.id).filter((s) => !s.woundId || s.woundId === course!.w.id), today, (dev.lastSync ? localDay(dev.lastSync) : null)) : null;
+  // Phiên theo bệnh nhân (không theo máy đang giữ); chỉ phiên gắn đúng vết mới tính cho vết đó (FR10, FR11).
+  const mySessions = sessionsOfPatient(p.id);
+  const woundSessions = course ? sessionsForWound(mySessions, course.w.id) : [];
+  const recon = reconciledThrough();
+  const pr = plan ? courseProgress(plan, woundSessions, today, recon) : null;
+  const items = scheduleItems({ plans: data.plans, wounds: woundsOf(p.id), patientId: p.id, sessions: mySessions, changes: data.sessionChanges ?? [], live: data.liveSessions, today, from: today, to: addDays(today, 7), confirmedOnly: true, reconciledThrough: recon });
   const phases = plan ? phasesOf(plan) : [];
   const ph = pr && pr.phaseIndex >= 0 ? phases[pr.phaseIndex] : undefined;
   const st = pr ? courseStatus(pr, fmtDate) : null;
   // Chỉ mở biểu mẫu cho phiên thuộc máy của bệnh nhân đang đăng nhập.
-  const noteSession = noteFor && dev ? sessionsOf(dev.id).find((s) => s.sessionId === noteFor) : undefined;
+  const noteSession = noteFor ? mySessions.find((s) => s.sessionId === noteFor) : undefined;
   // P2-04 (R2-04): các mốc đã qua lấy từ ngày đã lưu (ngày tái đánh giá trong đánh giá đã công bố, mốc kiểm tra sau khi liền).
   // Chỉ hiển thị; ứng dụng không có dữ liệu "đã đi khám" nên không đánh dấu đã/chưa.
   const myWounds = woundsOf(p.id);
@@ -58,6 +69,18 @@ export default function Schedule() {
       </Card>
     )}
     {noteSaved && <Notice tone="green" icon="checkmark-circle-outline">Đã lưu cảm giác của buổi điều trị. Có thể sửa lại trong lịch tháng bên dưới.</Notice>}
+    {/* 27/11/2026 (FR6, UR1): phiên 7 ngày tới của mọi vết; mỗi phiên xác định bằng (phác đồ, ngày). Bấm phiên hôm nay để nạp. */}
+    <SectionTitle caption="Mỗi dòng là một phiên bác sĩ đã lập cho một vết. Chạm phiên hôm nay để nạp liệu trình của đúng vết đó.">Phiên theo lịch</SectionTitle>
+    <Card>
+      <ScheduleItemList items={items} wounds={woundsOf(p.id)} today={today} showDate empty="Không có phiên theo lịch trong 7 ngày tới." />
+    </Card>
+    {courses.length > 1 && (
+      <Card>
+        <Text accessibilityRole="header" style={{ color: C.text, fontWeight: '700' }}>Xem lịch tháng của vết</Text>
+        <Choices value={course?.w.id ?? ''} options={courses.map((c) => ({ value: c.w.id, label: c.w.code, a11y: `Vết ${c.w.code}, ${c.w.location}` }))} onChange={(v) => setPick(v)} />
+        {!course && <Muted>Chọn một vết để xem tiến độ và lịch tháng của vết đó.</Muted>}
+      </Card>
+    )}
     {/* Bản rút gọn (08/11/2026): lịch tháng là điểm neo, nằm ngay dưới một dòng tóm tắt đợt.
         Giai đoạn, liều và ghi chú thu vào mục "Liệu trình". */}
     <Card hero>
@@ -95,11 +118,12 @@ export default function Schedule() {
           sub={`${ph ? `Giai đoạn ${pr!.phaseIndex + 1} trên ${phases.length}` : `${phases.length} giai đoạn`} · ${plan.doseLevel != null ? `mức ${plan.doseLevel}` : 'mức chưa đặt'}${plan.durationSec != null ? `, ${fmtDuration(plan.durationSec)} mỗi lần` : ''}`}
           accessibilityLabel={`Liều và các giai đoạn của đợt ${course!.w.code}. Mở màn Đợt điều trị của tôi`}
           onPress={() => router.push({ pathname: '/plan/[patientId]', params: { patientId: p.id, woundId: course!.w.id } })} />
-      </> : <Muted>Chưa có đợt điều trị được bác sĩ xác nhận.</Muted>}
+      </> : <Muted>{courses.length > 1 ? 'Chưa chọn vết.' : 'Chưa có đợt điều trị được bác sĩ xác nhận.'}</Muted>}
     </Card>
-    {dev
-      ? <AdherenceCalendar sessions={sessionsOf(dev.id)} plan={plan} lastSyncDay={(dev.lastSync ? localDay(dev.lastSync) : null)} reminders={reminders} canEdit />
-      : <Empty icon="hardware-chip-outline" text="Chưa được gán thiết bị." />}
+    {/* Lịch tháng chỉ của vết đang xem; ngày chưa có dữ liệu là "Chưa đủ dữ liệu", không đổi thành bỏ lỡ khi chưa đối soát đủ. */}
+    {course
+      ? <AdherenceCalendar sessions={woundSessions} plan={plan} lastSyncDay={recon} reminders={reminders} canEdit />
+      : !dev ? <Empty icon="hardware-chip-outline" text="Chưa được gán thiết bị." /> : null}
     {/* P2-04 (R2-04): ngày ở đây do ứng dụng tính từ lịch bác sĩ đặt (computeReminders), không phải lịch hẹn đã đặt chỗ. */}
     <SectionTitle right={upcoming.length ? <Text style={{ color: C.textSoft, fontSize: T.small }}>{`${upcoming.length} mốc`}</Text> : undefined}
       caption="Ngày do ứng dụng tính từ lịch bác sĩ đặt. Hãy xác nhận với bác sĩ.">Mốc dự kiến</SectionTitle>

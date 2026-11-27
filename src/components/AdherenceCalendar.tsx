@@ -33,7 +33,7 @@ const KIND: Record<Exclude<DayKind, 'outside'>, { label: string; detail?: string
   none: { label: 'Lệch lịch', detail: 'Bỏ lỡ', ...tone('none') },
   rest: { label: 'Nghỉ', color: C.textFaint, bg: C.card },
   planned: { label: 'Có lịch', color: C.primary, bg: C.primarySoft },
-  unsynced: { label: 'Chưa có dữ liệu', ...tone('unsynced') },
+  unsynced: { label: 'Chưa đủ dữ liệu', ...tone('unsynced') },
   today: { label: 'Hôm nay', color: C.primary, bg: C.primarySoft },
 };
 
@@ -144,14 +144,14 @@ export function AdherenceCalendar({ sessions, plan, lastSyncDay, canEdit, remind
             </View>
           ))}
           {selected > today && !reminders.some((r) => r.date === selected) && <Muted>Chưa có lịch hẹn ngày này.</Muted>}
-          {selectedCell?.kind === 'unsynced' && <Muted>Thiết bị chưa gửi dữ liệu ngày này. Số phiên sẽ hiện khi thiết bị kết nối Wi-Fi.</Muted>}
+          {selectedCell?.kind === 'unsynced' && <Muted>Chưa đủ dữ liệu phiên ngày này trên điện thoại. Ngày chưa đối soát đủ dữ liệu không tính là bỏ lỡ.</Muted>}
           {selectedCell?.kind === 'none' && <Muted>Ngày có lịch nhưng thiết bị không ghi nhận phiên điều trị nào.</Muted>}
           {selectedCell?.kind === 'over' && <Muted>Có phiên điều trị ngoài lịch hoặc nhiều hơn số lần của buổi. Hãy báo bác sĩ phụ trách.</Muted>}
           {selectedCell?.kind === 'partial' && <Muted>Chưa điều trị đủ số lần của buổi.</Muted>}
           {selectedCell?.kind === 'rest' && <Muted>Ngày nghỉ theo lịch của đợt. Thiết bị không phát vào ngày này.</Muted>}
           {selectedCell?.kind === 'planned' && <Muted>Có buổi điều trị theo lịch.</Muted>}
           {/* Hôm nay chưa có phiên: nói rõ là có buổi và dữ liệu có thể chưa về, không ghi "Không có phiên" (cùng ý với cảnh báo đồng bộ ở Trang chủ). */}
-          {selectedCell?.kind === 'today' && daySessions.length === 0 && <Muted>{lastSyncDay !== today ? 'Hôm nay có buổi điều trị. Số lần điều trị sẽ hiện khi thiết bị gửi dữ liệu.' : 'Hôm nay có buổi điều trị, thiết bị chưa ghi nhận lần điều trị nào.'}</Muted>}
+          {selectedCell?.kind === 'today' && daySessions.length === 0 && <Muted>{lastSyncDay !== today ? 'Hôm nay có buổi điều trị. Phiên chỉ được ghi khi điện thoại nối cáp với máy trong lúc điều trị.' : 'Hôm nay có buổi điều trị, thiết bị chưa ghi nhận lần điều trị nào.'}</Muted>}
           {daySessions.length === 0 && !['unsynced', 'rest', 'planned', 'today'].includes(selectedCell?.kind ?? '') && selected <= today && <Muted>Không có phiên điều trị.</Muted>}
           {daySessions.map((s) => {
             const n = note(s.sessionId);

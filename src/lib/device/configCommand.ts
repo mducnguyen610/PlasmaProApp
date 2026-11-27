@@ -97,6 +97,8 @@ export interface ConfigSendLog {
   code?: string;
   protocolVersion: number;
   capsSource: 'device' | 'table' | 'none';
+  /** 27/11/2026: vết của phiên bản gửi đi, để lần nạp gắn đúng vết khi có nhiều vết. */
+  woundId?: string;
 }
 
 /**
@@ -104,7 +106,7 @@ export interface ConfigSendLog {
  * mà được trả riêng để màn hình báo. Không gửi lại.
  */
 export async function sendTreatmentConfig<C>(
-  deps: { send: (cfg: C) => Promise<SendResult>; record: (log: ConfigSendLog) => Promise<void>; now?: () => Date },
+  deps: { send: (cfg: C) => Promise<SendResult>; record: (log: ConfigSendLog) => Promise<unknown>; now?: () => Date },
   cfg: C,
   meta: Omit<ConfigSendLog, 'result' | 'attempts' | 'code'>,
 ): Promise<{ result: SendResult; at: string; logError: unknown | null }> {

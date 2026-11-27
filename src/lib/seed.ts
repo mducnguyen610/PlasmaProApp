@@ -35,6 +35,8 @@ function img(
     researchReady: area !== null,
     researchUri: area !== null ? 'demo' : undefined,
     researchReviewedBy: DOCTOR,
+    // 27/11/2026 (FR14): ảnh mô phỏng coi như bác sĩ đã duyệt cho bệnh nhân xem, để màn bệnh nhân giữ nguyên như trước.
+    sharedWithPatientAt: at(date, '10:10'), sharedWithPatientBy: DOCTOR,
     // Giai đoạn B (CN2): ảnh mô phỏng đã đo có nhãn mô phỏng đã xác nhận (thay cho cờ chia sẻ cũ), để kho dữ liệu của quản trị có ví dụ.
     ...(area !== null ? {
       label: {
@@ -57,12 +59,13 @@ function img(
 }
 
 /** Phiên mô phỏng vào các ngày có lịch của đợt, trừ những ngày bỏ lỡ; giờ chiếu 08:00, 3 phút. */
-function courseSessions(deviceId: string, woundId: string, plan: Pick<TreatmentPlan, 'phases' | 'startDate' | 'endDate'>, until: string, skip: string[] = []): DeviceSession[] {
+function courseSessions(deviceId: string, patientId: string, woundId: string, plan: Pick<TreatmentPlan, 'phases' | 'startDate' | 'endDate'>, until: string, skip: string[] = []): DeviceSession[] {
   return scheduledDays(plan, undefined, until)
     .filter((d) => !skip.includes(d))
     .map((d) => ({
       sessionId: `${deviceId}-${d.replaceAll('-', '')}-1`,
       deviceId,
+      patientId,
       woundId,
       start: at(d, '08:00'),
       durationMin: 3,
@@ -101,10 +104,10 @@ export function createSeed(): AppData {
   const plan2: Pick<TreatmentPlan, 'phases' | 'startDate' | 'endDate'> = {
     startDate: D(-36), endDate: D(-15), phases: [{ from: D(-36), to: D(-15), pattern: 'every_n_days', n: 2 }],
   };
-  const sesP1 = courseSessions('d-1', 'w-1', plan1, D(-1), [D(-27), D(-20)]);
+  const sesP1 = courseSessions('d-1', 'p-1', 'w-1', plan1, D(-1), [D(-27), D(-20)]);
   // Một bản ghi bị thiết bị gửi lại (cùng sessionId) để minh họa chống đếm trùng (đặc tả 7.2).
   sesP1.push({ ...sesP1[sesP1.length - 1] });
-  const sesP2 = courseSessions('d-2', 'w-2', plan2, D(-15));
+  const sesP2 = courseSessions('d-2', 'p-2', 'w-2', plan2, D(-15));
   // Giai đoạn B (AU-05): phiên từ ngày phiên bản có hiệu lực gắn với phiên bản đó; phiên trước đó (phiên bản 1 không có trong mẫu) để trống.
   const linkFrom = (list: DeviceSession[], planId: string, version: number, protocolId: string, from: string) =>
     list.forEach((x) => { if (x.start >= from) Object.assign(x, { planId, planVersion: version, protocolId }); });

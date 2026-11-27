@@ -19,7 +19,9 @@ import { woundDeleteBlocker } from './woundStatus';
 import { applyLabelPatch, missingForConfirm, type ImageLabel } from './imageLabel';
 import { isPendingCapture } from './pendingCapture';
 import { createSeed } from './seed';
-import { canLoadPlan, loadedPlanLink, migratePlans, openProtocolId, planDeleteBlocker, planPhotoCandidates, protocolIdFor } from './planVersion';
+import { canLoadPlan, inEffectVersion, loadBlocker, migratePlans, openProtocolId, planDeleteBlocker, planPhotoCandidates, protocolIdFor } from './planVersion';
+import { resolveSessionLink, sessionOwner, sessionsOfPatient as patientSessionsOf } from './patientSessions';
+import { patientCanSeeImage } from './patientView';
 import { applyExtension, extendBlocker, isOpenStatus, pendingExtension, protocolVersions, runBlocker, settlePlans } from './planLifecycle';
 import { protocolSlots, slotChangeBlocker } from './sessionSchedule';
 import { CAPABILITIES, SIM_MODEL, capabilitiesFor } from './device/capabilities';
@@ -169,13 +171,17 @@ interface Store {
   /** Quy trình kết thúc đợt khi liền thương (FDA 2006: xác nhận ở hai lần khám cách 2 tuần), rồi theo dõi. */
   recordClosure: (woundId: string, step: 'check1' | 'confirm' | 'not_healed' | 'reopen' | 'end_follow_up' | 'pause' | 'resume') => Promise<void>;
   setLifecycle: (deviceId: string, next: DeviceLifecycle) => Promise<void>;
-  /** Ghi một lần gửi cấu hình xuống máy; người bệnh của hồ sơ hoặc bác sĩ phụ trách. */
-  recordDeviceLink: (entry: Omit<DeviceLinkLog, 'id' | 'at' | 'by'>) => Promise<void>;
+  /** Ghi một lần gửi cấu hình xuống máy; chỉ bệnh nhân của hồ sơ. Trả bản ghi để màn theo dõi gắn phiên với đúng lần nạp. */
+  recordDeviceLink: (entry: Omit<DeviceLinkLog, 'id' | 'at' | 'by'>) => Promise<DeviceLinkLog>;
+  /** 27/11/2026 (FR7): kiểm lại điều kiện nạp trên dữ liệu mới nhất ngay trước khi gửi. Trả lý do chặn hoặc null. */
+  loadBlockerNow: (input: { patientId: string; woundId: string; planId: string; deviceId: string }) => string | null;
+  /** 27/11/2026 (FR14): bác sĩ phụ trách duyệt hoặc bỏ duyệt cho bệnh nhân xem một ảnh trong hồ sơ. */
+  setImageSharedWithPatient: (imageId: string, shared: boolean) => Promise<void>;
   /**
    * Ghi một phiên điều trị nhận qua USB (STA running rồi done, stopped hoặc error); người bệnh của hồ sơ hoặc bác sĩ phụ trách.
    * Trả false khi hồ sơ chưa được giao máy, vì phiên phải gắn với một thiết bị.
    */
-  recordDeviceSession: (entry: { patientId: string; woundId?: string; startedAt: string; endedAt?: string; durationSec: number; outcome: 'done' | 'stopped' | 'error'; stopRequested?: boolean }) => Promise<boolean>;
+  recordDeviceSession: (entry: { patientId: string; woundId?: string; linkId?: string; startedAt: string; endedAt?: string; durationSec: number; outcome: 'done' | 'stopped' | 'error' | 'unknown'; stopRequested?: boolean }) => Promise<boolean>;
   /** Stage 9C (gói D): sự cố lưu trữ đang có (null là bình thường). Màn hình chung hiện thông báo khi khác null. */
   persistIssue: PersistIssue | null;
   /** Ghi lại bản dữ liệu đang hiển thị sau một lần ghi nền lỗi. */
@@ -256,6 +262,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const plans = migratePlans(saved.plans, saved.wounds);
           const migrated = plans.some((x, i) => x !== saved.plans[i]);
           saved.plans = plans;
+          // 27/11/2026 (NFR3): phiên cũ chưa ghi bệnh nhân: gán khi lịch sử giao máy xác định được duy nhất; còn lại để trống (cần đối soát).
+          // Không suy theo người đang giữ máy. Chỉ thêm trường, không xóa bản ghi; ghi lại cùng lần ghi nền kế tiếp.
+          saved.sessions = saved.sessions.map((x) => {
+            if (x.patientId) return x;
+            const owner = sessionOwner(x, { devices: saved.devices, deviceEvents: saved.deviceEvents });
+            return owner ? { ...x, patientId: owner } : x;
+          });
           let backedUp = !migrated;
           if (migrated) {
             // Sao lưu bản cũ trước khi ghi bản đã chuyển đổi; sao lưu lỗi thì chỉ dùng bản chuyển đổi trong phiên, không ghi đè.
@@ -927,6 +940,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const dev = dataRef.current.devices.find((x) => x.id === dataRef.current.patients.find((p) => p.id === actor.patientId)?.deviceId);
     if (!dev) return;
     if (input && input.patientId !== actor.patientId) return;
+    // 27/11/2026: mốc "Đang thực hiện" chỉ gắn vết khi vết thuộc hồ sơ; không có vết thì không hiện Đang thực hiện cho vết nào.
+    if (input?.woundId && dataRef.current.wounds.find((w) => w.id === input.woundId)?.patientId !== actor.patientId) return;
     update((d) => ({
       ...d,
       liveSessions: [...(d.liveSessions ?? []).filter((l) => l.deviceId !== dev.id), ...(input ? [{ deviceId: dev.id, patientId: input.patientId, woundId: input.woundId, startedAt: input.startedAt }] : [])],
@@ -1033,6 +1048,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       energyWh: null,
       status,
       source: 'simulated',
+      patientId: dev.patientId,
       woundId: plan?.woundId,
       ...(plan ? { planId: plan.id, planVersion: plan.version, protocolId: plan.protocolId } : {}),
     };
@@ -1257,12 +1273,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (actor.role === 'patient') {
       if (actor.patientId !== entry.patientId) throw new Error('Chỉ ghi được nhật ký cho hồ sơ của mình.');
     } else throw new Error('Chỉ bệnh nhân nạp liệu trình xuống máy của mình. Bác sĩ không điều khiển thiết bị.');
-    // Giai đoạn B (AU-04): chỉ ghi lần nạp của phiên bản bệnh nhân đã xác nhận đọc.
-    const loadedPlan = dataRef.current.plans.find((x) => x.id === entry.planId);
+    // Giai đoạn B (AU-04): chỉ ghi lần nạp của phiên bản bệnh nhân đã xác nhận đọc. Điều kiện "đang áp dụng" kiểm trước khi gửi
+    // (loadBlockerNow); ở đây ghi đúng sự việc máy đã trả lời, kể cả khi bác sĩ vừa ban hành phiên bản mới trong lúc chờ ACK.
+    const d0 = dataRef.current;
+    const loadedPlan = d0.plans.find((x) => x.id === entry.planId);
     if (!loadedPlan || loadedPlan.patientId !== entry.patientId || loadedPlan.version !== entry.planVersion) throw new Error('Phiên bản đợt điều trị không khớp hồ sơ.');
-    if (!canLoadPlan(loadedPlan)) throw new Error('Phiên bản này chưa được bệnh nhân xác nhận đọc hoặc không còn áp dụng.');
-    const log: DeviceLinkLog = { ...entry, id: 'dl-' + Crypto.randomUUID(), at: nowIso(), by: actor.id };
+    if (entry.woundId && loadedPlan.woundId !== entry.woundId) throw new Error('Phiên bản đợt điều trị không thuộc vết thương này.');
+    if (!loadedPlan.confirmed || !loadedPlan.patientAckAt) throw new Error('Phiên bản này chưa được bệnh nhân xác nhận đọc.');
+    if (entry.deviceId && d0.patients.find((x) => x.id === entry.patientId)?.deviceId !== entry.deviceId) throw new Error('Máy không phải máy được giao cho hồ sơ này.');
+    const log: DeviceLinkLog = { ...entry, woundId: loadedPlan.woundId, protocolId: loadedPlan.protocolId, id: 'dl-' + Crypto.randomUUID(), at: nowIso(), by: actor.id };
     await commit((d) => ({ ...d, deviceLinks: [...(d.deviceLinks ?? []), log] }));
+    return log;
+  };
+
+  const loadBlockerNow: Store['loadBlockerNow'] = (input) => loadBlocker(dataRef.current, meRef.current, input);
+
+  const setImageSharedWithPatient: Store['setImageSharedWithPatient'] = async (imageId, shared) => {
+    const im0 = dataRef.current.images.find((i) => i.id === imageId);
+    if (!im0) throw new Error('Không tìm thấy ảnh.');
+    const actor = requireDoctor(im0.patientId);
+    if (shared && im0.status === 'excluded') throw new Error('Ảnh đã đánh dấu Không sử dụng nên không hiện cho bệnh nhân.');
+    const at = nowIso();
+    await commit((d) => ({
+      ...d,
+      images: d.images.map((im) => (im.id !== imageId ? im : shared
+        ? { ...im, sharedWithPatientAt: im.sharedWithPatientAt ?? at, sharedWithPatientBy: im.sharedWithPatientBy ?? actor.id }
+        : { ...im, sharedWithPatientAt: undefined, sharedWithPatientBy: undefined })),
+    }));
   };
 
   const recordDeviceSession: Store['recordDeviceSession'] = async (entry) => {
@@ -1273,25 +1310,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } else throw new Error('Chỉ bệnh nhân ghi phiên điều trị từ máy của mình. Bác sĩ chỉ xem lịch sử phiên.');
     const d0 = dataRef.current;
     const dev = d0.devices.find((x) => x.id === d0.patients.find((p) => p.id === entry.patientId)?.deviceId);
-    if (!dev) return false;
+    if (!dev || dev.patientId !== entry.patientId) return false;
     // Gói D: phiên chỉ gắn vết thương khi vết đó thuộc chính hồ sơ này. Không tự gán vết khi không rõ (woundId để trống).
     if (entry.woundId && d0.wounds.find((w) => w.id === entry.woundId)?.patientId !== entry.patientId) throw new Error('Vết thương không thuộc hồ sơ này.');
+    // 27/11/2026 (FR8): vết và phiên bản lấy từ lần nạp CHÍNH máy này đã nhận cho hồ sơ này trước lúc bắt đầu (resolveSessionLink),
+    // không chọn lại phiên bản mới nhất. Không xác định được thì phiên vẫn được ghi, không gắn vết, kèm lý do để đối soát.
+    const resolved = resolveSessionLink({ links: d0.deviceLinks ?? [], plans: d0.plans, patientId: entry.patientId, deviceId: dev.id, startedAt: entry.startedAt, woundId: entry.woundId, linkId: entry.linkId });
+    const unknown = entry.outcome === 'unknown';
     // ICD chưa có mã phiên của máy: ghép mã thiết bị với mốc bắt đầu, sessionsOf bỏ bản ghi trùng theo mã này.
     const session: DeviceSession = {
       sessionId: `${dev.code}-${new Date(entry.startedAt).getTime()}`,
       deviceId: dev.id,
+      patientId: entry.patientId,
       start: entry.startedAt,
       durationMin: Math.round(entry.durationSec / 6) / 10,
       energyWh: null,
-      status: entry.outcome === 'done' ? 'completed' : 'interrupted',
+      status: entry.outcome === 'done' ? 'completed' : unknown ? 'unknown' : 'interrupted',
       source: 'device',
-      woundId: entry.woundId,
       // Logic chốt 25/11 (M27, M28, M25): thời điểm máy báo kết thúc, trạng thái kết thúc, nguyên nhân dừng lưu riêng.
-      ...(entry.endedAt ? { endedAt: entry.endedAt } : {}),
-      endState: entry.outcome,
+      ...(entry.endedAt && !unknown ? { endedAt: entry.endedAt } : {}),
+      ...(unknown ? {} : { endState: entry.outcome as 'done' | 'stopped' | 'error' }),
       ...(entry.outcome === 'stopped' && entry.stopRequested ? { stopCause: 'patient_stop' as const } : {}),
-      // Giai đoạn B (AU-05): gắn phiên bản máy đang giữ (lần nạp gần nhất máy đã nhận). Không có thì để trống, phiên vẫn được ghi.
-      ...(loadedPlanLink(d0.deviceLinks ?? [], d0.plans, entry.patientId, entry.woundId) ?? {}),
+      ...(resolved.link ?? {}),
+      ...(resolved.issue ? { linkIssue: resolved.issue } : {}),
     };
     // Giai đoạn B (CN4 D5, D9, AU-28): máy báo lỗi thì máy tự chuyển Lỗi, lưu mã, mô tả, thời điểm, bệnh nhân đang giữ. Không gửi lệnh khắc phục.
     const isError = entry.outcome === 'error';
@@ -1299,7 +1340,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const fault = isError ? { ...STA_ERROR_FAULT, at, patientId: entry.patientId, sessionId: session.sessionId } : undefined;
     const e = isError ? deviceEvent(dev.id, 'error', { patientId: entry.patientId, detail: STA_ERROR_FAULT.message }) : null;
     await commit((d) => {
-      // Bản ghi gửi lại cùng mã phiên: không ghi phiên, lỗi hay nhật ký lần hai.
+      // Bản ghi gửi lại cùng mã phiên: không ghi phiên, lỗi hay nhật ký lần hai (FR11, NFR4).
       const dup = d.sessions.some((x) => x.sessionId === session.sessionId);
       return {
         ...d,
@@ -1322,7 +1363,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value: Store = {
     ready, data, me, authenticate, register, setResearchConsent, logout, finishOnboarding, resetDemo, addPatient, issueActivation, activateAccount, updatePatient, setPatientArchived, addWound, updateWound, addImage, labelImage,
     setExcluded, requestRetake, addEvaluation, savePlan, setPlanPaused, deletePlan, acknowledgePlan, extendPlan, endPlan, changeSessionSlot, setSessionLive, changePassword, updateMyContact, saveImageLabel, confirmImageLabel, deleteWound, setWoundRevisit, setDevicePower, simulateSession, registerDevice, updateDevice, assignDevice, clearDeviceFault, recordDeviceConnection, addReport,
-    setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle, recordDeviceLink, recordDeviceSession,
+    setReportHandled, updateAccount, resolveSyncError, setSessionPain, markCareDone, recordClosure, setLifecycle, recordDeviceLink, loadBlockerNow, setImageSharedWithPatient, recordDeviceSession,
     persistIssue, retryPersist, dismissPersistIssue,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -1336,15 +1377,18 @@ export function useStore(): Store {
 
 /** Truy vấn dùng chung giữa các màn hình. */
 export function useLookups() {
-  const { data } = useStore();
+  const { data, me } = useStore();
+  const viewerIsPatient = me?.role === 'patient';
   return useMemo(() => {
     const patient = (id?: string) => data.patients.find((p) => p.id === id);
     const wound = (id?: string) => data.wounds.find((w) => w.id === id);
     const account = (id?: string) => data.accounts.find((a) => a.id === id);
     const device = (id?: string) => data.devices.find((x) => x.id === id);
     const woundsOf = (patientId: string) => data.wounds.filter((w) => w.patientId === patientId);
+    // 27/11/2026 (FR14): bệnh nhân chỉ thấy ảnh bác sĩ đã duyệt cho xem. Lọc ở đây để danh sách, ảnh gần nhất, số ảnh, so sánh và
+    // trình xem ảnh của bệnh nhân dùng cùng một điều kiện (patientView.patientCanSeeImage).
     const imagesOf = (woundId: string) =>
-      data.images.filter((i) => i.woundId === woundId).sort((a, b) => a.captureDate.localeCompare(b.captureDate));
+      data.images.filter((i) => i.woundId === woundId && (!viewerIsPatient || patientCanSeeImage(i))).sort((a, b) => a.captureDate.localeCompare(b.captureDate));
     const activePlan = (patientId: string) =>
       data.plans
         .filter((p) => p.patientId === patientId)
@@ -1359,15 +1403,19 @@ export function useLookups() {
         .filter((s) => (seen.has(s.sessionId) ? false : (seen.add(s.sessionId), true)))
         .sort((a, b) => b.start.localeCompare(a.start));
     };
-    /** Đợt điều trị mới nhất (không tính nháp) của một vết thương. */
+    /** 27/11/2026 (NFR3): phiên của một bệnh nhân trên mọi máy bệnh nhân từng giữ, theo bản ghi (không theo người đang giữ máy). */
+    const sessionsOfPatient = (patientId: string) => patientSessionsOf(data.sessions, patientId, { devices: data.devices, deviceEvents: data.deviceEvents });
+    /** Bệnh nhân sở hữu một phiên (undefined khi chưa xác định được, cần đối soát). */
+    const ownerOf = (s: DeviceSession) => sessionOwner(s, { devices: data.devices, deviceEvents: data.deviceEvents });
+    /**
+     * Đợt điều trị đang có hiệu lực (không tính nháp, không tính bản chờ áp dụng) của một vết thương.
+     * Giai đoạn B (AU-05): phiên bản cũ không có woundId đã được gán khi đọc dữ liệu (migratePlans); không suy theo vị trí trong mảng.
+     */
     const coursePlan = (woundId: string, opts?: { patientView?: boolean }) => {
       const w = data.wounds.find((x) => x.id === woundId);
       if (!w) return undefined;
-      // Giai đoạn B (AU-05): phiên bản cũ không có woundId đã được gán khi đọc dữ liệu (migratePlans); không suy theo vị trí trong mảng.
-      return data.plans
-        .filter((p) => p.patientId === w.patientId && p.woundId === woundId && p.status !== 'draft' && (!opts?.patientView || p.confirmed))
-        .sort((a, b) => b.version - a.version)[0];
+      return inEffectVersion(data.plans, w.patientId, woundId, opts);
     };
-    return { patient, wound, account, device, woundsOf, imagesOf, activePlan, sessionsOf, coursePlan };
-  }, [data]);
+    return { patient, wound, account, device, woundsOf, imagesOf, activePlan, sessionsOf, sessionsOfPatient, ownerOf, coursePlan };
+  }, [data, viewerIsPatient]);
 }

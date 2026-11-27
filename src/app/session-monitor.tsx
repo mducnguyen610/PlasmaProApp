@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, View } from 'react-native';
 
 import { NoAccess, useCanView } from '@/components/Guard';
@@ -30,7 +30,8 @@ import { C, semantic, T, typeScale } from '@/theme';
 const STALE_AFTER_SEC = 5;
 
 export default function SessionMonitor() {
-  const params = useLocalSearchParams<{ patientId?: string; woundId?: string }>();
+  // linkId (27/11/2026): lần nạp màn Nạp liệu trình vừa thực hiện; phiên gắn với đúng lần nạp đó nếu máy chưa nhận lần nạp nào khác.
+  const params = useLocalSearchParams<{ patientId?: string; woundId?: string; linkId?: string }>();
   const { data, me, recordDeviceSession, setSessionLive } = useStore();
   const { patient, wound, device, coursePlan } = useLookups();
   const p = patient(me?.role === 'patient' ? me.patientId : params.patientId);
@@ -42,12 +43,13 @@ export default function SessionMonitor() {
       if (!p) return;
       try {
         // Logic chốt 25/11 (M28, M25): ghi thêm thời điểm máy báo kết thúc và việc bệnh nhân đã bấm Dừng (nguyên nhân dừng lưu riêng).
-        const ok = await recordDeviceSession({ patientId: p.id, woundId: params.woundId, startedAt: done.startedAt.toISOString(), endedAt: done.endedAt.toISOString(), durationSec: done.durationSec, outcome: done.outcome, stopRequested: stopAtRef.current !== null });
+        const ok = await recordDeviceSession({ patientId: p.id, woundId: params.woundId, linkId: params.linkId, startedAt: done.startedAt.toISOString(), endedAt: done.endedAt.toISOString(), durationSec: done.durationSec, outcome: done.outcome, stopRequested: stopAtRef.current !== null });
         setSaved(ok
           ? done.outcome === 'done'
             ? { kind: 'done', text: `Đã ghi phiên điều trị ${Math.round(done.durationSec / 6) / 10} phút vào nhật ký.`, startedAt: done.startedAt.toISOString() }
             : { kind: 'interrupted', text: 'Đã ghi vào nhật ký là phiên bị gián đoạn.' }
           : { kind: 'fail', text: 'Hồ sơ chưa được giao máy nên phiên chưa được ghi. Bác sĩ cần giao máy trên hồ sơ bệnh nhân.' });
+        if (ok) setSaved((x) => (x && x.kind !== 'fail' ? { ...x, text: `${x.text} Dữ liệu lưu trên điện thoại, chưa đồng bộ máy chủ.` } : x));
       } catch (e) {
         setSaved({ kind: 'fail', text: e instanceof Error ? e.message : String(e) });
       }
@@ -75,16 +77,38 @@ export default function SessionMonitor() {
   // Logic chốt 25/11 (M27): máy báo STA running thì ghi mốc "Đang thực hiện" (bác sĩ thấy khi demo trên cùng máy);
   // hết running mà không có bản tin kết thúc (mất kết nối) thì bỏ mốc. Chỉ ghi dữ liệu, không gửi lệnh nào xuống máy.
   const liveStart = useRef<string | null>(null);
+  // 27/11/2026 (FR8, T07): máy đã báo đang chạy mà không nhận được bản tin kết thúc (mất cáp, rời màn) thì vẫn ghi một phiên
+  // "Chưa đủ dữ liệu": không coi là hoàn thành, không coi là bỏ lỡ. Thời lượng là khoảng đã quan sát, không phải thời lượng máy chạy.
+  const recordUnknown = useCallback(() => {
+    const startedAt = liveStart.current;
+    // Bản tin kết thúc đến trước thì hiệu ứng bên dưới đã bỏ mốc (running thành false), nên không ghi thêm.
+    if (!p || me?.role !== 'patient' || !startedAt) return;
+    liveStart.current = null;
+    setSessionLive(null);
+    const observedSec = Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 1000));
+    recordDeviceSession({ patientId: p.id, woundId: params.woundId, linkId: params.linkId, startedAt, durationSec: observedSec, outcome: 'unknown' })
+      .then((ok) => setSaved(ok ? { kind: 'interrupted', text: 'Đã lưu trên điện thoại là phiên chưa đủ dữ liệu (chưa nhận trạng thái kết thúc từ máy).' } : { kind: 'fail', text: 'Chưa ghi được phiên.' }))
+      .catch((e) => setSaved({ kind: 'fail', text: e instanceof Error ? e.message : String(e) }));
+  }, [p, me?.role, params.woundId, params.linkId, recordDeviceSession, setSessionLive]);
+  const unknownRef = useRef(recordUnknown);
+  useEffect(() => { unknownRef.current = recordUnknown; }, [recordUnknown]);
+  const linkLostNow = link.state === 'disconnected' || link.state === 'error';
+  // Chỉ mở mốc mới khi bản tin running còn mới (không dựa vào bản tin cũ còn giữ sau khi cắm lại cáp).
+  const freshRunning = running && !!link.lastStatusAt && now - new Date(link.lastStatusAt).getTime() <= STALE_AFTER_SEC * 1000;
   useEffect(() => {
     if (!p || me?.role !== 'patient') return;
-    if (running && !liveStart.current) {
+    if (freshRunning && !linkLostNow && !liveStart.current) {
       liveStart.current = new Date().toISOString();
       setSessionLive({ patientId: p.id, woundId: params.woundId, startedAt: liveStart.current });
+    } else if (liveStart.current && linkLostNow) {
+      recordUnknown();
     } else if (!running && liveStart.current) {
       liveStart.current = null;
       setSessionLive(null);
     }
-  }, [running, p, me?.role, params.woundId, setSessionLive]);
+  }, [running, freshRunning, linkLostNow, p, me?.role, params.woundId, setSessionLive, recordUnknown]);
+  // Rời màn khi máy còn đang chạy: lần ghi cuối là "Chưa đủ dữ liệu".
+  useEffect(() => () => unknownRef.current(), []);
   // Người dùng đã chọn "Vẫn rời màn": tắt chặn để không hỏi lại lần nữa (tránh vòng lặp xác nhận).
   const [leaving, setLeaving] = useState(false);
   // Stage 7 (an toàn): hỏi lại ngay trong chân màn thay cho hộp thoại, để không có hộp thoại nào che nút Dừng điều trị.
@@ -158,10 +182,10 @@ export default function SessionMonitor() {
         <View testID="leave-ask" accessibilityRole="alert" style={{ gap: 8, padding: 12, borderRadius: 14, borderWidth: 1.5, borderColor: C.amber, backgroundColor: C.amberSoft }}>
           <Text style={{ fontWeight: '700', color: C.text }}>Rời màn theo dõi?</Text>
           <Text style={{ color: C.text }}>{linkLost
-            ? 'Đã mất kết nối với máy nên không biết máy còn đang điều trị hay không. Phiên này sẽ không được ghi vào nhật ký.'
+            ? 'Đã mất kết nối với máy nên không biết máy còn đang điều trị hay không. Phiên này được ghi là "Chưa đủ dữ liệu".'
             : isPatient
-            ? 'Máy vẫn đang điều trị. Nếu rời màn này, buổi điều trị hôm nay sẽ không được ghi lại và bác sĩ sẽ thấy là bỏ lỡ.'
-            : 'Phiên đang chạy. Nếu rời màn này, phiên sẽ không được ghi vào nhật ký.'}</Text>
+            ? 'Máy vẫn đang điều trị. Nếu rời màn này, buổi điều trị chỉ được ghi là "Chưa đủ dữ liệu" vì ứng dụng không nhận được kết quả cuối.'
+            : 'Phiên đang chạy. Nếu rời màn này, phiên chỉ được ghi là "Chưa đủ dữ liệu".'}</Text>
           <Muted>Rời màn không dừng máy.</Muted>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Button label="Ở lại màn theo dõi" variant="secondary" onPress={() => setLeaveAsk(false)} style={{ flex: 1 }} />

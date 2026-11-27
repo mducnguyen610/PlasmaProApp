@@ -11,7 +11,8 @@ import { Pressable, View } from 'react-native';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { Button, Card, Chip, Disclosure, Field, InfoRow, Muted, Notice, SectionTitle, TextLink } from '@/components/ui';
-import { fmtDuration, localDay, phaseLabel, phasesOf } from '@/lib/course';
+import { fmtDuration, localDay, phaseLabel, phasesOf, sessionsForWound } from '@/lib/course';
+import { sessionsOfPatient } from '@/lib/patientSessions';
 import { modeLabel } from '@/lib/device/capabilities';
 import { notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, maskDateInput, PLAN_STATUS } from '@/lib/format';
@@ -19,7 +20,7 @@ import { formatAreaDisplay } from '@/lib/naming';
 import { extendBlocker, isOpenStatus, protocolsOfWound, versionStatusLabel, type ProtocolView } from '@/lib/planLifecycle';
 import { protocolSlots, slotChangeBlocker, SLOT_STATUS, type Slot } from '@/lib/sessionSchedule';
 import { useLookups, useStore } from '@/lib/store';
-import type { Patient, TreatmentPlan, Wound } from '@/lib/types';
+import type { Device, DeviceEvent, DeviceSession, Patient, TreatmentPlan, Wound } from '@/lib/types';
 import { C, numeric, T } from '@/theme';
 
 export const fromVnDate = (s: string) => {
@@ -36,9 +37,13 @@ export function planSummaryLines(v: TreatmentPlan): string[] {
   return [params || 'Chưa đặt thông số', `${sched}${v.sessionsPerDay && v.sessionsPerDay > 1 ? `, ${v.sessionsPerDay} lần mỗi buổi` : ''}`, v.timeWindow ? `Khung giờ ${v.timeWindow.from} đến ${v.timeWindow.to}` : 'Chưa đặt khung giờ'];
 }
 
-/** Phiên của vết: phiên ghi vết này, hoặc phiên cũ không ghi vết của máy bệnh nhân đang giữ. */
-export function woundSessions(sessions: { woundId?: string; deviceId: string }[], w: Wound, p: Patient) {
-  return sessions.filter((s) => (s.woundId ? s.woundId === w.id : s.deviceId === p.deviceId));
+/**
+ * Phiên của vết: chỉ phiên của đúng bệnh nhân (theo chủ phiên, không theo máy đang giữ) và ghi đúng vết này.
+ * 27/11/2026 (FR11): bỏ quy tắc cũ "phiên không ghi vết của máy bệnh nhân đang giữ" vì quy tắc đó tính nhầm phiên của người dùng
+ * trước trên cùng máy, hoặc phiên chưa gắn vết, vào tiến độ của vết.
+ */
+export function woundSessions<S extends DeviceSession>(data: { sessions: S[]; devices: Device[]; deviceEvents?: DeviceEvent[] }, w: Wound, p: Patient): S[] {
+  return sessionsForWound(sessionsOfPatient(data.sessions, p.id, { devices: data.devices, deviceEvents: data.deviceEvents }), w.id);
 }
 
 type Ask = { kind: 'extend' | 'pause' | 'end' | 'endThenNew'; view: ProtocolView } | { kind: 'slot'; view: ProtocolView; slot: Slot; change: 'postpone' | 'cancel' };
@@ -56,7 +61,7 @@ export function ProtocolTab({ patient: p, wound: w, canEdit }: { patient: Patien
   const [err, setErr] = useState<string | null>(null);
   const busy = useRef(false);
   const [working, setWorking] = useState(false);
-  const sessions = woundSessions(data.sessions, w, p) as typeof data.sessions;
+  const sessions = woundSessions(data, w, p);
   const slotsOf = (v: ProtocolView) => protocolSlots({
     versions: v.versions, sessions, changes: data.sessionChanges ?? [], live: data.liveSessions, today,
     nextProtocolStart: views.map((x) => x.startDate).filter((d) => d > v.startDate).sort()[0],

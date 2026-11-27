@@ -120,7 +120,7 @@ export function SessionHistoryCard({ woundId }: { woundId: string }) {
   const list = data.sessions.filter((s) => s.woundId === woundId).sort((a, b) => b.start.localeCompare(a.start));
   const [all, setAll] = useState(false);
   const shown = all ? list : list.slice(0, 10);
-  const STATUS = { completed: 'Hoàn tất', interrupted: 'Gián đoạn', over_limit: 'Vượt giới hạn' } as const;
+  const STATUS = { completed: 'Hoàn tất', interrupted: 'Gián đoạn', over_limit: 'Vượt giới hạn', unknown: 'Chưa đủ dữ liệu' } as const;
   return (
     <Card testID="lich-su-phien" style={{ gap: 6 }}>
       <SectionTitle icon="pulse-outline" caption="Chỉ xem. Phiên cũ chưa ghi phiên bản hiện dấu gạch.">{`Lịch sử phiên (${list.length})`}</SectionTitle>

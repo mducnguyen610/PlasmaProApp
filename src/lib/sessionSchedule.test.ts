@@ -21,10 +21,17 @@ assert.deepEqual(st(slots), {
   '2026-11-05': 'cancelled', '2026-11-06': 'postponed', '2026-11-07': 'upcoming', '2026-11-09': 'upcoming',
 });
 assert.equal(slots.find((s) => s.date === '2026-11-09')!.originDate, '2026-11-06', 'phiên hoãn sang ngày mới ghi ngày gốc');
-// Ngày đã qua không có phiên: Đã bỏ lỡ (hết ngày theo lịch, M30)
-assert.equal(st(protocolSlots({ versions: [P({})], sessions: [], changes: [], today }))['2026-11-03'], 'missed');
+// 27/11/2026: ngày đã qua không có phiên mà chưa đối soát đủ dữ liệu với máy: Chưa đủ dữ liệu, không phải Đã bỏ lỡ.
+assert.equal(st(protocolSlots({ versions: [P({})], sessions: [], changes: [], today }))['2026-11-03'], 'no_data');
+// Đã đối soát đến ngày đó (có nguồn đối soát đầy đủ) thì mới là Đã bỏ lỡ (M30).
+assert.equal(st(protocolSlots({ versions: [P({})], sessions: [], changes: [], today, reconciledThrough: '2026-11-03' }))['2026-11-03'], 'missed');
+assert.equal(st(protocolSlots({ versions: [P({})], sessions: [], changes: [], today, reconciledThrough: '2026-11-02' }))['2026-11-03'], 'no_data');
 // Phiên vượt giới hạn (máy không phát) không tính là phiên đã chạy
-assert.equal(st(protocolSlots({ versions: [P({})], sessions: [S({ status: 'over_limit', start: '2026-11-02T02:00:00Z' })], changes: [], today }))['2026-11-02'], 'missed');
+assert.equal(st(protocolSlots({ versions: [P({})], sessions: [S({ status: 'over_limit', start: '2026-11-02T02:00:00Z' })], changes: [], today, reconciledThrough: today }))['2026-11-02'], 'missed');
+// Phiên không ghi vết không tính cho vết nào (không dùng quy tắc cũ "phiên không ghi vết của máy")
+assert.equal(st(protocolSlots({ versions: [P({})], sessions: [S({ woundId: undefined, protocolId: undefined, start: '2026-11-02T02:00:00Z' })], changes: [], today }))['2026-11-02'], 'no_data');
+// Phiên kết thúc không rõ (mất cáp, rời màn): Chưa đủ dữ liệu
+assert.equal(st(protocolSlots({ versions: [P({})], sessions: [S({ status: 'unknown', start: '2026-11-02T02:00:00Z' })], changes: [], today }))['2026-11-02'], 'no_data');
 // Đang thực hiện chỉ khi máy báo STA running (mốc LiveSession), không vì đã gửi lệnh
 const now = new Date('2026-11-04T03:01:00Z').getTime();
 const live = [{ deviceId: 'd-1', patientId: 'p-1', woundId: 'w-1', startedAt: '2026-11-04T03:00:00Z' }];
@@ -52,7 +59,7 @@ assert.equal(protocolLastDay([P({ status: 'ended' })], '2026-11-04'), '2026-11-0
 
 // Theo dõi thực hiện
 const sum = slotSummary(slots);
-assert.deepEqual(sum, { planned: 6, completed: 1, failedOrInterrupted: 2, missed: 0, notDone: 3 });
+assert.deepEqual(sum, { planned: 6, completed: 1, failedOrInterrupted: 2, missed: 0, noData: 0, notDone: 3 });
 
 // Hoãn, hủy chỉ phiên chưa diễn ra; bắt buộc lý do; ngày mới sau ngày phiên
 const due = slots.find((s) => s.date === '2026-11-04');

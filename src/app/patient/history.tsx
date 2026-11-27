@@ -8,20 +8,23 @@ import { Card, Disclosure, Header, ListCard, IconBadge, InfoRow, Muted, Screen, 
 import { WOUND } from '@/theme.status';
 import { fmtDate, fmtDateTime, WOUND_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
+import { sessionResultLabel, syncText } from '@/lib/patientSessions';
 import { C, T } from '@/theme';
 import { birthLabel } from '@/lib/patientIdentity';
 
 // P2-08 (A27): tiêu đề "Lịch sử và hồ sơ" khớp tên tab "Lịch sử" (câu chữ chờ duyệt). Hồ sơ và lịch sử của bệnh nhân: thông tin cá nhân, bác sĩ phụ trách, vết thương, ảnh và nhận xét.
 export default function PatientHistory() {
   const { data, me } = useStore();
-  const { patient, account, woundsOf, imagesOf, sessionsOf } = useLookups();
+  const { patient, account, woundsOf, imagesOf, sessionsOfPatient } = useLookups();
   const p = patient(me?.patientId);
   if (!p) return null;
   // UX-19 (Đợt 11): năm buổi điều trị gần nhất do máy ghi; chạm một buổi để ghi hoặc sửa cảm giác ở Lịch trình.
   const myWounds = woundsOf(p.id);
   // A26: nhiều vết thì ghi buổi gắn vết nào; buổi không có woundId ghi "Chưa gắn vết thương".
-  const woundTag = (wid?: string) => (wid ? myWounds.find((x) => x.id === wid)?.code ?? 'Vết không còn trong danh sách' : myWounds.length > 1 ? 'Chưa gắn vết thương' : '');
-  const recent = p.deviceId ? [...sessionsOf(p.deviceId)].sort((a, b) => b.start.localeCompare(a.start)).slice(0, 5) : [];
+  // 27/11/2026 (FR10, FR11): buổi chưa gắn vết luôn ghi rõ, kể cả khi chỉ có một vết, vì buổi đó không được tính cho vết nào.
+  const woundTag = (wid?: string) => (wid ? myWounds.find((x) => x.id === wid)?.code ?? 'Vết không còn trong danh sách' : 'Chưa gắn vết thương, không tính tiến độ');
+  // Lịch sử theo bệnh nhân, không theo máy đang giữ: đổi máy vẫn thấy buổi cũ; máy đã trả không làm lộ buổi của người dùng sau.
+  const recent = [...sessionsOfPatient(p.id)].sort((a, b) => b.start.localeCompare(a.start)).slice(0, 5);
   const unnoted = recent.filter((s) => !data.sessionNotes.some((x) => x.sessionId === s.sessionId)).length;
   return (
     <Screen header={<Header title="Lịch sử và hồ sơ" subtitle={`${p.name} · ${p.code}`} />}>
@@ -51,20 +54,22 @@ export default function PatientHistory() {
       <SectionTitle icon="flash-outline" action="Lịch trình" onAction={() => router.push('/schedule')}
         caption={unnoted > 0 ? `${unnoted} trên ${recent.length} buổi chưa ghi cảm giác` : undefined}>Các buổi điều trị gần đây</SectionTitle>
       {recent.length === 0 ? (
-        <Card><Muted>{p.deviceId ? 'Chưa có buổi điều trị nào được ghi.' : 'Chưa được giao máy điều trị nên chưa có buổi nào.'}</Muted></Card>
+        <Card><Muted>{p.deviceId ? 'Chưa có buổi điều trị nào được ghi.' : 'Chưa có buổi điều trị nào được ghi. Hiện chưa được giao máy.'}</Muted></Card>
       ) : (
         <ListCard>
           {recent.map((s) => {
             const n = data.sessionNotes.find((x) => x.sessionId === s.sessionId);
             const done = s.status === 'completed';
+            const result = sessionResultLabel(s);
             return (
-              <Pressable key={s.sessionId} accessibilityRole="button" accessibilityLabel={`Buổi ${fmtDateTime(s.start)}, ${done ? 'đủ thời gian' : 'bị ngắt'}, ${s.durationMin} phút${woundTag(s.woundId) ? `, ${woundTag(s.woundId)}` : ''}. ${n ? noteText(n) : 'Chưa ghi cảm giác'}. Chạm để ${n ? 'sửa' : 'ghi'} cảm giác`}
+              <Pressable key={s.sessionId} accessibilityRole="button" accessibilityLabel={`Buổi ${fmtDateTime(s.start)}, ${result}, ${s.durationMin} phút, ${syncText(s, 'patient')}${woundTag(s.woundId) ? `, ${woundTag(s.woundId)}` : ''}. ${n ? noteText(n) : 'Chưa ghi cảm giác'}. Chạm để ${n ? 'sửa' : 'ghi'} cảm giác`}
                 onPress={() => router.push({ pathname: '/schedule', params: { sessionId: s.sessionId } })} style={({ pressed }) => ({ paddingVertical: 12, minHeight: 48, opacity: pressed ? 0.7 : 1 })}>
                 <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                  <Ionicons name={done ? 'checkmark-circle' : 'stop-circle-outline'} size={26} color={done ? C.green : C.amber} />
+                  <Ionicons name={done ? 'checkmark-circle' : s.status === 'unknown' ? 'help-circle-outline' : 'stop-circle-outline'} size={26} color={done ? C.green : s.status === 'unknown' ? C.textSoft : C.amber} />
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={{ fontWeight: '700', color: C.text }}>{fmtDateTime(s.start)}</Text>
-                    <Text style={{ color: C.textSoft, fontSize: T.small }}>{[done ? 'Đủ thời gian' : 'Bị ngắt giữa chừng', `${s.durationMin} phút`, woundTag(s.woundId)].filter(Boolean).join(' · ')}</Text>
+                    <Text style={{ color: C.textSoft, fontSize: T.small }}>{[result, `${s.durationMin} phút`, woundTag(s.woundId)].filter(Boolean).join(' · ')}</Text>
+                    <Text style={{ color: C.textSoft, fontSize: T.caption }}>{syncText(s, 'patient')}</Text>
                     {n ? <Text style={{ color: C.text, fontSize: T.small }}>{noteText(n)}</Text> : (
                       <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: C.primarySoft }}>
                         <Ionicons name="create-outline" size={16} color={C.primary} />

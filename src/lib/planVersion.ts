@@ -126,3 +126,44 @@ export function planDeleteBlocker(
   if (legacy) return `Có ${legacy} phiên cũ của vết này trong thời gian phác đồ (chưa ghi phiên bản). Chỉ kết thúc được, không xóa.`;
   return null;
 }
+
+/**
+ * 27/11/2026 (FR7, UR2): kiểm lại ngay trước khi gửi liệu trình xuống máy, trên dữ liệu mới nhất (không dựa vào lúc vẽ màn).
+ * Đủ cả: bệnh nhân đang đăng nhập là chủ hồ sơ; vết thuộc hồ sơ; phiên bản thuộc đúng vết và là phiên bản đang áp dụng của vết đó;
+ * bác sĩ đã xác nhận và bệnh nhân đã xác nhận đọc CHÍNH phiên bản này; máy gửi tới đang được giao cho đúng hồ sơ.
+ * Trả câu lý do chặn (tiếng Việt, cho bệnh nhân) hoặc null.
+ */
+export function loadBlocker(
+  d: {
+    plans: TreatmentPlan[];
+    wounds: Pick<Wound, 'id' | 'patientId'>[];
+    patients: { id: string; deviceId?: string }[];
+    devices: { id: string; patientId?: string }[];
+  },
+  actor: { role: string; locked: boolean; patientId?: string } | null | undefined,
+  input: { patientId: string; woundId: string; planId: string; deviceId: string },
+): string | null {
+  if (!actor || actor.locked || actor.role !== 'patient' || actor.patientId !== input.patientId) return 'Chỉ bệnh nhân của hồ sơ nạp được liệu trình.';
+  const wound = d.wounds.find((w) => w.id === input.woundId);
+  if (!wound || wound.patientId !== input.patientId) return 'Vết thương không thuộc hồ sơ của bạn.';
+  const plan = d.plans.find((p) => p.id === input.planId);
+  if (!plan || plan.patientId !== input.patientId || plan.woundId !== input.woundId) return 'Phiên bản đợt điều trị không thuộc vết thương này.';
+  const current = activeVersionOf(d.plans, input.patientId, input.woundId);
+  if (!current) return 'Vết thương này không còn đợt điều trị đang áp dụng.';
+  if (current.id !== plan.id) return `Bác sĩ đã áp dụng phiên bản ${current.version}. Hãy đọc và xác nhận phiên bản ${current.version} trước khi nạp.`;
+  if (!canLoadPlan(plan)) return `Bạn chưa xác nhận đã đọc phiên bản ${plan.version}.`;
+  const patient = d.patients.find((p) => p.id === input.patientId);
+  const dev = d.devices.find((x) => x.id === input.deviceId);
+  if (!patient || patient.deviceId !== input.deviceId || !dev || dev.patientId !== input.patientId) return 'Máy đang kết nối không phải máy bác sĩ giao cho hồ sơ này.';
+  return null;
+}
+
+/**
+ * Phiên bản đang có hiệu lực của một vết cho bệnh nhân xem: phiên bản cao nhất bác sĩ đã xác nhận, không tính nháp và bản chờ áp dụng
+ * (scheduled). Trước 27/11/2026 bản chờ áp dụng có số phiên bản cao hơn nên bị chọn, làm trang chủ mất đợt đang chạy.
+ */
+export function inEffectVersion(plans: TreatmentPlan[], patientId: string, woundId: string, opts?: { patientView?: boolean }): TreatmentPlan | undefined {
+  return plans
+    .filter((p) => p.patientId === patientId && p.woundId === woundId && p.status !== 'draft' && p.status !== 'scheduled' && (!opts?.patientView || p.confirmed))
+    .sort((a, b) => b.version - a.version)[0];
+}
