@@ -9,9 +9,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ClinicalContext } from '@/components/ClinicalContext';
 import { NoAccess, useCanView } from '@/components/Guard';
+import { patientCanSeeImage } from '@/lib/patientView';
 import { ImageLabelCard } from '@/components/ImageLabelCard';
 import { useDiscardGuard } from '@/components/useDiscardGuard';
-import { Button, Card, Chip, Choices, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, Segmented, StatusChip, TextLink, WoundPhoto } from '@/components/ui';
+import { Button, Card, Chip, Choices, Disclosure, Divider, Field, Header, InfoRow, Muted, Notice, Screen, SectionTitle, Segmented, StatusChip, SwitchRow, TextLink, WoundPhoto } from '@/components/ui';
 import { confirm, notify } from '@/lib/dialog';
 import { measurementSource, neighbourImages, previousMeasuredImage } from '@/lib/measurementSource';
 import { fmtDate, fmtDateTime, LABEL_STATUS } from '@/lib/format';
@@ -49,7 +50,7 @@ export default function ImageDetail() {
 }
 
 function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?: string; retry?: { areaText: string; method: string; error: string } }) {
-  const { data, me, labelImage, setExcluded, requestRetake } = useStore();
+  const { data, me, labelImage, setExcluded, requestRetake, setImageSharedWithPatient } = useStore();
   const { patient, wound, account } = useLookups();
   const insets = useSafeAreaInsets();
   const im = data.images.find((x) => x.id === id);
@@ -87,6 +88,8 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
 
   if (!im || !p || !w) return <NoAccess notFound />;
   if (!canView) return <NoAccess />;
+  // 27/11/2026 (FR14, UR18): bệnh nhân chỉ mở được ảnh bác sĩ phụ trách đã duyệt cho xem, kể cả khi vào bằng đường dẫn trực tiếp.
+  if (me?.role === 'patient' && !patientCanSeeImage(im)) return <NoAccess notFound />;
   const isDoctor = me?.role === 'doctor';
   // Giai đoạn B (CN1 H9): bác sĩ khác xem ảnh và nhãn, không sửa. Sửa cần bác sĩ phụ trách và hồ sơ chưa lưu trữ.
   const canEditImg = isDoctor && p.doctorId === me?.id && !p.archivedAt;
@@ -380,6 +383,15 @@ function ImageDetailInner({ id, fromPatient, retry }: { id: string; fromPatient?
       {isDoctor && !measuring && <Card>
         <ImageLabelCard im={im} patient={p} canEdit={canEditImg} onDirty={onLabelDirty} onEditArea={canEditImg ? () => startEdit() : undefined}
           onRetake={(reason) => confirm('Yêu cầu chụp lại', `Bệnh nhân sẽ thấy yêu cầu chụp lại ảnh ${im.id}${reason ? ` (${reason})` : ''}.`, () => persist(() => requestRetake(im.id, `Ảnh không đạt${reason ? `: ${reason}` : ''}`)), 'Gửi yêu cầu')} />
+      </Card>}
+
+      {/* 27/11/2026 (FR14, UR18): duyệt ảnh cho bệnh nhân xem, tách khỏi xác nhận nhãn nghiên cứu và đồng ý dùng ảnh cho nghiên cứu. */}
+      {isDoctor && !measuring && <Card>
+        <SwitchRow label="Hiện cho bệnh nhân" disabled={!canEditImg || im.status === 'excluded'}
+          detail={im.status === 'excluded' ? 'Ảnh "Không sử dụng" không hiện cho bệnh nhân.' : im.sharedWithPatientAt ? `Đã duyệt ${fmtDateTime(im.sharedWithPatientAt)}${im.sharedWithPatientBy ? ` · ${account(im.sharedWithPatientBy)?.name ?? ''}` : ''}` : 'Bệnh nhân chưa thấy ảnh này (ảnh, số đo và so sánh).'}
+          value={!!im.sharedWithPatientAt && im.status !== 'excluded'}
+          onChange={(v) => persist(() => setImageSharedWithPatient(im.id, v))} />
+        <Muted>Không liên quan việc xác nhận nhãn hay việc bệnh nhân đồng ý dùng ảnh cho nghiên cứu.</Muted>
       </Card>}
 
       {/* Thao tác ít dùng và thông tin kỹ thuật thu gọn (R-06). Nội dung đang gõ trong các mục này giữ nguyên khi đóng mở.

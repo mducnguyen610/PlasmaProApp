@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { latestEvaluation } from '@/lib/access';
-import { courseProgress, courseStatus, followUpDates, localDay } from '@/lib/course';
+import { courseProgress, courseStatus, followUpDates, localDay, sessionsForWound } from '@/lib/course';
+import { reconciledThrough } from '@/lib/patientSessions';
+import { NO_DOCTOR_EVALUATION } from '@/lib/patientView';
+import { scheduleItems } from '@/lib/sessionSchedule';
+import { ScheduleItemList } from '@/components/ScheduleItemList';
 import { DateBadge } from '@/components/DateBadge';
 import { PlanAckCard } from '@/components/PlanAckCard';
 import { needsPatientAck } from '@/lib/planVersion';
@@ -30,7 +34,7 @@ const AFTER = ['Vệ sinh đầu phát rồi đậy nắp', 'Băng lại hoặc 
 // Điều hướng sang Lịch trình, Lịch sử, Thiết bị nằm ở thanh tab, không lặp lại bằng thẻ gradient.
 export default function PatientHome() {
   const { data, me, addReport } = useStore();
-  const { patient, account, woundsOf, sessionsOf, device, coursePlan, imagesOf } = useLookups();
+  const { patient, account, woundsOf, sessionsOfPatient, device, coursePlan, imagesOf } = useLookups();
   const [busy, setBusy] = useState(false);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [openSteps, setOpenSteps] = useState(false);
@@ -46,15 +50,20 @@ export default function PatientHome() {
   const next = upcoming[0];
   const wounds = woundsOf(p.id);
   const courses = wounds.map((w) => ({ w, plan: coursePlan(w.id, { patientView: true }) }));
-  // Stage 9C (gói B): quy tắc chọn đợt, vết thương cho trang chủ ở tầng nghiệp vụ (src/lib/patientHome.ts), hành vi không đổi.
-  const { treating, followUp, awaiting } = patientHomeCourses(courses);
+  // 27/11/2026 (FR6, UR1): nhiều vết đang điều trị thì liệt kê mọi phiên hôm nay theo mã vết; không tự chọn vết đầu tiên.
+  const { treatingAll, treating, followUp, awaiting } = patientHomeCourses(courses);
   const plan = treating?.plan;
   const retakes = data.images.filter((i) => i.patientId === p.id && i.retakeRequested);
-  const sessions = p.deviceId ? sessionsOf(p.deviceId) : [];
+  // 27/11/2026 (FR10, FR11): phiên theo bệnh nhân (không theo máy đang giữ), chỉ phiên đã gắn đúng vết mới được tính cho vết đó.
+  const sessions = sessionsOfPatient(p.id);
   const dev = device(p.deviceId);
   const lastSyncDay = (dev?.lastSync ? localDay(dev.lastSync) : null);
-  const woundSessions = plan ? sessions.filter((s) => !s.woundId || s.woundId === treating!.w.id) : [];
-  const pr = plan ? courseProgress(plan, woundSessions, today, lastSyncDay) : null;
+  const woundSessions = plan && treating ? sessionsForWound(sessions, treating.w.id) : [];
+  const pr = plan ? courseProgress(plan, woundSessions, today, reconciledThrough()) : null;
+  const todayItems = treatingAll.length > 1
+    ? scheduleItems({ plans: data.plans, wounds, patientId: p.id, sessions, changes: data.sessionChanges ?? [], live: data.liveSessions, today, from: today, to: today, confirmedOnly: true, reconciledThrough: reconciledThrough() })
+    : [];
+  const needAck = treatingAll.filter((c) => c.plan && needsPatientAck(c.plan));
   const status = pr ? courseStatus(pr, fmtDate) : null;
   const statusColor = status?.kind === 'done' ? C.green : status?.kind === 'over' ? C.amber : status?.kind === 'rest' ? C.textSoft : C.primary;
   const nextCheck = followUp?.w.followUpFrom ? followUpDates(followUp.w.followUpFrom).find((x) => x.date >= today) : undefined;
@@ -93,14 +102,25 @@ export default function PatientHome() {
       {/* Bản rút gọn (08/11/2026): mỗi thẻ một điểm neo thị giác (vòng tiến độ, ô ngày hẹn, số diện tích),
           chữ phụ đưa vào chạm để xem hoặc sang Lịch trình. */}
       <Card hero style={{ padding: 20, gap: 14 }}>
+        {treatingAll.length > 1 && (
+          <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text accessibilityRole="header" style={{ flex: 1, color: C.text, fontSize: T.cardTitle, fontWeight: '700' }}>{`Phiên hôm nay (${treatingAll.length} vết đang điều trị)`}</Text>
+              <TextLink label="Lịch trình" onPress={() => router.push('/schedule')} />
+            </View>
+            {needAck.map((c) => <PlanAckCard key={'ack-' + c.w.id} plan={c.plan!} wound={c.w} />)}
+            <ScheduleItemList items={todayItems} wounds={wounds} today={today} empty="Hôm nay không có phiên theo lịch." />
+            {!p.deviceId && <Muted>Chưa được giao máy điều trị. Liên hệ bác sĩ phụ trách.</Muted>}
+          </>
+        )}
         {treating && (
-          <Pressable onPress={() => router.push('/schedule')} accessibilityRole="button" accessibilityLabel="Xem lịch trình của đợt" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 }}>
+          <Pressable onPress={() => router.push({ pathname: '/schedule', params: { woundId: treating.w.id } })} accessibilityRole="button" accessibilityLabel="Xem lịch trình của đợt" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 }}>
             <Text style={{ flex: 1, color: C.textSoft, fontSize: T.small, fontWeight: '600' }} numberOfLines={1}>Đợt điều trị {treating.w.code}</Text>
             <Text style={{ color: C.primary, fontSize: T.small }}>Lịch trình</Text>
             <Ionicons name="chevron-forward" size={16} color={C.primary} />
           </Pressable>
         )}
-        {plan && pr && status ? (
+        {treatingAll.length > 1 ? null : plan && pr && status ? (
           <>
             {/* Điểm neo: vòng tiến độ lớn bên trái, câu chính bên phải. Giai đoạn, liều, mốc xem lại nằm ở Lịch trình. */}
             <View accessible accessibilityRole="summary" accessibilityLabel={`${status.title}. ${status.detail}. Đã xong ${pr.done} trên ${pr.total} buổi.`} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
@@ -114,7 +134,7 @@ export default function PatientHome() {
             {/* Cảnh báo đồng bộ thu thành một chip; chạm để đọc giải thích. Ngày nghỉ không cần cảnh báo. */}
             {dev && lastSyncDay !== today && status.kind !== 'rest' && (
               <Pressable
-                onPress={() => notify('Chưa nhận dữ liệu hôm nay', dev.lastSync ? `Thiết bị gửi dữ liệu lần cuối ${fmtDateTime(dev.lastSync)}. Số buổi sẽ cập nhật khi thiết bị bật ở nơi có Wi-Fi.` : 'Thiết bị chưa gửi dữ liệu lần nào.')}
+                onPress={() => notify('Chưa nhận dữ liệu hôm nay', `${dev.lastSync ? `Điện thoại nhận dữ liệu từ máy lần cuối ${fmtDateTime(dev.lastSync)}.` : 'Điện thoại chưa nhận dữ liệu từ máy lần nào.'} Phiên chỉ được ghi khi điện thoại nối cáp với máy trong lúc điều trị. Ngày chưa có dữ liệu hiện là "Chưa đủ dữ liệu", không tính là bỏ lỡ.`)}
                 accessibilityRole="button"
                 accessibilityLabel="Chưa đồng bộ hôm nay. Chạm để xem chi tiết"
                 style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: size.touch, paddingHorizontal: 12, borderRadius: 999, backgroundColor: C.amberSoft }}>
@@ -127,7 +147,7 @@ export default function PatientHome() {
             {status.kind === 'treat' && stepsBlock}
             {/* Giai đoạn B (AU-04): phiên bản chưa được bệnh nhân xác nhận đọc thì hiện thẻ xác nhận thay cho nút nạp. */}
             {needsPatientAck(plan) ? <PlanAckCard plan={plan} wound={treating!.w} /> : status.kind === 'treat' && p.deviceId && (
-              <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={() => router.push('/connect-device')} />
+              <Button label="Nạp liệu trình vào máy" icon="arrow-down-circle-outline" onPress={() => router.push({ pathname: '/connect-device', params: { woundId: treating!.w.id, planId: plan.id, date: today } })} />
             )}
           </>
         ) : followUp ? (
@@ -151,7 +171,7 @@ export default function PatientHome() {
                   notify('Chưa gửi được', `${e instanceof Error ? e.message : String(e)} Nếu chảy máu, có mủ hoặc sốt, hãy gọi 115 hoặc đến cơ sở y tế.`);
                   return;
                 }
-                notify('Đã ghi nhận', 'Bác sĩ phụ trách sẽ xem khi mở ứng dụng. Hãy gọi cho bác sĩ để hẹn khám. Nếu chảy máu, có mủ hoặc sốt, hãy gọi 115 hoặc đến cơ sở y tế, không chờ phản hồi trong ứng dụng.');
+                notify('Đã lưu trên điện thoại', 'Báo cáo chỉ lưu trên điện thoại này, chưa gửi lên máy chủ; bác sĩ phụ trách thấy khi xem trên cùng máy. Hãy gọi cho bác sĩ để hẹn khám. Nếu chảy máu, có mủ hoặc sốt, hãy gọi 115 hoặc đến cơ sở y tế, không chờ phản hồi trong ứng dụng.');
               }}
             />
           </>
@@ -254,8 +274,8 @@ export default function PatientHome() {
                 <WoundPhoto image={img} style={{ width: 110, height: 82, borderRadius: radius.m }} />
               </View>
             ) : <Muted>Chưa có số đo do bác sĩ nhập.</Muted>}
-            {ev ? <Text style={{ color: C.text }}>{`Bác sĩ đánh giá ${fmtDate(ev.date).slice(0, 5)}: ${TREND[ev.trend].label}`}</Text>
-              : <Muted>Chưa có đánh giá được công bố. Không suy ra mức độ từ diện tích.</Muted>}
+            {ev ? <Text style={{ color: C.text }}>{`Bác sĩ đánh giá ngày ${fmtDate(ev.date)}: ${TREND[ev.trend].label}`}</Text>
+              : <Muted>{NO_DOCTOR_EVALUATION}</Muted>}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 24 }}>
               <Text style={{ color: C.primary, fontWeight: '700' }}>Xem tiến triển</Text>
               <Ionicons name="chevron-forward" size={16} color={C.primary} />
@@ -289,7 +309,7 @@ export default function PatientHome() {
                   {older > 0 && <TextLink label={`Lời dặn trước đó (${older})`} accessibilityLabel={`Xem ${older} lời dặn trước đó của ${w.code}`} onPress={() => router.push({ pathname: '/wounds/[id]', params: { id: w.id } })} />}
                 </View>
               </>
-            ) : <Muted>Bác sĩ chưa công bố lời dặn cho vết thương này.</Muted>}
+            ) : <Muted>{NO_DOCTOR_EVALUATION}</Muted>}
           </Card>
         );
       })}

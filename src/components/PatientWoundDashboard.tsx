@@ -8,6 +8,7 @@ import { Card, Chip, LinkRow, Muted, SectionTitle, Segmented, SimBadge, StatusCh
 import { SEVERITY } from '@/lib/access';
 import { noPointsText, progressInput, progressSummary, splitByMethod, summaryText } from '@/lib/areaProgress';
 import { courseProgress, localDay, phasesOf, sessionsForWound } from '@/lib/course';
+import { reconciledThrough } from '@/lib/patientSessions';
 import { fmtDate, fmtDateTime, PLAN_STATUS, TREND, WOUND_STATUS } from '@/lib/format';
 import { measurementSource } from '@/lib/measurementSource';
 import { formatAreaDisplay } from '@/lib/naming';
@@ -30,7 +31,7 @@ const CAVEAT = 'Số đo cho biết kích thước vết thương. Việc vết 
  */
 export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patient; wound: Wound }) {
   const { data } = useStore();
-  const { imagesOf, account, coursePlan, sessionsOf } = useLookups();
+  const { imagesOf, account, coursePlan, sessionsOfPatient } = useLookups();
   const today = localDay();
   const images = imagesOf(w.id);
   const evals = data.evaluations
@@ -53,11 +54,12 @@ export function PatientWoundDashboard({ patient: p, wound: w }: { patient: Patie
 
   // E. Đợt điều trị: cùng nguồn với thẻ đợt trước đây (coursePlan bản bệnh nhân, sessionsForWound).
   const plan = coursePlan(w.id, { patientView: true });
-  const dev = data.devices.find((x) => x.id === p.deviceId);
-  const pr = plan && dev ? courseProgress(plan, sessionsForWound(sessionsOf(dev.id), w.id), today, dev.lastSync ? localDay(dev.lastSync) : null) : null;
+  // 27/11/2026 (FR10, FR11): phiên theo bệnh nhân (đổi máy vẫn giữ lịch sử), chỉ phiên gắn đúng vết; chưa đối soát thì không tính bỏ lỡ.
+  const mine = sessionsOfPatient(p.id);
+  const pr = plan ? courseProgress(plan, sessionsForWound(mine, w.id), today, reconciledThrough()) : null;
 
   // G. Lịch sử: cùng danh sách mục với dòng thời gian P2-07a (ảnh, nhận xét đã công bố, buổi gắn đúng vết).
-  const woundSessions = dev ? sessionsOf(dev.id).filter((s) => s.woundId === w.id) : [];
+  const woundSessions = sessionsForWound(mine, w.id);
   const doctorName = (id: string) => account(id)?.name;
   const timeline = woundTimelineItems({ images, evaluations: evals, sessions: woundSessions, doctorName });
   const view: 'anh' | 'lich-su' = useLocalSearchParams<{ the?: string }>().the === 'lich-su' ? 'lich-su' : 'anh';

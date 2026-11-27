@@ -23,7 +23,7 @@ import { SOURCE, TREND_ROLE } from '@/theme.status';
 export default function HistoryRecord() {
   const { woundId, recordId, loai } = useLocalSearchParams<{ woundId: string; recordId: string; loai?: string }>();
   const { data, me } = useStore();
-  const { wound, patient, imagesOf, account, sessionsOf } = useLookups();
+  const { wound, patient, imagesOf, account, sessionsOfPatient } = useLookups();
   const w = wound(woundId);
   const p = patient(w?.patientId);
   const canView = useCanView(p);
@@ -33,7 +33,7 @@ export default function HistoryRecord() {
   const isDoctor = me?.role === 'doctor';
   const images = imagesOf(w.id);
   const dev = data.devices.find((x) => x.id === p.deviceId);
-  const sessions = isDoctor && dev ? sessionsForWound(sessionsOf(dev.id), w.id) : [];
+  const sessions = isDoctor ? sessionsForWound(sessionsOfPatient(p.id), w.id) : [];
   // Giai đoạn B (AU-05): phiên bản cũ đã được gán vết thương khi đọc dữ liệu, không suy theo vết đầu tiên trong mảng.
   const timeline = buildTimeline({ wound: w, firstWoundId: undefined, images, evaluations: data.evaluations, plans: data.plans, sessions, isDoctor });
   const entry = findRecord(timeline, loai, recordId);

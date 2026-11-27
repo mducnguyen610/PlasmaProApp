@@ -7,7 +7,8 @@ import { Button, Card, Chip, Disclosure, Divider, Empty, InfoRow, Muted, Notice,
 import { noteText } from '@/components/AdherenceCalendar';
 import { DeviceHistoryCard, DeviceManageCard } from '@/components/DeviceManage';
 import { ProgressRows } from '@/components/CourseCard';
-import { courseProgress, isScheduled, localDay } from '@/lib/course';
+import { courseProgress, isScheduled, localDay, sessionsForWound } from '@/lib/course';
+import { reconciledThrough } from '@/lib/patientSessions';
 import { CARE_ITEMS, careStatus, LIFECYCLE } from '@/lib/maintenance';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime } from '@/lib/format';
@@ -17,7 +18,7 @@ import { bar, C, T, space } from '@/theme';
 import { CLOUD_LINK, cloudState } from '@/theme.status';
 
 const SOURCE = { device: 'Thiết bị gửi', manual: 'Nhập tay', simulated: 'Mô phỏng' } as const;
-const STATUS = { completed: 'Hoàn tất', interrupted: 'Bị ngắt', over_limit: 'Ngắt do vượt ngưỡng' } as const;
+const STATUS = { completed: 'Hoàn tất', interrupted: 'Bị ngắt', over_limit: 'Ngắt do vượt ngưỡng', unknown: 'Chưa đủ dữ liệu' } as const;
 
 function lastDays(n: number, end: string): string[] {
   const out: string[] = [];
@@ -44,17 +45,19 @@ export function DeviceView({ device, level }: { device: Device; level: DeviceVie
   // Giai đoạn B (AU-03): bác sĩ không điều khiển thiết bị, nút bật tắt nguồn của bác sĩ đã bỏ.
   // Giai đoạn B (CN4 XN-09): quản trị chỉ xem; chăm sóc, khử khuẩn, xử lý lỗi do bác sĩ ở thẻ Trạng thái máy (DeviceManage.tsx).
   const { data, simulateSession, markCareDone } = useStore();
-  const { sessionsOf, patient, woundsOf, coursePlan } = useLookups();
-  const sessions = sessionsOf(device.id);
-  const rawCount = data.sessions.filter((s) => s.deviceId === device.id).length;
+  const { sessionsOf, sessionsOfPatient, patient, woundsOf, coursePlan } = useLookups();
   const owner = patient(device.patientId);
+  // 27/11/2026 (FR11, FR14): bệnh nhân và bác sĩ chỉ thấy phiên của người đang giữ máy trên máy này; phiên của người dùng trước
+  // (máy đã thu hồi, giao lại) không hiện. Mức kỹ thuật (quản trị) vẫn xem nhật ký đầy đủ của máy.
+  const sessions = tech ? sessionsOf(device.id) : owner ? sessionsOfPatient(owner.id).filter((s) => s.deviceId === device.id) : [];
+  const rawCount = data.sessions.filter((s) => s.deviceId === device.id).length;
   // Đợt đang áp dụng của bệnh nhân giữ thiết bị (thiết bị tại nhà khóa theo đợt này).
   const plan = owner ? woundsOf(owner.id).map((w) => coursePlan(w.id)).find((x) => x?.status === 'active') : undefined;
   const lastSyncDay = (device.lastSync ? localDay(device.lastSync) : null);
   const days = lastDays(7, localDay());
   const perDay = days.map((d) => ({ d, n: sessions.filter((s) => localDay(s.start) === d && s.status === 'completed').length }));
   const today = days[0];
-  const pr = plan ? courseProgress(plan, sessions.filter((s) => !s.woundId || s.woundId === plan.woundId), today, lastSyncDay) : null;
+  const pr = plan ? courseProgress(plan, sessionsForWound(sessions, plan.woundId), today, reconciledThrough()) : null;
   const restToday = plan ? !isScheduled(plan, today) : false;
   const maxN = Math.max(1, ...perDay.map((x) => x.n));
   const totalMin = sessions.reduce((s, x) => s + x.durationMin, 0);

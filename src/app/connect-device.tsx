@@ -29,9 +29,10 @@ import { SEND_RESULT } from '@/theme.status';
 /** Nạp liệu trình bác sĩ đã xác nhận xuống máy qua USB/UART (giai đoạn 1: thiết bị giả lập).
  *  Đợt 5 (PP-13): bệnh nhân thấy câu chữ theo bảng đã duyệt C30 đến C66 (DOT5_BANG_CAU_CHU.md); bác sĩ và quản trị viên giữ câu cũ. */
 export default function ConnectDevice() {
-  const params = useLocalSearchParams<{ patientId?: string; woundId?: string }>();
-  const { me, recordDeviceLink } = useStore();
-  const { patient, woundsOf, coursePlan, device } = useLookups();
+  // 27/11/2026 (FR6, FR7): woundId, planId là vết và phiên bản bệnh nhân đã chọn ở lịch (mục lịch = mã phác đồ + ngày).
+  const params = useLocalSearchParams<{ patientId?: string; woundId?: string; planId?: string; date?: string }>();
+  const { me, recordDeviceLink, loadBlockerNow } = useStore();
+  const { patient, woundsOf, coursePlan, device, wound } = useLookups();
   const p = patient(me?.role === 'patient' ? me.patientId : params.patientId);
   const canView = useCanView(p);
   const link = useDeviceLink();
@@ -39,9 +40,9 @@ export default function ConnectDevice() {
   useConnectionLog(link.state, link.kind);
   const [chosen, setChosen] = useState<string>(params.woundId ?? '');
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<SendResult | null>(null);
-  // P0 DV-05: thời điểm nhận kết quả, để "Máy đã nhận" luôn kèm mốc giờ.
-  const [resultAt, setResultAt] = useState<string | null>(null);
+  // 27/11/2026 (T04): kết quả nạp gắn với đúng (vết, phiên bản, máy). Đổi vết, đổi phiên bản hoặc đổi máy thì kết quả cũ không hiện.
+  // P0 DV-05: thời điểm nhận kết quả đi cùng kết quả, để "Máy đã nhận" luôn kèm mốc giờ.
+  const [outcome, setOutcome] = useState<{ key: string; result: SendResult; at: string; linkId?: string } | null>(null);
   // Đồng hồ một giây chỉ để nhận ra bản tin STA đã cũ (cùng ngưỡng với T02); không gửi gì tới máy.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -52,16 +53,27 @@ export default function ConnectDevice() {
   const courses = useMemo(
     () =>
       (p ? woundsOf(p.id) : [])
-        .map((w) => ({ wound: w, plan: coursePlan(w.id) }))
-        .filter((x) => x.plan && x.plan.status === 'active' && x.plan.confirmed),
+        .map((w) => ({ wound: w, plan: coursePlan(w.id, { patientView: true }) }))
+        .filter((x) => x.plan && x.plan.status === 'active' && x.plan.confirmed)
+        // Thứ tự hiển thị theo mã vết, không phải thứ tự ưu tiên điều trị.
+        .sort((a, b) => a.wound.code.localeCompare(b.wound.code)),
     [p, woundsOf, coursePlan],
   );
-  const selected = courses.length === 1 ? courses[0] : courses.find((c) => c.wound.id === chosen);
+  // Vào từ một mục lịch: giữ đúng vết đó, không thay bằng vết khác kể cả khi chỉ còn một vết đủ điều kiện.
+  // Vào thẳng (tab Thiết bị): một vết thì chọn sẵn, nhiều vết thì bệnh nhân phải chọn rõ trước khi nạp.
+  const fixedWound = params.woundId ? wound(params.woundId) : undefined;
+  const selected = params.woundId ? courses.find((c) => c.wound.id === params.woundId) : courses.length === 1 ? courses[0] : courses.find((c) => c.wound.id === chosen);
 
   // Giai đoạn B (AU-03): chỉ bệnh nhân kết nối máy, nạp liệu trình và theo dõi phiên. Bác sĩ xem lịch sử phiên ở hồ sơ và thiết bị.
   if (!p || !canView || me?.role !== 'patient') return <NoAccess />;
 
   const plan = selected?.plan;
+  // T02: bệnh nhân đã xem phiên bản khác phiên bản đang áp dụng (bác sĩ vừa ban hành phiên bản mới).
+  const viewedOther = !!params.planId && !!plan && params.planId !== plan.id;
+  const ctxKey = `${selected?.wound.id ?? ''}|${plan?.id ?? ''}|${p.deviceId ?? ''}`;
+  const sendOutcome = outcome?.key === ctxKey ? outcome : null;
+  const result = sendOutcome?.result ?? null;
+  const resultAt = sendOutcome?.at ?? null;
   // Giai đoạn B (AU-04): phiên bản bệnh nhân chưa xác nhận đọc thì không dựng cấu hình, nút nạp bị khóa.
   const ackMissing = needsPatientAck(plan);
   const prepared = plan && !ackMissing ? planToConfig(plan, p, new Date()) : null;
@@ -79,21 +91,29 @@ export default function ConnectDevice() {
   const { versionMismatch, unidentified, canSend } = command;
 
   const send = async () => {
-    if (!cfg || !plan || !p.deviceId) return;
+    if (!cfg || !plan || !p.deviceId || !selected) return;
+    // 27/11/2026 (FR7): kiểm lại trên dữ liệu mới nhất ngay trước khi gửi (bác sĩ có thể vừa ban hành phiên bản mới, thu hồi máy).
+    const why = loadBlockerNow({ patientId: p.id, woundId: selected.wound.id, planId: plan.id, deviceId: p.deviceId });
+    if (why) {
+      notify('Chưa nạp liệu trình', why);
+      return;
+    }
+    const key = ctxKey;
     setSending(true);
     try {
+      let linkId: string | undefined;
       // Gửi một lần rồi ghi nhật ký (dịch vụ thiết bị). Lỗi ghi nhật ký không đổi kết quả máy trả lời, chỉ được báo thêm.
-      const { result: r, at, logError } = await sendTreatmentConfigOnce({ send: link.send, record: recordDeviceLink }, cfg, {
+      const { result: r, at, logError } = await sendTreatmentConfigOnce({ send: link.send, record: async (log) => { linkId = (await recordDeviceLink(log)).id; } }, cfg, {
         deviceId: p.deviceId!,
         patientId: p.id,
         planId: plan.id,
         planVersion: plan.version,
+        woundId: selected.wound.id,
         transport: link.kind,
         protocolVersion: PROTOCOL.protocolVersion,
         capsSource: link.capsSource,
       });
-      setResult(r);
-      setResultAt(at);
+      setOutcome({ key, result: r, at, linkId });
       if (logError) notify('Chưa ghi được nhật ký nạp', logError instanceof Error ? logError.message : String(logError));
     } finally {
       setSending(false);
@@ -120,7 +140,7 @@ export default function ConnectDevice() {
   const readyText = link.state !== 'connected' ? 'Chưa, máy chưa kết nối' : readyToSend ? 'Có' : noDevice ? 'Chưa, hồ sơ chưa giao máy' : unidentified ? 'Chưa, máy chưa trả lời lệnh hỏi thông tin' : versionMismatch ? 'Chưa, khác phiên bản giao thức' : 'Chưa, đợt điều trị chưa sẵn sàng';
   const errorText = link.state === 'error' ? link.detail ?? 'Lỗi kết nối' : st?.state === 'error' && shown.view === 'live' ? 'Máy báo lỗi' : result && result.kind !== 'acked' && result.kind !== 'disconnected' ? (isPatient ? patientSendResultLabel(result) : sendResultLabel(result)) : null;
   const reasonText = ackMissing ? 'Hãy đọc và xác nhận phiên bản đợt điều trị trước khi nạp.' : link.state !== 'connected' ? 'Kết nối máy bằng cáp USB trước.' : !cfg || errors.length > 0 ? (isPatient ? 'Đợt điều trị chưa sẵn sàng. Xem thông báo ở trên.' : 'Đợt điều trị chưa sẵn sàng, xem thông báo ở trên.') : isPatient ? 'Máy chưa sẵn sàng nhận liệu trình. Xem thông báo ở trên.' : 'Máy chưa sẵn sàng nhận liệu trình, xem thông báo ở trên.';
-  const openMonitor = () => router.push({ pathname: '/session-monitor', params: { patientId: p.id, woundId: selected?.wound.id } });
+  const openMonitor = () => router.push({ pathname: '/session-monitor', params: { patientId: p.id, ...(selected ? { woundId: selected.wound.id } : {}), ...(sendOutcome?.linkId ? { linkId: sendOutcome.linkId } : {}) } });
 
   // Thông báo trạng thái gửi đi cùng nút trong chân màn (GĐ-9): bấm nạp là thấy phản hồi ngay, không phải cuộn.
   const sendNotices = (
@@ -168,11 +188,16 @@ export default function ConnectDevice() {
     </Card>
   ) : (
     <>
-      {courses.length > 1 && (
+      {courses.length > 1 && !params.woundId && (
         <Choices<string> value={chosen} onChange={setChosen} options={courses.map((c) => ({ value: c.wound.id, label: `${c.wound.code}: ${c.wound.location}` }))} />
       )}
+      {viewedOther && plan && (
+        <Notice tone="amber" icon="document-text-outline">{`Bác sĩ đã áp dụng phiên bản ${plan.version} thay cho phiên bản bạn đã xem. Liệu trình nạp xuống máy là phiên bản ${plan.version}.`}</Notice>
+      )}
       {!selected ? (
-        <Muted>{isPatient ? 'Chọn vết thương để xem liệu trình sẽ nạp.' : 'Chọn vết thương để xem cấu hình sẽ gửi.'}</Muted>
+        params.woundId
+          ? <Notice tone="amber">{`Vết thương ${fixedWound?.code ?? ''} hiện không có đợt điều trị đang áp dụng nên chưa nạp được. Hãy xem Lịch trình hoặc báo bác sĩ.`}</Notice>
+          : <Muted>{isPatient ? 'Có nhiều vết thương đang điều trị. Chọn vết thương để xem liệu trình sẽ nạp.' : 'Chọn vết thương để xem cấu hình sẽ gửi.'}</Muted>
       ) : ackMissing && plan ? (
         <Card><PlanAckCard plan={plan} wound={selected.wound} /></Card>
       ) : prepared && 'missing' in prepared ? (

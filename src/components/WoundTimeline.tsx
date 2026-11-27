@@ -12,7 +12,7 @@ import type { DeviceSession, Evaluation, WoundImage } from '@/lib/types';
 import { C, T } from '@/theme';
 
 type Item = { key: string; at: string; icon: keyof typeof Ionicons.glyphMap; kind: string; text: string; sub?: string; imageId?: string; evaluation?: { id: string; woundId: string } };
-const SESSION_STATUS = { completed: 'Đủ thời gian', interrupted: 'Bị ngắt giữa chừng', over_limit: 'Ngắt do vượt ngưỡng' } as const;
+const SESSION_STATUS = { completed: 'Đủ thời gian', interrupted: 'Bị ngắt giữa chừng', over_limit: 'Ngắt do vượt ngưỡng', unknown: 'Chưa đủ dữ liệu' } as const;
 
 /**
  * P2-07a (R2-07): dòng thời gian CHỈ của một vết thương, chỉ đọc. Gồm lần đo và ảnh chưa đo (từ WoundImage),

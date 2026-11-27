@@ -38,7 +38,7 @@ export default function PlanDetail() {
   const canEdit = p.doctorId === me.id && !p.archivedAt;
   const today = localDay();
   const slots = protocolSlots({
-    versions: view.versions, sessions: woundSessions(data.sessions, w, p) as typeof data.sessions, changes: data.sessionChanges ?? [], live: data.liveSessions, today,
+    versions: view.versions, sessions: woundSessions(data, w, p), changes: data.sessionChanges ?? [], live: data.liveSessions, today,
     nextProtocolStart: views.map((x) => x.startDate).filter((d) => d > view.startDate).sort()[0],
   });
   const sum = slotSummary(slots);
@@ -77,7 +77,7 @@ export default function PlanDetail() {
         <InfoRow label="Đã hoàn thành" value={String(sum.completed)} />
         <InfoRow label="Chưa thực hiện" value={`${sum.notDone}${sum.missed ? ` (bỏ lỡ ${sum.missed})` : ''}`} />
         <InfoRow label="Thất bại hoặc gián đoạn" value={String(sum.failedOrInterrupted)} />
-        <Muted>Đã bỏ lỡ tính theo lịch và dữ liệu máy đã đồng bộ. Máy chưa đồng bộ thì phiên đã làm có thể chưa hiện.</Muted>
+        <Muted>{`Bỏ lỡ chỉ tính khi đã đối soát đủ dữ liệu với máy. Ngày qua chưa có dữ liệu ghi là "Chưa đủ dữ liệu"${sum.noData ? ` (${sum.noData} phiên)` : ''}, không phải bỏ lỡ.`}</Muted>
         <Disclosure title="Lịch sử thực hiện" summary={`${slots.length} phiên`}>
           <SlotList slots={slots} plan={cur} canChange={false} onChange={() => {}} limit={30} />
         </Disclosure>

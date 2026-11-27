@@ -33,7 +33,7 @@ export default function WoundHistory() {
   const params = useLocalSearchParams<{ woundId: string; tab?: string; loc?: string; xem?: string; chon?: string; chonAnh?: string }>();
   const { woundId } = params;
   const { data, me } = useStore();
-  const { wound, patient, imagesOf, account, sessionsOf } = useLookups();
+  const { wound, patient, imagesOf, account, sessionsOfPatient } = useLookups();
   const { width } = useWindowDimensions();
   const w = wound(woundId);
   const p = patient(w?.patientId);
@@ -53,7 +53,8 @@ export default function WoundHistory() {
   const dev = data.devices.find((x) => x.id === p.deviceId);
   // Giai đoạn B (AU-05): phiên bản cũ đã được gán vết thương khi đọc dữ liệu, không suy theo vết đầu tiên trong mảng.
   // Buổi điều trị: cùng bộ lọc sessionsForWound với B05 và tiến độ đợt. Chỉ bác sĩ.
-  const woundSessions = isDoctor && dev ? sessionsForWound(sessionsOf(dev.id), w.id) : [];
+  // 27/11/2026 (FR11): theo bệnh nhân, không theo máy đang giữ; đổi máy vẫn thấy buổi cũ.
+  const woundSessions = isDoctor ? sessionsForWound(sessionsOfPatient(p.id), w.id) : [];
   const timeline = buildTimeline({ wound: w, firstWoundId: undefined, images, evaluations: data.evaluations, plans: data.plans, sessions: woundSessions, isDoctor });
   const shown = timeline.filter((t) => (filter === 'kham' ? t.kind !== 'buoi' : filter === 'danh-gia' ? t.kind === 'danh-gia' : t.kind === 'buoi'));
   const evalCount = timeline.filter((t) => t.kind === 'danh-gia').length;
@@ -114,9 +115,9 @@ export default function WoundHistory() {
               (ảnh và lần đo, nhận xét đã công bố, buổi có woundId đúng vết, A26) như trước đây trên N05; "Chỉ đánh giá" giữ danh sách B08. */}
           {patientTimeline && (
             <WoundTimeline expanded images={images} evaluations={data.evaluations.filter((e) => e.woundId === w.id && e.visibleToPatient)}
-              sessions={dev ? sessionsOf(dev.id).filter((s) => s.woundId === w.id) : []} doctorName={(id) => account(id)?.name} />
+              sessions={sessionsForWound(sessionsOfPatient(p.id), w.id)} doctorName={(id) => account(id)?.name} />
           )}
-          {filter === 'buoi' && !dev && <Muted>Bệnh nhân chưa được giao thiết bị.</Muted>}
+          {filter === 'buoi' && !dev && sessionCount === 0 && <Muted>Bệnh nhân chưa được giao thiết bị.</Muted>}
           {!patientTimeline && shown.length === 0 && !(filter === 'buoi' && !dev) && (
             <Empty icon="time-outline" text={filter === 'danh-gia' ? 'Chưa có đánh giá.' : filter === 'buoi' ? 'Chưa có buổi nào được ghi.' : 'Vết thương này chưa có lịch sử khám, ảnh hoặc đợt điều trị.'} />
           )}

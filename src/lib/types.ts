@@ -140,6 +140,12 @@ export interface WoundImage {
   labelHistory?: LabelEvent[];
   /** A9: ảnh sau điều trị bệnh nhân chụp, gắn phiên điều trị (DeviceSession.sessionId). */
   sessionId?: string;
+  /**
+   * 27/11/2026 (FR14, UR18): bác sĩ phụ trách duyệt cho bệnh nhân xem ảnh này trong hồ sơ. Trống là chưa duyệt: bệnh nhân không thấy.
+   * Tách khỏi xác nhận nhãn nghiên cứu (label.confirmedAt) và đồng ý nghiên cứu (Patient.researchConsent).
+   */
+  sharedWithPatientAt?: string;
+  sharedWithPatientBy?: string;
 }
 
 export type Severity = 'mild' | 'moderate' | 'severe';
@@ -339,8 +345,17 @@ export interface DeviceSession {
   start: string;
   durationMin: number;
   energyWh: number | null;
-  status: 'completed' | 'interrupted' | 'over_limit';
+  /** unknown (27/11/2026, FR8): phiên đã bắt đầu nhưng không nhận được trạng thái kết thúc (mất cáp, rời màn). Không tính là hoàn thành. */
+  status: 'completed' | 'interrupted' | 'over_limit' | 'unknown';
   source: 'device' | 'manual' | 'simulated';
+  /** 27/11/2026 (FR8, NFR3): bệnh nhân giữ máy lúc ghi phiên. Phiên cũ để trống: suy theo lịch sử giao máy (patientSessions.sessionOwner). */
+  patientId?: string;
+  /** Lần nạp liệu trình (DeviceLinkLog.id) máy đang giữ khi chạy phiên. */
+  linkId?: string;
+  /** Không gắn được phiên bản, vết vì lý do này; phiên cần đối soát (patientSessions.LINK_ISSUE_TEXT). */
+  linkIssue?: 'no_load' | 'uncertain_load' | 'wound_mismatch';
+  /** Thời điểm máy chủ xác nhận đã nhận bản ghi. Chưa có máy chủ nên luôn trống: phiên chỉ nằm trên máy này. */
+  syncedAt?: string;
   /** Vết thương được chiếu trong phiên (bệnh nhân chọn trên thiết bị hoặc ứng dụng khi có nhiều vết). */
   woundId?: string;
   /** Giai đoạn B (AU-05): phiên bản phác đồ (TreatmentPlan.id), số phiên bản và mã phác đồ áp dụng khi ghi phiên. Phiên cũ để trống. */
@@ -388,6 +403,9 @@ export interface DeviceLinkLog {
   code?: string;
   protocolVersion: number;
   capsSource: 'device' | 'table' | 'none';
+  /** 27/11/2026: vết và phác đồ của phiên bản đã gửi (bản ghi cũ để trống, tra qua planId). */
+  woundId?: string;
+  protocolId?: string;
 }
 
 export interface AppData {

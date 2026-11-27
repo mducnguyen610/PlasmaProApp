@@ -49,7 +49,7 @@ export default function Report() {
     }
     allowLeave();
     // Không hứa thời gian phản hồi: bản demo lưu cục bộ, bác sĩ chỉ thấy khi mở ứng dụng.
-    notify('Đã ghi nhận', 'Bác sĩ phụ trách sẽ xem khi mở ứng dụng. Nếu đau tăng, sốt, chảy máu hoặc mủ nhiều, hãy gọi 115 hoặc đến cơ sở y tế. Đừng chờ trả lời trong ứng dụng.');
+    notify('Đã lưu trên điện thoại', `Báo cáo chỉ lưu trên điện thoại này, chưa gửi lên máy chủ. ${kind === 'device' ? 'Bác sĩ phụ trách và quản trị thiết bị' : 'Bác sĩ phụ trách'} chỉ thấy khi xem trên cùng máy. Nếu đau tăng, sốt, chảy máu hoặc mủ nhiều, hãy gọi 115 hoặc đến cơ sở y tế. Đừng chờ trả lời trong ứng dụng.`);
     router.back();
   };
 

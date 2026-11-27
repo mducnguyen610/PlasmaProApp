@@ -90,8 +90,10 @@ export interface CourseProgress {
   total: number;
   /** Số buổi theo lịch đã có ít nhất một phiên hoàn tất. */
   done: number;
-  /** Buổi theo lịch đã qua, đã đồng bộ, mà không có phiên nào. */
+  /** Buổi theo lịch đã qua, đã đối soát với nguồn đầy đủ, mà không có phiên hoàn tất. Chưa có nguồn đối soát thì luôn 0 (FR12). */
   missed: number;
+  /** 27/11/2026: buổi theo lịch đã qua, chưa có phiên hoàn tất và chưa đối soát được: "Chưa đủ dữ liệu". */
+  noData: number;
   /** Phiên hoàn tất vào ngày nghỉ theo lịch hoặc vượt số lần mỗi buổi. */
   extra: number;
   /** Phiên thiết bị chặn (ngoài lịch, vượt số lần). */
@@ -108,12 +110,17 @@ export interface CourseProgress {
 const dayOf = (s: DeviceSession) => localDay(s.start);
 
 /** UX-18 (Đợt 12): phiên tính tiến độ cho một vết thương. B04 và B05 dùng chung để cùng một đợt cho cùng một con số.
- *  Phiên không ghi vết thương (bản ghi cũ) được tính cho mọi vết, như B05 trước đây. Công thức courseProgress không đổi. */
-export function sessionsForWound(sessions: DeviceSession[], woundId: string | undefined): DeviceSession[] {
-  return woundId ? sessions.filter((s) => !s.woundId || s.woundId === woundId) : sessions;
+ *  27/11/2026 (FR8): chỉ phiên ghi đúng vết. Phiên không ghi vết thương (bản ghi cũ) không còn được cộng vào vết đang mở; chúng nằm
+ *  trong danh sách đối soát (patientSessions.unlinkedSessions). Không có woundId thì không có phiên nào. */
+export function sessionsForWound<T extends Pick<DeviceSession, 'woundId'>>(sessions: T[], woundId: string | undefined): T[] {
+  return woundId ? sessions.filter((s) => s.woundId === woundId) : [];
 }
 
-export function courseProgress(plan: TreatmentPlan, sessions: DeviceSession[], today: string, lastSyncDay: string | null): CourseProgress {
+/**
+ * reconciledThrough: ngày cuối đã đối soát đủ với nguồn dữ liệu đầy đủ (patientSessions.reconciledThrough). Trước 27/11/2026 tham số này
+ * là ngày đồng bộ cuối của máy, dẫn tới đếm "bỏ lỡ" khi dữ liệu chưa về; nay buổi chưa có bản ghi là "Chưa đủ dữ liệu" (noData).
+ */
+export function courseProgress(plan: TreatmentPlan, sessions: DeviceSession[], today: string, reconciledThrough: string | null): CourseProgress {
   const ps = phasesOf(plan);
   const days = scheduledDays(plan);
   const perVisit = plan.sessionsPerDay != null && plan.sessionsPerDay > 0 ? plan.sessionsPerDay : 1;
@@ -122,10 +129,12 @@ export function courseProgress(plan: TreatmentPlan, sessions: DeviceSession[], t
   const scheduledSet = new Set(days);
   let doneN = 0;
   let missed = 0;
+  let noData = 0;
   for (const d of days) {
     if (d > today) break;
     if (count(d) > 0) doneN++;
-    else if (d < today && lastSyncDay !== null && d <= lastSyncDay) missed++;
+    else if (d < today && reconciledThrough !== null && d <= reconciledThrough) missed++;
+    else if (d < today) noData++;
   }
   const start = ps[0].from;
   const end = ps[ps.length - 1].to;
@@ -140,7 +149,7 @@ export function courseProgress(plan: TreatmentPlan, sessions: DeviceSession[], t
   const todayKind: CourseProgress['today'] = today < start ? 'before' : today > end ? 'after' : scheduledSet.has(today) ? 'treat' : 'rest';
   const todayCount = count(today);
   const next = days.find((d) => d > today || (d === today && todayCount < perVisit)) ?? null;
-  return { total: days.length, done: doneN, missed, extra, blocked, today: todayKind, todayCount, perVisit, next, phaseIndex: phaseIndexOn(plan, today), phaseCount: ps.length };
+  return { total: days.length, done: doneN, missed, noData, extra, blocked, today: todayKind, todayCount, perVisit, next, phaseIndex: phaseIndexOn(plan, today), phaseCount: ps.length };
 }
 
 export interface CourseStatus {

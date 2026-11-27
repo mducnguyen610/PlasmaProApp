@@ -86,7 +86,7 @@ export const DEVICE_EVENT_LABEL: Record<DeviceEventKind | 'session' | 'load', st
 
 export interface DeviceHistoryRow { key: string; at: string; kind: DeviceEventKind | 'session' | 'load'; by?: string; patientId?: string; detail?: string }
 
-const SESSION_STATUS = { completed: 'hoàn tất', interrupted: 'gián đoạn', over_limit: 'vượt giới hạn' } as const;
+const SESSION_STATUS = { completed: 'hoàn tất', interrupted: 'gián đoạn', over_limit: 'vượt giới hạn', unknown: 'chưa đủ dữ liệu' } as const;
 
 /** D4: lịch sử máy gộp nhật ký máy, phiên điều trị (đã bỏ bản trùng mã phiên) và lần nạp phác đồ; mới trước. Chỉ xem. */
 export function deviceHistory(

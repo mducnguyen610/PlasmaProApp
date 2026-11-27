@@ -8,6 +8,8 @@ import { ActivationCode } from '@/components/ActivationCode';
 import { noteNeedsAttention, noteText } from '@/components/AdherenceCalendar';
 import { NoAccess, useCanView } from '@/components/Guard';
 import { Button, Card, Chip, Disclosure, Divider, Field, Header, InfoRow, LinkRow, ListCard, Muted, Notice, PatientAvatar, Screen, SectionTitle, WoundPhoto, StatusChip, Empty, TextLink } from '@/components/ui';
+import { reportsVisibleTo } from '@/lib/access';
+import { unlinkedSessions } from '@/lib/patientSessions';
 import { isPendingActivation } from '@/lib/auth';
 import { confirm, notify } from '@/lib/dialog';
 import { fmtDate, fmtDateTime, PLAN_STATUS, WOUND_STATUS } from '@/lib/format';
@@ -27,7 +29,7 @@ import { isOpenStatus, protocolsOfWound } from '@/lib/planLifecycle';
 export default function PatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, me, setPatientArchived, addWound, setReportHandled, issueActivation, assignDevice, setLifecycle } = useStore();
-  const { patient, account, device, woundsOf, imagesOf, sessionsOf } = useLookups();
+  const { patient, account, device, woundsOf, imagesOf, sessionsOfPatient } = useLookups();
   const p = patient(id);
   const canView = useCanView(p);
   const [newWound, setNewWound] = useState('');
@@ -51,13 +53,17 @@ export default function PatientDetail() {
   const wounds = [...woundsOf(p.id)].sort((a, b) => updatedOf(b.id).localeCompare(updatedOf(a.id)) || b.code.localeCompare(a.code));
   // CN1 H7 (XN-12): trạng thái chung theo ưu tiên đang điều trị > cần tái khám > chưa điều trị > đã kết thúc.
   const overall = CARE_STATUS[patientCareStatus(wounds, data.plans)];
-  const reports = data.reports.filter((r) => r.patientId === p.id);
+  // 27/11/2026 (FR15): báo cáo về vết chỉ bác sĩ phụ trách xem; bác sĩ khác xem hồ sơ (CN1 H9) nhưng không thấy báo cáo.
+  const reports = reportsVisibleTo(me, data).filter((r) => r.patientId === p.id);
   // P1-02a (A-11): báo cáo chưa xử lý trước, đã xử lý thu gọn.
   const openReports = reports.filter((r) => !r.handled);
   const doneReports = reports.filter((r) => r.handled);
   // UX-09 a (Đợt 11): ghi chú sau buổi điều trị có đau từ 7, đỏ da hoặc sưng hiện cùng khối báo cáo. Chỉ hiển thị;
   // không tính vào điểm chú ý, không tạo báo cáo (QĐ-3 chưa đổi).
-  const flaggedNotes = dev ? sessionsOf(dev.id)
+  const mySessions = sessionsOfPatient(p.id);
+  // Phiên không gắn được vết (chưa nạp, nạp không chắc chắn, lệch vết): không tính tiến độ vết nào, bác sĩ phụ trách cần đối soát.
+  const unlinked = isOwner ? unlinkedSessions(mySessions) : [];
+  const flaggedNotes = isOwner ? mySessions
     .map((s) => ({ s, n: data.sessionNotes.find((x) => x.sessionId === s.sessionId) }))
     .filter((x): x is { s: (typeof x)['s']; n: NonNullable<(typeof x)['n']> } => !!x.n && noteNeedsAttention(x.n))
     .sort((a, b) => b.s.start.localeCompare(a.s.start)) : [];
@@ -238,7 +244,8 @@ export default function PatientDetail() {
           </View>
         ))}
       </Card>}
-      {reports.length === 0 ? (flaggedNotes.length ? null : <Empty icon="chatbubble-ellipses-outline" text="Bệnh nhân chưa gửi báo cáo triệu chứng hay sự cố nào." />) : <Card>
+      {unlinked.length > 0 && <Notice icon="link-outline">{`${unlinked.length} phiên chưa gắn được vào vết thương nào nên không tính vào tiến độ. Mở chi tiết phiên trong Lịch sử điều trị để xem lý do.`}</Notice>}
+      {!isOwner ? <Muted>Báo cáo triệu chứng và sự cố chỉ bác sĩ phụ trách xem.</Muted> : reports.length === 0 ? (flaggedNotes.length ? null : <Empty icon="chatbubble-ellipses-outline" text="Bệnh nhân chưa gửi báo cáo triệu chứng hay sự cố nào." />) : <Card>
         {openReports.length === 0 ? <Muted>Không có báo cáo chưa xử lý.</Muted> : openReports.map((r) => <ReportRow key={r.id} r={r} isDoctor={isOwner} onHandle={async () => { try { await setReportHandled(r.id); } catch (e) { notify('Chưa đánh dấu được', e instanceof Error ? e.message : String(e)); } }} />)}
         {doneReports.length > 0 && (
           <Disclosure title={`Đã xử lý (${doneReports.length})`} summary="Báo cáo bác sĩ đã đánh dấu">

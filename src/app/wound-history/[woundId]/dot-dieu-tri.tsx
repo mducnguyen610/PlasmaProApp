@@ -7,6 +7,7 @@ import { NoAccess, useCanView } from '@/components/Guard';
 import { Text } from '@/components/Text';
 import { Card, Divider, Header, LinkRow, Muted, Screen, SectionTitle } from '@/components/ui';
 import { areaReview, courseProgress, followUpDates, localDay, phasesOf, sessionsForWound } from '@/lib/course';
+import { reconciledThrough } from '@/lib/patientSessions';
 import { fmtDate, PLAN_STATUS } from '@/lib/format';
 import { useLookups, useStore } from '@/lib/store';
 import { C, T } from '@/theme';
@@ -18,8 +19,8 @@ import { C, T } from '@/theme';
  */
 export default function WoundCourse() {
   const { woundId } = useLocalSearchParams<{ woundId: string }>();
-  const { data, me } = useStore();
-  const { wound, patient, imagesOf, coursePlan, sessionsOf } = useLookups();
+  const { me } = useStore();
+  const { wound, patient, imagesOf, coursePlan, sessionsOfPatient } = useLookups();
   const w = wound(woundId);
   const p = patient(w?.patientId);
   const canView = useCanView(p);
@@ -28,8 +29,8 @@ export default function WoundCourse() {
   const isDoctor = me?.role === 'doctor';
   const today = localDay();
   const plan = coursePlan(w.id, { patientView: !isDoctor });
-  const dev = data.devices.find((x) => x.id === p.deviceId);
-  const pr = plan && dev ? courseProgress(plan, sessionsForWound(sessionsOf(dev.id), w.id), today, dev.lastSync ? localDay(dev.lastSync) : null) : null;
+  // 27/11/2026: phiên theo bệnh nhân, đúng vết; chưa đối soát đủ thì không tính bỏ lỡ (ngày đó là "Chưa đủ dữ liệu").
+  const pr = plan ? courseProgress(plan, sessionsForWound(sessionsOfPatient(p.id), w.id), today, reconciledThrough()) : null;
   const review = plan ? areaReview(imagesOf(w.id), plan, today) : null;
   const phaseCount = plan ? phasesOf(plan).length : 0;
   return (
@@ -39,7 +40,7 @@ export default function WoundCourse() {
         <>
           <Card>
             <Text style={{ fontSize: T.cardTitle, fontWeight: '700', color: C.text }}>{pr && pr.phaseIndex >= 0 ? `Giai đoạn ${pr.phaseIndex + 1} trên ${pr.phaseCount}` : `${phaseCount} giai đoạn`}</Text>
-            <Text style={{ color: C.text }}>{pr ? `Đã xong ${pr.done}/${pr.total} buổi${isDoctor && pr.missed > 0 ? `, bỏ lỡ ${pr.missed}` : ''}${isDoctor && pr.extra > 0 ? `, ngoài lịch ${pr.extra}` : ''}, ${PLAN_STATUS[plan.status].label.toLowerCase()}` : PLAN_STATUS[plan.status].label}</Text>
+            <Text style={{ color: C.text }}>{pr ? `Đã xong ${pr.done}/${pr.total} buổi${isDoctor && pr.missed > 0 ? `, bỏ lỡ ${pr.missed}` : ''}${pr.noData > 0 ? `, chưa đủ dữ liệu ${pr.noData}` : ''}${isDoctor && pr.extra > 0 ? `, ngoài lịch ${pr.extra}` : ''}, ${PLAN_STATUS[plan.status].label.toLowerCase()}` : PLAN_STATUS[plan.status].label}</Text>
             <Muted>Phiên bản {plan.version}{plan.status === 'active' && pr?.next ? ` · buổi tiếp theo ${fmtDate(pr.next)}` : ''}</Muted>
             {review && <ReviewNote review={review} forPatient={!isDoctor} />}
             {pr && isDoctor && <ProgressRows pr={pr} />}

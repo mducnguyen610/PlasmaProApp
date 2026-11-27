@@ -49,7 +49,8 @@ export function ProgressRows({ pr }: { pr: CourseProgress }) {
       <StatGrid
         items={[
           { label: 'Buổi đã làm', value: `${pr.done}/${pr.total}` },
-          { label: 'Bỏ lỡ (đã đồng bộ)', value: pr.missed, tone: pr.missed > 0 ? 'amber' : undefined },
+          { label: 'Bỏ lỡ (đã đối soát)', value: pr.missed, tone: pr.missed > 0 ? 'amber' : undefined },
+          { label: 'Chưa đủ dữ liệu', value: pr.noData },
           { label: 'Ngoài lịch hoặc thừa', value: pr.extra, tone: pr.extra > 0 ? 'amber' : undefined },
           { label: 'Thiết bị chặn', value: pr.blocked },
         ]}

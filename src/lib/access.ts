@@ -39,3 +39,25 @@ export function canHandleReport(actor: Account | null | undefined, patient?: Pat
 export function canResolveSyncError(actor: Account | null | undefined) {
   return !!actor && !actor.locked && actor.role === 'admin';
 }
+
+/**
+ * 27/11/2026 (FR10, UR17): ai nhận báo cáo bất thường của bệnh nhân.
+ * - Báo cáo về vết thương (symptom): bác sĩ phụ trách hồ sơ.
+ * - Sự cố thiết bị (device): bác sĩ phụ trách và quản trị viên.
+ * - Bệnh nhân: báo cáo của chính mình.
+ * Bác sĩ không phụ trách không nhận báo cáo nào của hồ sơ (CN1 H9 cho xem hồ sơ và lịch sử điều trị, không gồm hộp báo cáo).
+ * Đây là kiểm tra phía ứng dụng; dữ liệu nằm trên máy nên chưa thay được phân quyền máy chủ (NFR3).
+ */
+export function reportsVisibleTo<R extends { patientId: string; kind: 'symptom' | 'device' }>(
+  actor: Account | null | undefined,
+  data: { reports: R[]; patients: Pick<Patient, 'id' | 'doctorId'>[] },
+): R[] {
+  if (!actor || actor.locked || actor.pendingApproval) return [];
+  if (actor.role === 'patient') return data.reports.filter((r) => !!actor.patientId && r.patientId === actor.patientId);
+  if (actor.role === 'admin') return data.reports.filter((r) => r.kind === 'device');
+  if (actor.role === 'doctor') {
+    const mine = new Set(data.patients.filter((p) => p.doctorId === actor.id).map((p) => p.id));
+    return data.reports.filter((r) => mine.has(r.patientId));
+  }
+  return [];
+}

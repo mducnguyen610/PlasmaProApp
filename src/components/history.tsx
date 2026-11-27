@@ -71,5 +71,5 @@ export function HistoryPhotoTile({ image, width, onPress, selecting, pick, disab
 }
 
 // Cùng nhãn với màn thiết bị (DeviceView); chuyển từ B05 qua giai đoạn 1.
-export const SESSION_STATUS = { completed: 'Hoàn tất', interrupted: 'Bị ngắt', over_limit: 'Ngắt do vượt ngưỡng' } as const;
+export const SESSION_STATUS = { completed: 'Hoàn tất', interrupted: 'Bị ngắt', over_limit: 'Ngắt do vượt ngưỡng', unknown: 'Chưa đủ dữ liệu' } as const;
 export const SESSION_SOURCE = { device: 'Thiết bị gửi', manual: 'Nhập tay', simulated: 'Mô phỏng' } as const;
