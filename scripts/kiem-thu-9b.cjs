@@ -112,7 +112,8 @@ const { ganNgayCoLich } = require('./ngay-co-lich.cjs');
     const loadBtn = inFooter(p, 'Nạp liệu trình vào máy');
     if (await inFooter(p, 'Kết nối').count()) await click(inFooter(p, 'Kết nối'), 2000);
     // Danh sách chọn vết hiện ở bước nạp (sau khi kết nối).
-    const choose = await has(p, 'Chọn vết thương để xem liệu trình sẽ nạp.');
+    // 27/11/2026: câu có thêm phần mở đầu "Có nhiều vết thương đang điều trị."
+    const choose = await has(p, /Chọn vết thương để xem liệu trình sẽ nạp\./, false);
     const both = (await p.getByRole('radio', { name: /^VT01: / }).locator('visible=true').count()) > 0 && (await p.getByRole('radio', { name: /^VT09: / }).locator('visible=true').count()) > 0;
     rec('9B-B04-04', 'N07, hai vết có đợt: mở T01 (không mở T02 với vết tự chọn), T01 cho chọn giữa VT01 và VT09', /\/connect-device/.test(url) && !/session-monitor/.test(url) && choose && both, `${url} | câu chọn ${choose}, hai lựa chọn ${both}`);
     const disabled = (await loadBtn.count()) === 0 || (await loadBtn.first().getAttribute('aria-disabled')) === 'true';
